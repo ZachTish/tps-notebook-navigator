@@ -35,6 +35,9 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
+      - name: Build standalone release artifact
+        run: npm run build
+
       - name: Run tests
         run: npm test
 
@@ -48,9 +51,6 @@ jobs:
 
       - name: Lint styles
         run: npm run lint:styles
-
-      - name: Build standalone release artifact
-        run: npm run build
 
       - name: Check TPS release artifact identity
         run: npm run tps:artifacts:check
