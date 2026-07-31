@@ -106,6 +106,22 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.0.0',
+        date: '2026-07-31',
+        showOnUpdate: true,
+        info: 'TPS Notebook Navigator is an experimental, co-installable fork. It can run beside upstream Notebook Navigator while keeping its own runtime and settings state.',
+        new: [
+            'New optional TPS Global Context Menu task rows can appear beneath the exact notes already present in the file list. Select a title to open its resolved source line, or use the checkbox to complete and reopen tasks when the installed GCM API supports mutations.',
+            'New generic row-provider registry isolates provider failures and leaves ordinary file navigation unchanged when an integration is disabled or unavailable.',
+            'New explicit one-way upstream settings import copies recognized settings only after confirmation. It never changes upstream Notebook Navigator state.'
+        ],
+        changed: [
+            'Plugin views, commands, icons, events, drag payloads, DOM classes, CSS variables, Style Settings, local storage, IndexedDB, settings transfers, and release checks now use TPS-owned identities.',
+            'Task checkboxes stay display-only with older compatible GCM builds that do not expose task mutation.',
+            'Large task lists load in bounded progressive passes with fair per-note allocation and a global row safety ceiling.'
+        ]
+    },
+    {
         version: '3.3.1',
         date: '2026-08-03',
         showOnUpdate: true,

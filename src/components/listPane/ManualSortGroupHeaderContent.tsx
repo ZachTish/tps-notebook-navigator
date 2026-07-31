@@ -23,8 +23,8 @@ import { formatTextCount } from '../../utils/wordCountUtils';
 import { ServiceIcon } from '../ServiceIcon';
 
 type ManualSortGroupHeaderStyle = CSSProperties & {
-    '--nn-manual-sort-group-header-accent'?: string;
-    '--nn-manual-sort-group-header-progress'?: string;
+    '--tps-nn-manual-sort-group-header-accent'?: string;
+    '--tps-nn-manual-sort-group-header-progress'?: string;
 };
 
 interface ManualSortGroupHeaderContentProps {
@@ -87,10 +87,10 @@ function getManualSortGroupHeaderStyle(
     const style: ManualSortGroupHeaderStyle = {};
 
     if (header.color) {
-        style['--nn-manual-sort-group-header-accent'] = header.color;
+        style['--tps-nn-manual-sort-group-header-accent'] = header.color;
     }
     if (progress.progressWidth !== null) {
-        style['--nn-manual-sort-group-header-progress'] = `${progress.progressWidth}%`;
+        style['--tps-nn-manual-sort-group-header-progress'] = `${progress.progressWidth}%`;
     }
 
     return style;
@@ -101,23 +101,23 @@ export function ManualSortGroupHeaderContent({ header, wordCount, targetWordCoun
     const countText = formatManualSortGroupHeaderCountText(header, wordCount, targetWordCount);
     const progress = getManualSortGroupHeaderProgress(header, wordCount, targetWordCount);
     const style = getManualSortGroupHeaderStyle(header, progress);
-    const contentClasses = ['nn-manual-sort-group-header-content'];
+    const contentClasses = ['tps-nn-manual-sort-group-header-content'];
     if (header.color && progress.progressPercent === null) {
-        contentClasses.push('nn-manual-sort-group-header-content--accent-all');
+        contentClasses.push('tps-nn-manual-sort-group-header-content--accent-all');
     }
     if (header.color || progress.progressPercent !== null) {
-        contentClasses.push('nn-manual-sort-group-header-content--accent-icon');
+        contentClasses.push('tps-nn-manual-sort-group-header-content--accent-icon');
     }
 
     return (
         <div className={contentClasses.join(' ')} style={style}>
             {header.iconId ? (
-                <ServiceIcon iconId={header.iconId} className="nn-manual-sort-group-header-custom-icon" aria-hidden={true} />
+                <ServiceIcon iconId={header.iconId} className="tps-nn-manual-sort-group-header-custom-icon" aria-hidden={true} />
             ) : null}
-            <span className="nn-manual-sort-group-header-title">{header.title}</span>
-            {shouldShowWordCount ? <span className="nn-manual-sort-group-header-count">({countText})</span> : null}
+            <span className="tps-nn-manual-sort-group-header-title">{header.title}</span>
+            {shouldShowWordCount ? <span className="tps-nn-manual-sort-group-header-count">({countText})</span> : null}
             {progress.progressPercent !== null ? (
-                <span className="nn-manual-sort-group-header-percent">{progress.progressPercent}%</span>
+                <span className="tps-nn-manual-sort-group-header-percent">{progress.progressPercent}%</span>
             ) : null}
         </div>
     );
@@ -133,9 +133,9 @@ export function ManualSortGroupHeaderProgress({ header, wordCount, targetWordCou
     const style = getManualSortGroupHeaderStyle(header, progress);
 
     return (
-        <div className="nn-manual-sort-group-header-progress-row" style={style} aria-hidden={true}>
-            <div className="nn-manual-sort-group-header-progress">
-                <div className="nn-manual-sort-group-header-progress-fill" />
+        <div className="tps-nn-manual-sort-group-header-progress-row" style={style} aria-hidden={true}>
+            <div className="tps-nn-manual-sort-group-header-progress">
+                <div className="tps-nn-manual-sort-group-header-progress-fill" />
             </div>
         </div>
     );

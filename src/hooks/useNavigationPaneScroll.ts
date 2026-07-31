@@ -56,6 +56,7 @@ import { NavigationPaneItemType, ItemType, NAVPANE_MEASUREMENTS, OVERSCAN } from
 import { Align, NavScrollIntent, getNavAlign } from '../types/scroll';
 import type { CombinedNavigationItem } from '../types/virtualization';
 import { getNavigationIndex, getNavigationItemRenderKey, normalizeNavigationPath } from '../utils/navigationIndex';
+import { TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT } from '../constants/tpsIdentity';
 
 /**
  * Parameters for the useNavigationPaneScroll hook
@@ -699,8 +700,8 @@ export function useNavigationPaneScroll({
             setPendingScrollVersion(v => v + 1);
         };
 
-        window.addEventListener('notebook-navigator-visible', handleVisible);
-        return () => window.removeEventListener('notebook-navigator-visible', handleVisible);
+        window.addEventListener(TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT, handleVisible);
+        return () => window.removeEventListener(TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT, handleVisible);
     }, [
         isMobile,
         selectedPath,

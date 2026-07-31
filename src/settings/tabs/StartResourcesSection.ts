@@ -74,7 +74,7 @@ export function renderStartResourcesSection(context: SettingsTabContext): void {
             );
     });
 
-    updateStatusEl = whatsNewSetting.descEl.createDiv({ cls: 'setting-item-description nn-update-status nn-setting-hidden' });
+    updateStatusEl = whatsNewSetting.descEl.createDiv({ cls: 'setting-item-description tps-nn-update-status tps-nn-setting-hidden' });
 
     applyCurrentNotice();
 
@@ -91,14 +91,14 @@ export function renderStartResourcesSection(context: SettingsTabContext): void {
 
     supportSetting.addButton(button => {
         button.setButtonText(strings.settings.items.supportDevelopment.buttonText).onClick(() => window.open(SUPPORT_SPONSOR_URL));
-        button.buttonEl.addClass('nn-support-button');
+        button.buttonEl.addClass('tps-nn-support-button');
     });
 
     supportSetting.addButton(button => {
         button
             .setButtonText(strings.settings.items.supportDevelopment.coffeeButton)
             .onClick(() => window.open(SUPPORT_BUY_ME_A_COFFEE_URL));
-        button.buttonEl.addClass('nn-support-button');
+        button.buttonEl.addClass('tps-nn-support-button');
     });
 
     topGroup.addSetting(setting => {
@@ -112,7 +112,7 @@ export function renderStartResourcesSection(context: SettingsTabContext): void {
                     .onClick(() => {
                         window.open(WELCOME_VIDEO_URL);
                     });
-                button.buttonEl.addClass('nn-youtube-button');
+                button.buttonEl.addClass('tps-nn-youtube-button');
                 button.buttonEl.setAttr('aria-label', strings.modals.welcome.openVideoButton);
             });
     });
@@ -174,7 +174,7 @@ export function createStartResourcesSettingDefinitions(context: SettingsTabConte
                         );
 
                     updateStatusEl = setting.descEl.createDiv({
-                        cls: 'setting-item-description nn-update-status nn-setting-hidden'
+                        cls: 'setting-item-description tps-nn-update-status tps-nn-setting-hidden'
                     });
 
                     renderUpdateStatus(plugin.getPendingUpdateNotice()?.version ?? null);
@@ -198,14 +198,14 @@ export function createStartResourcesSettingDefinitions(context: SettingsTabConte
                         button
                             .setButtonText(strings.settings.items.supportDevelopment.buttonText)
                             .onClick(() => window.open(SUPPORT_SPONSOR_URL));
-                        button.buttonEl.addClass('nn-support-button');
+                        button.buttonEl.addClass('tps-nn-support-button');
                     });
 
                     setting.addButton(button => {
                         button
                             .setButtonText(strings.settings.items.supportDevelopment.coffeeButton)
                             .onClick(() => window.open(SUPPORT_BUY_ME_A_COFFEE_URL));
-                        button.buttonEl.addClass('nn-support-button');
+                        button.buttonEl.addClass('tps-nn-support-button');
                     });
                 }
             }),
@@ -223,7 +223,7 @@ export function createStartResourcesSettingDefinitions(context: SettingsTabConte
                                 .onClick(() => {
                                     window.open(WELCOME_VIDEO_URL);
                                 });
-                            button.buttonEl.addClass('nn-youtube-button');
+                            button.buttonEl.addClass('tps-nn-youtube-button');
                             button.buttonEl.setAttr('aria-label', strings.modals.welcome.openVideoButton);
                         });
                 }

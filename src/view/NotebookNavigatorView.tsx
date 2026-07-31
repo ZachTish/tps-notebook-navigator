@@ -33,7 +33,6 @@ import { UIStateProvider } from '../context/UIStateContext';
 import { ShortcutsProvider } from '../context/ShortcutsContext';
 import { RecentDataProvider } from '../context/RecentDataContext';
 import { InternalDragSessionProvider } from '../context/InternalDragContext';
-import { strings } from '../i18n';
 import type NotebookNavigatorPlugin from '../main';
 import { NOTEBOOK_NAVIGATOR_ICON_ID } from '../constants/notebookNavigatorIcon';
 import { NOTEBOOK_NAVIGATOR_VIEW } from '../types';
@@ -44,23 +43,33 @@ import {
     propagateAndroidFontCompensationToMobileRoot
 } from '../utils/androidFontScale';
 import { ensureNotebookNavigatorSvgFilters } from '../utils/svgFilters';
+import {
+    TPS_NOTEBOOK_NAVIGATOR_ANDROID_CLASS,
+    TPS_NOTEBOOK_NAVIGATOR_DISPLAY_NAME,
+    TPS_NOTEBOOK_NAVIGATOR_IOS_CLASS,
+    TPS_NOTEBOOK_NAVIGATOR_IOS_FLOATING_TOOLBARS_CLASS,
+    TPS_NOTEBOOK_NAVIGATOR_MOBILE_CLASS,
+    TPS_NOTEBOOK_NAVIGATOR_REACT_ID_PREFIX,
+    TPS_NOTEBOOK_NAVIGATOR_ROOT_CLASS,
+    TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT
+} from '../constants/tpsIdentity';
 
-export const IOS_FLOATING_TOOLBARS_CLASS = 'notebook-navigator-ios-floating-toolbars';
+export const IOS_FLOATING_TOOLBARS_CLASS = TPS_NOTEBOOK_NAVIGATOR_IOS_FLOATING_TOOLBARS_CLASS;
 
 let viewInstanceCounter = 0;
 
 export function setupNotebookNavigatorViewContainer(container: HTMLElement, options?: { useFloatingToolbars?: boolean }): void {
     container.empty();
-    container.classList.add('notebook-navigator');
+    container.classList.add(TPS_NOTEBOOK_NAVIGATOR_ROOT_CLASS);
 
     if (Platform.isMobile) {
-        container.classList.add('notebook-navigator-mobile');
+        container.classList.add(TPS_NOTEBOOK_NAVIGATOR_MOBILE_CLASS);
 
         if (Platform.isAndroidApp) {
-            container.classList.add('notebook-navigator-android');
+            container.classList.add(TPS_NOTEBOOK_NAVIGATOR_ANDROID_CLASS);
             applyAndroidFontCompensation(container);
         } else if (Platform.isIosApp) {
-            container.classList.add('notebook-navigator-ios');
+            container.classList.add(TPS_NOTEBOOK_NAVIGATOR_IOS_CLASS);
 
             if (options?.useFloatingToolbars ?? true) {
                 container.classList.add(IOS_FLOATING_TOOLBARS_CLASS);
@@ -73,10 +82,10 @@ export function setupNotebookNavigatorViewContainer(container: HTMLElement, opti
 
 export function teardownNotebookNavigatorViewContainer(container: HTMLElement): void {
     clearAndroidFontCompensation(container);
-    container.classList.remove('notebook-navigator');
-    container.classList.remove('notebook-navigator-mobile');
-    container.classList.remove('notebook-navigator-android');
-    container.classList.remove('notebook-navigator-ios');
+    container.classList.remove(TPS_NOTEBOOK_NAVIGATOR_ROOT_CLASS);
+    container.classList.remove(TPS_NOTEBOOK_NAVIGATOR_MOBILE_CLASS);
+    container.classList.remove(TPS_NOTEBOOK_NAVIGATOR_ANDROID_CLASS);
+    container.classList.remove(TPS_NOTEBOOK_NAVIGATOR_IOS_CLASS);
     container.classList.remove(IOS_FLOATING_TOOLBARS_CLASS);
     container.empty();
 }
@@ -104,7 +113,7 @@ export class NotebookNavigatorView extends ItemView {
         super(leaf);
         this.plugin = plugin;
         viewInstanceCounter += 1;
-        this.settingsUpdateListenerId = `notebook-navigator-view-${viewInstanceCounter}`;
+        this.settingsUpdateListenerId = `${NOTEBOOK_NAVIGATOR_VIEW}-view-${viewInstanceCounter}`;
     }
 
     private readonly setComponentHandle = (handle: NotebookNavigatorHandle | null): void => {
@@ -148,7 +157,7 @@ export class NotebookNavigatorView extends ItemView {
      * @returns The human-readable name of this view
      */
     getDisplayText() {
-        return strings.plugin.viewName;
+        return TPS_NOTEBOOK_NAVIGATOR_DISPLAY_NAME;
     }
 
     /**
@@ -181,7 +190,7 @@ export class NotebookNavigatorView extends ItemView {
         });
         this.updatePlatformClasses();
 
-        this.root = createRoot(container);
+        this.root = createRoot(container, { identifierPrefix: TPS_NOTEBOOK_NAVIGATOR_REACT_ID_PREFIX });
         this.root.render(
             <React.StrictMode>
                 <SettingsProvider plugin={this.plugin}>
@@ -223,7 +232,7 @@ export class NotebookNavigatorView extends ItemView {
         if (Platform.isAndroidApp) {
             // Attempts to find and apply compensation to the mobile root element
             const applyToMobileRoot = () => {
-                const mobileRoot = container.querySelector('.nn-split-container.nn-mobile');
+                const mobileRoot = container.querySelector('.tps-nn-split-container.tps-nn-mobile');
                 if (!(mobileRoot instanceof HTMLElement)) {
                     return false;
                 }
@@ -589,7 +598,7 @@ export class NotebookNavigatorView extends ItemView {
 
         if (!this.wasMobileContainerVisible) {
             this.wasMobileContainerVisible = true;
-            window.dispatchEvent(new CustomEvent('notebook-navigator-visible'));
+            window.dispatchEvent(new CustomEvent(TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT));
         }
     }
 }

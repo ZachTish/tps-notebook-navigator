@@ -29,15 +29,15 @@ describe('createSettingsTransferFilename', () => {
     it('formats settings transfer filenames with a sortable local timestamp', () => {
         const date = new Date(2026, 6, 3, 14, 22, 33);
 
-        expect(createSettingsTransferBaseName(date)).toBe('notebook-navigator-settings_20260703-142233');
-        expect(createSettingsTransferFilename(date)).toBe('notebook-navigator-settings_20260703-142233.json');
+        expect(createSettingsTransferBaseName(date)).toBe('tps-notebook-navigator-settings_20260703-142233');
+        expect(createSettingsTransferFilename(date)).toBe('tps-notebook-navigator-settings_20260703-142233.json');
     });
 });
 
 describe('createModifiedSettingsTransfer', () => {
     it('returns an envelope with an empty settings object when settings match defaults', () => {
         expect(createModifiedSettingsTransfer(structuredClone(DEFAULT_SETTINGS), '3.2.3')).toEqual({
-            plugin: 'notebook-navigator',
+            plugin: 'tps-notebook-navigator',
             pluginVersion: '3.2.3',
             settings: {}
         });
@@ -116,7 +116,7 @@ describe('applyModifiedSettingsTransfer', () => {
     it('rejects envelopes without a settings object', () => {
         expect(() =>
             applyModifiedSettingsTransfer(structuredClone(DEFAULT_SETTINGS), {
-                plugin: 'notebook-navigator',
+                plugin: 'tps-notebook-navigator',
                 pluginVersion: '3.2.3'
             })
         ).toThrow('Settings import must contain a settings object.');
@@ -141,7 +141,7 @@ describe('applyModifiedSettingsTransfer', () => {
     it('rejects envelopes without a transferable settings key', () => {
         expect(() =>
             applyModifiedSettingsTransfer(structuredClone(DEFAULT_SETTINGS), {
-                plugin: 'notebook-navigator',
+                plugin: 'tps-notebook-navigator',
                 pluginVersion: '3.2.3',
                 settings: { unrelated: true }
             })

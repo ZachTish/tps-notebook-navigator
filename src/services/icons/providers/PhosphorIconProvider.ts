@@ -39,7 +39,7 @@ export class PhosphorIconProvider extends BaseFontIconProvider {
     }
 
     protected getCssClass(): string {
-        return 'nn-iconfont-phosphor';
+        return 'tps-nn-iconfont-phosphor';
     }
 
     /**

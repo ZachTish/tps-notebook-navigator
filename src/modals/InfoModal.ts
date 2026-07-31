@@ -81,7 +81,7 @@ export class InfoModal extends Modal {
     constructor(app: App, modalContent: InfoModalContent) {
         super(app);
         this.modalContent = modalContent;
-        this.modalEl.addClass('nn-search-help-modal');
+        this.modalEl.addClass('tps-nn-search-help-modal');
         this.titleEl.setText(modalContent.title);
     }
 
@@ -89,7 +89,7 @@ export class InfoModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
-        const scrollEl = contentEl.createDiv({ cls: 'nn-search-help-scroll' });
+        const scrollEl = contentEl.createDiv({ cls: 'tps-nn-search-help-scroll' });
 
         // The emphasized paragraph renders first so callers can use it as a status banner
         // (for example the active search provider) above the descriptive intro text.
@@ -117,7 +117,7 @@ export class InfoModal extends Modal {
     }
 
     onClose(): void {
-        this.modalEl.removeClass('nn-search-help-modal');
+        this.modalEl.removeClass('tps-nn-search-help-modal');
         this.contentEl.empty();
     }
 }

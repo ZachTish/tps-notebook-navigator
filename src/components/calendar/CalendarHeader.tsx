@@ -96,8 +96,8 @@ export const CalendarHeader = React.memo(function CalendarHeader({
         <button
             type="button"
             className={[
-                'nn-navigation-calendar-period-button',
-                'nn-navigation-calendar-period-year',
+                'tps-nn-navigation-calendar-period-button',
+                'tps-nn-navigation-calendar-period-year',
                 hasYearPeriodNote ? 'has-period-note' : '',
                 isYearPeriodActive ? 'is-active-editor-file' : ''
             ]
@@ -107,7 +107,7 @@ export const CalendarHeader = React.memo(function CalendarHeader({
             onClick={event => onPeriodClick(event, 'year')}
             onContextMenu={event => onPeriodContextMenu(event, 'year')}
         >
-            <span className="nn-navigation-calendar-active-outline" aria-hidden="true" />
+            <span className="tps-nn-navigation-calendar-active-outline" aria-hidden="true" />
             {yearLabel}
         </button>
     ) : null;
@@ -117,9 +117,9 @@ export const CalendarHeader = React.memo(function CalendarHeader({
             <button
                 type="button"
                 className={[
-                    'nn-navigation-calendar-period-button',
-                    'nn-navigation-calendar-quarter-button',
-                    isInline ? 'nn-navigation-calendar-quarter-inline' : '',
+                    'tps-nn-navigation-calendar-period-button',
+                    'tps-nn-navigation-calendar-quarter-button',
+                    isInline ? 'tps-nn-navigation-calendar-quarter-inline' : '',
                     hasQuarterPeriodNote ? 'has-period-note' : '',
                     isQuarterPeriodActive ? 'is-active-editor-file' : ''
                 ]
@@ -129,12 +129,12 @@ export const CalendarHeader = React.memo(function CalendarHeader({
                 onClick={event => onPeriodClick(event, 'quarter')}
                 onContextMenu={event => onPeriodContextMenu(event, 'quarter')}
             >
-                <span className="nn-navigation-calendar-active-outline" aria-hidden="true" />
-                <span className="nn-navigation-calendar-quarter-paren" aria-hidden="true">
+                <span className="tps-nn-navigation-calendar-active-outline" aria-hidden="true" />
+                <span className="tps-nn-navigation-calendar-quarter-paren" aria-hidden="true">
                     (
                 </span>
-                <span className="nn-navigation-calendar-quarter-value">{quarterLabel}</span>
-                <span className="nn-navigation-calendar-quarter-paren" aria-hidden="true">
+                <span className="tps-nn-navigation-calendar-quarter-value">{quarterLabel}</span>
+                <span className="tps-nn-navigation-calendar-quarter-paren" aria-hidden="true">
                     )
                 </span>
             </button>
@@ -142,10 +142,10 @@ export const CalendarHeader = React.memo(function CalendarHeader({
     };
 
     return (
-        <div className="nn-navigation-calendar-header">
+        <div className="tps-nn-navigation-calendar-header">
             <div
                 className={[
-                    'nn-navigation-calendar-month',
+                    'tps-nn-navigation-calendar-month',
                     showInlineMonthNavigation ? 'has-inline-month-nav' : '',
                     showCompactHeaderInlineInfoButton ? 'has-inline-help' : ''
                 ]
@@ -155,7 +155,7 @@ export const CalendarHeader = React.memo(function CalendarHeader({
                 {showInlineMonthNavigation ? (
                     <button
                         type="button"
-                        className="nn-navigation-calendar-nav-button nn-navigation-calendar-year-nav-button nn-navigation-calendar-inline-month-nav-prev"
+                        className="tps-nn-navigation-calendar-nav-button tps-nn-navigation-calendar-year-nav-button tps-nn-navigation-calendar-inline-month-nav-prev"
                         aria-label={strings.common.previous}
                         onMouseDown={handleMouseDown}
                         onClick={() => onNavigate(-1)}
@@ -163,12 +163,12 @@ export const CalendarHeader = React.memo(function CalendarHeader({
                         <ServiceIcon iconId="lucide-chevron-left" aria-hidden={true} />
                     </button>
                 ) : null}
-                <div className="nn-navigation-calendar-inline-month-center">
+                <div className="tps-nn-navigation-calendar-inline-month-center">
                     <button
                         type="button"
                         className={[
-                            'nn-navigation-calendar-period-button',
-                            'nn-navigation-calendar-period-month',
+                            'tps-nn-navigation-calendar-period-button',
+                            'tps-nn-navigation-calendar-period-month',
                             hasMonthPeriodNote ? 'has-period-note' : '',
                             isMonthPeriodActive ? 'is-active-editor-file' : ''
                         ]
@@ -178,14 +178,14 @@ export const CalendarHeader = React.memo(function CalendarHeader({
                         onClick={event => onPeriodClick(event, 'month')}
                         onContextMenu={event => onPeriodContextMenu(event, 'month')}
                     >
-                        <span className="nn-navigation-calendar-active-outline" aria-hidden="true" />
+                        <span className="tps-nn-navigation-calendar-active-outline" aria-hidden="true" />
                         {monthLabel}
                     </button>
                     {showCompactQuarterInMonthRow ? renderQuarterControl(true) : null}
                     {showCompactHeaderInlineInfoButton ? (
                         <button
                             type="button"
-                            className="nn-navigation-calendar-nav-button nn-navigation-calendar-month-help nn-navigation-calendar-inline-help"
+                            className="tps-nn-navigation-calendar-nav-button tps-nn-navigation-calendar-month-help tps-nn-navigation-calendar-inline-help"
                             aria-label={strings.navigationCalendar.helpModal.title}
                             onMouseDown={handleMouseDown}
                             onClick={onOpenHelp}
@@ -197,7 +197,7 @@ export const CalendarHeader = React.memo(function CalendarHeader({
                 {showInlineMonthNavigation ? (
                     <button
                         type="button"
-                        className="nn-navigation-calendar-nav-button nn-navigation-calendar-year-nav-button nn-navigation-calendar-inline-month-nav-next"
+                        className="tps-nn-navigation-calendar-nav-button tps-nn-navigation-calendar-year-nav-button tps-nn-navigation-calendar-inline-month-nav-next"
                         aria-label={strings.common.next}
                         onMouseDown={handleMouseDown}
                         onClick={() => onNavigate(1)}
@@ -210,14 +210,14 @@ export const CalendarHeader = React.memo(function CalendarHeader({
                 {showHeaderPeriodDetails && showQuarter ? renderQuarterControl(false) : null}
             </div>
             {showHeaderNavRow ? (
-                <div className="nn-navigation-calendar-nav">
+                <div className="tps-nn-navigation-calendar-nav">
                     {showInfoInNavRow ? (
                         <button
                             type="button"
                             className={[
-                                'nn-navigation-calendar-nav-button',
-                                'nn-navigation-calendar-help',
-                                'nn-navigation-calendar-help-inline'
+                                'tps-nn-navigation-calendar-nav-button',
+                                'tps-nn-navigation-calendar-help',
+                                'tps-nn-navigation-calendar-help-inline'
                             ]
                                 .filter(Boolean)
                                 .join(' ')}
@@ -230,7 +230,7 @@ export const CalendarHeader = React.memo(function CalendarHeader({
                     ) : null}
                     <button
                         type="button"
-                        className="nn-navigation-calendar-nav-button nn-navigation-calendar-nav-prev"
+                        className="tps-nn-navigation-calendar-nav-button tps-nn-navigation-calendar-nav-prev"
                         aria-label={strings.common.previous}
                         onMouseDown={handleMouseDown}
                         onClick={() => onNavigate(-1)}
@@ -239,7 +239,7 @@ export const CalendarHeader = React.memo(function CalendarHeader({
                     </button>
                     <button
                         type="button"
-                        className="nn-navigation-calendar-today"
+                        className="tps-nn-navigation-calendar-today"
                         aria-label={strings.dateGroups.today}
                         onMouseDown={handleMouseDown}
                         onClick={onToday}
@@ -248,7 +248,7 @@ export const CalendarHeader = React.memo(function CalendarHeader({
                     </button>
                     <button
                         type="button"
-                        className="nn-navigation-calendar-nav-button nn-navigation-calendar-nav-next"
+                        className="tps-nn-navigation-calendar-nav-button tps-nn-navigation-calendar-nav-next"
                         aria-label={strings.common.next}
                         onMouseDown={handleMouseDown}
                         onClick={() => onNavigate(1)}

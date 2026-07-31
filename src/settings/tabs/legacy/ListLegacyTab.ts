@@ -325,7 +325,7 @@ export function renderListPaneTab(context: SettingsTabContext): void {
             });
     });
 
-    addInfoSetting(groupHeadersGroup.addSetting, ['nn-setting-info-container', 'nn-setting-info-list'], descEl => {
+    addInfoSetting(groupHeadersGroup.addSetting, ['tps-nn-setting-info-container', 'tps-nn-setting-info-list'], descEl => {
         const info = strings.settings.items.groupHeadersInstructions;
         descEl.createDiv({ text: info.intro });
         const listEl = descEl.createEl('ol');
@@ -393,7 +393,7 @@ export function renderListPaneTab(context: SettingsTabContext): void {
         });
     refreshPropertySortSecondaryVisibility();
 
-    addInfoSetting(propertySortGroup.addSetting, 'nn-setting-info-container', descEl => {
+    addInfoSetting(propertySortGroup.addSetting, 'tps-nn-setting-info-container', descEl => {
         descEl.createDiv({ text: strings.settings.items.propertySortInstructions.intro });
     });
 
@@ -464,7 +464,7 @@ export function renderListPaneTab(context: SettingsTabContext): void {
         }
     );
 
-    addInfoSetting(manualSortGroup.addSetting, ['nn-setting-info-container', 'nn-setting-info-list'], descEl => {
+    addInfoSetting(manualSortGroup.addSetting, ['tps-nn-setting-info-container', 'tps-nn-setting-info-list'], descEl => {
         const info = strings.settings.items.manualSortInstructions;
         descEl.createDiv({ text: info.intro });
         const listEl = descEl.createEl('ol');
@@ -505,10 +505,10 @@ export function renderListPaneTab(context: SettingsTabContext): void {
             setting.setName(strings.settings.items.showQuickActions.name).setDesc(strings.settings.items.showQuickActions.desc);
         });
 
-        quickActionsSetting.controlEl.addClass('nn-quick-actions-control');
+        quickActionsSetting.controlEl.addClass('tps-nn-quick-actions-control');
 
         const quickActionsButtonsEl = quickActionsSetting.controlEl.createDiv({
-            cls: ['nn-toolbar-visibility-grid', 'nn-quick-actions-buttons']
+            cls: ['tps-nn-toolbar-visibility-grid', 'tps-nn-quick-actions-buttons']
         });
 
         const updateButtonsDisabledState = (enabled: boolean) => {
@@ -548,19 +548,19 @@ export function renderListPaneTab(context: SettingsTabContext): void {
 
         quickActionButtons.forEach(buttonConfig => {
             const buttonEl = quickActionsButtonsEl.createEl('button', {
-                cls: ['nn-toolbar-visibility-toggle', 'nn-mobile-toolbar-button'],
+                cls: ['tps-nn-toolbar-visibility-toggle', 'tps-nn-mobile-toolbar-button'],
                 attr: { type: 'button' }
             });
             buttonEl.setAttr('aria-label', buttonConfig.label);
             buttonEl.setAttr('title', buttonConfig.label);
 
-            const iconEl = buttonEl.createSpan({ cls: 'nn-toolbar-visibility-icon' });
+            const iconEl = buttonEl.createSpan({ cls: 'tps-nn-toolbar-visibility-icon' });
             setIcon(iconEl, buttonConfig.icon);
 
             const applyState = () => {
                 const isEnabled = Boolean(plugin.settings[buttonConfig.key]);
                 buttonEl.classList.toggle('is-active', isEnabled);
-                buttonEl.classList.toggle('nn-mobile-toolbar-button-active', isEnabled);
+                buttonEl.classList.toggle('tps-nn-mobile-toolbar-button-active', isEnabled);
                 buttonEl.setAttr('aria-pressed', isEnabled ? 'true' : 'false');
             };
 
@@ -581,7 +581,7 @@ export function renderListPaneTab(context: SettingsTabContext): void {
                 updateButtonsDisabledState(value);
                 await plugin.saveSettingsAndUpdate();
             });
-            toggle.toggleEl.addClass('nn-quick-actions-master-toggle');
+            toggle.toggleEl.addClass('tps-nn-quick-actions-master-toggle');
         });
 
         updateButtonsDisabledState(plugin.settings.showQuickActions);
@@ -599,7 +599,7 @@ export function renderListPaneTab(context: SettingsTabContext): void {
         }
     );
 
-    addInfoSetting(drawingPreviewsGroup.addSetting, ['nn-setting-info-container', 'nn-setting-info-list'], descEl => {
+    addInfoSetting(drawingPreviewsGroup.addSetting, ['tps-nn-setting-info-container', 'tps-nn-setting-info-list'], descEl => {
         const info = strings.settings.items.drawingIntegrationInfo;
         descEl.createDiv({ text: info.intro });
         const listEl = descEl.createEl('ol');

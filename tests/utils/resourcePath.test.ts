@@ -21,12 +21,12 @@ import { appendResourcePathVersion } from '../../src/utils/resourcePath';
 
 describe('resource path helpers', () => {
     it('adds an mtime query parameter to local resource paths', () => {
-        expect(appendResourcePathVersion('app://local/Images/Drawing.png', 1234)).toBe('app://local/Images/Drawing.png?nn-mtime=1234');
+        expect(appendResourcePathVersion('app://local/Images/Drawing.png', 1234)).toBe('app://local/Images/Drawing.png?tps-nn-mtime=1234');
     });
 
     it('preserves existing query parameters and fragments', () => {
         expect(appendResourcePathVersion('app://local/Images/Drawing.png?existing=1#preview', 5678)).toBe(
-            'app://local/Images/Drawing.png?existing=1&nn-mtime=5678#preview'
+            'app://local/Images/Drawing.png?existing=1&tps-nn-mtime=5678#preview'
         );
     });
 });

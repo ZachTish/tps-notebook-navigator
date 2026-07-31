@@ -315,7 +315,9 @@ function ParentFolderLabel({
     const iconStyle: React.CSSProperties | undefined = color ? { color } : undefined;
     const labelStyle: React.CSSProperties | undefined = applyColorToName && color ? { color } : undefined;
     const contentStyle: React.CSSProperties | undefined = backgroundColor ? { backgroundColor } : undefined;
-    const labelClassName = applyColorToName ? 'nn-parent-folder-label nn-parent-folder-label--colored' : 'nn-parent-folder-label';
+    const labelClassName = applyColorToName
+        ? 'tps-nn-parent-folder-label tps-nn-parent-folder-label--colored'
+        : 'tps-nn-parent-folder-label';
     const isRevealEnabled = Boolean(onReveal);
 
     // Handles click on parent folder label to reveal the file when enabled
@@ -348,9 +350,9 @@ function ParentFolderLabel({
     }, [iconId, iconVersion, showIcon]);
 
     return (
-        <div className="nn-parent-folder" data-dot-separator={showIcon ? 'false' : 'true'}>
+        <div className="tps-nn-parent-folder" data-dot-separator={showIcon ? 'false' : 'true'}>
             <div
-                className="nn-parent-folder-content"
+                className="tps-nn-parent-folder-content"
                 data-has-background={hasBackground ? 'true' : 'false'}
                 data-reveal={isRevealEnabled ? 'true' : 'false'}
                 style={contentStyle}
@@ -358,7 +360,7 @@ function ParentFolderLabel({
             >
                 {showIcon ? (
                     <span
-                        className="nn-parent-folder-icon"
+                        className="tps-nn-parent-folder-icon"
                         ref={iconRef}
                         aria-hidden="true"
                         data-has-color={hasColor ? 'true' : 'false'}
@@ -687,7 +689,7 @@ export const FileItem = React.memo(function FileItem({
     const shouldShowFileIcon = showFileIcons && Boolean(effectiveFileIconId);
     const fileIconHasColor = Boolean(fileIconColor) && !showFileIconUnfinishedTask;
     const fileIconStyle = fileIconColor && !showFileIconUnfinishedTask ? ({ color: fileIconColor } as React.CSSProperties) : undefined;
-    const fileIconClassName = showFileIconUnfinishedTask ? 'nn-file-icon nn-file-icon-unfinished-task' : 'nn-file-icon';
+    const fileIconClassName = showFileIconUnfinishedTask ? 'tps-nn-file-icon tps-nn-file-icon-unfinished-task' : 'tps-nn-file-icon';
     const dragIconColor = showFileIconUnfinishedTask ? undefined : (fileIconColor ?? undefined);
     const shouldShowCompactExtensionBadge = isCompactMode && (isBaseFile || isCanvasFile);
     const wordCountDisplayText =
@@ -734,13 +736,13 @@ export const FileItem = React.memo(function FileItem({
         if (inlineRename && renameInputOptions) {
             return (
                 <div
-                    className="nn-file-name nn-file-name--inline-renaming"
+                    className="tps-nn-file-name tps-nn-file-name--inline-renaming"
                     data-has-color={applyColorToName ? 'true' : 'false'}
                     data-title-rows={appearanceSettings.titleRows}
                     style={
                         {
                             '--filename-rows': appearanceSettings.titleRows,
-                            ...(applyColorToName ? { '--nn-file-name-custom-color': fileTitleColor } : {})
+                            ...(applyColorToName ? { '--tps-nn-file-name-custom-color': fileTitleColor } : {})
                         } as React.CSSProperties
                     }
                 >
@@ -752,29 +754,29 @@ export const FileItem = React.memo(function FileItem({
                         onRestoreFocus={inlineRename.onRestoreFocus}
                         inputFilter={renameInputOptions.inputFilter}
                         onInputChange={renameInputOptions.onInputChange}
-                        className="nn-file-inline-rename"
+                        className="tps-nn-file-inline-rename"
                     />
-                    {extensionSuffix.length > 0 && <span className="nn-file-ext-suffix">{extensionSuffix}</span>}
+                    {extensionSuffix.length > 0 && <span className="tps-nn-file-ext-suffix">{extensionSuffix}</span>}
                 </div>
             );
         }
 
         return (
             <div
-                className="nn-file-name"
+                className="tps-nn-file-name"
                 data-has-color={applyColorToName ? 'true' : 'false'}
                 data-title-rows={appearanceSettings.titleRows}
                 style={
                     {
                         '--filename-rows': appearanceSettings.titleRows,
-                        ...(applyColorToName ? { '--nn-file-name-custom-color': fileTitleColor } : {})
+                        ...(applyColorToName ? { '--tps-nn-file-name-custom-color': fileTitleColor } : {})
                     } as React.CSSProperties
                 }
             >
                 {highlightedName}
                 {matchedAliases && matchedAliases.length > 0 ? (
-                    <span className="nn-file-alias-match">
-                        <ObsidianIcon name="lucide-forward" className="nn-file-alias-match-icon" aria-hidden={true} />
+                    <span className="tps-nn-file-alias-match">
+                        <ObsidianIcon name="lucide-forward" className="tps-nn-file-alias-match-icon" aria-hidden={true} />
                         <span>
                             {matchedAliases.map((matchedAlias, index) => (
                                 <React.Fragment key={`${matchedAlias.value}-${index}`}>
@@ -786,16 +788,16 @@ export const FileItem = React.memo(function FileItem({
                     </span>
                 ) : null}
                 {propertySearchEvidenceGroups.length > 0 ? (
-                    <span className="nn-file-property-search-evidence">
+                    <span className="tps-nn-file-property-search-evidence">
                         <ServiceIcon
                             iconId={propertySearchEvidenceIconId}
-                            className="nn-file-property-search-evidence-icon"
+                            className="tps-nn-file-property-search-evidence-icon"
                             aria-hidden={true}
                         />
                         {propertySearchEvidenceGroups.map((group, groupIndex) => (
                             <React.Fragment key={casefold(group.propertyKey)}>
                                 {groupIndex > 0 ? '; ' : null}
-                                <span className="nn-file-property-search-evidence-key">{renderPropertySearchEvidenceKey(group)}</span>
+                                <span className="tps-nn-file-property-search-evidence-key">{renderPropertySearchEvidenceKey(group)}</span>
                                 {group.values.length > 0 ? ': ' : null}
                                 {group.values.map((value, valueIndex) => (
                                     <React.Fragment key={`${value.displayValue}-${valueIndex}`}>
@@ -809,8 +811,8 @@ export const FileItem = React.memo(function FileItem({
                         {propertySearchEvidenceHiddenGroupCount > 0 ? `; +${propertySearchEvidenceHiddenGroupCount}` : null}
                     </span>
                 ) : null}
-                {shouldShowCountInTitle ? <span className="nn-file-word-count-suffix"> ({titleCountDisplayText})</span> : null}
-                {extensionSuffix.length > 0 && <span className="nn-file-ext-suffix">{extensionSuffix}</span>}
+                {shouldShowCountInTitle ? <span className="tps-nn-file-word-count-suffix"> ({titleCountDisplayText})</span> : null}
+                {extensionSuffix.length > 0 && <span className="tps-nn-file-ext-suffix">{extensionSuffix}</span>}
             </div>
         );
     })();
@@ -957,24 +959,24 @@ export const FileItem = React.memo(function FileItem({
     const isDrawingFeatureImage = drawingFeatureImage.isDrawing;
     const useSquareFeatureImage = !effectiveFeatureImageUrl || settings.forceSquareFeatureImage;
 
-    const featureImageContainerClasses = ['nn-file-thumbnail'];
+    const featureImageContainerClasses = ['tps-nn-file-thumbnail'];
     if (useSquareFeatureImage) {
-        featureImageContainerClasses.push('nn-file-thumbnail--square');
+        featureImageContainerClasses.push('tps-nn-file-thumbnail--square');
     } else {
-        featureImageContainerClasses.push('nn-file-thumbnail--natural');
+        featureImageContainerClasses.push('tps-nn-file-thumbnail--natural');
     }
     if (effectiveFeatureImageUrl) {
-        featureImageContainerClasses.push('nn-file-thumbnail--inset-highlight');
+        featureImageContainerClasses.push('tps-nn-file-thumbnail--inset-highlight');
     }
     if (isDrawingFeatureImage) {
-        featureImageContainerClasses.push('nn-file-thumbnail--drawing');
+        featureImageContainerClasses.push('tps-nn-file-thumbnail--drawing');
     }
     if (showExtensionBadgeThumbnail || showDrawingMissingFeatureImage) {
-        featureImageContainerClasses.push('nn-file-thumbnail--extension-badge');
+        featureImageContainerClasses.push('tps-nn-file-thumbnail--extension-badge');
     }
     // Hide container if image failed to load
     if (isFeatureImageHidden) {
-        featureImageContainerClasses.push('nn-file-thumbnail--hidden');
+        featureImageContainerClasses.push('tps-nn-file-thumbnail--hidden');
     }
     const featureImageContainerClassName = featureImageContainerClasses.join(' ');
 
@@ -983,12 +985,12 @@ export const FileItem = React.memo(function FileItem({
 
     let featureImageStyle: React.CSSProperties | undefined;
     if (!useSquareFeatureImage) {
-        featureImageStyle = { '--nn-file-thumbnail-aspect-ratio': featureImageAspectRatio ?? 1 } as React.CSSProperties;
+        featureImageStyle = { '--tps-nn-file-thumbnail-aspect-ratio': featureImageAspectRatio ?? 1 } as React.CSSProperties;
     }
     if (featureImageMaskImage) {
         featureImageStyle = {
             ...featureImageStyle,
-            '--nn-file-thumbnail-mask-image': featureImageMaskImage
+            '--tps-nn-file-thumbnail-mask-image': featureImageMaskImage
         } as React.CSSProperties;
     }
 
@@ -1016,20 +1018,20 @@ export const FileItem = React.memo(function FileItem({
     }, [useSquareFeatureImage]);
     const showTooltips = settings.showTooltips;
 
-    const classes = ['nn-file'];
-    if (isSelected) classes.push('nn-selected');
-    if (isCompactMode) classes.push('nn-compact');
-    if (isSelected && hasSelectedAbove) classes.push('nn-has-selected-above');
-    if (isSelected && hasSelectedBelow) classes.push('nn-has-selected-below');
-    if (fileBackgroundColor) classes.push('nn-has-custom-background');
+    const classes = ['tps-nn-file'];
+    if (isSelected) classes.push('tps-nn-selected');
+    if (isCompactMode) classes.push('tps-nn-compact');
+    if (isSelected && hasSelectedAbove) classes.push('tps-nn-has-selected-above');
+    if (isSelected && hasSelectedBelow) classes.push('tps-nn-has-selected-below');
+    if (fileBackgroundColor) classes.push('tps-nn-has-custom-background');
     // Apply muted style when file is normally hidden but shown via "show hidden items"
-    if (isHidden) classes.push('nn-hidden-file');
-    if (manualSortDisabled) classes.push('nn-file-manual-sort-disabled');
+    if (isHidden) classes.push('tps-nn-hidden-file');
+    if (manualSortDisabled) classes.push('tps-nn-file-manual-sort-disabled');
     const className = classes.join(' ');
 
     const fileRowStyle = fileBackgroundColor
         ? ({
-              '--nn-file-custom-bg-color': fileBackgroundColor
+              '--tps-nn-file-custom-bg-color': fileBackgroundColor
           } as React.CSSProperties)
         : undefined;
 
@@ -1187,7 +1189,7 @@ export const FileItem = React.memo(function FileItem({
             element: (
                 <div
                     ref={revealInFolderIconRef}
-                    className="nn-quick-action-item"
+                    className="tps-nn-quick-action-item"
                     onClick={handleRevealClick}
                     title={strings.contextMenu.file.revealInFolder}
                 />
@@ -1201,7 +1203,7 @@ export const FileItem = React.memo(function FileItem({
             element: (
                 <div
                     ref={addTagIconRef}
-                    className="nn-quick-action-item"
+                    className="tps-nn-quick-action-item"
                     onClick={handleAddTagClick}
                     title={strings.contextMenu.file.addTag}
                 />
@@ -1215,7 +1217,7 @@ export const FileItem = React.memo(function FileItem({
             element: (
                 <div
                     ref={addShortcutIconRef}
-                    className="nn-quick-action-item"
+                    className="tps-nn-quick-action-item"
                     onClick={handleShortcutToggle}
                     title={hasShortcut ? strings.shortcuts.remove : strings.shortcuts.add}
                 />
@@ -1229,7 +1231,7 @@ export const FileItem = React.memo(function FileItem({
             element: (
                 <div
                     ref={pinNoteIconRef}
-                    className="nn-quick-action-item"
+                    className="tps-nn-quick-action-item"
                     onClick={handlePinClick}
                     title={
                         isPinnedInCurrentContext
@@ -1251,7 +1253,7 @@ export const FileItem = React.memo(function FileItem({
             element: (
                 <div
                     ref={openInNewTabIconRef}
-                    className="nn-quick-action-item"
+                    className="tps-nn-quick-action-item"
                     onClick={handleOpenInNewTab}
                     title={strings.contextMenu.file.openInNewTab}
                 />
@@ -1346,25 +1348,25 @@ export const FileItem = React.memo(function FileItem({
             aria-describedby={hiddenDescription ? hiddenDescriptionId : undefined}
             style={fileRowStyle}
         >
-            <div className="nn-file-content">
+            <div className="tps-nn-file-content">
                 {/* Quick actions mount only for the row currently tracked by the list pane hover state. */}
                 {!isMobile && hasQuickActions && showQuickActionsPanel && (
                     <div
-                        className={`nn-quick-actions-panel ${isCompactMode ? 'nn-compact-mode' : ''}`}
+                        className={`tps-nn-quick-actions-panel ${isCompactMode ? 'tps-nn-compact-mode' : ''}`}
                         data-title-rows={appearanceSettings.titleRows}
                         data-has-tags={effectiveShouldShowFileTags ? 'true' : 'false'}
                     >
                         {quickActionItems.map((action, index) => (
                             <React.Fragment key={action.key}>
-                                {index > 0 && <div className="nn-quick-action-separator" />}
+                                {index > 0 && <div className="tps-nn-quick-action-separator" />}
                                 {action.element}
                             </React.Fragment>
                         ))}
                     </div>
                 )}
-                <div className="nn-file-inner-content">
+                <div className="tps-nn-file-inner-content">
                     {showFileIcons ? (
-                        <div className="nn-file-icon-slot">
+                        <div className="tps-nn-file-icon-slot">
                             {shouldShowFileIcon ? (
                                 <span
                                     ref={fileIconRef}
@@ -1384,13 +1386,13 @@ export const FileItem = React.memo(function FileItem({
                         // ========== COMPACT MODE ==========
                         // Minimal layout: file name + pills
                         // Used when the current list appearance mode is compact
-                        <div className="nn-compact-file-text-content">
-                            <div className="nn-compact-file-header">
+                        <div className="tps-nn-compact-file-text-content">
+                            <div className="tps-nn-compact-file-header">
                                 {fileTitleElement}
                                 {shouldShowCompactExtensionBadge ? (
-                                    <div className="nn-compact-extension-badge" aria-hidden="true">
-                                        <div className="nn-file-icon-rectangle">
-                                            <span className="nn-file-icon-rectangle-text">{fileExtension}</span>
+                                    <div className="tps-nn-compact-extension-badge" aria-hidden="true">
+                                        <div className="tps-nn-file-icon-rectangle">
+                                            <span className="tps-nn-file-icon-rectangle-text">{fileExtension}</span>
                                         </div>
                                     </div>
                                 ) : null}
@@ -1401,12 +1403,15 @@ export const FileItem = React.memo(function FileItem({
                         // ========== NORMAL MODE ==========
                         // Full layout with all enabled elements
                         <>
-                            <div className="nn-file-text-content">
+                            <div className="tps-nn-file-text-content">
                                 {fileTitleElement}
 
                                 {/* Multi-row preview clamps to the configured row count. */}
                                 {shouldShowMultilinePreview && (
-                                    <div className="nn-file-preview" style={{ '--preview-rows': pinnedPreviewRows } as React.CSSProperties}>
+                                    <div
+                                        className="tps-nn-file-preview"
+                                        style={{ '--preview-rows': pinnedPreviewRows } as React.CSSProperties}
+                                    >
                                         {highlightedPreview}
                                     </div>
                                 )}
@@ -1416,8 +1421,8 @@ export const FileItem = React.memo(function FileItem({
 
                                 {/* Date + Parent folder share the metadata line */}
                                 {shouldShowMetadataLine && (
-                                    <div className="nn-file-second-line">
-                                        {shouldShowDateForItem && <div className="nn-file-date">{displayDate}</div>}
+                                    <div className="tps-nn-file-second-line">
+                                        {shouldShowDateForItem && <div className="tps-nn-file-date">{displayDate}</div>}
                                         {renderParentFolder()}
                                     </div>
                                 )}
@@ -1431,7 +1436,7 @@ export const FileItem = React.memo(function FileItem({
                                             key={effectiveFeatureImageKey ?? effectiveFeatureImageUrl}
                                             src={effectiveFeatureImageUrl}
                                             alt={strings.common.featureImageAlt}
-                                            className="nn-file-thumbnail-img"
+                                            className="tps-nn-file-thumbnail-img"
                                             ref={featureImageImgRef}
                                             draggable={false}
                                             onDragStart={e => e.preventDefault()}
@@ -1442,16 +1447,19 @@ export const FileItem = React.memo(function FileItem({
                                             }}
                                         />
                                     ) : showDrawingMissingFeatureImage ? (
-                                        <div className="nn-file-extension-badge nn-file-extension-badge--drawing" aria-hidden="true">
+                                        <div
+                                            className="tps-nn-file-extension-badge tps-nn-file-extension-badge--drawing"
+                                            aria-hidden="true"
+                                        >
                                             <ServiceIcon
                                                 iconId={drawingFeatureImage.iconId ?? 'brush'}
-                                                className="nn-file-extension-icon"
+                                                className="tps-nn-file-extension-icon"
                                                 aria-hidden={true}
                                             />
                                         </div>
                                     ) : showExtensionBadgeThumbnail ? (
-                                        <div className="nn-file-extension-badge">
-                                            <span className="nn-file-extension-text">{file.extension}</span>
+                                        <div className="tps-nn-file-extension-badge">
+                                            <span className="tps-nn-file-extension-text">{file.extension}</span>
                                         </div>
                                     ) : null}
                                 </div>
@@ -1462,7 +1470,7 @@ export const FileItem = React.memo(function FileItem({
             </div>
             {/* Screen reader announcement for hidden files */}
             {hiddenDescription ? (
-                <span id={hiddenDescriptionId} className="nn-visually-hidden">
+                <span id={hiddenDescriptionId} className="tps-nn-visually-hidden">
                     {hiddenDescription}
                 </span>
             ) : null}

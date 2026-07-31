@@ -699,7 +699,7 @@ function renderFormattingSettings(context: SettingsTabContext, createGroup: Crea
                 showNotice(strings.settings.items.dateFormat.help, { timeout: TIMEOUTS.NOTICE_HELP });
             })
     );
-    dateFormatSetting.controlEl.addClass('nn-setting-wide-input');
+    dateFormatSetting.controlEl.addClass('tps-nn-setting-wide-input');
 
     const timeFormatSetting = formattingGroup.addSetting(setting => {
         configureDebouncedTextSetting(
@@ -724,5 +724,5 @@ function renderFormattingSettings(context: SettingsTabContext, createGroup: Crea
                 showNotice(strings.settings.items.timeFormat.help, { timeout: TIMEOUTS.NOTICE_HELP });
             })
     );
-    timeFormatSetting.controlEl.addClass('nn-setting-wide-input');
+    timeFormatSetting.controlEl.addClass('tps-nn-setting-wide-input');
 }

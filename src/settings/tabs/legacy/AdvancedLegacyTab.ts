@@ -194,9 +194,9 @@ export function renderAdvancedTab(context: SettingsTabContext): void {
             );
     });
 
-    const cacheStatsSetting = addInfoSetting(maintenanceGroup.addSetting, ['nn-database-stats', 'nn-stats-section'], () => {});
+    const cacheStatsSetting = addInfoSetting(maintenanceGroup.addSetting, ['tps-nn-database-stats', 'tps-nn-stats-section'], () => {});
 
-    const statsTextEl = cacheStatsSetting.descEl.createDiv({ cls: 'nn-stats-text' });
+    const statsTextEl = cacheStatsSetting.descEl.createDiv({ cls: 'tps-nn-stats-text' });
 
     context.registerStatsTextElement(statsTextEl);
     context.requestStatisticsRefresh();

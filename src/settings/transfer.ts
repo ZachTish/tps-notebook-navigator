@@ -17,6 +17,7 @@
  */
 
 import { DEFAULT_SETTINGS } from './defaultSettings';
+import { TPS_NOTEBOOK_NAVIGATOR_SETTINGS_TRANSFER_ID } from '../constants/tpsIdentity';
 import type { NotebookNavigatorSettings } from './types';
 import { isRecord } from '../utils/typeGuards';
 
@@ -35,7 +36,7 @@ const NON_TRANSFERABLE_SETTING_KEYS = new Set([
     'propertyFields'
 ]);
 
-const SETTINGS_TRANSFER_PLUGIN_ID = 'notebook-navigator';
+const SETTINGS_TRANSFER_PLUGIN_ID = TPS_NOTEBOOK_NAVIGATOR_SETTINGS_TRANSFER_ID;
 
 function padTimestampPart(value: number): string {
     return value.toString().padStart(2, '0');
@@ -53,7 +54,7 @@ function formatSettingsTransferTimestamp(date: Date): string {
 }
 
 export function createSettingsTransferBaseName(date = new Date()): string {
-    return `notebook-navigator-settings_${formatSettingsTransferTimestamp(date)}`;
+    return `tps-notebook-navigator-settings_${formatSettingsTransferTimestamp(date)}`;
 }
 
 export function createSettingsTransferFilename(date = new Date()): string {

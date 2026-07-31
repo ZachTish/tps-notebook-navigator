@@ -5,7 +5,7 @@
    ======================================================================== */
 
 /* Mobile-specific wide input fields - full width on mobile */
-.is-mobile .nn-setting-wide-input input[type='text'],
-.is-mobile .nn-setting-wide-input textarea {
+.is-mobile .tps-nn-setting-wide-input input[type='text'],
+.is-mobile .tps-nn-setting-wide-input textarea {
     width: 100%;
 }

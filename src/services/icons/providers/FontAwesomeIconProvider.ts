@@ -43,7 +43,7 @@ export class FontAwesomeIconProvider extends BaseFontIconProvider {
     }
 
     protected getCssClass(): string {
-        return 'nn-iconfont-fa-solid';
+        return 'tps-nn-iconfont-fa-solid';
     }
 
     /**

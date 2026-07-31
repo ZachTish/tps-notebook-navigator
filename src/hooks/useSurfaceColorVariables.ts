@@ -29,8 +29,8 @@ import { compositeWithBase, parseCssColor, releaseColorResolver, colorsEqual, ty
  * CSS variable (pre-composited surface color).
  *
  * Example:
- *   source: '--nn-theme-navitem-selected-bg' (rgba(100, 150, 200, 0.2))
- *   target: '--nn-computed-navitem-selected-bg' (rgb(44, 54, 64))
+ *   source: '--tps-nn-theme-navitem-selected-bg' (rgba(100, 150, 200, 0.2))
+ *   target: '--tps-nn-computed-navitem-selected-bg' (rgb(44, 54, 64))
  */
 export interface SurfaceVariableMapping {
     source: string;
@@ -220,7 +220,7 @@ export function useSurfaceColorVariables(
             // Step 3: Update each CSS variable mapping
             let variablesChanged = false;
             for (const mapping of variableMappings) {
-                // Read the source variable value (e.g., "--nn-theme-navitem-selected-bg")
+                // Read the source variable value (e.g., "--tps-nn-theme-navitem-selected-bg")
                 const sourceValue = computed.getPropertyValue(mapping.source);
 
                 // Composite the source color onto the base color to get a solid color

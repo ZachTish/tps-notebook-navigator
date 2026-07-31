@@ -4,7 +4,7 @@
    Inline Rename Styles
    ======================================================================== */
 
-.nn-inline-rename-input {
+.tps-nn-inline-rename-input {
     flex: 1 1 auto;
     min-width: 0;
     width: 100%;
@@ -18,26 +18,26 @@
     line-height: normal;
 }
 
-.nn-inline-rename-input:focus {
+.tps-nn-inline-rename-input:focus {
     outline: 2px solid var(--interactive-accent);
     outline-offset: -2px;
 }
 
-.nn-inline-rename-input:disabled {
+.tps-nn-inline-rename-input:disabled {
     opacity: 0.75;
 }
 
-.nn-navitem-inline-rename {
-    height: calc(var(--nn-setting-nav-item-height) - 8px);
-    font-size: var(--nn-setting-nav-font-size);
-    font-weight: var(--nn-theme-navitem-name-font-weight);
+.tps-nn-navitem-inline-rename {
+    height: calc(var(--tps-nn-setting-nav-item-height) - 8px);
+    font-size: var(--tps-nn-setting-nav-font-size);
+    font-weight: var(--tps-nn-theme-navitem-name-font-weight);
 }
 
-.notebook-navigator-mobile .nn-navitem-inline-rename {
-    height: calc(var(--nn-setting-nav-item-height-mobile) - 10px);
+.tps-notebook-navigator-mobile .tps-nn-navitem-inline-rename {
+    height: calc(var(--tps-nn-setting-nav-item-height-mobile) - 10px);
 }
 
-.nn-file-name--inline-renaming {
+.tps-nn-file-name--inline-renaming {
     display: flex;
     align-items: center;
     gap: 0;
@@ -47,12 +47,12 @@
     word-break: normal;
 }
 
-.nn-file-name--inline-renaming .nn-file-ext-suffix {
+.tps-nn-file-name--inline-renaming .tps-nn-file-ext-suffix {
     flex-shrink: 0;
 }
 
-.nn-file-inline-rename {
-    height: var(--nn-file-title-line-height);
-    font-size: var(--nn-file-name-size-mobile, var(--nn-file-name-size));
-    font-weight: var(--nn-theme-file-name-font-weight);
+.tps-nn-file-inline-rename {
+    height: var(--tps-nn-file-title-line-height);
+    font-size: var(--tps-nn-file-name-size-mobile, var(--tps-nn-file-name-size));
+    font-weight: var(--tps-nn-theme-file-name-font-weight);
 }

@@ -76,6 +76,7 @@ import {
 } from './settings/types';
 import { NOTEBOOK_NAVIGATOR_ICON_ID, NOTEBOOK_NAVIGATOR_ICON_SVG } from './constants/notebookNavigatorIcon';
 import { PluginSettingsController, type SettingsLoadResult } from './services/settings/PluginSettingsController';
+import { prepareUpstreamSettingsImport } from './services/settings/UpstreamSettingsImport';
 import { PluginPreferencesController } from './services/settings/PluginPreferencesController';
 import { clearPendingPdfProcessingDiagnostic, consumePendingPdfProcessingDiagnostic } from './services/content/pdf/pdfCrashDiagnostics';
 import {
@@ -1398,6 +1399,8 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
      */
     onunload() {
         this.initiateShutdown();
+        this.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].rows.dispose();
+        this.api = null;
         this.debugLoggingService?.dispose();
         setDebugLoggingService(null);
         this.debugLoggingService = null;
@@ -1485,6 +1488,39 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
         if (includeDescendantNotesChanged) {
             this.preferencesController.notifyUXPreferencesUpdate();
         }
+    }
+
+    /**
+     * Explicitly imports settings from the separately installed upstream Notebook Navigator plugin.
+     * The preparation step has read-only access to the single upstream data.json path; persistence runs through
+     * this TPS plugin's own settings controller and therefore cannot write to the upstream plugin directory.
+     */
+    public async importUpstreamNotebookNavigatorSettings(): Promise<'imported' | 'missing'> {
+        if (this.isUnloading) {
+            throw new Error('Plugin is unloading');
+        }
+
+        const prepared = await prepareUpstreamSettingsImport(this.app.vault.adapter, this.settings, this.app.vault.configDir);
+        if (prepared.status === 'missing') {
+            return 'missing';
+        }
+
+        this.settingsController.applySettingsRecord(prepared.settingsRecord, {
+            isFirstLaunch: false,
+            preferRecordLocalValues: true
+        });
+        this.settings = this.settingsController.settings;
+        this.settingsController.prepareImportedUiScalePersistence();
+        await this.settingsController.saveSettings();
+        const includeDescendantNotesChanged = this.preferencesController.syncMirrorsFromSettings();
+        this.preferencesController.initializeRecentDataManager();
+        this.notifySettingsUpdateWithFullRefresh();
+
+        if (includeDescendantNotesChanged) {
+            this.preferencesController.notifyUXPreferencesUpdate();
+        }
+
+        return 'imported';
     }
 
     private notifySettingsUpdateWithFullRefresh(): void {

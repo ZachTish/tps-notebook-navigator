@@ -84,13 +84,13 @@ export class FileIconRuleEditorModal extends Modal {
     }
 
     onOpen(): void {
-        this.modalEl.addClass('nn-file-icon-rule-editor-modal');
+        this.modalEl.addClass('tps-nn-file-icon-rule-editor-modal');
         this.titleEl.setText(this.options.title);
         this.contentEl.empty();
 
         // Scroll container allows the list to scroll independently of the fixed footer
-        const scrollContainer = this.contentEl.createDiv({ cls: 'nn-file-icon-rule-editor-scroll' });
-        this.listEl = scrollContainer.createDiv({ cls: 'nn-file-icon-rule-editor-list' });
+        const scrollContainer = this.contentEl.createDiv({ cls: 'tps-nn-file-icon-rule-editor-scroll' });
+        this.listEl = scrollContainer.createDiv({ cls: 'tps-nn-file-icon-rule-editor-list' });
         this.renderRows();
         this.renderFooter();
         this.updateApplyButtonState();
@@ -102,7 +102,7 @@ export class FileIconRuleEditorModal extends Modal {
         this.rowControls.clear();
         this.listEl = null;
         this.applyButton = null;
-        this.modalEl.removeClass('nn-file-icon-rule-editor-modal');
+        this.modalEl.removeClass('tps-nn-file-icon-rule-editor-modal');
         this.contentEl.empty();
     }
 
@@ -166,13 +166,13 @@ export class FileIconRuleEditorModal extends Modal {
         this.listEl.empty();
 
         this.rows.forEach(row => {
-            const rowEl = this.listEl?.createDiv({ cls: 'nn-file-icon-rule-row' });
+            const rowEl = this.listEl?.createDiv({ cls: 'tps-nn-file-icon-rule-row' });
             if (!rowEl) {
                 return;
             }
 
             const iconButtonEl = rowEl.createEl('button', {
-                cls: 'nn-action-btn',
+                cls: 'tps-nn-action-btn',
                 attr: { type: 'button', 'aria-label': strings.contextMenu.file.changeIcon }
             });
             const iconSpan = iconButtonEl.createSpan();
@@ -184,7 +184,7 @@ export class FileIconRuleEditorModal extends Modal {
             );
 
             const inputEl = rowEl.createEl('input', {
-                cls: 'nn-input nn-file-icon-rule-key',
+                cls: 'tps-nn-input tps-nn-file-icon-rule-key',
                 attr: {
                     type: 'text',
                     placeholder: this.options.mode === 'fileType' ? 'pdf' : 'meeting'
@@ -198,7 +198,7 @@ export class FileIconRuleEditorModal extends Modal {
             );
 
             const deleteBtn = rowEl.createEl('button', {
-                cls: 'nn-action-btn mod-warning',
+                cls: 'tps-nn-action-btn mod-warning',
                 attr: { type: 'button', 'aria-label': strings.common.delete }
             });
             setIcon(deleteBtn, 'lucide-trash-2');
@@ -218,7 +218,7 @@ export class FileIconRuleEditorModal extends Modal {
     private renderFooter(): void {
         this.disposeFooterDisposers();
 
-        const footer = this.contentEl.createDiv({ cls: 'nn-file-icon-rule-editor-footer nn-button-container' });
+        const footer = this.contentEl.createDiv({ cls: 'tps-nn-file-icon-rule-editor-footer tps-nn-button-container' });
 
         const addButton = footer.createEl('button', {
             attr: { type: 'button', 'aria-label': strings.modals.fileIconRuleEditor.addRuleAria }
@@ -331,11 +331,11 @@ export class FileIconRuleEditorModal extends Modal {
         }
         state.invalidRowIds.forEach(id => {
             const controls = this.rowControls.get(id);
-            controls?.rowEl.addClass('nn-file-icon-rule-row-invalid');
+            controls?.rowEl.addClass('tps-nn-file-icon-rule-row-invalid');
         });
         this.rowControls.forEach((controls, id) => {
             if (!state.invalidRowIds.has(id)) {
-                controls.rowEl.removeClass('nn-file-icon-rule-row-invalid');
+                controls.rowEl.removeClass('tps-nn-file-icon-rule-row-invalid');
             }
         });
     }

@@ -203,8 +203,8 @@ companion leaf.
    - `InternalDragSessionProvider` (internal drag session state)
 3. `NotebookNavigatorContainer` renders a skeleton until `StorageContext.isStorageReady` is true.
 4. `NotebookNavigatorView.onOpen()` adds platform classes and (on Android) applies font scaling compensation before React renders:
-   - Always adds `notebook-navigator`.
-   - Adds `notebook-navigator-mobile` and platform classes on mobile (`notebook-navigator-android`, `notebook-navigator-ios`).
+   - Always adds `tps-notebook-navigator`.
+   - Adds `tps-notebook-navigator-mobile` and platform classes on mobile (`tps-notebook-navigator-android`, `tps-notebook-navigator-ios`).
 5. Pane chrome uses headers on all platforms and toolbars on mobile:
    - `NavigationPaneHeader` and `ListPaneHeader` render in pane chrome above the scrollers.
    - Android mobile renders `NavigationToolbar` / `ListToolbar` at the top.
@@ -496,10 +496,10 @@ The plugin uses debouncers in a few specific places where Obsidian emits bursty 
 **Trigger**: `ItemView.onClose()` when a navigator, calendar, or folder-note placeholder leaf is destroyed
 
 1. `NotebookNavigatorView.onClose()` removes CSS classes from the container:
-   - notebook-navigator
-   - notebook-navigator-mobile (if applicable)
-   - notebook-navigator-android / notebook-navigator-ios (if applicable)
-   - notebook-navigator-ios-floating-toolbars (if applicable)
+   - tps-notebook-navigator
+   - tps-notebook-navigator-mobile (if applicable)
+   - tps-notebook-navigator-android / tps-notebook-navigator-ios (if applicable)
+   - tps-notebook-navigator-ios-floating-toolbars (if applicable)
 2. `NotebookNavigatorView.onClose()` unmounts the React root:
    - Call root.unmount()
    - Set root to null

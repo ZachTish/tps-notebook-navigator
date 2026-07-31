@@ -72,7 +72,7 @@ export class SettingsDiagnosticsController {
         exportButton
             .setButtonText(strings.settings.items.metadataInfo.exportFailed)
             .onClick(() => runAsyncAction(() => this.exportFailedMetadataReport()));
-        exportButton.buttonEl.addClass('nn-setting-hidden');
+        exportButton.buttonEl.addClass('tps-nn-setting-hidden');
 
         if (this.isMetadataInfoTab(this.activeTabId)) {
             runAsyncAction(() => this.updateMetadataInfo());
@@ -197,7 +197,7 @@ export class SettingsDiagnosticsController {
 
     private renderMetadataInfo(element: HTMLElement, metadataInfo: MetadataInfoText): void {
         element.empty();
-        this.metadataExportButton?.buttonEl.toggleClass('nn-setting-hidden', !metadataInfo.hasFailures);
+        this.metadataExportButton?.buttonEl.toggleClass('tps-nn-setting-hidden', !metadataInfo.hasFailures);
 
         element.createSpan({ text: metadataInfo.infoText });
 
@@ -205,7 +205,7 @@ export class SettingsDiagnosticsController {
             element.createEl('br');
             element.createSpan({
                 text: metadataInfo.failedText,
-                cls: metadataInfo.failurePercentage > 70 ? 'nn-metadata-error-text' : undefined
+                cls: metadataInfo.failurePercentage > 70 ? 'tps-nn-metadata-error-text' : undefined
             });
         }
     }
@@ -223,7 +223,7 @@ export class SettingsDiagnosticsController {
 
         if (!this.deps.plugin.settings.useFrontmatterMetadata) {
             metadataInfoEl.empty();
-            this.metadataExportButton?.buttonEl.addClass('nn-setting-hidden');
+            this.metadataExportButton?.buttonEl.addClass('tps-nn-setting-hidden');
             return;
         }
 
@@ -238,12 +238,12 @@ export class SettingsDiagnosticsController {
             }
             if (!this.deps.plugin.settings.useFrontmatterMetadata) {
                 metadataInfoEl.empty();
-                this.metadataExportButton?.buttonEl.addClass('nn-setting-hidden');
+                this.metadataExportButton?.buttonEl.addClass('tps-nn-setting-hidden');
                 return;
             }
             if (!stats) {
                 metadataInfoEl.empty();
-                this.metadataExportButton?.buttonEl.addClass('nn-setting-hidden');
+                this.metadataExportButton?.buttonEl.addClass('tps-nn-setting-hidden');
                 return;
             }
 

@@ -73,7 +73,7 @@ export function renderAffectedFilesPreview(container: HTMLElement, usage: Operat
         return;
     }
 
-    const listContainer = container.createDiv('nn-tag-rename-file-preview');
+    const listContainer = container.createDiv('tps-nn-tag-rename-file-preview');
     listContainer.createEl('h4', { text: strings.modals.tagOperation.affectedFiles });
     const list = listContainer.createEl('ul');
     usage.sample.forEach(fileName => {

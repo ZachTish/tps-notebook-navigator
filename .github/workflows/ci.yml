@@ -1,4 +1,4 @@
-name: Quality checks
+name: Source quality checks
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions: read-all
 
 jobs:
   quality:
-    name: Build, lint, and test
+    name: Test, lint, and typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -35,8 +35,25 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
-      - name: Run quality build
-        run: ./scripts/build.sh
+      - name: Run tests
+        run: npm test
+
+      - name: Check TPS runtime namespace
+        run: npm run tps:namespace:check
+
+      - name: Run TypeScript and ESLint checks
+        run: |
+          npx tsc --noEmit --skipLibCheck
+          npm run lint
+
+      - name: Lint styles
+        run: npm run lint:styles
+
+      - name: Build standalone release artifact
+        run: npm run build
+
+      - name: Check TPS release artifact identity
+        run: npm run tps:artifacts:check
 
       - name: Check generated files
         run: git diff --exit-code

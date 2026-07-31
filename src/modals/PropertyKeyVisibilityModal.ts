@@ -90,13 +90,13 @@ export class PropertyKeyVisibilityModal extends Modal {
     }
 
     onOpen(): void {
-        this.modalEl.addClass('nn-property-keys-modal');
+        this.modalEl.addClass('tps-nn-property-keys-modal');
         this.titleEl.setText(strings.modals.propertyKeyVisibility.title);
         this.contentEl.empty();
 
-        const searchContainer = this.contentEl.createDiv({ cls: 'nn-property-keys-search-container' });
+        const searchContainer = this.contentEl.createDiv({ cls: 'tps-nn-property-keys-search-container' });
         const filterInput = searchContainer.createEl('input', {
-            cls: ['nn-input', 'nn-property-keys-search'],
+            cls: ['tps-nn-input', 'tps-nn-property-keys-search'],
             attr: {
                 type: 'text',
                 placeholder: strings.modals.propertyKeyVisibility.searchPlaceholder
@@ -104,7 +104,7 @@ export class PropertyKeyVisibilityModal extends Modal {
         });
 
         const clearButton = searchContainer.createEl('button', {
-            cls: 'nn-property-keys-search-clear',
+            cls: 'tps-nn-property-keys-search-clear',
             attr: {
                 type: 'button',
                 'aria-label': strings.searchInput.clearSearch
@@ -143,9 +143,9 @@ export class PropertyKeyVisibilityModal extends Modal {
             })
         );
 
-        const scrollContainer = this.contentEl.createDiv({ cls: 'nn-property-keys-scroll' });
+        const scrollContainer = this.contentEl.createDiv({ cls: 'tps-nn-property-keys-scroll' });
         this.renderColumnHeader(scrollContainer);
-        this.listEl = scrollContainer.createDiv({ cls: 'nn-property-keys-list' });
+        this.listEl = scrollContainer.createDiv({ cls: 'tps-nn-property-keys-list' });
         this.renderRows();
 
         this.renderDescription();
@@ -169,7 +169,7 @@ export class PropertyKeyVisibilityModal extends Modal {
         this.applyButton = null;
         this.filterInputEl = null;
         this.filterClearButtonEl = null;
-        this.modalEl.removeClass('nn-property-keys-modal');
+        this.modalEl.removeClass('tps-nn-property-keys-modal');
         this.contentEl.empty();
     }
 
@@ -341,26 +341,26 @@ export class PropertyKeyVisibilityModal extends Modal {
 
         const rows = this.getFilteredRows();
         if (rows.length === 0) {
-            this.listEl.createDiv({ cls: 'nn-property-keys-empty', text: strings.modals.propertyKeyVisibility.emptyState });
+            this.listEl.createDiv({ cls: 'tps-nn-property-keys-empty', text: strings.modals.propertyKeyVisibility.emptyState });
             return;
         }
 
         rows.forEach(row => {
-            const rowEl = this.listEl?.createDiv({ cls: 'nn-property-keys-row' });
+            const rowEl = this.listEl?.createDiv({ cls: 'tps-nn-property-keys-row' });
             if (!rowEl) {
                 return;
             }
 
-            const labelEl = rowEl.createDiv({ cls: 'nn-property-keys-label' });
+            const labelEl = rowEl.createDiv({ cls: 'tps-nn-property-keys-label' });
             labelEl.createSpan({ text: row.displayKey });
             if (row.noteCount > 0) {
                 labelEl.createSpan({
-                    cls: 'nn-property-keys-count',
+                    cls: 'tps-nn-property-keys-count',
                     text: ` (${row.noteCount.toLocaleString()})`
                 });
             }
 
-            const actionsEl = rowEl.createDiv({ cls: 'nn-property-keys-actions' });
+            const actionsEl = rowEl.createDiv({ cls: 'tps-nn-property-keys-actions' });
 
             const navigationButton = this.createToggleButton(actionsEl, strings.modals.propertyKeyVisibility.showInNavigation);
             const listButton = this.createToggleButton(actionsEl, strings.modals.propertyKeyVisibility.showInList);
@@ -404,23 +404,27 @@ export class PropertyKeyVisibilityModal extends Modal {
     }
 
     private renderColumnHeader(containerEl: HTMLElement): void {
-        const rowEl = containerEl.createDiv({ cls: ['nn-property-keys-row', 'nn-property-keys-header-row', 'is-enabled'] });
+        const rowEl = containerEl.createDiv({ cls: ['tps-nn-property-keys-row', 'tps-nn-property-keys-header-row', 'is-enabled'] });
         rowEl.createDiv({
-            cls: 'nn-property-keys-label',
+            cls: 'tps-nn-property-keys-label',
             text: strings.modals.propertyKeyVisibility.propertyColumnLabel
         });
 
-        const actionsEl = rowEl.createDiv({ cls: 'nn-property-keys-actions' });
+        const actionsEl = rowEl.createDiv({ cls: 'tps-nn-property-keys-actions' });
 
-        const navigationIconEl = actionsEl.createDiv({ cls: ['nn-property-keys-toggle', 'nn-property-keys-header-icon', 'is-enabled'] });
+        const navigationIconEl = actionsEl.createDiv({
+            cls: ['tps-nn-property-keys-toggle', 'tps-nn-property-keys-header-icon', 'is-enabled']
+        });
         navigationIconEl.setAttribute('aria-hidden', 'true');
         setIcon(navigationIconEl, NAVIGATION_PANE_TAB_ICON);
 
-        const listIconEl = actionsEl.createDiv({ cls: ['nn-property-keys-toggle', 'nn-property-keys-header-icon', 'is-enabled'] });
+        const listIconEl = actionsEl.createDiv({ cls: ['tps-nn-property-keys-toggle', 'tps-nn-property-keys-header-icon', 'is-enabled'] });
         listIconEl.setAttribute('aria-hidden', 'true');
         setIcon(listIconEl, LIST_PANE_TAB_ICON);
 
-        const fileMenuIconEl = actionsEl.createDiv({ cls: ['nn-property-keys-toggle', 'nn-property-keys-header-icon', 'is-enabled'] });
+        const fileMenuIconEl = actionsEl.createDiv({
+            cls: ['tps-nn-property-keys-toggle', 'tps-nn-property-keys-header-icon', 'is-enabled']
+        });
         fileMenuIconEl.setAttribute('aria-hidden', 'true');
         setIcon(fileMenuIconEl, FILE_MENU_ICON);
     }
@@ -430,7 +434,7 @@ export class PropertyKeyVisibilityModal extends Modal {
      */
     private createToggleButton(actionsEl: HTMLElement, ariaLabel: string): HTMLButtonElement {
         return actionsEl.createEl('button', {
-            cls: ['nn-action-btn', 'nn-property-keys-toggle'],
+            cls: ['tps-nn-action-btn', 'tps-nn-property-keys-toggle'],
             attr: {
                 type: 'button',
                 'aria-label': ariaLabel
@@ -509,10 +513,10 @@ export class PropertyKeyVisibilityModal extends Modal {
             return;
         }
 
-        const rowEl = this.listEl.createDiv({ cls: ['nn-property-keys-row', 'nn-property-keys-select-all-row'] });
-        rowEl.createDiv({ cls: 'nn-property-keys-label' });
+        const rowEl = this.listEl.createDiv({ cls: ['tps-nn-property-keys-row', 'tps-nn-property-keys-select-all-row'] });
+        rowEl.createDiv({ cls: 'tps-nn-property-keys-label' });
 
-        const actionsEl = rowEl.createDiv({ cls: 'nn-property-keys-actions' });
+        const actionsEl = rowEl.createDiv({ cls: 'tps-nn-property-keys-actions' });
 
         const navigationButton = this.createToggleButton(actionsEl, strings.modals.propertyKeyVisibility.toggleAllInNavigation);
         const listButton = this.createToggleButton(actionsEl, strings.modals.propertyKeyVisibility.toggleAllInList);
@@ -635,13 +639,13 @@ export class PropertyKeyVisibilityModal extends Modal {
      */
     private renderDescription(): void {
         this.contentEl.createEl('p', {
-            cls: 'nn-property-keys-description',
+            cls: 'tps-nn-property-keys-description',
             text: strings.modals.propertyKeyVisibility.description
         });
     }
 
     private renderFooter(): void {
-        const footer = this.contentEl.createDiv({ cls: ['nn-button-container', 'nn-property-keys-footer'] });
+        const footer = this.contentEl.createDiv({ cls: ['tps-nn-button-container', 'tps-nn-property-keys-footer'] });
 
         const cancelButton = footer.createEl('button', {
             text: strings.common.cancel,

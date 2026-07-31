@@ -1,7 +1,7 @@
 # Public API Type Definitions
 
-This folder contains TypeScript type definitions for external plugin developers who want to integrate with the Notebook
-Navigator API.
+This folder contains TypeScript type definitions for external plugin developers who want to integrate with the TPS
+Notebook Navigator API.
 
 ## Files
 
@@ -18,7 +18,7 @@ Complete TypeScript type definitions for the Notebook Navigator API.
    ```
 3. Use with the API:
    ```typescript
-   const nn = app.plugins.plugins['notebook-navigator']?.api as NotebookNavigatorAPI | undefined;
+   const nn = app.plugins.plugins['tps-notebook-navigator']?.api as NotebookNavigatorAPI | undefined;
    if (!nn) {
      return;
    }
@@ -28,12 +28,12 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 ## Public Surface
 
 `notebook-navigator.d.ts` mirrors the runtime API exposed at
-`app.plugins.plugins['notebook-navigator']?.api`.
+`app.plugins.plugins['tps-notebook-navigator']?.api`.
 
 - Core methods: `getVersion()`, `isStorageReady()`, `whenReady()`, `on(...)`, `once(...)`, `off(...)`
-- Namespaces: `metadata`, `navigation`, `selection`, `menus`, `tagCollections`, `propertyNodes`
+- Namespaces: `metadata`, `navigation`, `selection`, `menus`, `tagCollections`, `propertyNodes`, `rows`
 - Exported types: metadata records and updates, navigation and selection state, pin contexts, tag collections, property
-  nodes, menu extension contexts, event names, and event payloads
+  nodes, menu extension contexts, transient row providers and actions, event names, and event payloads
 
 **For Maintainers:**
 
@@ -44,7 +44,7 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 
 ## Version
 
-Current API Version: **2.0.0**
+Current API Version: **2.2.0**
 
 ## Documentation
 

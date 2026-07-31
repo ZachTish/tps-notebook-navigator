@@ -277,7 +277,7 @@ function createVaultSetupRenderers(context: SettingsTabContext): VaultSetupRende
             return button;
         });
 
-        profileSetting.controlEl.addClass('nn-setting-profile-dropdown');
+        profileSetting.controlEl.addClass('tps-nn-setting-profile-dropdown');
         addSettingSyncModeToggle({ setting: profileSetting, plugin, settingId: 'vaultProfile' });
     };
 
@@ -330,9 +330,9 @@ function createVaultSetupRenderers(context: SettingsTabContext): VaultSetupRende
         propertyKeysSetting.setName(strings.settings.items.propertyFields.name).setDesc(strings.settings.items.propertyFields.desc);
 
         const propertyKeysCountLineEl = propertyKeysSetting.descEl.createDiv({
-            cls: 'nn-setting-property-keys-count-line'
+            cls: 'tps-nn-setting-property-keys-count-line'
         });
-        propertyKeysSummaryTextEl = propertyKeysCountLineEl.createSpan({ cls: 'nn-setting-property-keys-summary-text' });
+        propertyKeysSummaryTextEl = propertyKeysCountLineEl.createSpan({ cls: 'tps-nn-setting-property-keys-summary-text' });
 
         propertyKeysSetting.addButton(button =>
             button.setButtonText(strings.settings.items.propertyFields.addButtonTooltip).onClick(() => {

@@ -105,10 +105,10 @@ export class SearchDateInputSuggest extends AbstractInputSuggest<DateSuggestionI
     }
 
     renderSuggestion(item: DateSuggestionItem, el: HTMLElement): void {
-        el.addClass('nn-search-tag-suggestion');
-        const container = el.createDiv({ cls: 'nn-search-tag-suggestion__label' });
-        container.createSpan({ cls: 'nn-search-tag-suggestion__prefix', text: '@' });
-        const textEl = container.createSpan({ cls: 'nn-search-tag-suggestion__text' });
+        el.addClass('tps-nn-search-tag-suggestion');
+        const container = el.createDiv({ cls: 'tps-nn-search-tag-suggestion__label' });
+        container.createSpan({ cls: 'tps-nn-search-tag-suggestion__prefix', text: '@' });
+        const textEl = container.createSpan({ cls: 'tps-nn-search-tag-suggestion__text' });
 
         if (item.match && item.match.matches.length > 0) {
             renderMatches(textEl, item.token, item.match.matches);
@@ -149,7 +149,7 @@ export class SearchDateInputSuggest extends AbstractInputSuggest<DateSuggestionI
             return;
         }
 
-        this.containerEl.addClass('nn-mobile');
+        this.containerEl.addClass('tps-nn-mobile');
     }
 
     // Locates the active @-prefixed date token at the cursor position, if any

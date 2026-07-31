@@ -217,7 +217,7 @@ export class FileDeletionService {
             }
 
             window.setTimeout(() => {
-                const fileListEl = activeDocument.querySelector('.nn-list-pane-scroller');
+                const fileListEl = activeDocument.querySelector('.tps-nn-list-pane-scroller');
                 if (fileListEl instanceof HTMLElement) {
                     fileListEl.focus();
                 }
@@ -372,7 +372,7 @@ export class FileDeletionService {
             }
 
             window.setTimeout(() => {
-                const fileListEl = activeDocument.querySelector('.nn-list-pane-scroller');
+                const fileListEl = activeDocument.querySelector('.tps-nn-list-pane-scroller');
                 if (fileListEl instanceof HTMLElement) {
                     fileListEl.focus();
                 }

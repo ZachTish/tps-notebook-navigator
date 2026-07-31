@@ -204,7 +204,7 @@
             this.log('================================\n', 'header');
 
             // Get the API
-            const plugin = app.plugins.plugins['notebook-navigator'];
+            const plugin = app.plugins.plugins['tps-notebook-navigator'];
             if (!plugin) {
                 this.log('❌ Notebook Navigator plugin is not installed or enabled', 'error');
                 return;

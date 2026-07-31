@@ -18,8 +18,8 @@
 
 import { ItemView, WorkspaceLeaf } from 'obsidian';
 import { NOTEBOOK_NAVIGATOR_ICON_ID } from '../constants/notebookNavigatorIcon';
-import { strings } from '../i18n';
 import { NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW } from '../types';
+import { TPS_NOTEBOOK_NAVIGATOR_DISPLAY_NAME } from '../constants/tpsIdentity';
 
 export class FolderNoteSidebarPlaceholderView extends ItemView {
     constructor(leaf: WorkspaceLeaf) {
@@ -31,7 +31,7 @@ export class FolderNoteSidebarPlaceholderView extends ItemView {
     }
 
     getDisplayText(): string {
-        return strings.plugin.folderNoteSidebarViewName;
+        return `${TPS_NOTEBOOK_NAVIGATOR_DISPLAY_NAME} Folder Note`;
     }
 
     getIcon(): string {

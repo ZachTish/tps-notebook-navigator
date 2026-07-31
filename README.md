@@ -1,21 +1,75 @@
-Read in your language: [English](https://notebooknavigator.com/docs.html) • [العربية](https://notebooknavigator.com/ar/docs.html) • [Deutsch](https://notebooknavigator.com/de/docs.html) • [Español](https://notebooknavigator.com/es/docs.html) • [فارسی](https://notebooknavigator.com/fa/docs.html) • [Français](https://notebooknavigator.com/fr/docs.html) • [Bahasa Indonesia](https://notebooknavigator.com/id/docs.html) • [Italiano](https://notebooknavigator.com/it/docs.html) • [Nederlands](https://notebooknavigator.com/nl/docs.html) • [Polski](https://notebooknavigator.com/pl/docs.html) • [Português](https://notebooknavigator.com/pt/docs.html) • [Português (Brasil)](https://notebooknavigator.com/pt-br/docs.html) • [Русский](https://notebooknavigator.com/ru/docs.html) • [ไทย](https://notebooknavigator.com/th/docs.html) • [Türkçe](https://notebooknavigator.com/tr/docs.html) • [Українська](https://notebooknavigator.com/uk/docs.html) • [Tiếng Việt](https://notebooknavigator.com/vi/docs.html) • [日本語](https://notebooknavigator.com/ja/docs.html) • [한국어](https://notebooknavigator.com/ko/docs.html) • [中文简体](https://notebooknavigator.com/zh-cn/docs.html) • [中文繁體](https://notebooknavigator.com/zh-tw/docs.html)
+# TPS Notebook Navigator
+
+TPS Notebook Navigator is an experimental, co-installable fork of [Notebook Navigator](https://github.com/johansan/notebook-navigator). It keeps the upstream navigator available while providing a separate place for TPS integrations, provider-rendered rows, and deeper workflow control.
+
+The fork's first integration line is based on upstream commit `2b65be66` (Notebook Navigator 3.3.0 lineage plus upstream changes through that exact commit). The upstream project remains the source for the mature file-browser experience, documentation, translations, icon packs, and media assets. TPS-specific changes are maintained independently in this repository.
+
+## Why this is a separate plugin
+
+The fork is deliberately isolated so enabling, testing, disabling, or removing it cannot replace upstream Notebook Navigator or take over its runtime state.
+
+- Plugin, view, command, icon, event, drag payload, DOM, CSS, Style Settings, local-storage, IndexedDB, and settings-transfer identities use TPS-only namespaces.
+- Upstream and TPS Notebook Navigator can be enabled in the same vault and opened side by side.
+- Note content, tags, frontmatter, and vault folders remain shared Obsidian data by design.
+- Importing upstream settings is explicit, one-way, and read-only with respect to the upstream plugin. It never runs automatically.
+- TPS integrations are optional and fail closed: disabling them restores the ordinary file-only navigator behavior.
+
+## BRAT installation
+
+1. In BRAT, choose **Add beta plugin**.
+2. Add `ZachTish/tps-notebook-navigator` and use **Latest** for normal updates or **Frozen** to pin a numeric release.
+3. Enable **TPS Notebook Navigator** in Community plugins. You can leave **Notebook Navigator** enabled.
+4. Open **Settings → TPS Notebook Navigator → TPS integration** to opt into integrations or import a copy of upstream settings.
+
+The release assets are `main.js`, `manifest.json`, and `styles.css`. The minimum supported Obsidian version is 1.11.0.
+
+## TPS integration contract
+
+The integration surface is intentionally modular. The navigator owns presentation and row composition; a provider owns its data and actions. Provider failures are isolated and never block the normal file list.
+
+The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.13.1 or later is the tested integration baseline: task checkboxes complete or reopen the exact task through GCM, while selecting the title resolves and opens its source line. Older structurally compatible APIs without task mutation remain display-only. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
+
+### Settings map
+
+The default settings surface remains the normal Notebook Navigator landing page. **TPS integration** is a top-level destination under **Configuration**, one click from that landing page.
+
+- **Task rows** — **Show GCM tasks beneath notes** is off by default. When enabled, the same page reveals **Include completed tasks** and **Tasks per note**; there is no nested editor or second configuration page.
+- **One-way setup** — **Import upstream Notebook Navigator settings** always asks for confirmation. It reads only `.obsidian/plugins/notebook-navigator/data.json`, copies recognized upstream settings into the TPS plugin, preserves TPS-only integration settings, and never writes to upstream state.
+
+All three task-row values persist in the TPS plugin's own `data.json`. The importer, active route, disclosures, focus, and scroll position do not create extra persisted schema. On mobile, these controls use Obsidian's native stacked setting rows; the optional controls disappear while task rows are disabled so they do not consume the viewport.
+
+### Provider behavior and limits
+
+- Rows are transient UI records, never fake `TFile` objects. They do not participate in file selection, multi-select, drag, rename, or file indexes.
+- Providers are queried only for exact paths already present in the current list. Large lists load progressively in bounded 64-note passes, retain completed pass state for the active scope, and stop once the global 1,000-row safety ceiling is full. GCM tasks are cached per path, capped independently per note, and invalidated by GCM/vault or plugin-lifecycle events.
+- A provider exception is isolated and logged without replacing or blocking the file list.
+- A mutable GCM checkbox updates optimistically, rolls back with a visible warning on failure, and refreshes from GCM's file event. Older compatible GCM APIs retain a labeled display-only checkbox.
+- Provider controls own their keyboard and context-menu events, so completing a task cannot accidentally trigger file deletion, selection, or the empty-list menu.
+- TPS settings import is a copy, not synchronization. Later upstream setting changes are not mirrored unless the import is explicitly run again.
+
+## Keeping up with Notebook Navigator
+
+Fork-specific integrations live in separate modules, host-global identity is centralized in `src/constants/tpsIdentity.ts`, and the repository includes an idempotent namespace codemod plus isolation tests for new upstream files. Follow [the upstream sync guide](docs/upstream-sync.md) when merging a later Notebook Navigator tag. This keeps the unavoidable co-installation namespace work repeatable while preserving a normal Git merge history and the original upstream remote. A public standalone checkout builds in an explicit build-only mode; the contained test-vault workspace still requires and runs its adjacent atomic runtime deployment hook.
+
+## Release history
+
+### 4.0.0 — isolated TPS fork
+
+- Establishes a major-version identity and storage boundary from inherited Notebook Navigator 3.x releases.
+- Adds the generic provider-row contract and optional TPS Global Context Menu task rows.
+- Adds interactive task completion through GCM with a display-only compatibility fallback.
+- Keeps large/root task lists responsive with bounded progressive loading, fair per-note allocation, lifecycle-aware refresh, and global/cache safety limits.
+- Adds an explicit, one-way import for recognized upstream settings.
+- Adds a repeatable upstream merge/namespace workflow so future Notebook Navigator updates can be integrated without rediscovering fork isolation rules.
+- Keeps upstream and TPS instances co-installable; no production vault or upstream plugin state is mutated by installation.
+- Validates the interactive provider against TPS Global Context Menu 1.13.1, including cross-plugin file identity, exact-line focus, optimistic checkbox mutation, and rollback-safe refresh behavior.
+- Tested with the complete inherited Vitest suite, focused fork/integration regressions, typechecking, linting, production build, test-vault deployment/reload, and side-by-side UI QA. Exact results and artifact hashes are recorded in the GitHub release.
+
+## Upstream feature reference
+
+The documentation below describes the inherited Notebook Navigator feature set. Upstream translations and tutorials are available at [notebooknavigator.com](https://notebooknavigator.com/docs.html). TPS-only behavior and release verification are specified in this repository.
 
 ![Notebook Navigator Screenshot](https://github.com/johansan/notebook-navigator/blob/main/images/notebook-navigator.png?raw=true)
-
-Turn Obsidian into a fast, customizable notes browser with folders, tags, properties and shortcuts in one view.
-Visual previews. Full keyboard navigation. Dual-pane layout. Mobile optimized. Works with 100,000+ notes.
-
-If you love using Notebook Navigator, please consider [☕️ Buying me a coffee](https://buymeacoffee.com/johansan) or [Sponsor on GitHub ❤️](https://github.com/sponsors/johansan).
-
-Coming from another app? Read the switching guides for [Evernote](https://notebooknavigator.com/evernote/), [Apple Notes](https://notebooknavigator.com/apple-notes/), [Bear](https://notebooknavigator.com/bear/), [OneNote](https://notebooknavigator.com/onenote/) and [Day One](https://notebooknavigator.com/day-one/).
-
-<br/>
-
-![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=Downloads&query=%24%5B%22notebook-navigator%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json) ![Obsidian Compatibility](https://img.shields.io/badge/Obsidian-v1.11.0+-483699?logo=obsidian&style=flat-square) [![Discord](https://img.shields.io/discord/1405458145974943846?color=7289da&label=Discord&logo=discord&logoColor=white)](https://discord.gg/6eeSUvzEJr)
-
-[![Quality checks](https://github.com/johansan/notebook-navigator/actions/workflows/ci.yml/badge.svg)](https://github.com/johansan/notebook-navigator/actions/workflows/ci.yml) [![Security scan](https://github.com/johansan/notebook-navigator/actions/workflows/codeql.yml/badge.svg)](https://github.com/johansan/notebook-navigator/actions/workflows/codeql.yml) [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/johansan/notebook-navigator/badge)](https://securityscorecards.dev/viewer/?uri=github.com/johansan/notebook-navigator) [![OpenSSF Baseline](https://www.bestpractices.dev/projects/12715/baseline)](https://www.bestpractices.dev/en/projects/12715/baseline-1)
-
-<br/>
 
 <!-- DOCUMENTATION_START -->
 
@@ -23,8 +77,9 @@ Coming from another app? Read the switching guides for [Evernote](https://notebo
 
 1. **Install Obsidian** - Download and install from [obsidian.md](https://obsidian.md/)
 2. **Enable community plugins** - Go to Settings → Community plugins → Turn on community plugins
-3. **Install Notebook Navigator** - Click "Browse" → Search for "Notebook Navigator" → Install
-4. **Install Style Settings (optional)** - For customizing colors and appearance, install [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin by searching for "Style Settings" in Community plugins
+3. **Install BRAT** - Install the BRAT community plugin, then add `ZachTish/tps-notebook-navigator`
+4. **Enable TPS Notebook Navigator** - The upstream `notebook-navigator` plugin may remain enabled at the same time
+5. **Install Style Settings (optional)** - For customizing colors and appearance, install [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin by searching for "Style Settings" in Community plugins
 
 <br/>
 
@@ -42,7 +97,7 @@ The video has subtitles in 21 languages.
 
 Notebook Navigator is checked with [TypeScript](https://www.typescriptlang.org/), [ESLint](https://eslint.org/) with the official [Obsidian ESLint plugin](https://github.com/obsidianmd/eslint-plugin), [Prettier](https://prettier.io/), [Vitest](https://vitest.dev/) and a production build before changes are merged. The build must complete with zero errors and zero warnings.
 
-Security checks run through [CodeQL](https://codeql.github.com/), with scan history in the [CodeQL workflow runs](https://github.com/johansan/notebook-navigator/actions/workflows/codeql.yml), and the [OpenSSF Scorecard](https://securityscorecards.dev/viewer/?uri=github.com/johansan/notebook-navigator). Current status is shown in the badges at the top of this page.
+Security checks run through [CodeQL](https://codeql.github.com/) in the [TPS fork workflows](https://github.com/ZachTish/tps-notebook-navigator/actions). The inherited upstream implementation is also reviewed through [Notebook Navigator's public repository](https://github.com/johansan/notebook-navigator).
 
 Notebook Navigator runs locally, but some features make documented HTTP requests for updates, downloads, and remote content. See [section 11 - Network and Diagnostics Disclosure](#11-network-and-diagnostics-disclosure) for the full list.
 
@@ -86,6 +141,8 @@ Notebook Navigator runs locally, but some features make documented HTTP requests
 
 - [**Service Architecture**](docs/service-architecture.md) - Business logic layer: MetadataService, FileSystemOperations, ContentProviderRegistry. Dependency injection patterns and service data flow.
 
+- [**Upstream Sync Guide**](docs/upstream-sync.md) - Repeatable merge, namespace, isolation, and side-by-side validation workflow for later Notebook Navigator releases.
+
 <br/>
 
 ## 5 Keyboard shortcuts
@@ -120,7 +177,7 @@ Many settings in Notebook Navigator display a sync toggle — a cloud icon that 
 
 ### 6.1 How sync works
 
-Obsidian plugins store their configuration in `data.json`, located at `.obsidian/plugins/notebook-navigator/data.json` inside your vault folder. When you use a sync service — such as [Obsidian Sync](https://obsidian.md/sync), iCloud, GitHub, Dropbox, or Google Drive — this file is synchronized across all your devices along with the rest of your vault. Any setting saved to `data.json` will propagate to every device that syncs the vault.
+Obsidian plugins store their configuration in `data.json`, located at `.obsidian/plugins/tps-notebook-navigator/data.json` inside your vault folder. When you use a sync service — such as [Obsidian Sync](https://obsidian.md/sync), iCloud, GitHub, Dropbox, or Google Drive — this file is synchronized across all your devices along with the rest of your vault. Any setting saved to `data.json` will propagate to every device that syncs the vault.
 
 <img width="606" height="48" alt="Screenshot 2026-02-18 at 22 58 05" src="https://github.com/user-attachments/assets/01d92458-1967-4008-acae-f722eee0d0a2" />
 
@@ -227,7 +284,7 @@ Note previews show Omnisearch result excerpts instead of the default preview tex
 
 ## 8 Custom hotkeys
 
-Edit `.obsidian/plugins/notebook-navigator/data.json` to customize Notebook Navigator hotkeys. Open the file and locate the `keyboardShortcuts` section. Each entry maps an action to one or more key bindings:
+Edit `.obsidian/plugins/tps-notebook-navigator/data.json` to customize Notebook Navigator hotkeys. Open the file and locate the `keyboardShortcuts` section. Each entry maps an action to one or more key bindings:
 
 ```json
 "pane:move-up": [ { "key": "ArrowUp", "modifiers": [] }, { "key": "K", "modifiers": [] } ]
@@ -353,69 +410,69 @@ Set custom hotkeys for these commands in Obsidian's Hotkeys settings:
 
 ### 9.1 Command IDs
 
-| Command ID                                          | Command name                                               |
-| --------------------------------------------------- | ---------------------------------------------------------- |
-| `notebook-navigator:open`                           | Notebook Navigator: Open                                   |
-| `notebook-navigator:toggle-left-sidebar`            | Notebook Navigator: Toggle left sidebar                    |
-| `notebook-navigator:open-homepage`                  | Notebook Navigator: Open homepage                          |
-| `notebook-navigator:select-profile`                 | Notebook Navigator: Select vault profile                   |
-| `notebook-navigator:select-profile-1`               | Notebook Navigator: Select vault profile 1                 |
-| `notebook-navigator:select-profile-2`               | Notebook Navigator: Select vault profile 2                 |
-| `notebook-navigator:select-profile-3`               | Notebook Navigator: Select vault profile 3                 |
-| `notebook-navigator:reveal-file`                    | Notebook Navigator: Reveal file                            |
-| `notebook-navigator:open-all-files`                 | Notebook Navigator: Open all files                         |
-| `notebook-navigator:navigate-to-folder`             | Notebook Navigator: Navigate to folder                     |
-| `notebook-navigator:navigate-to-tag`                | Notebook Navigator: Navigate to tag                        |
-| `notebook-navigator:navigate-to-property`           | Notebook Navigator: Navigate to property                   |
-| `notebook-navigator:navigate-back`                  | Notebook Navigator: Navigate back                          |
-| `notebook-navigator:navigate-forward`               | Notebook Navigator: Navigate forward                       |
-| `notebook-navigator:add-shortcut`                   | Notebook Navigator: Add to shortcuts                       |
-| `notebook-navigator:open-shortcut-1`                | Notebook Navigator: Open shortcut 1                        |
-| `notebook-navigator:open-shortcut-2`                | Notebook Navigator: Open shortcut 2                        |
-| `notebook-navigator:open-shortcut-3`                | Notebook Navigator: Open shortcut 3                        |
-| `notebook-navigator:open-shortcut-4`                | Notebook Navigator: Open shortcut 4                        |
-| `notebook-navigator:open-shortcut-5`                | Notebook Navigator: Open shortcut 5                        |
-| `notebook-navigator:open-shortcut-6`                | Notebook Navigator: Open shortcut 6                        |
-| `notebook-navigator:open-shortcut-7`                | Notebook Navigator: Open shortcut 7                        |
-| `notebook-navigator:open-shortcut-8`                | Notebook Navigator: Open shortcut 8                        |
-| `notebook-navigator:open-shortcut-9`                | Notebook Navigator: Open shortcut 9                        |
-| `notebook-navigator:search`                         | Notebook Navigator: Search                                 |
-| `notebook-navigator:search-vault`                   | Notebook Navigator: Search whole vault                     |
-| `notebook-navigator:toggle-dual-pane`               | Notebook Navigator: Toggle dual pane layout                |
-| `notebook-navigator:toggle-dual-pane-orientation`   | Notebook Navigator: Toggle dual pane orientation           |
-| `notebook-navigator:toggle-calendar`                | Notebook Navigator: Toggle calendar                        |
-| `notebook-navigator:open-daily-note`                | Notebook Navigator: Open daily note                        |
-| `notebook-navigator:open-weekly-note`               | Notebook Navigator: Open weekly note                       |
-| `notebook-navigator:open-monthly-note`              | Notebook Navigator: Open monthly note                      |
-| `notebook-navigator:open-quarterly-note`            | Notebook Navigator: Open quarterly note                    |
-| `notebook-navigator:open-yearly-note`               | Notebook Navigator: Open yearly note                       |
-| `notebook-navigator:toggle-descendants`             | Notebook Navigator: Toggle descendants                     |
-| `notebook-navigator:toggle-hidden`                  | Notebook Navigator: Toggle hidden folders, tags, and notes |
-| `notebook-navigator:toggle-tag-sort`                | Notebook Navigator: Toggle tag sort order                  |
-| `notebook-navigator:toggle-tags-by-selection`       | Notebook Navigator: Toggle tags by selection               |
-| `notebook-navigator:toggle-properties-by-selection` | Notebook Navigator: Toggle properties by selection         |
-| `notebook-navigator:toggle-compact-mode`            | Notebook Navigator: Toggle compact mode                    |
-| `notebook-navigator:toggle-pinned-section`          | Notebook Navigator: Toggle pinned section                  |
-| `notebook-navigator:collapse-expand-list-groups`    | Notebook Navigator: Collapse / expand all list groups      |
-| `notebook-navigator:collapse-expand`                | Notebook Navigator: Collapse / expand all navigation items |
-| `notebook-navigator:collapse-expand-selected-item`  | Notebook Navigator: Collapse / expand selected item        |
-| `notebook-navigator:new-note`                       | Notebook Navigator: Create new note                        |
-| `notebook-navigator:new-note-from-template`         | Notebook Navigator: Create new note from template          |
-| `notebook-navigator:move-files`                     | Notebook Navigator: Move files                             |
-| `notebook-navigator:merge-notes`                    | Notebook Navigator: Merge notes                            |
-| `notebook-navigator:select-next-file`               | Notebook Navigator: Select next file                       |
-| `notebook-navigator:select-previous-file`           | Notebook Navigator: Select previous file                   |
-| `notebook-navigator:convert-to-folder-note`         | Notebook Navigator: Convert to folder note                 |
-| `notebook-navigator:set-as-folder-note`             | Notebook Navigator: Set as folder note                     |
-| `notebook-navigator:detach-folder-note`             | Notebook Navigator: Detach folder note                     |
-| `notebook-navigator:pin-all-folder-notes`           | Notebook Navigator: Pin all folder notes                   |
-| `notebook-navigator:delete-files`                   | Notebook Navigator: Delete files                           |
-| `notebook-navigator:add-tag`                        | Notebook Navigator: Add tag to selected files              |
-| `notebook-navigator:set-property`                   | Notebook Navigator: Set property on selected files         |
-| `notebook-navigator:remove-tag`                     | Notebook Navigator: Remove tag from selected files         |
-| `notebook-navigator:remove-all-tags`                | Notebook Navigator: Remove all tags from selected files    |
-| `notebook-navigator:rebuild-cache`                  | Notebook Navigator: Rebuild cache                          |
-| `notebook-navigator:restore-default-settings`       | Notebook Navigator: Restore default settings               |
+| Command ID                                              | Command name                                                   |
+| ------------------------------------------------------- | -------------------------------------------------------------- |
+| `tps-notebook-navigator:open`                           | TPS Notebook Navigator: Open                                   |
+| `tps-notebook-navigator:toggle-left-sidebar`            | TPS Notebook Navigator: Toggle left sidebar                    |
+| `tps-notebook-navigator:open-homepage`                  | TPS Notebook Navigator: Open homepage                          |
+| `tps-notebook-navigator:select-profile`                 | TPS Notebook Navigator: Select vault profile                   |
+| `tps-notebook-navigator:select-profile-1`               | TPS Notebook Navigator: Select vault profile 1                 |
+| `tps-notebook-navigator:select-profile-2`               | TPS Notebook Navigator: Select vault profile 2                 |
+| `tps-notebook-navigator:select-profile-3`               | TPS Notebook Navigator: Select vault profile 3                 |
+| `tps-notebook-navigator:reveal-file`                    | TPS Notebook Navigator: Reveal file                            |
+| `tps-notebook-navigator:open-all-files`                 | TPS Notebook Navigator: Open all files                         |
+| `tps-notebook-navigator:navigate-to-folder`             | TPS Notebook Navigator: Navigate to folder                     |
+| `tps-notebook-navigator:navigate-to-tag`                | TPS Notebook Navigator: Navigate to tag                        |
+| `tps-notebook-navigator:navigate-to-property`           | TPS Notebook Navigator: Navigate to property                   |
+| `tps-notebook-navigator:navigate-back`                  | TPS Notebook Navigator: Navigate back                          |
+| `tps-notebook-navigator:navigate-forward`               | TPS Notebook Navigator: Navigate forward                       |
+| `tps-notebook-navigator:add-shortcut`                   | TPS Notebook Navigator: Add to shortcuts                       |
+| `tps-notebook-navigator:open-shortcut-1`                | TPS Notebook Navigator: Open shortcut 1                        |
+| `tps-notebook-navigator:open-shortcut-2`                | TPS Notebook Navigator: Open shortcut 2                        |
+| `tps-notebook-navigator:open-shortcut-3`                | TPS Notebook Navigator: Open shortcut 3                        |
+| `tps-notebook-navigator:open-shortcut-4`                | TPS Notebook Navigator: Open shortcut 4                        |
+| `tps-notebook-navigator:open-shortcut-5`                | TPS Notebook Navigator: Open shortcut 5                        |
+| `tps-notebook-navigator:open-shortcut-6`                | TPS Notebook Navigator: Open shortcut 6                        |
+| `tps-notebook-navigator:open-shortcut-7`                | TPS Notebook Navigator: Open shortcut 7                        |
+| `tps-notebook-navigator:open-shortcut-8`                | TPS Notebook Navigator: Open shortcut 8                        |
+| `tps-notebook-navigator:open-shortcut-9`                | TPS Notebook Navigator: Open shortcut 9                        |
+| `tps-notebook-navigator:search`                         | TPS Notebook Navigator: Search                                 |
+| `tps-notebook-navigator:search-vault`                   | TPS Notebook Navigator: Search whole vault                     |
+| `tps-notebook-navigator:toggle-dual-pane`               | TPS Notebook Navigator: Toggle dual pane layout                |
+| `tps-notebook-navigator:toggle-dual-pane-orientation`   | TPS Notebook Navigator: Toggle dual pane orientation           |
+| `tps-notebook-navigator:toggle-calendar`                | TPS Notebook Navigator: Toggle calendar                        |
+| `tps-notebook-navigator:open-daily-note`                | TPS Notebook Navigator: Open daily note                        |
+| `tps-notebook-navigator:open-weekly-note`               | TPS Notebook Navigator: Open weekly note                       |
+| `tps-notebook-navigator:open-monthly-note`              | TPS Notebook Navigator: Open monthly note                      |
+| `tps-notebook-navigator:open-quarterly-note`            | TPS Notebook Navigator: Open quarterly note                    |
+| `tps-notebook-navigator:open-yearly-note`               | TPS Notebook Navigator: Open yearly note                       |
+| `tps-notebook-navigator:toggle-descendants`             | TPS Notebook Navigator: Toggle descendants                     |
+| `tps-notebook-navigator:toggle-hidden`                  | TPS Notebook Navigator: Toggle hidden folders, tags, and notes |
+| `tps-notebook-navigator:toggle-tag-sort`                | TPS Notebook Navigator: Toggle tag sort order                  |
+| `tps-notebook-navigator:toggle-tags-by-selection`       | TPS Notebook Navigator: Toggle tags by selection               |
+| `tps-notebook-navigator:toggle-properties-by-selection` | TPS Notebook Navigator: Toggle properties by selection         |
+| `tps-notebook-navigator:toggle-compact-mode`            | TPS Notebook Navigator: Toggle compact mode                    |
+| `tps-notebook-navigator:toggle-pinned-section`          | TPS Notebook Navigator: Toggle pinned section                  |
+| `tps-notebook-navigator:collapse-expand-list-groups`    | TPS Notebook Navigator: Collapse / expand all list groups      |
+| `tps-notebook-navigator:collapse-expand`                | TPS Notebook Navigator: Collapse / expand all navigation items |
+| `tps-notebook-navigator:collapse-expand-selected-item`  | TPS Notebook Navigator: Collapse / expand selected item        |
+| `tps-notebook-navigator:new-note`                       | TPS Notebook Navigator: Create new note                        |
+| `tps-notebook-navigator:new-note-from-template`         | TPS Notebook Navigator: Create new note from template          |
+| `tps-notebook-navigator:move-files`                     | TPS Notebook Navigator: Move files                             |
+| `tps-notebook-navigator:merge-notes`                    | TPS Notebook Navigator: Merge notes                            |
+| `tps-notebook-navigator:select-next-file`               | TPS Notebook Navigator: Select next file                       |
+| `tps-notebook-navigator:select-previous-file`           | TPS Notebook Navigator: Select previous file                   |
+| `tps-notebook-navigator:convert-to-folder-note`         | TPS Notebook Navigator: Convert to folder note                 |
+| `tps-notebook-navigator:set-as-folder-note`             | TPS Notebook Navigator: Set as folder note                     |
+| `tps-notebook-navigator:detach-folder-note`             | TPS Notebook Navigator: Detach folder note                     |
+| `tps-notebook-navigator:pin-all-folder-notes`           | TPS Notebook Navigator: Pin all folder notes                   |
+| `tps-notebook-navigator:delete-files`                   | TPS Notebook Navigator: Delete files                           |
+| `tps-notebook-navigator:add-tag`                        | TPS Notebook Navigator: Add tag to selected files              |
+| `tps-notebook-navigator:set-property`                   | TPS Notebook Navigator: Set property on selected files         |
+| `tps-notebook-navigator:remove-tag`                     | TPS Notebook Navigator: Remove tag from selected files         |
+| `tps-notebook-navigator:remove-all-tags`                | TPS Notebook Navigator: Remove all tags from selected files    |
+| `tps-notebook-navigator:rebuild-cache`                  | TPS Notebook Navigator: Rebuild cache                          |
+| `tps-notebook-navigator:restore-default-settings`       | TPS Notebook Navigator: Restore default settings               |
 
 <br/>
 
@@ -489,7 +546,7 @@ Notebook Navigator runs locally, but some features make HTTP requests from Obsid
 ### 11.1 Release update checks (Optional)
 
 - **Setting:** "Check for new version on start"
-- **Request:** `https://api.github.com/repos/johansan/notebook-navigator/releases/latest`
+- **Request:** `https://api.github.com/repos/ZachTish/tps-notebook-navigator/releases/latest`
 - **Frequency:** At most once per 24 hours, on startup
 - **Data:** Sends standard HTTP metadata; does not include vault content
 
@@ -511,7 +568,7 @@ Notebook Navigator runs locally, but some features make HTTP requests from Obsid
 ### 11.4 Startup debug files (Optional)
 
 - **Setting:** "Startup debug logging"
-- **Storage:** Writes a timestamped `nn-debug-...md` file in the vault root, then stops after startup settles. The file may sync if the vault root is synced.
+- **Storage:** Writes a timestamped `tps-nn-debug-...md` file in the vault root, then stops after startup settles. The file may sync if the vault root is synced.
 - **Data:** Includes startup timing, plugin version, minimum supported Obsidian version, platform, cache counts, queue counts, IndexedDB status, and diagnostic errors. It does not include note contents, tag names, frontmatter values, or a list of vault files.
 - **Paths and identifiers:** Startup initialization, PDF diagnostics, and error cases can include the Obsidian app/vault identifier, vault-relative PDF paths, or error stack details. Review and redact the file before sharing it publicly.
 - **Upload:** Notebook Navigator does not upload debug files. They are shared only if you upload, attach, or sync them outside the plugin.
@@ -526,23 +583,16 @@ Notebook Navigator runs locally, but some features make HTTP requests from Obsid
 
 ## 12 Contact
 
-Notebook Navigator is built and maintained by [Johan Sanneblad](https://www.linkedin.com/in/johansan/). Johan has a PhD in Software Development and has worked with innovation development for companies such as Apple, Electronic Arts, Google, Microsoft, Lego, SKF, Volvo Cars, Volvo Group and Yamaha.
-
-Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/johansan/).
+The original Notebook Navigator is built and maintained by [Johan Sanneblad](https://github.com/johansan/notebook-navigator). TPS Notebook Navigator is an independent experimental fork maintained in [ZachTish/tps-notebook-navigator](https://github.com/ZachTish/tps-notebook-navigator). Upstream attribution, copyright notices, and GPL licensing are preserved.
 
 <br/>
 
 ## 13 Questions or issues?
 
-Read the [FAQ](FAQ.md) for answers to common questions.
-
-**[Join our Discord](https://discord.gg/6eeSUvzEJr)** for support and discussions, or open an issue on the
-[GitHub repository](https://github.com/johansan/notebook-navigator).
-
-**Pull requests are not accepted.** With the emergence of agentic coding, outside code submissions cannot be quality-controlled to the standard the project maintains, so any pull request is closed automatically. Contribute ideas as feature requests instead — [open an issue](https://github.com/johansan/notebook-navigator/issues). See [CONTRIBUTING.md](https://github.com/johansan/notebook-navigator/blob/main/CONTRIBUTING.md) for details.
+Read the inherited [FAQ](FAQ.md) for upstream feature guidance. For TPS fork behavior, release artifacts, or integration problems, use the [TPS fork repository](https://github.com/ZachTish/tps-notebook-navigator). Report problems with unmodified upstream behavior to the [original Notebook Navigator project](https://github.com/johansan/notebook-navigator/issues).
 
 <br/>
 
 ## 14 License
 
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](https://github.com/johansan/notebook-navigator/blob/main/LICENSE) file for details.
+This fork is licensed under the GNU General Public License v3.0; see [LICENSE](LICENSE). It is based on GPL-licensed Notebook Navigator and retains the upstream copyright notices.

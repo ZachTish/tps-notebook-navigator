@@ -4,9 +4,9 @@
    Update notice banner
    ======================================================================== */
 
-.nn-update-banner {
+.tps-nn-update-banner {
     position: absolute;
-    top: calc(var(--nn-list-group-header-height-mobile, var(--nn-list-group-header-height)) + 8px);
+    top: calc(var(--tps-nn-list-group-header-height-mobile, var(--tps-nn-list-group-header-height)) + 8px);
     left: 50%;
     transform: translate(-50%, 0);
     z-index: 10;
@@ -32,7 +32,7 @@
         transform 0.4s ease;
 }
 
-.nn-split-container .nn-update-banner {
+.tps-nn-split-container .tps-nn-update-banner {
     background: var(--interactive-accent);
     border: none;
     color: var(--text-on-accent);
@@ -40,7 +40,7 @@
     appearance: none;
 }
 
-.nn-update-banner:focus-visible {
+.tps-nn-update-banner:focus-visible {
     outline: none;
     box-shadow:
         0 0 0 2px var(--background-primary),
@@ -48,40 +48,40 @@
         0 8px 18px rgba(0, 0, 0, 0.18);
 }
 
-.nn-update-banner.fade-out {
+.tps-nn-update-banner.fade-out {
     opacity: 0;
     transform: translate(-50%, -18px);
 }
 
-.nn-update-banner__text {
+.tps-nn-update-banner__text {
     display: flex;
     flex-direction: column;
     gap: 2px;
 }
 
-.nn-update-banner__label {
+.tps-nn-update-banner__label {
     font-weight: 600;
     font-size: 12px;
 }
 
-.nn-update-banner__instruction {
+.tps-nn-update-banner__instruction {
     font-size: 11px;
     color: var(--text-on-accent);
     opacity: 0.9;
 }
 
-.nn-update-status {
+.tps-nn-update-status {
     margin-top: 6px;
     font-weight: 600;
     color: var(--color-red);
 }
 
-.nn-update-status.is-hidden {
+.tps-nn-update-status.is-hidden {
     display: none;
 }
 
 @media (max-width: 600px) {
-    .nn-update-banner {
+    .tps-nn-update-banner {
         left: 8px;
         right: 8px;
         transform: none;
@@ -91,12 +91,12 @@
         top: 8px;
     }
 
-    .nn-update-banner__text {
+    .tps-nn-update-banner__text {
         align-items: center;
         text-align: center;
     }
 
-    .nn-update-banner.fade-out {
+    .tps-nn-update-banner.fade-out {
         transform: translateY(-12px);
     }
 }

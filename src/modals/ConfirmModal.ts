@@ -65,7 +65,7 @@ export class ConfirmModal extends Modal {
             options.buildContent(this.contentEl);
         }
 
-        const buttonContainer = this.contentEl.createDiv('nn-button-container');
+        const buttonContainer = this.contentEl.createDiv('tps-nn-button-container');
 
         // Store references for cleanup
         this.cancelHandler = () => this.close();

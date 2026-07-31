@@ -163,7 +163,7 @@ export class TagSuggestModal extends BaseSuggestModal<TagTreeNode> {
      * @returns The CSS class name
      */
     protected getItemClass(): string {
-        return 'nn-tag-suggest-item';
+        return 'tps-nn-tag-suggest-item';
     }
 
     private resolveTagNoteCount(tag: TagTreeNode): number | null {
@@ -187,7 +187,7 @@ export class TagSuggestModal extends BaseSuggestModal<TagTreeNode> {
 
         itemEl.createSpan({
             text: ` (${noteCount.toLocaleString()})`,
-            cls: 'nn-tag-suggest-count'
+            cls: 'tps-nn-tag-suggest-count'
         });
     }
 }

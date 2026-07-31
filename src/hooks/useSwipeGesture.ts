@@ -147,7 +147,7 @@ export function useMobileSwipeNavigation(containerRef: React.RefObject<HTMLEleme
             return false;
         }
 
-        return target.closest('.nn-breadcrumb-scroll') !== null;
+        return target.closest('.tps-nn-breadcrumb-scroll') !== null;
     }, []);
 
     const handleSwipeRight = useCallback(() => {

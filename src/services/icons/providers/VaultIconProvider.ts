@@ -389,7 +389,7 @@ function removeUnsafeSvgAttributes(svg: SVGSVGElement): void {
  * Applies currentColor fill/stroke rules to the SVG root and descendants.
  */
 function applyCurrentColor(svg: SVGSVGElement, options: { hasStroke: boolean }): void {
-    svg.classList.add('nn-vault-icon-svg');
+    svg.classList.add('tps-nn-vault-icon-svg');
 
     if (options.hasStroke) {
         svg.setAttribute('stroke', 'currentColor');

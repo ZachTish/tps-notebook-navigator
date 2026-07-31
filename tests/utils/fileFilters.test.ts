@@ -210,7 +210,7 @@ describe('getFilteredIndexableFiles', () => {
 
     it('excludes debug log markdown files from indexing', () => {
         const note = createTestTFile('Notes/A.md');
-        const debugLog = createTestTFile('nn-debug-2026-05-23T21-30-12-123Z.md');
+        const debugLog = createTestTFile('tps-nn-debug-2026-05-23T21-30-12-123Z.md');
         const app = createAppWithFiles([note, debugLog]);
         const settings = createSettings();
 

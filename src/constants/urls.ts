@@ -16,17 +16,19 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-const NOTEBOOK_NAVIGATOR_REPOSITORY = 'johansan/notebook-navigator';
-const NOTEBOOK_NAVIGATOR_RAW_BASE_URL = `https://raw.githubusercontent.com/${NOTEBOOK_NAVIGATOR_REPOSITORY}/main`;
-const NOTEBOOK_NAVIGATOR_CDN_BASE_URL = `https://cdn.jsdelivr.net/gh/${NOTEBOOK_NAVIGATOR_REPOSITORY}@main`;
+import { TPS_NOTEBOOK_NAVIGATOR_REPOSITORY, UPSTREAM_NOTEBOOK_NAVIGATOR_REPOSITORY } from './tpsIdentity';
 
-export const NOTEBOOK_NAVIGATOR_RELEASE_CHECK_URL = `https://api.github.com/repos/${NOTEBOOK_NAVIGATOR_REPOSITORY}/releases/latest`;
+const NOTEBOOK_NAVIGATOR_RAW_BASE_URL = `https://raw.githubusercontent.com/${UPSTREAM_NOTEBOOK_NAVIGATOR_REPOSITORY}/main`;
+const NOTEBOOK_NAVIGATOR_CDN_BASE_URL = `https://cdn.jsdelivr.net/gh/${UPSTREAM_NOTEBOOK_NAVIGATOR_REPOSITORY}@main`;
 
+export const NOTEBOOK_NAVIGATOR_RELEASE_CHECK_URL = `https://api.github.com/repos/${TPS_NOTEBOOK_NAVIGATOR_REPOSITORY}/releases/latest`;
+
+// Support links continue to credit the upstream author whose work this fork is built on.
 export const SUPPORT_SPONSOR_URL = 'https://github.com/sponsors/johansan/';
 export const SUPPORT_BUY_ME_A_COFFEE_URL = 'https://buymeacoffee.com/johansan';
 
 export const MOMENT_FORMAT_DOCS_URL = 'https://momentjs.com/docs/#/displaying/format/';
-export const ICON_ASSETS_REPOSITORY_URL = `https://github.com/${NOTEBOOK_NAVIGATOR_REPOSITORY}/tree/main/icon-assets`;
+export const ICON_ASSETS_REPOSITORY_URL = `https://github.com/${UPSTREAM_NOTEBOOK_NAVIGATOR_REPOSITORY}/tree/main/icon-assets`;
 
 export const WELCOME_VIDEO_URL = 'https://www.youtube.com/watch?v=m2maDNtho7Y';
 

@@ -23,10 +23,10 @@ import { SettingsProvider } from '../context/SettingsContext';
 import { UXPreferencesProvider } from '../context/UXPreferencesContext';
 import { ServicesProvider } from '../context/ServicesContext';
 import { CalendarRightSidebar } from '../components/CalendarRightSidebar';
-import { strings } from '../i18n';
 import type NotebookNavigatorPlugin from '../main';
 import { NOTEBOOK_NAVIGATOR_CALENDAR_VIEW } from '../types';
 import { resolveUXIconForMenu } from '../utils/uxIcons';
+import { TPS_NOTEBOOK_NAVIGATOR_DISPLAY_NAME, TPS_NOTEBOOK_NAVIGATOR_REACT_ID_PREFIX } from '../constants/tpsIdentity';
 import {
     IOS_FLOATING_TOOLBARS_CLASS,
     setupNotebookNavigatorViewContainer,
@@ -45,7 +45,7 @@ export class NotebookNavigatorCalendarView extends ItemView {
         super(leaf);
         this.plugin = plugin;
         calendarViewInstanceCounter += 1;
-        this.settingsUpdateListenerId = `notebook-navigator-calendar-view-${calendarViewInstanceCounter}`;
+        this.settingsUpdateListenerId = `${NOTEBOOK_NAVIGATOR_CALENDAR_VIEW}-listener-${calendarViewInstanceCounter}`;
     }
 
     private updatePlatformClasses(): void {
@@ -63,7 +63,7 @@ export class NotebookNavigatorCalendarView extends ItemView {
     }
 
     getDisplayText() {
-        return strings.plugin.calendarViewName;
+        return `${TPS_NOTEBOOK_NAVIGATOR_DISPLAY_NAME} Calendar`;
     }
 
     getIcon() {
@@ -102,7 +102,7 @@ export class NotebookNavigatorCalendarView extends ItemView {
         });
         this.updatePlatformClasses();
 
-        this.root = createRoot(container);
+        this.root = createRoot(container, { identifierPrefix: TPS_NOTEBOOK_NAVIGATOR_REACT_ID_PREFIX });
         this.root.render(
             <React.StrictMode>
                 <SettingsProvider plugin={this.plugin}>

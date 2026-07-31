@@ -46,7 +46,7 @@ export const CalendarHoverTooltip = React.memo(function CalendarHoverTooltip({
     return createPortal(
         <div
             ref={hoverTooltipRef}
-            className="nn-navigation-calendar-hover-tooltip"
+            className="tps-nn-navigation-calendar-hover-tooltip"
             style={
                 hoverTooltipStyle ?? {
                     top: 0,
@@ -59,20 +59,20 @@ export const CalendarHoverTooltip = React.memo(function CalendarHoverTooltip({
         >
             {hoverTooltip.tooltipData.imageUrl ? (
                 <div
-                    className="nn-navigation-calendar-hover-tooltip-image"
+                    className="tps-nn-navigation-calendar-hover-tooltip-image"
                     style={{ backgroundImage: `url(${hoverTooltip.tooltipData.imageUrl})` }}
                 />
             ) : null}
-            <div className="nn-compact-file-text-content">
-                <div className="nn-file-name" style={{ '--filename-rows': 2, height: 'auto', minHeight: 0 } as React.CSSProperties}>
+            <div className="tps-nn-compact-file-text-content">
+                <div className="tps-nn-file-name" style={{ '--filename-rows': 2, height: 'auto', minHeight: 0 } as React.CSSProperties}>
                     {hoverTooltip.tooltipData.title}
                 </div>
                 {shouldShowHoverTooltipPreview ? (
-                    <div className="nn-file-preview" style={{ '--preview-rows': 2 } as React.CSSProperties}>
+                    <div className="tps-nn-file-preview" style={{ '--preview-rows': 2 } as React.CSSProperties}>
                         {hoverTooltipPreviewText}
                     </div>
                 ) : null}
-                {hoverTooltipDateText ? <div className="nn-file-date">{hoverTooltipDateText}</div> : null}
+                {hoverTooltipDateText ? <div className="tps-nn-file-date">{hoverTooltipDateText}</div> : null}
             </div>
         </div>,
         activeDocument.body

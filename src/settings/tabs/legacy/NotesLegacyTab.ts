@@ -118,15 +118,15 @@ export function renderNotesTab(context: SettingsTabContext): void {
     const createColorSetting = (params: { containerEl: HTMLElement; name: string; desc: string; access: ColorSettingAccess }): void => {
         const setting = new Setting(params.containerEl).setName(params.name).setDesc(params.desc);
 
-        const previewEl = setting.controlEl.createDiv({ cls: 'nn-setting-color-preview' });
+        const previewEl = setting.controlEl.createDiv({ cls: 'tps-nn-setting-color-preview' });
         const swatchButtonEl = previewEl.createEl('button', {
-            cls: 'nn-setting-color-swatch-button',
+            cls: 'tps-nn-setting-color-swatch-button',
             attr: {
                 type: 'button',
                 'aria-label': params.name
             }
         });
-        const swatchEl = swatchButtonEl.createDiv({ cls: 'nn-setting-color-swatch' });
+        const swatchEl = swatchButtonEl.createDiv({ cls: 'tps-nn-setting-color-swatch' });
 
         const renderValue = () => {
             const current = params.access.getValue();
@@ -335,7 +335,7 @@ export function renderNotesTab(context: SettingsTabContext): void {
         },
         normalizeKey: normalizeFileNameIconMapKey
     });
-    fileNameIconMapSetting.controlEl.addClass('nn-setting-wide-input');
+    fileNameIconMapSetting.controlEl.addClass('tps-nn-setting-wide-input');
     updateFileNameIconMapVisibility = () => {
         setElementVisible(fileNameIconMapSettingsEl, plugin.settings.showFilenameMatchIcons);
     };
@@ -357,7 +357,7 @@ export function renderNotesTab(context: SettingsTabContext): void {
         .setName(strings.settings.items.fileTypeIconPreset.name)
         .setDesc(strings.settings.items.fileTypeIconPreset.desc);
     const fileTypeIconPresetWarningEl = fileTypeIconPresetSetting.descEl.createDiv({
-        cls: 'setting-item-description nn-setting-hidden nn-setting-warning'
+        cls: 'setting-item-description tps-nn-setting-hidden tps-nn-setting-warning'
     });
     const updateFileTypeIconPresetWarning = () => {
         const showWarning = isSelectedFileTypeIconPresetUnavailable(context);
@@ -422,7 +422,7 @@ export function renderNotesTab(context: SettingsTabContext): void {
         },
         normalizeKey: normalizeFileTypeIconMapKey
     });
-    fileTypeIconMapSetting.controlEl.addClass('nn-setting-wide-input');
+    fileTypeIconMapSetting.controlEl.addClass('tps-nn-setting-wide-input');
     updateFileTypeIconMapVisibility = () => {
         setElementVisible(fileTypeIconMapSettingsEl, plugin.settings.showCategoryIcons);
     };
@@ -551,7 +551,7 @@ export function renderNotesTab(context: SettingsTabContext): void {
             updatePreviewFallbackVisibility();
         }
     );
-    previewPropertiesSetting.controlEl.addClass('nn-setting-wide-input');
+    previewPropertiesSetting.controlEl.addClass('tps-nn-setting-wide-input');
 
     const previewFallbackSetting = new Setting(previewSettingsEl)
         .setName(strings.settings.items.previewPropertiesFallback.name)
@@ -591,7 +591,7 @@ export function renderNotesTab(context: SettingsTabContext): void {
             plugin.settings.featureImageProperties = parseCommaSeparatedList(value);
         }
     );
-    featurePropertiesSetting.controlEl.addClass('nn-setting-wide-input');
+    featurePropertiesSetting.controlEl.addClass('tps-nn-setting-wide-input');
 
     const featureExcludePropertiesSetting = context.createDebouncedTextSetting(
         featureImageSettingsEl,
@@ -603,7 +603,7 @@ export function renderNotesTab(context: SettingsTabContext): void {
             plugin.settings.featureImageExcludeProperties = parseCommaSeparatedList(value);
         }
     );
-    featureExcludePropertiesSetting.controlEl.addClass('nn-setting-wide-input');
+    featureExcludePropertiesSetting.controlEl.addClass('tps-nn-setting-wide-input');
 
     const featureImageSizeSetting = new Setting(featureImageSettingsEl)
         .setName(strings.settings.items.featureImageSize.name)
@@ -950,7 +950,7 @@ export function renderNotesTab(context: SettingsTabContext): void {
             plugin.settings.wordCountTargetProperty = value.trim();
         }
     );
-    wordCountTargetPropertySetting.controlEl.addClass('nn-setting-wide-input');
+    wordCountTargetPropertySetting.controlEl.addClass('tps-nn-setting-wide-input');
 
     new Setting(wordCountSettingsEl)
         .setName(strings.settings.items.showWordCountPercentage.name)

@@ -97,7 +97,7 @@ export function renderFrontmatterTab(context: SettingsTabContext): void {
         undefined,
         () => context.requestStatisticsRefresh()
     );
-    frontmatterIconSetting.controlEl.addClass('nn-setting-wide-input');
+    frontmatterIconSetting.controlEl.addClass('tps-nn-setting-wide-input');
 
     const frontmatterColorSetting = context.createDebouncedTextSetting(
         frontmatterSettingsEl,
@@ -112,7 +112,7 @@ export function renderFrontmatterTab(context: SettingsTabContext): void {
         undefined,
         () => context.requestStatisticsRefresh()
     );
-    frontmatterColorSetting.controlEl.addClass('nn-setting-wide-input');
+    frontmatterColorSetting.controlEl.addClass('tps-nn-setting-wide-input');
 
     const frontmatterBackgroundSetting = context.createDebouncedTextSetting(
         frontmatterSettingsEl,
@@ -127,7 +127,7 @@ export function renderFrontmatterTab(context: SettingsTabContext): void {
         undefined,
         () => context.requestStatisticsRefresh()
     );
-    frontmatterBackgroundSetting.controlEl.addClass('nn-setting-wide-input');
+    frontmatterBackgroundSetting.controlEl.addClass('tps-nn-setting-wide-input');
 
     const migrationSetting = new Setting(frontmatterSettingsEl).setName(strings.settings.items.frontmatterMigration.name);
 
@@ -273,10 +273,10 @@ export function renderFrontmatterTab(context: SettingsTabContext): void {
                     showNotice(strings.settings.items.frontmatterDateFormat.help, { timeout: TIMEOUTS.NOTICE_HELP });
                 })
         );
-    dateFormatSetting.controlEl.addClass('nn-setting-wide-input');
+    dateFormatSetting.controlEl.addClass('tps-nn-setting-wide-input');
 
     const metadataInfoSetting = new Setting(frontmatterSettingsEl).setName('').setDesc('');
-    metadataInfoSetting.settingEl.addClass('nn-setting-info-container');
+    metadataInfoSetting.settingEl.addClass('tps-nn-setting-info-container');
     metadataInfoSetting.descEl.empty();
     metadataInfoSetting.addButton(button => {
         context.registerMetadataInfoElement(metadataInfoSetting.descEl, button);

@@ -188,7 +188,7 @@ graph TD
 - Applies Android font compensation to the view container and propagates it to the rendered mobile root.
 - Exposes imperative handlers to the plugin (cache rebuild, reveal actions, folder/tag/property modal navigation, search toggle,
   delete/move operations, shortcut creation).
-- Dispatches `notebook-navigator-visible` on mobile when the drawer becomes visible so scroll hooks can resume pending
+- Dispatches `tps-notebook-navigator-visible` on mobile when the drawer becomes visible so scroll hooks can resume pending
   reveal operations.
 - Cleans up container classes and unmounts the React tree on view close.
 
@@ -253,7 +253,7 @@ graph TD
 
 - Displays a temporary banner when `ReleaseCheckService` reports an available update.
 - Uses `useAutoDismissFade` to manage banner visibility and fade-out timing.
-- Opens Obsidian’s plugin manager via `obsidian://show-plugin?id=notebook-navigator` when clicked.
+- Opens Obsidian’s plugin manager via `obsidian://show-plugin?id=tps-notebook-navigator` when clicked.
 
 ### NavigationPaneHeader
 

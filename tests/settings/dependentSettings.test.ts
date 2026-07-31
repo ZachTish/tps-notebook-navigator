@@ -20,7 +20,7 @@ import type { Setting } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDependentSettingsSection, setElementVisible } from '../../src/settings/dependentSettings';
 
-const SETTING_HIDDEN_CLASS = 'nn-setting-hidden';
+const SETTING_HIDDEN_CLASS = 'tps-nn-setting-hidden';
 
 class FakeClassList {
     private readonly classes = new Set<string>();

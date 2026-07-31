@@ -68,7 +68,7 @@ async function runScript(scriptPath: string, args: string[]): Promise<ScriptResu
 }
 
 async function createTempProject(): Promise<string> {
-    const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'nn-maintenance-script-'));
+    const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'tps-nn-maintenance-script-'));
     tempProjects.push(projectRoot);
     return projectRoot;
 }
@@ -206,16 +206,16 @@ describe('check-unused-css.mjs', () => {
             'src/styles/sections/base.css',
             `/* Source: src/styles/sections/base.css */
 
-.nn-used {
-    color: var(--nn-color);
+.tps-nn-used {
+    color: var(--tps-nn-color);
 }
 
 :root {
-    --nn-color: #ff0000;
+    --tps-nn-color: #ff0000;
 }
 `
         );
-        await writeProjectFile(projectRoot, 'src/app.ts', "const className = 'nn-used';\nconsole.log(className);\n");
+        await writeProjectFile(projectRoot, 'src/app.ts', "const className = 'tps-nn-used';\nconsole.log(className);\n");
         await writeProjectFile(projectRoot, 'styles.css', 'stale\n');
 
         const fixResult = await runScript('scripts/check-unused-css.mjs', ['--project-root', projectRoot, '--fix']);
@@ -224,7 +224,7 @@ describe('check-unused-css.mjs', () => {
 
         const styles = await readFile(path.join(projectRoot, 'styles.css'), 'utf8');
         expect(styles).toContain('GENERATED FILE - DO NOT EDIT styles.css');
-        expect(styles).toContain('.nn-used');
+        expect(styles).toContain('.tps-nn-used');
 
         const checkResult = await runScript('scripts/check-unused-css.mjs', ['--project-root', projectRoot, '--check']);
         expect(checkResult.code).toBe(0);
@@ -239,28 +239,28 @@ describe('check-unused-css.mjs', () => {
             projectRoot,
             'src/styles/sections/base.css',
             `/* Source: src/styles/sections/base.css */
-/* unused-css keep nn-kept --nn-kept-var */
+/* unused-css keep tps-nn-kept --tps-nn-kept-var */
 
 :root {
-    --nn-color: #000000;
-    --nn-unused-var: #111111;
-    --nn-kept-var: #222222;
+    --tps-nn-color: #000000;
+    --tps-nn-unused-var: #111111;
+    --tps-nn-kept-var: #222222;
 }
 
-.nn-used {
-    color: var(--nn-color);
+.tps-nn-used {
+    color: var(--tps-nn-color);
 }
 
-.nn-unused {
+.tps-nn-unused {
     color: #ffffff;
 }
 
-.nn-kept {
+.tps-nn-kept {
     color: #eeeeee;
 }
 `
         );
-        await writeProjectFile(projectRoot, 'src/app.ts', "const className = 'nn-used';\nconsole.log(className);\n");
+        await writeProjectFile(projectRoot, 'src/app.ts', "const className = 'tps-nn-used';\nconsole.log(className);\n");
         await writeProjectFile(projectRoot, 'styles.css', 'stale\n');
 
         const fixResult = await runScript('scripts/check-unused-css.mjs', ['--project-root', projectRoot, '--fix']);
@@ -269,9 +269,9 @@ describe('check-unused-css.mjs', () => {
 
         const checkResult = await runScript('scripts/check-unused-css.mjs', ['--project-root', projectRoot, '--check']);
         expect(checkResult.code).toBe(1);
-        expect(checkResult.stdout).toContain('nn-unused');
-        expect(checkResult.stdout).toContain('--nn-unused-var');
-        expect(checkResult.stdout).not.toContain('nn-kept');
-        expect(checkResult.stdout).not.toContain('--nn-kept-var');
+        expect(checkResult.stdout).toContain('tps-nn-unused');
+        expect(checkResult.stdout).toContain('--tps-nn-unused-var');
+        expect(checkResult.stdout).not.toContain('tps-nn-kept');
+        expect(checkResult.stdout).not.toContain('--tps-nn-kept-var');
     });
 });

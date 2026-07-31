@@ -5,6 +5,6 @@
    ======================================================================== */
 
 /* Property tree rows reuse the shared navigation row layout from navigation-tree.css. */
-.nn-navitem.nn-property .nn-navitem-name {
+.tps-nn-navitem.tps-nn-property .tps-nn-navitem-name {
     unicode-bidi: plaintext;
 }

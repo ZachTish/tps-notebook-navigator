@@ -543,6 +543,41 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         expect(saveData).not.toHaveBeenCalled();
     });
 
+    it('persists valid TPS task-row settings and rejects malformed values', () => {
+        const { controller } = createController();
+
+        controller.applySettingsRecord(
+            {
+                tpsGcmTaskRowsEnabled: true,
+                tpsGcmTaskRowsIncludeCompleted: true,
+                tpsGcmTaskRowsPerNote: 12
+            },
+            { isFirstLaunch: false }
+        );
+
+        expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(true);
+        expect(controller.settings.tpsGcmTaskRowsIncludeCompleted).toBe(true);
+        expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(12);
+        expect(controller.getPersistableSettings()).toMatchObject({
+            tpsGcmTaskRowsEnabled: true,
+            tpsGcmTaskRowsIncludeCompleted: true,
+            tpsGcmTaskRowsPerNote: 12
+        });
+
+        controller.applySettingsRecord(
+            {
+                tpsGcmTaskRowsEnabled: 'yes',
+                tpsGcmTaskRowsIncludeCompleted: 1,
+                tpsGcmTaskRowsPerNote: 500
+            },
+            { isFirstLaunch: false }
+        );
+
+        expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled);
+        expect(controller.settings.tpsGcmTaskRowsIncludeCompleted).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsIncludeCompleted);
+        expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsPerNote);
+    });
+
     it('applies an empty record as defaults for reset', () => {
         const { controller, saveData } = createController();
         const settings = structuredClone(DEFAULT_SETTINGS);

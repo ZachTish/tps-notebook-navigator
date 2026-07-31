@@ -84,6 +84,7 @@ import { getDrawingFeatureImageSource, resolveDrawingFeatureImageFileForProvider
 import { useThemeMode } from './useThemeMode';
 import type { ThemeMode } from '../utils/themeMode';
 import { getListSortOverrideForSelection, resolveListSort } from '../utils/sortUtils';
+import { TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT } from '../constants/tpsIdentity';
 
 /**
  * Parameters for the useListPaneScroll hook
@@ -824,6 +825,10 @@ export function useListPaneScroll({
                 );
             }
 
+            if (item.type === ListPaneItemType.PROVIDER_ROW) {
+                return heights.titleLineHeight + heights.singleTextLineHeight + 12;
+            }
+
             return heights.titleLineHeight;
         },
         overscan: OVERSCAN,
@@ -1308,8 +1313,8 @@ export function useListPaneScroll({
             }
         };
 
-        window.addEventListener('notebook-navigator-visible', handleVisible);
-        return () => window.removeEventListener('notebook-navigator-visible', handleVisible);
+        window.addEventListener(TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT, handleVisible);
+        return () => window.removeEventListener(TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT, handleVisible);
     }, [enabled, isMobile, selectedFile, rowVirtualizer, filePathToIndex, setPending]);
 
     /**

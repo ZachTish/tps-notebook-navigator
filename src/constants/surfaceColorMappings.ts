@@ -19,13 +19,13 @@
 import type { SurfaceVariableMapping } from '../hooks/useSurfaceColorVariables';
 
 export const LIST_PANE_SURFACE_COLOR_MAPPINGS: SurfaceVariableMapping[] = [
-    { source: '--nn-theme-file-selected-bg', target: '--nn-computed-file-selected-bg' },
-    { source: '--nn-theme-file-selected-inactive-bg', target: '--nn-computed-file-selected-inactive-bg' }
+    { source: '--tps-nn-theme-file-selected-bg', target: '--tps-nn-computed-file-selected-bg' },
+    { source: '--tps-nn-theme-file-selected-inactive-bg', target: '--tps-nn-computed-file-selected-inactive-bg' }
 ];
 
 export const NAVIGATION_PANE_SURFACE_COLOR_MAPPINGS: SurfaceVariableMapping[] = [
-    { source: '--nn-theme-navitem-selected-bg', target: '--nn-computed-navitem-selected-bg' },
-    { source: '--nn-theme-navitem-selected-inactive-bg', target: '--nn-computed-navitem-selected-inactive-bg' },
-    { source: '--nn-theme-tag-positive-bg', target: '--nn-computed-tag-positive-bg' },
-    { source: '--nn-theme-tag-negative-bg', target: '--nn-computed-tag-negative-bg' }
+    { source: '--tps-nn-theme-navitem-selected-bg', target: '--tps-nn-computed-navitem-selected-bg' },
+    { source: '--tps-nn-theme-navitem-selected-inactive-bg', target: '--tps-nn-computed-navitem-selected-inactive-bg' },
+    { source: '--tps-nn-theme-tag-positive-bg', target: '--tps-nn-computed-tag-positive-bg' },
+    { source: '--tps-nn-theme-tag-negative-bg', target: '--tps-nn-computed-tag-negative-bg' }
 ];

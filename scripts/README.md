@@ -69,44 +69,24 @@ npm run build:styles
 - Writes the generated `styles.css` file only when content changes
 - Used by `npm run build`, `npm run lint:styles`, and `./scripts/build.sh`
 
-## release.js
+## Release tooling
 
-Automates the release process for the Obsidian plugin.
+The inherited release script and npm version hook are intentionally removed. They assumed upstream branch names and GitHub Actions assets that do not exist in the contained TPS workspace and could publish inconsistent version metadata.
 
-**Usage:**
+TPS releases are prepared deliberately: align `manifest.json`, `package.json`, the package-lock root metadata, and `versions.json`; rerun the full tests and separate contained production build; validate the deployed test artifact; then publish an exact numeric GitHub tag and BRAT assets. Do not use `npm version` as a release shortcut.
+
+Standalone GitHub checkouts can run formatting, tests, TypeScript, ESLint, Stylelint, the namespace audit, and the production bundle build. Standalone builds explicitly report `target=none lane=standalone`; only the contained test-vault workspace can load the adjacent atomic runtime deployment helper.
+
+## tps-namespace.mjs
+
+Reapplies the narrow CSS/DOM namespace transform after merging a new upstream Notebook Navigator release.
 
 ```bash
-node scripts/release.js                    # Publish an untagged merged version, or choose the next release
-node scripts/release.js patch              # Prepare a patch release PR
-node scripts/release.js minor              # Prepare a minor release PR
-node scripts/release.js major              # Prepare a major release PR
-node scripts/release.js patch --dry-run    # Preview release PR preparation
+npm run tps:namespace        # Apply missing TPS prefixes
+npm run tps:namespace:check  # Report drift without changing files
 ```
 
-**Features:**
-
-- Increments version numbers in `manifest.json`, `package.json`, `package-lock.json`, and `versions.json`
-- Validates git repository state (clean, on main branch, synced with remote)
-- Runs build verification before release
-- Creates a release branch and pull request with the version bump
-- With GitHub CLI, waits for release pull request checks, merges the pull request, then publishes by creating and pushing a git tag
-- Pushes the tag to trigger the GitHub Actions release workflow
-- Verifies the remote tag, GitHub release assets, release workflow result, and artifact attestations after publishing
-
-**Version Types:**
-
-- **PATCH** (x.x.X): Bug fixes, small tweaks, documentation updates
-- **MINOR** (x.X.x): New features, backwards-compatible changes
-- **MAJOR** (X.x.x): Breaking changes, major rewrites
-
-**Important:**
-
-- Never manually modify version numbers in files
-- Always commit all changes before running
-- Must be on main branch and synced with remote
-- An authenticated GitHub CLI is required for release pull request automation
-- If the script creates a pull request, leave it running while CI completes; it merges the pull request when checks pass and GitHub allows the merge
-- If you stop the script after merging the release pull request, run `node scripts/release.js` again to publish
+The transform is idempotent and intentionally does not change manifest IDs, storage keys, URLs, or integration behavior. Follow [the upstream sync guide](../docs/upstream-sync.md) and review every generated diff.
 
 ## gitdump.sh
 
@@ -201,7 +181,7 @@ node scripts/check-unused-css.mjs --project-root /path/to/project-root
 To keep intentional dynamic CSS usage, add an allowlist comment:
 
 ```css
-/* unused-css keep nn-dynamic-class --nn-dynamic-variable */
+/* unused-css keep tps-nn-dynamic-class --tps-nn-dynamic-variable */
 ```
 
 ## update-icon-packs.sh

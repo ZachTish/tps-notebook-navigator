@@ -31,7 +31,7 @@ export class BootstrapIconProvider extends BaseFontIconProvider {
     }
 
     protected getCssClass(): string {
-        return 'nn-iconfont-bootstrap-icons';
+        return 'tps-nn-iconfont-bootstrap-icons';
     }
 
     /**

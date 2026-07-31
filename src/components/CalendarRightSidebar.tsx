@@ -202,8 +202,8 @@ export function CalendarRightSidebar() {
     );
 
     return (
-        <div className="nn-calendar-right-sidebar nn-list-pane">
-            <div className="nn-calendar-right-sidebar-content">
+        <div className="tps-nn-calendar-right-sidebar tps-nn-list-pane">
+            <div className="tps-nn-calendar-right-sidebar-content">
                 <Calendar
                     weeksToShowOverride={6}
                     onAddDateFilter={handleAddDateFilter}

@@ -934,7 +934,7 @@ clearPendingNotice(): void
 
 - Tracks startup timing, storage readiness, and first user-visible UI timing when debug logging is enabled.
 - Records content-provider batch summaries and explicit diagnostic reports.
-- Writes debounced `nn-debug-*.md` files in the vault root and exposes module helpers used by startup/storage/content code.
+- Writes debounced `tps-nn-debug-*.md` files in the vault root and exposes module helpers used by startup/storage/content code.
 
 **Key Methods and Helpers:**
 

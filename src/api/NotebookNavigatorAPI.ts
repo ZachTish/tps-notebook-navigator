@@ -26,6 +26,7 @@ import { MetadataAPI } from './modules/MetadataAPI';
 import { SelectionAPI } from './modules/SelectionAPI';
 import { MenusAPI } from './modules/MenusAPI';
 import { PropertyNodesAPI } from './modules/PropertyNodesAPI';
+import { RowsAPI } from './modules/RowsAPI';
 import { getVirtualTagCollection, isVirtualTagCollectionId, VIRTUAL_TAG_COLLECTION_IDS } from '../utils/virtualTagCollections';
 
 // Import versioning
@@ -41,6 +42,7 @@ export interface NotebookNavigatorInternalAPI {
         MenusAPI,
         'applyFileMenuExtensions' | 'applyFolderMenuExtensions' | 'applyTagMenuExtensions' | 'applyPropertyMenuExtensions'
     >;
+    readonly rows: Pick<RowsAPI, 'getSelection' | 'subscribe' | 'dispose'>;
     setStorageReady: (ready: boolean) => void;
 }
 
@@ -63,6 +65,7 @@ export class NotebookNavigatorAPI {
     private readonly selectionController: SelectionAPI;
     private readonly menusController: MenusAPI;
     private readonly propertyNodesController: PropertyNodesAPI;
+    private readonly rowsController: RowsAPI;
 
     // Sub-APIs
     public readonly navigation: Pick<NavigationAPI, 'reveal' | 'navigateToFolder' | 'navigateToTag' | 'navigateToProperty'>;
@@ -88,6 +91,8 @@ export class NotebookNavigatorAPI {
         getLabel: (tag: TagCollectionId) => string;
     };
     public readonly propertyNodes: Pick<PropertyNodesAPI, 'rootId' | 'buildKey' | 'buildValue' | 'parse' | 'normalize'>;
+    /** Register active transient rows supplied by another plugin. */
+    public readonly rows: Pick<RowsAPI, 'registerProvider'>;
     readonly [INTERNAL_NOTEBOOK_NAVIGATOR_API]: NotebookNavigatorInternalAPI;
 
     constructor(plugin: NotebookNavigatorPlugin, app: App) {
@@ -116,6 +121,7 @@ export class NotebookNavigatorAPI {
         });
         this.menusController = new MenusAPI();
         this.propertyNodesController = new PropertyNodesAPI();
+        this.rowsController = new RowsAPI();
 
         this.navigation = Object.freeze({
             reveal: file => this.navigationController.reveal(file),
@@ -165,10 +171,14 @@ export class NotebookNavigatorAPI {
             parse: nodeId => this.propertyNodesController.parse(nodeId),
             normalize: nodeId => this.propertyNodesController.normalize(nodeId)
         });
+        this.rows = Object.freeze({
+            registerProvider: (provider, options) => this.rowsController.registerProvider(provider, options)
+        });
         this[INTERNAL_NOTEBOOK_NAVIGATOR_API] = Object.freeze({
             metadata: this.metadataController,
             selection: this.selectionController,
             menus: this.menusController,
+            rows: this.rowsController,
             setStorageReady: (ready: boolean) => {
                 this.setStorageReady(ready);
             }

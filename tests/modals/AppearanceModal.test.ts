@@ -137,9 +137,9 @@ describe('AppearanceModal preview', () => {
         });
 
         expect(renderIcon).toHaveBeenCalledWith(previewIcon, 'folder-heart');
-        expect(previewIcon.hasClass('nn-appearance-preview-icon-empty')).toBe(false);
+        expect(previewIcon.hasClass('tps-nn-appearance-preview-icon-empty')).toBe(false);
         expect(previewIcon.style.getPropertyValue('color')).toBe('#aabbcc');
-        expect(previewItem.style.getPropertyValue('--nn-preview-fg')).toBe('');
+        expect(previewItem.style.getPropertyValue('--tps-nn-preview-fg')).toBe('');
     });
 
     it('colors the custom icon when icon-only colors are enabled', () => {
@@ -160,8 +160,8 @@ describe('AppearanceModal preview', () => {
         });
 
         expect(renderIcon).not.toHaveBeenCalled();
-        expect(previewIcon.hasClass('nn-appearance-preview-icon-empty')).toBe(true);
-        expect(previewItem.style.getPropertyValue('--nn-preview-fg')).toBe('#aabbcc');
+        expect(previewIcon.hasClass('tps-nn-appearance-preview-icon-empty')).toBe(true);
+        expect(previewItem.style.getPropertyValue('--tps-nn-preview-fg')).toBe('#aabbcc');
         expect(previewIcon.style.getPropertyValue('color')).toBe('');
     });
 
@@ -172,7 +172,7 @@ describe('AppearanceModal preview', () => {
         });
 
         expect(renderIcon).toHaveBeenCalledWith(previewIcon, 'star');
-        expect(previewIcon.hasClass('nn-appearance-preview-icon-empty')).toBe(false);
+        expect(previewIcon.hasClass('tps-nn-appearance-preview-icon-empty')).toBe(false);
     });
 
     it('hides the file icon when icon-only colors are enabled without a custom color or icon', () => {
@@ -183,7 +183,7 @@ describe('AppearanceModal preview', () => {
         });
 
         expect(renderIcon).not.toHaveBeenCalled();
-        expect(previewIcon.hasClass('nn-appearance-preview-icon-empty')).toBe(true);
+        expect(previewIcon.hasClass('tps-nn-appearance-preview-icon-empty')).toBe(true);
         expect(previewIcon.style.getPropertyValue('color')).toBe('');
     });
 
@@ -196,7 +196,7 @@ describe('AppearanceModal preview', () => {
         });
 
         expect(renderIcon).toHaveBeenCalledWith(previewIcon, 'file-text');
-        expect(previewIcon.hasClass('nn-appearance-preview-icon-empty')).toBe(false);
+        expect(previewIcon.hasClass('tps-nn-appearance-preview-icon-empty')).toBe(false);
         expect(previewIcon.style.getPropertyValue('color')).toBe('');
     });
 
@@ -209,7 +209,7 @@ describe('AppearanceModal preview', () => {
         });
 
         expect(renderIcon).toHaveBeenCalledWith(previewIcon, 'file-text');
-        expect(previewIcon.hasClass('nn-appearance-preview-icon-empty')).toBe(false);
+        expect(previewIcon.hasClass('tps-nn-appearance-preview-icon-empty')).toBe(false);
     });
 
     it('does not show the default placeholder without a configured color when icon-only colors are disabled', () => {
@@ -220,7 +220,7 @@ describe('AppearanceModal preview', () => {
         });
 
         expect(renderIcon).not.toHaveBeenCalled();
-        expect(previewIcon.hasClass('nn-appearance-preview-icon-empty')).toBe(true);
+        expect(previewIcon.hasClass('tps-nn-appearance-preview-icon-empty')).toBe(true);
     });
 
     it('shows the file icon after a custom color is set in icon-only mode', () => {
@@ -231,7 +231,7 @@ describe('AppearanceModal preview', () => {
         });
 
         expect(renderIcon).toHaveBeenCalledWith(previewIcon, 'file');
-        expect(previewIcon.hasClass('nn-appearance-preview-icon-empty')).toBe(false);
+        expect(previewIcon.hasClass('tps-nn-appearance-preview-icon-empty')).toBe(false);
         expect(previewIcon.style.getPropertyValue('color')).toBe('#aabbcc');
     });
 
@@ -244,7 +244,7 @@ describe('AppearanceModal preview', () => {
         });
 
         expect(renderIcon).toHaveBeenCalledWith(previewIcon, 'star');
-        expect(previewIcon.hasClass('nn-appearance-preview-icon-empty')).toBe(false);
+        expect(previewIcon.hasClass('tps-nn-appearance-preview-icon-empty')).toBe(false);
     });
 
     it('shows a rendered default icon when icon-only colors are disabled', () => {
@@ -255,6 +255,6 @@ describe('AppearanceModal preview', () => {
         });
 
         expect(renderIcon).toHaveBeenCalledWith(previewIcon, 'open-vault');
-        expect(previewIcon.hasClass('nn-appearance-preview-icon-empty')).toBe(false);
+        expect(previewIcon.hasClass('tps-nn-appearance-preview-icon-empty')).toBe(false);
     });
 });

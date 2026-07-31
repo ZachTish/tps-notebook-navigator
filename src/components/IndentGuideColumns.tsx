@@ -27,7 +27,7 @@ function getIndentGuideStyle(level: number): CSSPropertiesWithVars {
         return cachedStyle;
     }
 
-    const style: CSSPropertiesWithVars = { '--nn-indent-guide-level': level };
+    const style: CSSPropertiesWithVars = { '--tps-nn-indent-guide-level': level };
     indentGuideStyleCache.set(level, style);
     return style;
 }
@@ -40,7 +40,7 @@ export const IndentGuideColumns = React.memo(function IndentGuideColumns({ level
     return (
         <>
             {levels.map(level => (
-                <span key={level} className="nn-navitem-indent-guide" style={getIndentGuideStyle(level)} aria-hidden="true" />
+                <span key={level} className="tps-nn-navitem-indent-guide" style={getIndentGuideStyle(level)} aria-hidden="true" />
             ))}
         </>
     );

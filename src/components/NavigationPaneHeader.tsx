@@ -82,9 +82,9 @@ export const NavigationPaneHeader = React.memo(function NavigationPaneHeader({
     const shouldRenderProfileTrigger = hasMultipleProfiles && (useMobileChrome || showVaultTitleInHeader);
     const profileTriggerContent = (
         <>
-            <span className="nn-pane-header-text">{activeProfileName}</span>
+            <span className="tps-nn-pane-header-text">{activeProfileName}</span>
             <ServiceIcon
-                className="nn-pane-header-profile-chevron"
+                className="tps-nn-pane-header-profile-chevron"
                 iconId={resolveUXIcon(settings.interfaceIcons, 'nav-profile-chevron')}
                 aria-hidden={true}
             />
@@ -93,7 +93,7 @@ export const NavigationPaneHeader = React.memo(function NavigationPaneHeader({
     const profileTrigger = shouldRenderProfileTrigger ? (
         useMobileChrome ? (
             <div
-                className="nn-pane-header-title nn-pane-header-profile"
+                className="tps-nn-pane-header-title tps-nn-pane-header-profile"
                 aria-label={strings.navigationPane.profileMenuAria}
                 role="button"
                 tabIndex={0}
@@ -103,9 +103,9 @@ export const NavigationPaneHeader = React.memo(function NavigationPaneHeader({
                 {profileTriggerContent}
             </div>
         ) : (
-            <div className="nn-pane-header-title nn-pane-header-profile">
+            <div className="tps-nn-pane-header-title tps-nn-pane-header-profile">
                 <div
-                    className="nn-pane-header-profile"
+                    className="tps-nn-pane-header-profile"
                     aria-label={strings.navigationPane.profileMenuAria}
                     role="button"
                     tabIndex={0}
@@ -122,7 +122,7 @@ export const NavigationPaneHeader = React.memo(function NavigationPaneHeader({
         if (!profileTrigger) {
             return null;
         }
-        return <div className="nn-pane-header nn-pane-header-simple">{profileTrigger}</div>;
+        return <div className="tps-nn-pane-header tps-nn-pane-header-simple">{profileTrigger}</div>;
     }
 
     const shouldRenderDesktopHeader =
@@ -142,12 +142,12 @@ export const NavigationPaneHeader = React.memo(function NavigationPaneHeader({
     const dualPaneAutoFallbackActive = dualPanePreference && uiState.singlePane;
 
     return (
-        <div className="nn-pane-header">
-            <div className="nn-header-actions nn-header-actions--space-between">
-                <div className="nn-header-actions nn-header-actions-profile">
+        <div className="tps-nn-pane-header">
+            <div className="tps-nn-header-actions tps-nn-header-actions--space-between">
+                <div className="tps-nn-header-actions tps-nn-header-actions-profile">
                     {showToggleDualPaneButton ? (
                         <button
-                            className="nn-icon-button"
+                            className="tps-nn-icon-button"
                             aria-label={dualPanePreference ? strings.paneHeader.showSinglePane : strings.paneHeader.showDualPane}
                             onClick={() => {
                                 if (dualPaneAutoFallbackActive) {
@@ -169,10 +169,10 @@ export const NavigationPaneHeader = React.memo(function NavigationPaneHeader({
                     ) : null}
                     {profileTrigger}
                 </div>
-                <div className="nn-header-actions">
+                <div className="tps-nn-header-actions">
                     {showExpandCollapseButton ? (
                         <button
-                            className="nn-icon-button"
+                            className="tps-nn-icon-button"
                             aria-label={shouldCollapseItems() ? strings.paneHeader.collapseAllFolders : strings.paneHeader.expandAllFolders}
                             onClick={() => {
                                 handleExpandCollapseAll();
@@ -195,7 +195,7 @@ export const NavigationPaneHeader = React.memo(function NavigationPaneHeader({
                     ) : null}
                     {showHiddenItemsButton ? (
                         <button
-                            className={`nn-icon-button ${showHiddenItems ? 'nn-icon-button-active' : ''}`}
+                            className={`tps-nn-icon-button ${showHiddenItems ? 'tps-nn-icon-button-active' : ''}`}
                             aria-label={showHiddenItems ? strings.paneHeader.hideExcludedItems : strings.paneHeader.showExcludedItems}
                             onClick={() => {
                                 handleToggleShowExcludedFolders();
@@ -213,7 +213,7 @@ export const NavigationPaneHeader = React.memo(function NavigationPaneHeader({
                     ) : null}
                     {showCalendarButton ? (
                         <button
-                            className={`nn-icon-button ${isCalendarVisible ? 'nn-icon-button-active' : ''}`}
+                            className={`tps-nn-icon-button ${isCalendarVisible ? 'tps-nn-icon-button-active' : ''}`}
                             aria-label={isCalendarVisible ? strings.paneHeader.hideCalendar : strings.paneHeader.showCalendar}
                             onClick={toggleShowCalendar}
                             tabIndex={-1}
@@ -224,7 +224,7 @@ export const NavigationPaneHeader = React.memo(function NavigationPaneHeader({
                     ) : null}
                     {showRootReorderButton ? (
                         <button
-                            className={`nn-icon-button ${rootReorderActive ? 'nn-icon-button-active' : ''}`}
+                            className={`tps-nn-icon-button ${rootReorderActive ? 'tps-nn-icon-button-active' : ''}`}
                             aria-label={
                                 rootReorderActive ? strings.paneHeader.finishRootFolderReorder : strings.paneHeader.reorderRootFolders
                             }
@@ -237,7 +237,7 @@ export const NavigationPaneHeader = React.memo(function NavigationPaneHeader({
                     ) : null}
                     {showNewFolderButton ? (
                         <button
-                            className="nn-icon-button"
+                            className="tps-nn-icon-button"
                             aria-label={strings.paneHeader.newFolder}
                             onClick={() => {
                                 runAsyncAction(() => handleNewFolder());

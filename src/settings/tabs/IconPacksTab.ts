@@ -47,7 +47,7 @@ export function createIconPacksSettingDefinitions(context: SettingsTabContext): 
                 searchable: false,
                 render: setting => {
                     setting.setName('').setDesc('');
-                    setting.settingEl.addClass('nn-setting-info-container');
+                    setting.settingEl.addClass('tps-nn-setting-info-container');
                     setting.descEl.empty();
                     setting.descEl.createDiv().append(
                         createExternalLinkText({

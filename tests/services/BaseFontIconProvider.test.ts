@@ -44,7 +44,7 @@ class TestFontIconProvider extends BaseFontIconProvider {
     }
 
     protected getCssClass(): string {
-        return 'nn-iconfont-test';
+        return 'tps-nn-iconfont-test';
     }
 }
 
@@ -103,7 +103,7 @@ function createFontEnvironment(loadImmediately: boolean): FakeFontEnvironment {
     };
     const documentWindow = {
         FontFace: FakeFontFace,
-        getComputedStyle: () => ({ fontFamily: 'NotebookNavigatorTestFont, sans-serif' }),
+        getComputedStyle: () => ({ fontFamily: 'TPSNotebookNavigatorTestFont, sans-serif' }),
         opener: null,
         addEventListener: (type: string, listener: EventListenerOrEventListenerObject) => {
             if (type === 'pagehide') {
@@ -185,7 +185,7 @@ describe('BaseFontIconProvider', () => {
     it('creates and disposes a separate font face for each owner document', async () => {
         const firstEnvironment = createFontEnvironment(true);
         const secondEnvironment = createFontEnvironment(true);
-        const provider = new TestFontIconProvider({ record: createRecord(), fontFamily: 'NotebookNavigatorTestFont' });
+        const provider = new TestFontIconProvider({ record: createRecord(), fontFamily: 'TPSNotebookNavigatorTestFont' });
 
         await provider.prepare(firstEnvironment.document);
         const firstContainer = createContainer(firstEnvironment.document);
@@ -200,7 +200,7 @@ describe('BaseFontIconProvider', () => {
         expect(firstEnvironment.faces.has(firstEnvironment.instances[0])).toBe(true);
         expect(secondEnvironment.faces.has(secondEnvironment.instances[0])).toBe(true);
         expect(firstContainer.getText()).toBe(String.fromCodePoint(0xf220));
-        expect(secondContainer.classes).toContain('nn-iconfont-test');
+        expect(secondContainer.classes).toContain('tps-nn-iconfont-test');
 
         provider.dispose();
 
@@ -210,7 +210,7 @@ describe('BaseFontIconProvider', () => {
 
     it('waits for the owner document font before inserting a glyph', async () => {
         const environment = createFontEnvironment(false);
-        const provider = new TestFontIconProvider({ record: createRecord(), fontFamily: 'NotebookNavigatorTestFont' });
+        const provider = new TestFontIconProvider({ record: createRecord(), fontFamily: 'TPSNotebookNavigatorTestFont' });
         const container = createContainer(environment.document);
         const token = Symbol('render');
         setIconRenderToken(container.element, token);
@@ -226,7 +226,7 @@ describe('BaseFontIconProvider', () => {
 
     it('releases a document font when the owner document is hidden', async () => {
         const environment = createFontEnvironment(true);
-        const provider = new TestFontIconProvider({ record: createRecord(), fontFamily: 'NotebookNavigatorTestFont' });
+        const provider = new TestFontIconProvider({ record: createRecord(), fontFamily: 'TPSNotebookNavigatorTestFont' });
 
         await provider.prepare(environment.document);
         expect(environment.faces.size).toBe(1);
@@ -243,7 +243,7 @@ describe('BaseFontIconProvider', () => {
 
     it('does not apply a completed font render after the container token changes', async () => {
         const environment = createFontEnvironment(false);
-        const provider = new TestFontIconProvider({ record: createRecord(), fontFamily: 'NotebookNavigatorTestFont' });
+        const provider = new TestFontIconProvider({ record: createRecord(), fontFamily: 'TPSNotebookNavigatorTestFont' });
         const container = createContainer(environment.document);
         setIconRenderToken(container.element, Symbol('first-render'));
 
@@ -257,7 +257,7 @@ describe('BaseFontIconProvider', () => {
 
     it('removes a pending face and rejects readiness when disposed before parsing completes', async () => {
         const environment = createFontEnvironment(false);
-        const provider = new TestFontIconProvider({ record: createRecord(), fontFamily: 'NotebookNavigatorTestFont' });
+        const provider = new TestFontIconProvider({ record: createRecord(), fontFamily: 'TPSNotebookNavigatorTestFont' });
         const readiness = provider.prepare(environment.document);
 
         expect(environment.faces.size).toBe(1);

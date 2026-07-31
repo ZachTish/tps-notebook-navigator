@@ -40,11 +40,11 @@ export interface ColorParsingOptions {
 
 const resolverElementMap = new WeakMap<HTMLElement, HTMLElement>();
 /** CSS variable name used in the hidden resolver element for color computation. */
-const COLOR_VARIABLE_NAME = '--nn-color-resolver-value';
+const COLOR_VARIABLE_NAME = '--tps-nn-color-resolver-value';
 
 /**
  * Creates or retrieves a hidden DOM element used to resolve CSS variable colors via computed styles.
- * The resolver element is styled via CSS (.nn-color-resolver) to be invisible and non-interactive.
+ * The resolver element is styled via CSS (.tps-nn-color-resolver) to be invisible and non-interactive.
  * Uses WeakMap to associate one resolver per container and automatically clean up when container is removed.
  */
 function ensureResolverElement(container: HTMLElement): HTMLElement {
@@ -56,7 +56,7 @@ function ensureResolverElement(container: HTMLElement): HTMLElement {
 
     // Create new hidden resolver element
     const resolver = container.win.createDiv();
-    resolver.classList.add('nn-color-resolver');
+    resolver.classList.add('tps-nn-color-resolver');
     resolver.setAttribute('aria-hidden', 'true');
     container.appendChild(resolver);
 
@@ -75,7 +75,7 @@ function ensureResolverElement(container: HTMLElement): HTMLElement {
  * 3. Return the resolved color (tries 'color' property first, then 'backgroundColor')
  *
  * Example:
- *   Input: "var(--nn-theme-navitem-selected-bg)"
+ *   Input: "var(--tps-nn-theme-navitem-selected-bg)"
  *   Output: "rgba(100, 150, 200, 0.2)"
  */
 function resolveColorValue(input: string, container?: HTMLElement | null): string {
@@ -884,7 +884,7 @@ function compositeOntoBase(base: RGBA, overlay: RGBA): RGBA {
  *   overlayColor: "rgba(100, 150, 200, 0.2)"
  *   → "rgb(44, 54, 64)"
  *
- *   overlayColor: "var(--nn-theme-navitem-selected-bg)"
+ *   overlayColor: "var(--tps-nn-theme-navitem-selected-bg)"
  *   → Resolves variable, then composites
  *   → "rgb(51, 66, 81)"
  */

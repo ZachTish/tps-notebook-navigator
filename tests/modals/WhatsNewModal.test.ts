@@ -175,7 +175,7 @@ describe('WhatsNewModal formatting', () => {
         formatter.renderInfoText(container, 'First **paragraph**\nwrapped\n\nSecond ==paragraph==');
 
         expect(container.toMarkup()).toBe(
-            '<p class="nn-whats-new-info">First <strong>paragraph</strong><br>wrapped</p><p class="nn-whats-new-info">Second <span class="nn-highlight">paragraph</span></p>'
+            '<p class="tps-nn-whats-new-info">First <strong>paragraph</strong><br>wrapped</p><p class="tps-nn-whats-new-info">Second <span class="tps-nn-highlight">paragraph</span></p>'
         );
     });
 
@@ -186,7 +186,7 @@ describe('WhatsNewModal formatting', () => {
         formatter.renderInfoText(container, 'First paragraph<br/><br>Second paragraph');
 
         expect(container.toMarkup()).toBe(
-            '<p class="nn-whats-new-info">First paragraph</p><p class="nn-whats-new-info">Second paragraph</p>'
+            '<p class="tps-nn-whats-new-info">First paragraph</p><p class="tps-nn-whats-new-info">Second paragraph</p>'
         );
     });
 });
@@ -198,11 +198,11 @@ describe('WhatsNewModal YouTube preview', () => {
 
         formatter.renderYoutubeLink(container, 'invalid-url', { x: 80, y: 49, scale: 1.8 });
 
-        const playButton = container.findByClass('nn-youtube-play');
+        const playButton = container.findByClass('tps-nn-youtube-play');
         expect(playButton).not.toBeNull();
-        expect(playButton?.style.getPropertyValue('--nn-youtube-play-x')).toBe('80%');
-        expect(playButton?.style.getPropertyValue('--nn-youtube-play-y')).toBe('49%');
-        expect(playButton?.style.getPropertyValue('--nn-youtube-play-scale')).toBe('1.8');
+        expect(playButton?.style.getPropertyValue('--tps-nn-youtube-play-x')).toBe('80%');
+        expect(playButton?.style.getPropertyValue('--tps-nn-youtube-play-y')).toBe('49%');
+        expect(playButton?.style.getPropertyValue('--tps-nn-youtube-play-scale')).toBe('1.8');
         expect(playButton?.hidden).toBe(false);
     });
 
@@ -212,8 +212,8 @@ describe('WhatsNewModal YouTube preview', () => {
 
         formatter.renderYoutubeLink(container, 'https://www.youtube.com/watch?v=video-id');
 
-        const playButton = container.findByClass('nn-youtube-play');
-        const image = container.findByClass('nn-whats-new-youtube-image');
+        const playButton = container.findByClass('tps-nn-youtube-play');
+        const image = container.findByClass('tps-nn-whats-new-youtube-image');
         expect(playButton?.hidden).toBe(true);
 
         image?.dispatch('load');

@@ -18,6 +18,7 @@
 
 import { App } from 'obsidian';
 import { ExtendedApp } from '../../../types/obsidian-extended';
+import { getTpsNotebookNavigatorDatabaseName } from '../../../constants/tpsIdentity';
 
 export interface IconAssetRecord {
     id: string;
@@ -41,7 +42,7 @@ export class IconAssetDatabase {
 
     constructor(app: App) {
         const appId = (app as ExtendedApp).appId || 'default';
-        this.dbName = `notebooknavigator/icons/${appId}`;
+        this.dbName = getTpsNotebookNavigatorDatabaseName('icons', appId);
     }
 
     async init(): Promise<void> {

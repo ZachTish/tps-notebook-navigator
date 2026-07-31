@@ -17,6 +17,7 @@
  */
 
 import { App } from 'obsidian';
+import { TPS_NOTEBOOK_NAVIGATOR_STORAGE_PREFIX } from '../constants/tpsIdentity';
 
 // Current localStorage schema version
 // Version 2: removes the legacy pre-IndexedDB file cache blob
@@ -29,7 +30,7 @@ export const LOCALSTORAGE_VERSION = 2;
  */
 export const LEGACY_STORAGE_KEYS: readonly string[] = [
     // Pre-IndexedDB file cache
-    'notebook-navigator-file-cache'
+    `${TPS_NOTEBOOK_NAVIGATOR_STORAGE_PREFIX}-file-cache`
 ];
 
 /**

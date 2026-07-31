@@ -1975,14 +1975,14 @@ export function Calendar({
                 hoverTooltipDateText={hoverTooltipDateText}
             />
             <div
-                className="nn-navigation-calendar"
+                className="tps-nn-navigation-calendar"
                 role="group"
                 aria-labelledby={calendarLabelId}
                 data-highlight-today={highlightToday ? 'true' : undefined}
                 data-weeknumbers={showWeekNumbers ? 'true' : undefined}
                 data-split-header="true"
             >
-                <span id={calendarLabelId} className="nn-visually-hidden">
+                <span id={calendarLabelId} className="tps-nn-visually-hidden">
                     {strings.navigationCalendar.ariaLabel}
                 </span>
                 <CalendarHeader

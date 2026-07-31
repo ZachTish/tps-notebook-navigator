@@ -39,7 +39,7 @@ export class RpgAwesomeIconProvider extends BaseFontIconProvider {
     }
 
     protected getCssClass(): string {
-        return 'nn-iconfont-rpg-awesome';
+        return 'tps-nn-iconfont-rpg-awesome';
     }
 
     /**

@@ -413,7 +413,7 @@ describe('useFileItemContentState helpers', () => {
         });
 
         expect(snapshot.featureImageKey).toBe('direct-image:Assets/Image.png@1234');
-        expect(snapshot.featureImageUrl).toBe('app://local/Assets/Image.png?nn-mtime=1234');
+        expect(snapshot.featureImageUrl).toBe('app://local/Assets/Image.png?tps-nn-mtime=1234');
     });
 
     it('does not create direct preview URLs for SVG files', () => {

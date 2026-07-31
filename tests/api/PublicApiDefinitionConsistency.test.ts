@@ -434,6 +434,7 @@ describe('public API declaration file', () => {
 
         const expectedExports = new Set<string>(sourceTypes);
         expectedExports.add('MenuExtensionDispose');
+        expectedExports.add('NavigatorRowProviderRegistration');
 
         const missingExports = Array.from(expectedExports)
             .filter(name => !publicTypes.has(name))
@@ -464,7 +465,7 @@ describe('public API declaration file', () => {
     it('matches nested public NotebookNavigatorAPI namespace member names', () => {
         const sourceFile = readSourceFile('src/api/NotebookNavigatorAPI.ts');
         const publicFile = readSourceFile('src/api/public/notebook-navigator.d.ts');
-        const namespaceNames = ['navigation', 'metadata', 'selection', 'menus', 'tagCollections', 'propertyNodes'];
+        const namespaceNames = ['navigation', 'metadata', 'selection', 'menus', 'tagCollections', 'propertyNodes', 'rows'];
 
         for (const namespaceName of namespaceNames) {
             const sourceMembers = getNestedMemberNamesFromTypeNode(
@@ -492,6 +493,7 @@ describe('public API declaration file', () => {
         const metadataFile = readSourceFile('src/api/modules/MetadataAPI.ts');
         const selectionFile = readSourceFile('src/api/modules/SelectionAPI.ts');
         const propertyNodesFile = readSourceFile('src/api/modules/PropertyNodesAPI.ts');
+        const rowsFile = readSourceFile('src/api/modules/RowsAPI.ts');
 
         const checks = [
             {
@@ -499,6 +501,12 @@ describe('public API declaration file', () => {
                 sourceFile: navigationFile,
                 sourceClass: 'NavigationAPI',
                 methodName: 'reveal'
+            },
+            {
+                namespace: 'rows',
+                sourceFile: rowsFile,
+                sourceClass: 'RowsAPI',
+                methodName: 'registerProvider'
             },
             {
                 namespace: 'navigation',
@@ -637,6 +645,9 @@ describe('public API declaration file', () => {
             { interfaceName: 'PropertyMetadataUpdate', propertyName: 'icon' },
             { interfaceName: 'SelectionState', propertyName: 'files' },
             { interfaceName: 'SelectionState', propertyName: 'focused' },
+            { interfaceName: 'NavigatorRowCheckboxIndicator', propertyName: 'checked' },
+            { interfaceName: 'NavigatorRowCheckboxIndicator', propertyName: 'marker' },
+            { interfaceName: 'NavigatorRowCheckboxIndicator', propertyName: 'onChange' },
             { interfaceName: 'NotebookNavigatorEvents', propertyName: 'nav-item-changed' },
             { interfaceName: 'NotebookNavigatorEvents', propertyName: 'selection-changed' },
             { interfaceName: 'NotebookNavigatorEvents', propertyName: 'folder-changed' },

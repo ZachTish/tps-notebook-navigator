@@ -60,41 +60,41 @@ export class ManualSortGroupHeaderModal extends Modal {
     onOpen(): void {
         const { contentEl } = this;
         contentEl.empty();
-        this.modalEl.addClass('nn-manual-sort-group-header-modal');
+        this.modalEl.addClass('tps-nn-manual-sort-group-header-modal');
         this.titleEl.setText(strings.modals.manualSortGroupHeader.title);
 
         contentEl.createDiv({
-            cls: 'nn-input-description nn-manual-sort-header-description',
+            cls: 'tps-nn-input-description tps-nn-manual-sort-header-description',
             text: strings.modals.manualSortGroupHeader.description
         });
 
         const headerSectionEl = this.createSection(contentEl);
-        const titleFieldEl = headerSectionEl.createDiv({ cls: 'nn-manual-sort-header-field' });
-        titleFieldEl.createDiv({ cls: 'nn-manual-sort-header-field-label', text: strings.modals.manualSortGroupHeader.titleLabel });
-        this.headerInputEl = titleFieldEl.createEl('input', { cls: 'nn-manual-sort-header-input' });
+        const titleFieldEl = headerSectionEl.createDiv({ cls: 'tps-nn-manual-sort-header-field' });
+        titleFieldEl.createDiv({ cls: 'tps-nn-manual-sort-header-field-label', text: strings.modals.manualSortGroupHeader.titleLabel });
+        this.headerInputEl = titleFieldEl.createEl('input', { cls: 'tps-nn-manual-sort-header-input' });
         this.headerInputEl.type = 'text';
         this.headerInputEl.placeholder = strings.modals.manualSortGroupHeader.placeholder;
         this.headerInputEl.value = this.initialValue?.title ?? '';
 
         const appearanceSectionEl = this.createSection(contentEl);
-        const appearanceActionsEl = appearanceSectionEl.createDiv({ cls: 'nn-manual-sort-header-appearance-actions' });
+        const appearanceActionsEl = appearanceSectionEl.createDiv({ cls: 'tps-nn-manual-sort-header-appearance-actions' });
 
-        const iconActionEl = appearanceActionsEl.createDiv({ cls: 'nn-manual-sort-header-action-row' });
-        const iconButtonEl = iconActionEl.createEl('button', { cls: 'nn-manual-sort-header-style-button' });
+        const iconActionEl = appearanceActionsEl.createDiv({ cls: 'tps-nn-manual-sort-header-action-row' });
+        const iconButtonEl = iconActionEl.createEl('button', { cls: 'tps-nn-manual-sort-header-style-button' });
         iconButtonEl.type = 'button';
         iconButtonEl.addEventListener('click', this.openIconPicker);
-        this.iconPreviewEl = iconButtonEl.createSpan({ cls: 'nn-manual-sort-header-style-preview' });
-        this.iconButtonTextEl = iconButtonEl.createSpan({ cls: 'nn-manual-sort-header-style-text' });
+        this.iconPreviewEl = iconButtonEl.createSpan({ cls: 'tps-nn-manual-sort-header-style-preview' });
+        this.iconButtonTextEl = iconButtonEl.createSpan({ cls: 'tps-nn-manual-sort-header-style-text' });
         this.updateIconControls();
 
-        const colorActionEl = appearanceActionsEl.createDiv({ cls: 'nn-manual-sort-header-action-row' });
-        const colorButtonEl = colorActionEl.createEl('button', { cls: 'nn-manual-sort-header-style-button' });
+        const colorActionEl = appearanceActionsEl.createDiv({ cls: 'tps-nn-manual-sort-header-action-row' });
+        const colorButtonEl = colorActionEl.createEl('button', { cls: 'tps-nn-manual-sort-header-style-button' });
         colorButtonEl.type = 'button';
         colorButtonEl.addEventListener('click', this.openColorPicker);
         this.colorPreviewEl = colorButtonEl.createSpan({
-            cls: 'nn-manual-sort-header-style-preview nn-color-swatch'
+            cls: 'tps-nn-manual-sort-header-style-preview tps-nn-color-swatch'
         });
-        this.colorButtonTextEl = colorButtonEl.createSpan({ cls: 'nn-manual-sort-header-style-text' });
+        this.colorButtonTextEl = colorButtonEl.createSpan({ cls: 'tps-nn-manual-sort-header-style-text' });
         this.updateColorControls();
 
         const wordCountSectionEl = this.createSection(contentEl);
@@ -107,26 +107,28 @@ export class ManualSortGroupHeaderModal extends Modal {
                 this.updateWordCountTargetControl();
             })
         );
-        wordCountSetting.settingEl.addClass('nn-manual-sort-header-toggle-setting');
+        wordCountSetting.settingEl.addClass('tps-nn-manual-sort-header-toggle-setting');
 
-        const targetFieldEl = wordCountSectionEl.createDiv({ cls: 'nn-manual-sort-header-field nn-manual-sort-header-target-field' });
+        const targetFieldEl = wordCountSectionEl.createDiv({
+            cls: 'tps-nn-manual-sort-header-field tps-nn-manual-sort-header-target-field'
+        });
         targetFieldEl.createDiv({
-            cls: 'nn-manual-sort-header-field-label',
+            cls: 'tps-nn-manual-sort-header-field-label',
             text: strings.modals.manualSortGroupHeader.wordCountTarget
         });
-        this.targetInputEl = targetFieldEl.createEl('input', { cls: 'nn-manual-sort-header-input' });
+        this.targetInputEl = targetFieldEl.createEl('input', { cls: 'tps-nn-manual-sort-header-input' });
         this.targetInputEl.type = 'text';
         this.targetInputEl.inputMode = 'numeric';
         this.targetInputEl.placeholder = strings.modals.manualSortGroupHeader.wordCountTargetPlaceholder;
         this.targetInputEl.value = this.showWordCount ? (this.initialValue?.targetWordCount?.toString() ?? '') : '';
         this.targetInputEl.addEventListener('input', this.filterTargetInput);
         targetFieldEl.createDiv({
-            cls: 'nn-input-description nn-manual-sort-header-target-description',
+            cls: 'tps-nn-input-description tps-nn-manual-sort-header-target-description',
             text: strings.modals.manualSortGroupHeader.wordCountTargetDescription
         });
         this.updateWordCountTargetControl();
 
-        const buttonContainer = contentEl.createDiv('nn-button-container');
+        const buttonContainer = contentEl.createDiv('tps-nn-button-container');
         const cancelBtn = buttonContainer.createEl('button', { text: strings.common.cancel });
         cancelBtn.addEventListener('click', this.handleCancelClick);
 
@@ -154,12 +156,12 @@ export class ManualSortGroupHeaderModal extends Modal {
 
     onClose(): void {
         this.targetInputEl?.removeEventListener('input', this.filterTargetInput);
-        this.modalEl.removeClass('nn-manual-sort-group-header-modal');
+        this.modalEl.removeClass('tps-nn-manual-sort-group-header-modal');
         this.contentEl.empty();
     }
 
     private createSection(containerEl: HTMLElement): HTMLElement {
-        const sectionEl = containerEl.createDiv({ cls: 'nn-manual-sort-header-section' });
+        const sectionEl = containerEl.createDiv({ cls: 'tps-nn-manual-sort-header-section' });
         return sectionEl;
     }
 
@@ -222,9 +224,9 @@ export class ManualSortGroupHeaderModal extends Modal {
 
         this.colorPreviewEl.toggleClass('is-empty', !this.color);
         if (this.color) {
-            this.colorPreviewEl.style.setProperty('--nn-manual-sort-header-preview-color', this.color);
+            this.colorPreviewEl.style.setProperty('--tps-nn-manual-sort-header-preview-color', this.color);
         } else {
-            this.colorPreviewEl.style.removeProperty('--nn-manual-sort-header-preview-color');
+            this.colorPreviewEl.style.removeProperty('--tps-nn-manual-sort-header-preview-color');
         }
     }
 

@@ -18,6 +18,12 @@
 
 import { App, WorkspaceLeaf } from 'obsidian';
 import type { CSSProperties } from 'react';
+import {
+    TPS_NOTEBOOK_NAVIGATOR_CALENDAR_VIEW,
+    TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW,
+    TPS_NOTEBOOK_NAVIGATOR_STORAGE_PREFIX,
+    TPS_NOTEBOOK_NAVIGATOR_VIEW
+} from './constants/tpsIdentity';
 
 /**
  * Shared types and constants for Notebook Navigator
@@ -28,19 +34,19 @@ import type { CSSProperties } from 'react';
  * Unique identifier for the Notebook Navigator view type
  * Used by Obsidian to register and manage the custom view
  */
-export const NOTEBOOK_NAVIGATOR_VIEW = 'notebook-navigator';
+export const NOTEBOOK_NAVIGATOR_VIEW = TPS_NOTEBOOK_NAVIGATOR_VIEW;
 
 /**
  * Unique identifier for the Notebook Navigator calendar view type.
  * Used by Obsidian to register and manage the right sidebar calendar view.
  */
-export const NOTEBOOK_NAVIGATOR_CALENDAR_VIEW = 'notebook-navigator-calendar';
+export const NOTEBOOK_NAVIGATOR_CALENDAR_VIEW = TPS_NOTEBOOK_NAVIGATOR_CALENDAR_VIEW;
 
 /**
  * Unique identifier for the folder note sidebar placeholder view.
  * Used to keep a stable right sidebar slot when no folder note is open.
  */
-export const NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW = 'notebook-navigator-folder-note-sidebar';
+export const NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW = TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW;
 
 /**
  * Virtual tag collection id for notes without tags.
@@ -93,6 +99,7 @@ export const ListPaneItemType = {
     HEADER: 'header',
     HEADER_SPACER: 'header-spacer',
     FILE: 'file',
+    PROVIDER_ROW: 'provider-row',
     TOP_SPACER: 'top-spacer',
     BOTTOM_SPACER: 'bottom-spacer'
 } as const;
@@ -321,66 +328,68 @@ export interface LocalStorageKeys {
  * Singleton instance of localStorage keys
  * Use this instead of defining keys in multiple places
  */
+const tpsStorageKey = (suffix: string): string => `${TPS_NOTEBOOK_NAVIGATOR_STORAGE_PREFIX}-${suffix}`;
+
 export const STORAGE_KEYS: LocalStorageKeys = {
-    expandedFoldersKey: 'notebook-navigator-expanded-folders',
-    expandedTagsKey: 'notebook-navigator-expanded-tags',
-    expandedPropertiesKey: 'notebook-navigator-expanded-properties',
-    expandedVirtualFoldersKey: 'notebook-navigator-expanded-virtual-folders',
-    selectedFolderKey: 'notebook-navigator-selected-folder',
-    selectedPropertyKey: 'notebook-navigator-selected-property',
-    selectedFileKey: 'notebook-navigator-selected-file',
-    selectedFilesKey: 'notebook-navigator-selected-files',
-    selectedTagKey: 'notebook-navigator-selected-tag',
-    navigationPaneWidthKey: 'notebook-navigator-navigation-pane-width',
-    navigationPaneHeightKey: 'notebook-navigator-navigation-pane-height',
-    dualPaneOrientationKey: 'notebook-navigator-dual-pane-orientation',
-    narrowSidebarLayoutKey: 'notebook-navigator-narrow-sidebar-layout',
-    narrowSidebarTriggerModeKey: 'notebook-navigator-narrow-sidebar-trigger-mode',
-    narrowSidebarCustomWidthKey: 'notebook-navigator-narrow-sidebar-custom-width',
-    dualPaneKey: 'notebook-navigator-dual-pane',
-    uiScaleKey: 'notebook-navigator-ui-scale',
-    shortcutsExpandedKey: 'notebook-navigator-shortcuts-expanded',
-    recentNotesExpandedKey: 'notebook-navigator-recent-notes-expanded',
-    recentNotesKey: 'notebook-navigator-recent-notes',
-    recentIconsKey: 'notebook-navigator-recent-icons',
-    navigationSectionOrderKey: 'notebook-navigator-section-order',
-    pinnedShortcutsMaxHeightKey: 'notebook-navigator-pinned-shortcuts-max-height',
-    uxPreferencesKey: 'notebook-navigator-ux-preferences',
-    databaseSchemaVersionKey: 'notebook-navigator-db-schema-version',
-    databaseContentVersionKey: 'notebook-navigator-db-content-version',
-    frontmatterMetadataCacheSignatureKey: 'notebook-navigator-frontmatter-metadata-cache-signature',
-    cacheRebuildNoticeKey: 'notebook-navigator-cache-rebuild-notice',
-    debugLoggingEnabledKey: 'notebook-navigator-debug-logging-enabled',
+    expandedFoldersKey: tpsStorageKey('expanded-folders'),
+    expandedTagsKey: tpsStorageKey('expanded-tags'),
+    expandedPropertiesKey: tpsStorageKey('expanded-properties'),
+    expandedVirtualFoldersKey: tpsStorageKey('expanded-virtual-folders'),
+    selectedFolderKey: tpsStorageKey('selected-folder'),
+    selectedPropertyKey: tpsStorageKey('selected-property'),
+    selectedFileKey: tpsStorageKey('selected-file'),
+    selectedFilesKey: tpsStorageKey('selected-files'),
+    selectedTagKey: tpsStorageKey('selected-tag'),
+    navigationPaneWidthKey: tpsStorageKey('navigation-pane-width'),
+    navigationPaneHeightKey: tpsStorageKey('navigation-pane-height'),
+    dualPaneOrientationKey: tpsStorageKey('dual-pane-orientation'),
+    narrowSidebarLayoutKey: tpsStorageKey('narrow-sidebar-layout'),
+    narrowSidebarTriggerModeKey: tpsStorageKey('narrow-sidebar-trigger-mode'),
+    narrowSidebarCustomWidthKey: tpsStorageKey('narrow-sidebar-custom-width'),
+    dualPaneKey: tpsStorageKey('dual-pane'),
+    uiScaleKey: tpsStorageKey('ui-scale'),
+    shortcutsExpandedKey: tpsStorageKey('shortcuts-expanded'),
+    recentNotesExpandedKey: tpsStorageKey('recent-notes-expanded'),
+    recentNotesKey: tpsStorageKey('recent-notes'),
+    recentIconsKey: tpsStorageKey('recent-icons'),
+    navigationSectionOrderKey: tpsStorageKey('section-order'),
+    pinnedShortcutsMaxHeightKey: tpsStorageKey('pinned-shortcuts-max-height'),
+    uxPreferencesKey: tpsStorageKey('ux-preferences'),
+    databaseSchemaVersionKey: tpsStorageKey('db-schema-version'),
+    databaseContentVersionKey: tpsStorageKey('db-content-version'),
+    frontmatterMetadataCacheSignatureKey: tpsStorageKey('frontmatter-metadata-cache-signature'),
+    cacheRebuildNoticeKey: tpsStorageKey('cache-rebuild-notice'),
+    debugLoggingEnabledKey: tpsStorageKey('debug-logging-enabled'),
     // PDF_CRASH_DIAGNOSTICS: persists the last PDF path being processed on mobile support builds.
-    pdfProcessingDiagnosticKey: 'notebook-navigator-pdf-processing-diagnostic',
-    localStorageVersionKey: 'notebook-navigator-localstorage-version',
-    vaultProfileKey: 'notebook-navigator-vault-profile',
-    releaseCheckTimestampKey: 'notebook-navigator-release-check-timestamp',
-    searchProviderKey: 'notebook-navigator-search-provider',
-    homepageKey: 'notebook-navigator-homepage',
-    folderSortOrderKey: 'notebook-navigator-folder-sort-order',
-    tagSortOrderKey: 'notebook-navigator-tag-sort-order',
-    propertySortOrderKey: 'notebook-navigator-property-sort-order',
-    recentColorsKey: 'notebook-navigator-recent-colors',
-    paneTransitionDurationKey: 'notebook-navigator-pane-transition-duration',
-    toolbarVisibilityKey: 'notebook-navigator-toolbar-visibility',
-    useFloatingToolbarsKey: 'notebook-navigator-use-floating-toolbars',
-    pinNavigationBannerKey: 'notebook-navigator-pin-navigation-banner',
-    navIndentKey: 'notebook-navigator-nav-indent',
-    navItemHeightKey: 'notebook-navigator-nav-item-height',
-    navItemHeightScaleTextKey: 'notebook-navigator-nav-item-height-scale-text',
-    calendarPlacementKey: 'notebook-navigator-calendar-placement',
-    calendarLeftPlacementKey: 'notebook-navigator-calendar-left-placement',
-    calendarWeeksToShowKey: 'notebook-navigator-calendar-weeks-to-show',
-    compactItemHeightKey: 'notebook-navigator-compact-item-height',
-    compactItemHeightScaleTextKey: 'notebook-navigator-compact-item-height-scale-text',
-    featureImageSizeKey: 'notebook-navigator-feature-image-size',
-    featureImagePixelSizeKey: 'notebook-navigator-feature-image-pixel-size',
-    collapsedListGroupsKey: 'notebook-navigator-collapsed-list-groups',
-    collapsedPinnedContextsKey: 'notebook-navigator-collapsed-pinned-contexts',
-    mergeNotesSeparatorKey: 'notebook-navigator-merge-notes-separator',
-    mergeNotesMoveSourcesToTrashKey: 'notebook-navigator-merge-notes-move-sources-to-trash',
-    settingsImportBackupToRootKey: 'notebook-navigator-settings-import-backup-to-root'
+    pdfProcessingDiagnosticKey: tpsStorageKey('pdf-processing-diagnostic'),
+    localStorageVersionKey: tpsStorageKey('localstorage-version'),
+    vaultProfileKey: tpsStorageKey('vault-profile'),
+    releaseCheckTimestampKey: tpsStorageKey('release-check-timestamp'),
+    searchProviderKey: tpsStorageKey('search-provider'),
+    homepageKey: tpsStorageKey('homepage'),
+    folderSortOrderKey: tpsStorageKey('folder-sort-order'),
+    tagSortOrderKey: tpsStorageKey('tag-sort-order'),
+    propertySortOrderKey: tpsStorageKey('property-sort-order'),
+    recentColorsKey: tpsStorageKey('recent-colors'),
+    paneTransitionDurationKey: tpsStorageKey('pane-transition-duration'),
+    toolbarVisibilityKey: tpsStorageKey('toolbar-visibility'),
+    useFloatingToolbarsKey: tpsStorageKey('use-floating-toolbars'),
+    pinNavigationBannerKey: tpsStorageKey('pin-navigation-banner'),
+    navIndentKey: tpsStorageKey('nav-indent'),
+    navItemHeightKey: tpsStorageKey('nav-item-height'),
+    navItemHeightScaleTextKey: tpsStorageKey('nav-item-height-scale-text'),
+    calendarPlacementKey: tpsStorageKey('calendar-placement'),
+    calendarLeftPlacementKey: tpsStorageKey('calendar-left-placement'),
+    calendarWeeksToShowKey: tpsStorageKey('calendar-weeks-to-show'),
+    compactItemHeightKey: tpsStorageKey('compact-item-height'),
+    compactItemHeightScaleTextKey: tpsStorageKey('compact-item-height-scale-text'),
+    featureImageSizeKey: tpsStorageKey('feature-image-size'),
+    featureImagePixelSizeKey: tpsStorageKey('feature-image-pixel-size'),
+    collapsedListGroupsKey: tpsStorageKey('collapsed-list-groups'),
+    collapsedPinnedContextsKey: tpsStorageKey('collapsed-pinned-contexts'),
+    mergeNotesSeparatorKey: tpsStorageKey('merge-notes-separator'),
+    mergeNotesMoveSourcesToTrashKey: tpsStorageKey('merge-notes-move-sources-to-trash'),
+    settingsImportBackupToRootKey: tpsStorageKey('settings-import-backup-to-root')
 };
 
 export interface UXPreferences {

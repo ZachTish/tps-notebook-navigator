@@ -179,7 +179,7 @@ spacers).
   moved again.
 - **External entries**: `requestScroll` normalizes the path and queues an `external` intent. Callers include reveal
   flows and the inline folder rename flow in `NavigationPaneContent`, which scrolls the folder row into view.
-- **Mobile drawer**: A `notebook-navigator-visible` event first attempts an immediate scroll for the current selection.
+- **Mobile drawer**: A `tps-notebook-navigator-visible` event first attempts an immediate scroll for the current selection.
   If the pane is not ready or the row index is not available yet, the hook queues a `mobile-visibility` pending scroll.
 - **Settings changes**: Navigation sizing changes trigger `measure()` and an `auto` scroll to keep the selection within
   the safe viewport. Scroll inset changes (`scrollMargin`, `scrollPaddingEnd`) use the same `auto` scroll path.
@@ -210,7 +210,7 @@ spacers).
   work, then sets a pending request (file or top) and clears the navigation flag. Pending entries can be queued even
   when the pane is hidden and execute once the list becomes ready.
 - **Reveal operations**: Reveal flows queue a `reveal` pending scroll. Startup reveals override alignment to `'center'`.
-- **Mobile drawer**: The `notebook-navigator-visible` event queues a visibility-change scroll when a file is selected.
+- **Mobile drawer**: The `tps-notebook-navigator-visible` event queues a visibility-change scroll when a file is selected.
 - **Settings and search**: Appearance, grouping, sort, sticky-header, descendant, visible-property, and selected-pill
   changes participate in the scroll preservation signature. Matching changes queue `list-structure-change` entries
   against the current index version when `revealFileOnListChanges` is enabled and a file is selected. Search filters
@@ -259,7 +259,7 @@ spacers).
 
 ### Mobile Drawer Visibility
 
-1. The mobile drawer raises the `notebook-navigator-visible` event when opened.
+1. The mobile drawer raises the `tps-notebook-navigator-visible` event when opened.
 2. Navigation first attempts an immediate scroll for the current selection and falls back to a `mobile-visibility`
    pending scroll if the pane is not ready yet.
 3. The list pane queues a `visibility-change` scroll for the selected file, preserving context when the drawer becomes

@@ -67,18 +67,18 @@ function renderHeader(itemCount: number | null, totalItemCount: number | null = 
 describe('ListPaneGroupHeader item count', () => {
     it('renders the configured item count before the collapse control', () => {
         const markup = renderHeader(3);
-        const countIndex = markup.indexOf('<span class="nn-list-group-header-item-count">(3)</span>');
-        const collapseIndex = markup.indexOf('nn-list-group-header-collapse-button');
+        const countIndex = markup.indexOf('<span class="tps-nn-list-group-header-item-count">(3)</span>');
+        const collapseIndex = markup.indexOf('tps-nn-list-group-header-collapse-button');
 
         expect(countIndex).toBeGreaterThan(-1);
         expect(collapseIndex).toBeGreaterThan(countIndex);
     });
 
     it('renders the filtered and total item counts during search', () => {
-        expect(renderHeader(3, 8)).toContain('<span class="nn-list-group-header-item-count">(3/8)</span>');
+        expect(renderHeader(3, 8)).toContain('<span class="tps-nn-list-group-header-item-count">(3/8)</span>');
     });
 
     it('omits the item count when the setting is disabled', () => {
-        expect(renderHeader(null)).not.toContain('nn-list-group-header-item-count');
+        expect(renderHeader(null)).not.toContain('tps-nn-list-group-header-item-count');
     });
 });

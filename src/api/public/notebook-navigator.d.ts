@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 2.0.0
+ * Version: 2.2.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -27,7 +27,7 @@
  * ```typescript
  * import type { NotebookNavigatorAPI } from './notebook-navigator';
  *
- * const nn = app.plugins.plugins['notebook-navigator']?.api as NotebookNavigatorAPI | undefined;
+ * const nn = app.plugins.plugins['tps-notebook-navigator']?.api as NotebookNavigatorAPI | undefined;
  * if (nn) {
  *   const folder = app.vault.getFolderByPath('Projects');
  *   if (folder) {
@@ -37,7 +37,7 @@
  * ```
  */
 
-import { EventRef, MenuItem, TFile, TFolder } from 'obsidian';
+import { App, EventRef, MenuItem, TFile, TFolder } from 'obsidian';
 
 // Core types
 
@@ -69,6 +69,57 @@ export type IconValue = string;
  * Aggregate tag collection ids used by the navigator for virtual tag rows.
  */
 export type TagCollectionId = '__tagged__' | '__untagged__';
+
+export type NavigatorRowSelectionType = 'file' | 'folder' | 'tag' | 'property';
+export type NavigatorRowProviderOptions = Readonly<Record<string, unknown>>;
+
+export interface NavigatorRowScope {
+    readonly visibleFilePaths: readonly string[];
+    readonly selectionType: NavigatorRowSelectionType | null;
+    readonly selectedFolderPath: string | null;
+    readonly selectedTag: string | null;
+    readonly selectedProperty: string | null;
+}
+
+export interface NavigatorRowProviderContext {
+    readonly app: App;
+    readonly scope: NavigatorRowScope;
+}
+
+export interface NavigatorRowCheckboxIndicator {
+    readonly type: 'checkbox';
+    readonly checked: boolean;
+    readonly marker?: string;
+    /** Optional mutation. Omit it to render a display-only checkbox. */
+    readonly onChange?: (checked: boolean) => void | Promise<void>;
+}
+
+export interface NavigatorRowDefinition {
+    readonly id: string;
+    readonly kind: string;
+    readonly label: string;
+    readonly secondaryLabel?: string;
+    readonly tooltip?: string;
+    readonly sourcePath: string;
+    readonly sourceLineNumber?: number;
+    readonly indicator?: NavigatorRowCheckboxIndicator;
+    readonly activate?: () => void | Promise<void>;
+}
+
+export interface NavigatorRowProvider {
+    readonly id: string;
+    getRows(
+        context: NavigatorRowProviderContext,
+        options: NavigatorRowProviderOptions
+    ): Promise<readonly NavigatorRowDefinition[]> | readonly NavigatorRowDefinition[];
+    subscribe?(context: NavigatorRowProviderContext, options: NavigatorRowProviderOptions, invalidate: () => void): (() => void) | void;
+}
+
+export interface NavigatorRowProviderRegistration {
+    readonly id: string;
+    updateOptions(options: NavigatorRowProviderOptions): void;
+    unregister(): void;
+}
 
 /**
  * Metadata associated with a folder
@@ -298,7 +349,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 2.0.0
+ * @version 2.2.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */
@@ -384,6 +435,11 @@ export interface NotebookNavigatorAPI {
         parse(nodeId: string): PropertyNodeParts | null;
         /** Normalize a property node id to canonical form */
         normalize(nodeId: string): string | null;
+    };
+
+    /** Register immediately active transient rows beneath owning note files. */
+    rows: {
+        registerProvider(provider: NavigatorRowProvider, options?: NavigatorRowProviderOptions): NavigatorRowProviderRegistration;
     };
 
     /** Menu extensions for Notebook Navigator context menus (callbacks run synchronously during menu construction) */

@@ -129,7 +129,7 @@ export function NavigationPaneTreeRow({
                 virtualFolder.id === TAGS_ROOT_VIRTUAL_FOLDER_ID
                     ? {
                           zone: 'tag-root',
-                          path: '__nn-tag-root__',
+                          path: '__tps-nn-tag-root__',
                           allowExternalDrop: false
                       }
                     : undefined;
@@ -281,20 +281,20 @@ export function NavigationPaneTreeRow({
         }
 
         case NavigationPaneItemType.TOP_SPACER: {
-            const spacerClass = item.hasSeparator ? 'nn-nav-top-spacer nn-nav-spacer--with-separator' : 'nn-nav-top-spacer';
+            const spacerClass = item.hasSeparator ? 'tps-nn-nav-top-spacer tps-nn-nav-spacer--with-separator' : 'tps-nn-nav-top-spacer';
             return <div className={spacerClass} />;
         }
 
         case NavigationPaneItemType.BOTTOM_SPACER:
-            return <div className="nn-nav-bottom-spacer" />;
+            return <div className="tps-nn-nav-bottom-spacer" />;
 
         case NavigationPaneItemType.LIST_SPACER: {
-            const spacerClass = item.hasSeparator ? 'nn-nav-list-spacer nn-nav-spacer--with-separator' : 'nn-nav-list-spacer';
+            const spacerClass = item.hasSeparator ? 'tps-nn-nav-list-spacer tps-nn-nav-spacer--with-separator' : 'tps-nn-nav-list-spacer';
             return <div className={spacerClass} />;
         }
 
         case NavigationPaneItemType.ROOT_SPACER:
-            return <div className="nn-nav-root-spacer" style={{ height: `${item.spacing}px` }} aria-hidden="true" />;
+            return <div className="tps-nn-nav-root-spacer" style={{ height: `${item.spacing}px` }} aria-hidden="true" />;
 
         default:
             return null;

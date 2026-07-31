@@ -61,9 +61,9 @@ export class ColorPickerModal extends Modal {
     onOpen(): void {
         const { contentEl } = this;
         contentEl.empty();
-        this.modalEl.addClass('nn-color-picker-modal');
+        this.modalEl.addClass('tps-nn-color-picker-modal');
 
-        const header = contentEl.createDiv('nn-color-picker-header');
+        const header = contentEl.createDiv('tps-nn-color-picker-header');
         header.createEl('h3', { text: this.title });
 
         this.attachCloseButtonHandler();
@@ -78,7 +78,7 @@ export class ColorPickerModal extends Modal {
         });
         this.surface.build();
 
-        const buttonContainer = contentEl.createDiv('nn-color-button-container');
+        const buttonContainer = contentEl.createDiv('tps-nn-color-button-container');
         const cancelRemoveButton = buttonContainer.createEl('button', {
             text: this.initialColor ? strings.common.restoreDefault : strings.common.cancel
         });
@@ -102,7 +102,7 @@ export class ColorPickerModal extends Modal {
     onClose(): void {
         const { contentEl } = this;
         contentEl.empty();
-        this.modalEl.removeClass('nn-color-picker-modal');
+        this.modalEl.removeClass('tps-nn-color-picker-modal');
         this.surface?.dispose();
         this.surface = null;
         this.domDisposers.forEach(dispose => {

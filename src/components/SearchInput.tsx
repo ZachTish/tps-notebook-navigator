@@ -95,7 +95,7 @@ export function SearchInput({
     const hasQuery = searchQuery.trim().length > 0;
     const showShortcutButton = hasQuery && Boolean(onSaveShortcut || (isShortcutSaved && onRemoveShortcut));
     const shortcutButtonDisabled = isShortcutDisabled || (!isShortcutSaved && !onSaveShortcut) || (isShortcutSaved && !onRemoveShortcut);
-    const searchContainerClassName = `nn-search-input-container${showShortcutButton ? ' nn-search-input-container--has-shortcut' : ''}`;
+    const searchContainerClassName = `tps-nn-search-input-container${showShortcutButton ? ' tps-nn-search-input-container--has-shortcut' : ''}`;
 
     const notifyEmptySearchExit = useCallback(() => {
         if (!hasQuery) {
@@ -226,7 +226,7 @@ export function SearchInput({
     const focusListPane = () => {
         window.setTimeout(() => {
             const scope = containerRef?.current ?? activeDocument;
-            const listPaneScroller = scope.querySelector('.nn-list-pane-scroller');
+            const listPaneScroller = scope.querySelector('.tps-nn-list-pane-scroller');
             if (listPaneScroller instanceof HTMLElement) {
                 focusElementPreventScroll(listPaneScroller);
             }
@@ -333,10 +333,10 @@ export function SearchInput({
     }, [app, isOmnisearchActive, isOmnisearchAvailable]);
 
     return (
-        <div className="nn-search-input-wrapper">
+        <div className="tps-nn-search-input-wrapper">
             <div className={searchContainerClassName}>
                 <div
-                    className="nn-search-input-icon"
+                    className="tps-nn-search-input-icon"
                     role="button"
                     tabIndex={isOmnisearchAvailable ? 0 : -1}
                     aria-label={isOmnisearchActive ? strings.searchInput.switchToFilterSearch : strings.searchInput.switchToOmnisearch}
@@ -365,7 +365,7 @@ export function SearchInput({
                 <input
                     ref={inputRef}
                     type="search"
-                    className={`nn-search-input ${searchQuery ? 'nn-search-active' : ''}`}
+                    className={`tps-nn-search-input ${searchQuery ? 'tps-nn-search-active' : ''}`}
                     placeholder={placeholderText}
                     spellCheck={false}
                     enterKeyHint="search"
@@ -377,7 +377,7 @@ export function SearchInput({
                 />
                 {!hasQuery && settings.showInfoButtons && (
                     <div
-                        className="nn-search-help-button"
+                        className="tps-nn-search-help-button"
                         role="button"
                         tabIndex={0}
                         aria-label={strings.searchInput.searchHelp}
@@ -397,7 +397,7 @@ export function SearchInput({
                 {/* Star button to save/remove search as shortcut */}
                 {showShortcutButton && (
                     <div
-                        className={`nn-search-star-button ${isShortcutSaved ? 'nn-search-star-button--active' : ''}`}
+                        className={`tps-nn-search-star-button ${isShortcutSaved ? 'tps-nn-search-star-button--active' : ''}`}
                         role="button"
                         tabIndex={0}
                         aria-label={isShortcutSaved ? strings.searchInput.removeSearchShortcut : strings.searchInput.saveSearchShortcut}
@@ -428,7 +428,7 @@ export function SearchInput({
                 )}
                 {hasQuery && (
                     <div
-                        className="nn-search-clear-button"
+                        className="tps-nn-search-clear-button"
                         role="button"
                         tabIndex={0}
                         aria-label={strings.searchInput.clearSearch}

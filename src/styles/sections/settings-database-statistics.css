@@ -5,21 +5,21 @@
    ======================================================================== */
 
 /* Container for database statistics */
-.nn-database-stats {
+.tps-nn-database-stats {
     margin-top: 30px;
     padding-top: 20px;
     border-top: 1px solid var(--background-modifier-border);
 }
 
 /* Statistics text styling */
-.nn-stats-text {
+.tps-nn-stats-text {
     font-size: var(--font-ui-smaller);
-    color: var(--nn-theme-foreground-muted);
+    color: var(--tps-nn-theme-foreground-muted);
     line-height: 1.5;
 }
 
 /* Remove default setting item chrome when statistics are displayed */
-.nn-stats-section.setting-item {
+.tps-nn-stats-section.setting-item {
     border: none;
     padding: 0;
     margin-top: 0;

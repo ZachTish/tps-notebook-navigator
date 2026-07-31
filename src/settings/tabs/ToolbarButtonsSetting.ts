@@ -61,8 +61,8 @@ export function renderToolbarButtonsSetting(
         setting.setName(strings.settings.items.toolbarButtons.name).setDesc(strings.settings.items.toolbarButtons.desc);
     });
 
-    setting.controlEl.addClass('nn-toolbar-visibility-control');
-    const gridEl = setting.controlEl.createDiv({ cls: ['nn-toolbar-visibility-grid', 'nn-toolbar-visibility-grid-scroll'] });
+    setting.controlEl.addClass('tps-nn-toolbar-visibility-control');
+    const gridEl = setting.controlEl.createDiv({ cls: ['tps-nn-toolbar-visibility-grid', 'tps-nn-toolbar-visibility-grid-scroll'] });
     const onToggle = () => {
         runAsyncAction(() => plugin.persistToolbarVisibility());
     };
@@ -116,21 +116,21 @@ function createToolbarButtonGroup<T extends string>({
 }: ToolbarButtonGroupProps<T>): void {
     buttons.forEach(button => {
         const buttonEl = gridEl.createEl('button', {
-            cls: ['nn-toolbar-visibility-toggle', 'nn-mobile-toolbar-button'],
+            cls: ['tps-nn-toolbar-visibility-toggle', 'tps-nn-mobile-toolbar-button'],
             attr: { type: 'button' }
         });
         buttonEl.setAttr('aria-pressed', state[button.id] ? 'true' : 'false');
         buttonEl.setAttr('aria-label', button.label);
         buttonEl.setAttr('title', button.label);
 
-        const iconEl = buttonEl.createSpan({ cls: 'nn-toolbar-visibility-icon' });
+        const iconEl = buttonEl.createSpan({ cls: 'tps-nn-toolbar-visibility-icon' });
         const resolvedIconId = button.iconType === 'ux' ? resolveUXIcon(interfaceIcons, button.iconId) : button.iconId;
         getIconService().renderIcon(iconEl, resolvedIconId);
 
         const applyState = () => {
             const isEnabled = Boolean(state[button.id]);
             buttonEl.classList.toggle('is-active', isEnabled);
-            buttonEl.classList.toggle('nn-mobile-toolbar-button-active', isEnabled);
+            buttonEl.classList.toggle('tps-nn-mobile-toolbar-button-active', isEnabled);
             buttonEl.setAttr('aria-pressed', isEnabled ? 'true' : 'false');
         };
 

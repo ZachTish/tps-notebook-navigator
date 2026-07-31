@@ -115,11 +115,11 @@ export const ListPaneTitleArea = React.memo(function ListPaneTitleArea({ desktop
     );
 
     return (
-        <div className="nn-list-title-area">
-            <div className="nn-list-title-content">
-                <span className="nn-list-title-text">
+        <div className="tps-nn-list-title-area">
+            <div className="tps-nn-list-title-content">
+                <span className="tps-nn-list-title-text">
                     <span
-                        className={`nn-list-title-label${selectedFolderNote ? ' nn-list-title-label--folder-note' : ''}`}
+                        className={`tps-nn-list-title-label${selectedFolderNote ? ' tps-nn-list-title-label--folder-note' : ''}`}
                         onClick={selectedFolderNote ? handleFolderNoteClick : undefined}
                         onMouseDown={selectedFolderNote ? handleFolderNoteMouseDown : undefined}
                     >

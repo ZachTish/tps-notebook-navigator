@@ -231,18 +231,18 @@ export const FolderItem = React.memo(function FolderItem({
 
     // Memoize className to avoid string concatenation on every render
     const className = useMemo(() => {
-        const classes = ['nn-navitem', 'nn-folder'];
-        if (isSelected) classes.push('nn-selected');
-        if (isExcluded) classes.push('nn-excluded');
-        if (customBackground) classes.push('nn-has-custom-background');
+        const classes = ['tps-nn-navitem', 'tps-nn-folder'];
+        if (isSelected) classes.push('tps-nn-selected');
+        if (isExcluded) classes.push('tps-nn-excluded');
+        if (customBackground) classes.push('tps-nn-has-custom-background');
         if (adjacentFilledClassName) classes.push(adjacentFilledClassName);
         return classes.join(' ');
     }, [adjacentFilledClassName, customBackground, isSelected, isExcluded]);
 
     const folderNameClassName = useMemo(() => {
-        const classes = ['nn-navitem-name'];
-        if (hasFolderNote) classes.push('nn-has-folder-note');
-        if (applyColorToName) classes.push('nn-has-custom-color');
+        const classes = ['tps-nn-navitem-name'];
+        if (hasFolderNote) classes.push('tps-nn-has-folder-note');
+        if (applyColorToName) classes.push('tps-nn-has-custom-color');
         return classes.join(' ');
     }, [applyColorToName, hasFolderNote]);
     const renameInputOptions = useMemo(
@@ -382,7 +382,7 @@ export const FolderItem = React.memo(function FolderItem({
     const isDraggable = !isMobile && !isRootFolder;
     const folderStyle: CSSPropertiesWithVars = {
         '--level': level,
-        ...(customBackground ? { '--nn-navitem-custom-bg-color': customBackground } : {})
+        ...(customBackground ? { '--tps-nn-navitem-custom-bg-color': customBackground } : {})
     };
 
     return (
@@ -416,20 +416,20 @@ export const FolderItem = React.memo(function FolderItem({
             aria-expanded={hasChildren ? isExpanded : undefined}
             aria-level={level + 1}
         >
-            <div className="nn-navitem-content">
+            <div className="tps-nn-navitem-content">
                 <IndentGuideColumns levels={indentGuideLevels} />
                 <div
-                    className={`nn-navitem-chevron ${hasChildren ? 'nn-navitem-chevron--has-children' : 'nn-navitem-chevron--no-children'}`}
+                    className={`tps-nn-navitem-chevron ${hasChildren ? 'tps-nn-navitem-chevron--has-children' : 'tps-nn-navitem-chevron--no-children'}`}
                     ref={chevronRef}
                     onClick={handleChevronClick}
                     onDoubleClick={handleChevronDoubleClick}
                     tabIndex={-1}
                 />
                 {shouldShowFolderIcon && (
-                    <span className="nn-navitem-icon" ref={iconRef} style={customColor ? { color: customColor } : undefined}></span>
+                    <span className="tps-nn-navitem-icon" ref={iconRef} style={customColor ? { color: customColor } : undefined}></span>
                 )}
                 {inlineRename && renameInputOptions ? (
-                    <InlineRenameInput {...inlineRename} {...renameInputOptions} className="nn-navitem-inline-rename" />
+                    <InlineRenameInput {...inlineRename} {...renameInputOptions} className="tps-nn-navitem-inline-rename" />
                 ) : (
                     <span
                         className={folderNameClassName}
@@ -440,9 +440,9 @@ export const FolderItem = React.memo(function FolderItem({
                         {effectiveDisplayName}
                     </span>
                 )}
-                <span className="nn-navitem-spacer nn-navitem-spacer--leader" />
+                <span className="tps-nn-navitem-spacer tps-nn-navitem-spacer--leader" />
                 {shouldDisplayCount && (
-                    <span ref={noteCountRef} className="nn-navitem-count">
+                    <span ref={noteCountRef} className="tps-nn-navitem-count">
                         {noteCountDisplay.label}
                     </span>
                 )}

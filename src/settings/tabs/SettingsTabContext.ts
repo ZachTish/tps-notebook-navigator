@@ -21,6 +21,7 @@ import type NotebookNavigatorPlugin from '../../main';
 
 export type SettingsTabId =
     | 'general'
+    | 'tps-integration'
     | 'vault-filters'
     | 'appearance-behavior'
     | 'navigation-pane'

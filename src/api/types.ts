@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { MenuItem, TFile, TFolder } from 'obsidian';
+import { App, MenuItem, TFile, TFolder } from 'obsidian';
 
 /**
  * Notebook Navigator Public API Types
@@ -58,6 +58,62 @@ export type IconValue = string;
  * Aggregate tag collection ids used by the navigator for virtual tag rows.
  */
 export type TagCollectionId = '__tagged__' | '__untagged__';
+
+// ============================================================================
+// TRANSIENT ROW PROVIDERS (TPS FORK)
+// ============================================================================
+
+export type NavigatorRowSelectionType = 'file' | 'folder' | 'tag' | 'property';
+export type NavigatorRowProviderOptions = Readonly<Record<string, unknown>>;
+
+export interface NavigatorRowScope {
+    /** Exact markdown paths represented by file rows in the current list. */
+    readonly visibleFilePaths: readonly string[];
+    readonly selectionType: NavigatorRowSelectionType | null;
+    readonly selectedFolderPath: string | null;
+    readonly selectedTag: string | null;
+    readonly selectedProperty: string | null;
+}
+
+export interface NavigatorRowProviderContext {
+    readonly app: App;
+    readonly scope: NavigatorRowScope;
+}
+
+export interface NavigatorRowCheckboxIndicator {
+    readonly type: 'checkbox';
+    readonly checked: boolean;
+    /** Source checkbox marker when a provider exposes one. */
+    readonly marker?: string;
+    /** Optional mutation. Omit it to render a display-only checkbox. */
+    readonly onChange?: (checked: boolean) => void | Promise<void>;
+}
+
+export interface NavigatorRowDefinition {
+    /** Provider-local transient ID. */
+    readonly id: string;
+    /** Namespaced presentation kind, such as `example/task`. */
+    readonly kind: string;
+    readonly label: string;
+    readonly secondaryLabel?: string;
+    readonly tooltip?: string;
+    /** Must exactly match one of `scope.visibleFilePaths`. */
+    readonly sourcePath: string;
+    /** Optional zero-based source line. */
+    readonly sourceLineNumber?: number;
+    readonly indicator?: NavigatorRowCheckboxIndicator;
+    readonly activate?: () => void | Promise<void>;
+}
+
+export interface NavigatorRowProvider {
+    /** Stable namespaced ID in `vendor/name` form. */
+    readonly id: string;
+    getRows(
+        context: NavigatorRowProviderContext,
+        options: NavigatorRowProviderOptions
+    ): Promise<readonly NavigatorRowDefinition[]> | readonly NavigatorRowDefinition[];
+    subscribe?(context: NavigatorRowProviderContext, options: NavigatorRowProviderOptions, invalidate: () => void): (() => void) | void;
+}
 
 // ============================================================================
 // METADATA TYPES

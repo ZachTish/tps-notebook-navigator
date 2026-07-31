@@ -504,8 +504,8 @@ describe('useFileItemPills', () => {
 
         expect(markup).toContain('GitHub issue');
         expect(markup).not.toContain('https://github.com/johansan/notebook-navigator/issues/935');
-        expect(markup).toContain('nn-file-property-link');
-        expect(markup).toContain('nn-clickable-tag');
+        expect(markup).toContain('tps-nn-file-property-link');
+        expect(markup).toContain('tps-nn-clickable-tag');
         expect(markup).toContain('data-icon-id="external-link"');
     });
 
@@ -554,7 +554,7 @@ describe('useFileItemPills', () => {
             ]
         });
 
-        expect(markup).toContain('<mark class="nn-search-highlight">Waiting</mark> for review');
+        expect(markup).toContain('<mark class="tps-nn-search-highlight">Waiting</mark> for review');
         expect(markup).toContain('data-property-search-evidence="[]"');
     });
 
@@ -583,7 +583,7 @@ describe('useFileItemPills', () => {
 
         expect(markup).toContain('&quot;propertyKey&quot;:&quot;status&quot;');
         expect(markup).toContain('&quot;displayValue&quot;:&quot;done&quot;');
-        expect(markup).not.toContain('class="nn-file-tag nn-file-property');
+        expect(markup).not.toContain('class="tps-nn-file-tag tps-nn-file-property');
     });
 
     it('returns key evidence for a visible property matched by a key-only prefix', () => {
@@ -959,8 +959,8 @@ describe('useFileItemPills', () => {
         });
 
         expect(markup).toContain('https://github.com/johansan/notebook-navigator/issues/935');
-        expect(markup).toContain('nn-file-property-link');
-        expect(markup).toContain('nn-clickable-tag');
+        expect(markup).toContain('tps-nn-file-property-link');
+        expect(markup).toContain('tps-nn-clickable-tag');
         expect(markup).toContain('data-icon-id="external-link"');
     });
 
@@ -987,8 +987,8 @@ describe('useFileItemPills', () => {
         });
 
         expect(markup).toContain('zotero://open-pdf/library/items/A65QUPQU');
-        expect(markup).toContain('nn-file-property-link');
-        expect(markup).toContain('nn-clickable-tag');
+        expect(markup).toContain('tps-nn-file-property-link');
+        expect(markup).toContain('tps-nn-clickable-tag');
         expect(markup).toContain('data-icon-id="external-link"');
     });
 
@@ -1016,8 +1016,8 @@ describe('useFileItemPills', () => {
 
         expect(markup).toContain('Open in Zotero');
         expect(markup).not.toContain('zotero://open-pdf/library/items/A65QUPQU');
-        expect(markup).toContain('nn-file-property-link');
-        expect(markup).toContain('nn-clickable-tag');
+        expect(markup).toContain('tps-nn-file-property-link');
+        expect(markup).toContain('tps-nn-clickable-tag');
         expect(markup).toContain('data-icon-id="external-link"');
     });
 
@@ -1044,7 +1044,7 @@ describe('useFileItemPills', () => {
         });
 
         expect(markup).toContain('Run script');
-        expect(markup).not.toContain('nn-file-property-link');
+        expect(markup).not.toContain('tps-nn-file-property-link');
         expect(markup).not.toContain('data-icon-id="external-link"');
     });
 
@@ -1071,8 +1071,8 @@ describe('useFileItemPills', () => {
         });
 
         expect(markup).toContain('Run script');
-        expect(markup).not.toContain('nn-clickable-tag');
-        expect(markup).not.toContain('nn-file-property-link');
+        expect(markup).not.toContain('tps-nn-clickable-tag');
+        expect(markup).not.toContain('tps-nn-file-property-link');
         expect(markup).not.toContain('role="button"');
         expect(markup).not.toContain('tabindex="0"');
     });
@@ -1100,8 +1100,8 @@ describe('useFileItemPills', () => {
         });
 
         expect(markup).toContain('Open file');
-        expect(markup).toContain('nn-clickable-tag');
-        expect(markup).toContain('nn-file-property-link');
+        expect(markup).toContain('tps-nn-clickable-tag');
+        expect(markup).toContain('tps-nn-file-property-link');
         expect(markup).toContain('data-icon-id="external-link"');
     });
 
@@ -1128,8 +1128,8 @@ describe('useFileItemPills', () => {
         });
 
         expect(markup).toContain('file:///Users/example/Documents/reference.pdf');
-        expect(markup).toContain('nn-clickable-tag');
-        expect(markup).toContain('nn-file-property-link');
+        expect(markup).toContain('tps-nn-clickable-tag');
+        expect(markup).toContain('tps-nn-file-property-link');
         expect(markup).toContain('data-icon-id="external-link"');
     });
 
@@ -1156,8 +1156,8 @@ describe('useFileItemPills', () => {
         });
 
         expect(markup).toContain('Email author');
-        expect(markup).toContain('nn-clickable-tag');
-        expect(markup).toContain('nn-file-property-link');
+        expect(markup).toContain('tps-nn-clickable-tag');
+        expect(markup).toContain('tps-nn-file-property-link');
         expect(markup).toContain('data-icon-id="external-link"');
     });
 
@@ -1184,8 +1184,8 @@ describe('useFileItemPills', () => {
         });
 
         expect(markup).toContain('Tech Insights 2026 Week 11');
-        expect(markup).not.toContain('nn-file-property-link');
-        expect(markup).not.toContain('nn-clickable-tag');
+        expect(markup).not.toContain('tps-nn-file-property-link');
+        expect(markup).not.toContain('tps-nn-clickable-tag');
     });
 
     it('uses the external link icon instead of custom property icons for external links', () => {

@@ -86,7 +86,7 @@ export class PropertyNodeSuggestModal extends BaseSuggestModal<PropertyNodeSugge
     }
 
     protected getItemClass(): string {
-        return 'nn-property-suggest-item';
+        return 'tps-nn-property-suggest-item';
     }
 
     protected renderAdditionalContent(item: PropertyNodeSuggestion, itemEl: HTMLElement): void {
@@ -96,7 +96,7 @@ export class PropertyNodeSuggestModal extends BaseSuggestModal<PropertyNodeSugge
 
         itemEl.createSpan({
             text: ` (${item.noteCount.toLocaleString()})`,
-            cls: 'nn-tag-suggest-count'
+            cls: 'tps-nn-tag-suggest-count'
         });
     }
 }

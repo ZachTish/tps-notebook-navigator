@@ -17,6 +17,7 @@
  */
 
 import type { App, Plugin, View, WorkspaceLeaf, TFile } from 'obsidian';
+import { TPS_NOTEBOOK_NAVIGATOR_PROPERTY_DRAG_MIME, TPS_NOTEBOOK_NAVIGATOR_TAG_DRAG_MIME } from '../constants/tpsIdentity';
 
 declare module 'obsidian' {
     interface MenuItem {
@@ -25,9 +26,9 @@ declare module 'obsidian' {
 }
 
 /** MIME type identifier for tag drag-and-drop operations */
-export const TAG_DRAG_MIME = 'application/x-notebook-navigator-tag';
+export const TAG_DRAG_MIME = TPS_NOTEBOOK_NAVIGATOR_TAG_DRAG_MIME;
 /** MIME type identifier for property drag-and-drop operations */
-export const PROPERTY_DRAG_MIME = 'application/x-notebook-navigator-property';
+export const PROPERTY_DRAG_MIME = TPS_NOTEBOOK_NAVIGATOR_PROPERTY_DRAG_MIME;
 
 /**
  * Extended Obsidian type definitions for internal/undocumented APIs

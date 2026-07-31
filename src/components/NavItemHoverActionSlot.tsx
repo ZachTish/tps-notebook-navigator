@@ -32,8 +32,8 @@ export function NavItemHoverActionSlot({ label, actionLabel, icon, onClick, rese
     const shouldRenderPlaceholder = !shouldRenderLabel && reserveSpaceWhenHidden;
     const slotClassName =
         !shouldRenderLabel && !reserveSpaceWhenHidden
-            ? 'nn-navitem-hover-action-slot nn-navitem-hover-action-slot--overlay'
-            : 'nn-navitem-hover-action-slot';
+            ? 'tps-nn-navitem-hover-action-slot tps-nn-navitem-hover-action-slot--overlay'
+            : 'tps-nn-navitem-hover-action-slot';
 
     const handlePointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
         event.preventDefault();
@@ -57,13 +57,13 @@ export function NavItemHoverActionSlot({ label, actionLabel, icon, onClick, rese
     return (
         <span className={slotClassName}>
             {shouldRenderLabel ? (
-                <span className="nn-navitem-count nn-navitem-hover-action-count">{label}</span>
+                <span className="tps-nn-navitem-count tps-nn-navitem-hover-action-count">{label}</span>
             ) : shouldRenderPlaceholder ? (
-                <span className="nn-navitem-count nn-navitem-hover-action-placeholder" aria-hidden={true} />
+                <span className="tps-nn-navitem-count tps-nn-navitem-hover-action-placeholder" aria-hidden={true} />
             ) : null}
             <button
                 type="button"
-                className="nn-icon-button nn-navitem-hover-action-button"
+                className="tps-nn-icon-button tps-nn-navitem-hover-action-button"
                 aria-label={actionLabel}
                 tabIndex={-1}
                 onPointerDown={handlePointerDown}

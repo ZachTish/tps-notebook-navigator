@@ -196,21 +196,21 @@ export const VirtualFolderComponent = React.memo(function VirtualFolderComponent
 
     // Build CSS class name with selection state
     const className = useMemo(() => {
-        const classes = ['nn-navitem'];
+        const classes = ['tps-nn-navitem'];
         if (virtualFolder.id === SHORTCUTS_VIRTUAL_FOLDER_ID) {
-            classes.push('nn-shortcut-header-item');
+            classes.push('tps-nn-shortcut-header-item');
         }
         if (virtualFolder.id === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID) {
-            classes.push('nn-properties-header-item');
+            classes.push('tps-nn-properties-header-item');
         }
         if (isSelected) {
-            classes.push('nn-selected');
+            classes.push('tps-nn-selected');
         }
         if (backgroundColor) {
-            classes.push('nn-has-custom-background');
+            classes.push('tps-nn-has-custom-background');
         }
         if (searchMatch) {
-            classes.push('nn-has-search-match');
+            classes.push('tps-nn-has-search-match');
         }
         if (adjacentFilledClassName) {
             classes.push(adjacentFilledClassName);
@@ -218,11 +218,11 @@ export const VirtualFolderComponent = React.memo(function VirtualFolderComponent
         return classes.join(' ');
     }, [adjacentFilledClassName, backgroundColor, isSelected, searchMatch, virtualFolder.id]);
 
-    const contentClassName = useMemo(() => buildSearchMatchContentClass(['nn-navitem-content'], searchMatch), [searchMatch]);
+    const contentClassName = useMemo(() => buildSearchMatchContentClass(['tps-nn-navitem-content'], searchMatch), [searchMatch]);
     const virtualFolderNameClassName = useMemo(() => {
-        const classes = ['nn-navitem-name'];
+        const classes = ['tps-nn-navitem-name'];
         if (applyColorToName && color) {
-            classes.push('nn-has-custom-color');
+            classes.push('tps-nn-has-custom-color');
         }
         return classes.join(' ');
     }, [applyColorToName, color]);
@@ -295,7 +295,7 @@ export const VirtualFolderComponent = React.memo(function VirtualFolderComponent
 
     const virtualFolderStyle: CSSPropertiesWithVars = {
         '--level': level,
-        ...(backgroundColor ? { '--nn-navitem-custom-bg-color': backgroundColor } : {})
+        ...(backgroundColor ? { '--tps-nn-navitem-custom-bg-color': backgroundColor } : {})
     };
 
     return (
@@ -323,18 +323,18 @@ export const VirtualFolderComponent = React.memo(function VirtualFolderComponent
             <div className={contentClassName} onClick={handleContentClick} onDoubleClick={handleDoubleClick}>
                 <IndentGuideColumns levels={indentGuideLevels} />
                 <div
-                    className={`nn-navitem-chevron ${hasChildren ? 'nn-navitem-chevron--has-children' : 'nn-navitem-chevron--no-children'}`}
+                    className={`tps-nn-navitem-chevron ${hasChildren ? 'tps-nn-navitem-chevron--has-children' : 'tps-nn-navitem-chevron--no-children'}`}
                     ref={chevronRef}
                     onClick={handleChevronClick}
                     onDoubleClick={handleChevronDoubleClick}
                     tabIndex={-1}
                 />
-                {virtualFolder.icon && <span className="nn-navitem-icon" ref={iconRef} style={color ? { color } : undefined} />}
+                {virtualFolder.icon && <span className="tps-nn-navitem-icon" ref={iconRef} style={color ? { color } : undefined} />}
                 <span className={virtualFolderNameClassName} style={applyColorToName ? { color } : undefined}>
                     {virtualFolder.name}
                 </span>
-                <span className={`nn-navitem-spacer${showCountLeader ? ' nn-navitem-spacer--leader' : ''}`} />
-                {shouldRenderCountBadge && noteCountDisplay && <span className="nn-navitem-count">{noteCountDisplay.label}</span>}
+                <span className={`tps-nn-navitem-spacer${showCountLeader ? ' tps-nn-navitem-spacer--leader' : ''}`} />
+                {shouldRenderCountBadge && noteCountDisplay && <span className="tps-nn-navitem-count">{noteCountDisplay.label}</span>}
                 {trailingAction && (
                     <NavItemHoverActionSlot
                         label={trailingActionLabel}

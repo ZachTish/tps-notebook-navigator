@@ -46,6 +46,8 @@ import {
     type SettingSyncMode,
     type SyncModeSettingId,
     type TagSortOrder,
+    TPS_GCM_TASK_ROWS_PER_NOTE_MAX,
+    TPS_GCM_TASK_ROWS_PER_NOTE_MIN,
     type VaultProfile,
     isAlphaSortOrder,
     isCalendarMonthHeadingFormat,
@@ -543,6 +545,20 @@ export class PluginSettingsController {
             this.currentSettings.calendarEnabled,
             DEFAULT_SETTINGS.calendarEnabled
         );
+
+        this.currentSettings.tpsGcmTaskRowsEnabled = this.sanitizeBooleanSetting(
+            this.currentSettings.tpsGcmTaskRowsEnabled,
+            DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled
+        );
+        this.currentSettings.tpsGcmTaskRowsIncludeCompleted = this.sanitizeBooleanSetting(
+            this.currentSettings.tpsGcmTaskRowsIncludeCompleted,
+            DEFAULT_SETTINGS.tpsGcmTaskRowsIncludeCompleted
+        );
+        this.currentSettings.tpsGcmTaskRowsPerNote = this.sanitizeBoundedIntegerSetting(this.currentSettings.tpsGcmTaskRowsPerNote, {
+            min: TPS_GCM_TASK_ROWS_PER_NOTE_MIN,
+            max: TPS_GCM_TASK_ROWS_PER_NOTE_MAX,
+            fallback: DEFAULT_SETTINGS.tpsGcmTaskRowsPerNote
+        });
 
         if (!isPropertySortSecondaryOption(this.currentSettings.propertySortSecondary)) {
             this.currentSettings.propertySortSecondary = DEFAULT_SETTINGS.propertySortSecondary;

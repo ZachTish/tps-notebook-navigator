@@ -50,32 +50,32 @@
  * WHAT WE COMPENSATE:
  *
  * 1. Font-size variables (via JavaScript inline styles):
- *    - --nn-file-name-size, --nn-file-small-size, etc.
+ *    - --tps-nn-file-name-size, --tps-nn-file-small-size, etc.
  *    - Set on outer container, cascades to all descendants
  *
  * 2. Line-height variables (via CSS calc):
- *    - --nn-file-title-line-height, --nn-file-multiline-text-line-height, etc.
- *    - Must be done in CSS because .nn-mobile class redefines these on inner element
- *    - Uses: calc(21px * var(--nn-android-font-scale-reciprocal, 1))
+ *    - --tps-nn-file-title-line-height, --tps-nn-file-multiline-text-line-height, etc.
+ *    - Must be done in CSS because .tps-nn-mobile class redefines these on inner element
+ *    - Uses: calc(21px * var(--tps-nn-android-font-scale-reciprocal, 1))
  *
  * 3. Fixed multi-line row heights (via CSS calc):
- *    - height/min-height for .nn-file-name and .nn-file-preview
+ *    - height/min-height for .tps-nn-file-name and .tps-nn-file-preview
  *    - These use line-height vars which are pre-compensated, so we multiply by
  *      scale to get the fixed row height (which Android won't scale)
- *    - Uses: calc(var(--line-height) * rows * var(--nn-android-font-scale, 1))
+ *    - Uses: calc(var(--line-height) * rows * var(--tps-nn-android-font-scale, 1))
  *
  * 4. Text elements with hardcoded sizes (via CSS):
- *    - .nn-navitem-count (note counts)
- *    - .nn-root-reorder-hint (reorder panel text)
+ *    - .tps-nn-navitem-count (note counts)
+ *    - .tps-nn-root-reorder-hint (reorder panel text)
  *
  * 5. Emoji and webfont icons (via CSS):
- *    - .nn-emoji-icon and .nn-iconfont classes
+ *    - .tps-nn-emoji-icon and .tps-nn-iconfont classes
  *    - These use font-size which Android scales
  *    - Lucide SVG icons are NOT compensated (they use width/height)
  *
  * CSS VARIABLE ARCHITECTURE:
- * - --nn-android-font-scale: The detected scale factor (e.g., 1.8)
- * - --nn-android-font-scale-reciprocal: calc(1 / scale) for multiplication in CSS
+ * - --tps-nn-android-font-scale: The detected scale factor (e.g., 1.8)
+ * - --tps-nn-android-font-scale-reciprocal: calc(1 / scale) for multiplication in CSS
  *   (some browsers handle calc(x * reciprocal) better than calc(x / var))
  *
  * FILES INVOLVED:
@@ -92,15 +92,15 @@ const SCALE_DETECTION_TOLERANCE = 0.02;
 
 /** Font size variables to compensate (values read from CSS custom properties) */
 const ANDROID_FONT_SIZE_VARIABLES = [
-    '--nn-file-name-size',
-    '--nn-file-name-size-mobile',
-    '--nn-file-small-size',
-    '--nn-file-small-size-mobile',
-    '--nn-list-title-font-size',
-    '--nn-desktop-header-font-size',
-    '--nn-mobile-header-font-size',
-    '--nn-compact-font-size',
-    '--nn-compact-font-size-mobile'
+    '--tps-nn-file-name-size',
+    '--tps-nn-file-name-size-mobile',
+    '--tps-nn-file-small-size',
+    '--tps-nn-file-small-size-mobile',
+    '--tps-nn-list-title-font-size',
+    '--tps-nn-desktop-header-font-size',
+    '--tps-nn-mobile-header-font-size',
+    '--tps-nn-compact-font-size',
+    '--tps-nn-compact-font-size-mobile'
 ] as const;
 
 type FontSizeVariableName = (typeof ANDROID_FONT_SIZE_VARIABLES)[number];
@@ -138,7 +138,7 @@ function measureAndroidFontData(container: HTMLElement): {
     const probe = createMeasurementProbe(container);
     try {
         // Mobile class ensures mobile custom properties are active on the probe
-        probe.classList.add('nn-mobile');
+        probe.classList.add('tps-nn-mobile');
         probe.style.fontSize = `${EXPECTED_FONT_SIZE}px`;
         const computedStyle = getComputedStyle(probe);
         const rectHeight = probe.getBoundingClientRect().height;
@@ -168,7 +168,7 @@ function measureAndroidFontData(container: HTMLElement): {
 }
 
 export function clearAndroidFontCompensation(container: HTMLElement): void {
-    container.style.removeProperty('--nn-android-font-scale');
+    container.style.removeProperty('--tps-nn-android-font-scale');
     for (const variable of ANDROID_FONT_SIZE_VARIABLES) {
         container.style.removeProperty(variable);
     }
@@ -176,7 +176,7 @@ export function clearAndroidFontCompensation(container: HTMLElement): void {
 
 /**
  * Line height variables are compensated in CSS rather than JavaScript because
- * the .nn-mobile class (on an inner React element) redefines these variables
+ * the .tps-nn-mobile class (on an inner React element) redefines these variables
  * and would override any inline styles set on the outer container.
  * See styles.css "Android textZoom Compensation" section.
  */
@@ -197,7 +197,7 @@ export function applyAndroidFontCompensation(container: HTMLElement): void {
     }
 
     // Store the scale factor for use by dynamic font size calculations
-    container.style.setProperty('--nn-android-font-scale', String(roundedScaleFactor));
+    container.style.setProperty('--tps-nn-android-font-scale', String(roundedScaleFactor));
 
     // Override font-size variables with compensated values
     // If system scales by 1.8x, we set 14px / 1.8 = 7.78px so it renders as 14px
@@ -217,7 +217,7 @@ export function getAndroidFontScale(container: Element | null): number {
     if (!(container instanceof HTMLElement)) {
         return 1;
     }
-    const value = container.style.getPropertyValue('--nn-android-font-scale');
+    const value = container.style.getPropertyValue('--tps-nn-android-font-scale');
     if (!value) {
         return 1;
     }
@@ -227,9 +227,9 @@ export function getAndroidFontScale(container: Element | null): number {
 
 /** Copies Android font compensation CSS variables from source element to target element */
 function propagateAndroidFontCompensation(source: HTMLElement, target: HTMLElement): void {
-    const scaleValue = source.style.getPropertyValue('--nn-android-font-scale');
+    const scaleValue = source.style.getPropertyValue('--tps-nn-android-font-scale');
     if (scaleValue) {
-        target.style.setProperty('--nn-android-font-scale', scaleValue.trim());
+        target.style.setProperty('--tps-nn-android-font-scale', scaleValue.trim());
     }
     for (const variable of ANDROID_FONT_SIZE_VARIABLES) {
         const value = source.style.getPropertyValue(variable);
@@ -241,7 +241,7 @@ function propagateAndroidFontCompensation(source: HTMLElement, target: HTMLEleme
 
 /** Propagates font compensation variables from container to the mobile split pane root */
 export function propagateAndroidFontCompensationToMobileRoot(container: HTMLElement): void {
-    const mobileRoot = container.querySelector('.nn-split-container.nn-mobile');
+    const mobileRoot = container.querySelector('.tps-nn-split-container.tps-nn-mobile');
     if (mobileRoot instanceof HTMLElement) {
         propagateAndroidFontCompensation(container, mobileRoot);
     }

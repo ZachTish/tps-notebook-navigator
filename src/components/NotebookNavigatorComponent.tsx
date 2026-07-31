@@ -56,6 +56,7 @@ import { deleteSelectedFiles } from '../utils/deleteOperations';
 import { calculateCompactListMetrics } from '../utils/listPaneMetrics';
 import { getNavigationPaneSizing } from '../utils/paneSizing';
 import { getAndroidFontScale } from '../utils/androidFontScale';
+import { TPS_NOTEBOOK_NAVIGATOR_ROOT_CLASS } from '../constants/tpsIdentity';
 import { getBackgroundClasses, isDualPaneSupported, supportsKeyboardInteractions } from '../utils/paneLayout';
 import { confirmRemoveAllTagsFromFiles, openAddTagToFilesModal, removeTagFromFilesWithPrompt } from '../utils/tagModalHelpers';
 import { normalizeTagPath } from '../utils/tagUtils';
@@ -432,7 +433,7 @@ export const NotebookNavigatorComponent = React.memo(
         }, [uiDispatch]);
 
         // Determine CSS classes
-        const containerClasses = ['nn-split-container'];
+        const containerClasses = ['tps-nn-split-container'];
 
         const hasInitializedSinglePane = useRef(false);
         const preferredSinglePaneView = useRef<'navigation' | 'files'>(settings.startView === 'navigation' ? 'navigation' : 'files');
@@ -1337,29 +1338,29 @@ export const NotebookNavigatorComponent = React.memo(
 
         // Add platform class and background mode classes
         if (isMobile) {
-            containerClasses.push('nn-mobile');
+            containerClasses.push('tps-nn-mobile');
         } else {
-            containerClasses.push('nn-desktop');
+            containerClasses.push('tps-nn-desktop');
             // Apply desktop background mode (separate, primary, or secondary)
             containerClasses.push(...getBackgroundClasses(desktopBackground));
         }
 
         // Add layout mode class
         if (uiState.singlePane) {
-            containerClasses.push('nn-single-pane');
+            containerClasses.push('tps-nn-single-pane');
             containerClasses.push(uiState.currentSinglePaneView === 'navigation' ? 'show-navigation' : 'show-files');
         } else {
-            containerClasses.push('nn-dual-pane');
-            containerClasses.push(`nn-orientation-${orientation}`);
+            containerClasses.push('tps-nn-dual-pane');
+            containerClasses.push(`tps-nn-orientation-${orientation}`);
         }
         if (uiState.singlePane && suppressPaneTransitions) {
-            containerClasses.push('nn-suppress-pane-transitions');
+            containerClasses.push('tps-nn-suppress-pane-transitions');
         }
         if (uiState.singlePane && isPaneTransitioning) {
-            containerClasses.push('nn-pane-transitioning');
+            containerClasses.push('tps-nn-pane-transitioning');
         }
         if (isResizing) {
-            containerClasses.push('nn-resizing');
+            containerClasses.push('tps-nn-resizing');
         }
 
         // Apply dynamic CSS variables for item heights and font size
@@ -1371,7 +1372,7 @@ export const NotebookNavigatorComponent = React.memo(
                 const scaleTextWithHeight = settings.navItemHeightScaleText;
 
                 // Get Android font scale for compensation (1 if not on Android or no scaling)
-                const navigatorContainer = containerRef.current.closest('.notebook-navigator');
+                const navigatorContainer = containerRef.current.closest(`.${TPS_NOTEBOOK_NAVIGATOR_ROOT_CLASS}`);
                 const androidFontScale = getAndroidFontScale(navigatorContainer);
 
                 // Calculate font sizes based on item height (default 28px)
@@ -1395,17 +1396,20 @@ export const NotebookNavigatorComponent = React.memo(
                 const compensatedFontSize = fontSize / androidFontScale;
                 const compensatedMobileFontSize = mobileFontSize / androidFontScale;
 
-                containerRef.current.style.setProperty('--nn-setting-nav-item-height', `${navItemHeight}px`);
-                containerRef.current.style.setProperty('--nn-setting-nav-item-height-mobile', `${mobileNavItemHeight}px`);
-                containerRef.current.style.setProperty('--nn-setting-nav-font-size', `${compensatedFontSize}px`);
-                containerRef.current.style.setProperty('--nn-setting-nav-font-size-mobile', `${compensatedMobileFontSize}px`);
-                containerRef.current.style.setProperty('--nn-setting-nav-indent', `${settings.navIndent}px`);
-                containerRef.current.style.setProperty('--nn-nav-root-spacing', `${settings.rootLevelSpacing}px`);
+                containerRef.current.style.setProperty('--tps-nn-setting-nav-item-height', `${navItemHeight}px`);
+                containerRef.current.style.setProperty('--tps-nn-setting-nav-item-height-mobile', `${mobileNavItemHeight}px`);
+                containerRef.current.style.setProperty('--tps-nn-setting-nav-font-size', `${compensatedFontSize}px`);
+                containerRef.current.style.setProperty('--tps-nn-setting-nav-font-size-mobile', `${compensatedMobileFontSize}px`);
+                containerRef.current.style.setProperty('--tps-nn-setting-nav-indent', `${settings.navIndent}px`);
+                containerRef.current.style.setProperty('--tps-nn-nav-root-spacing', `${settings.rootLevelSpacing}px`);
 
                 const featureImageDisplayMeasurements = getFeatureImageDisplayMeasurements(settings.featureImageSize);
                 // This is only the rendered image ceiling.
                 // The image still scales with the row height and content layout until it reaches this max.
-                containerRef.current.style.setProperty('--nn-file-thumbnail-max-size', `${featureImageDisplayMeasurements.listMaxSize}px`);
+                containerRef.current.style.setProperty(
+                    '--tps-nn-file-thumbnail-max-size',
+                    `${featureImageDisplayMeasurements.listMaxSize}px`
+                );
 
                 // Calculate compact list padding and font sizes based on configured item height
                 const { titleLineHeight } = getListPaneMeasurements(isMobile);
@@ -1420,10 +1424,13 @@ export const NotebookNavigatorComponent = React.memo(
                 const compensatedCompactMobileFontSize = compactMetrics.mobileFontSize / androidFontScale;
 
                 // Apply compact list metrics to CSS custom properties
-                containerRef.current.style.setProperty('--nn-file-padding-vertical-compact', `${compactMetrics.desktopPadding}px`);
-                containerRef.current.style.setProperty('--nn-file-padding-vertical-compact-mobile', `${compactMetrics.mobilePadding}px`);
-                containerRef.current.style.setProperty('--nn-compact-font-size', `${compensatedCompactFontSize}px`);
-                containerRef.current.style.setProperty('--nn-compact-font-size-mobile', `${compensatedCompactMobileFontSize}px`);
+                containerRef.current.style.setProperty('--tps-nn-file-padding-vertical-compact', `${compactMetrics.desktopPadding}px`);
+                containerRef.current.style.setProperty(
+                    '--tps-nn-file-padding-vertical-compact-mobile',
+                    `${compactMetrics.mobilePadding}px`
+                );
+                containerRef.current.style.setProperty('--tps-nn-compact-font-size', `${compensatedCompactFontSize}px`);
+                containerRef.current.style.setProperty('--tps-nn-compact-font-size-mobile', `${compensatedCompactMobileFontSize}px`);
             }
         }, [
             settings.navItemHeight,
@@ -1440,7 +1447,7 @@ export const NotebookNavigatorComponent = React.memo(
             if (!containerRef.current) {
                 return;
             }
-            containerRef.current.style.setProperty('--nn-pane-transition-duration', `${settings.paneTransitionDuration}ms`);
+            containerRef.current.style.setProperty('--tps-nn-pane-transition-duration', `${settings.paneTransitionDuration}ms`);
         }, [containerRef, settings.paneTransitionDuration]);
 
         // Compute navigation pane style based on orientation and single pane mode
@@ -1506,7 +1513,7 @@ export const NotebookNavigatorComponent = React.memo(
         );
 
         return (
-            <div className="nn-scale-wrapper" data-ui-scale={scaleWrapperDataAttr} style={scaleWrapperStyle}>
+            <div className="tps-nn-scale-wrapper" data-ui-scale={scaleWrapperDataAttr} style={scaleWrapperStyle}>
                 <div
                     ref={containerCallbackRef}
                     className={containerClasses.join(' ')}
@@ -1562,7 +1569,7 @@ export const NotebookNavigatorComponent = React.memo(
                         resizeHandleProps={!uiState.singlePane ? resizeHandleProps : undefined}
                     />
                     {shouldRenderSinglePaneCalendar ? (
-                        <div className="nn-single-pane-calendar">
+                        <div className="tps-nn-single-pane-calendar">
                             <Calendar
                                 onWeekCountChange={handleSinglePaneCalendarWeekCountChange}
                                 onAddDateFilter={handleModifySearchWithDateFilter}

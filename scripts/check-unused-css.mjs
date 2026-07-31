@@ -41,7 +41,7 @@ Options:
   -h, --help              Show this help message.
 
 Allowlist:
-  Add a comment containing "unused-css keep nn-class --nn-variable" to keep intentional dynamic usage.`);
+  Add a comment containing "unused-css keep tps-nn-class --tps-nn-variable" to keep intentional dynamic usage.`);
 }
 
 function parseArgs(argv) {
@@ -289,7 +289,7 @@ async function collectFilesRecursive(rootDir, predicate) {
 }
 
 function isPluginClassName(className) {
-    return className.startsWith('nn-') || className === 'notebook-navigator' || className.startsWith('notebook-navigator-');
+    return className.startsWith('tps-nn-') || className === 'tps-notebook-navigator' || className.startsWith('tps-notebook-navigator-');
 }
 
 function addTokensFromText(text, tokenSet, varSet) {
@@ -448,7 +448,7 @@ async function analyzeUnusedCss(options) {
 
     const usedVars = new Set(usedVarsFromCss);
     for (const id of settingsIds) {
-        if (id.startsWith('nn-')) {
+        if (id.startsWith('tps-nn-')) {
             usedVars.add(`--${id}`);
         }
     }
@@ -470,7 +470,7 @@ async function analyzeUnusedCss(options) {
     }
 
     const pluginClassesDefined = [...definedClasses].filter(name => isPluginClassName(name)).sort((a, b) => a.localeCompare(b));
-    const pluginVarsDefined = [...definedVars].filter(name => name.startsWith('--nn-')).sort((a, b) => a.localeCompare(b));
+    const pluginVarsDefined = [...definedVars].filter(name => name.startsWith('--tps-nn-')).sort((a, b) => a.localeCompare(b));
     const usedPluginClasses = new Set(pluginClassesDefined.filter(name => codeTokens.has(name)));
 
     for (const className of keepTokens.classes) {
@@ -481,7 +481,7 @@ async function analyzeUnusedCss(options) {
         if (!token.endsWith('-')) {
             return false;
         }
-        if (!(token.startsWith('nn-') || token.startsWith('notebook-navigator-'))) {
+        if (!(token.startsWith('tps-nn-') || token.startsWith('tps-notebook-navigator-'))) {
             return false;
         }
         return token.length > 6;

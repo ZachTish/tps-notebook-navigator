@@ -580,6 +580,11 @@ export interface VaultProfile {
     navRainbow: NavRainbowSettings;
 }
 
+/** Limits for the optional GCM task rows rendered beneath each note. */
+export const TPS_GCM_TASK_ROWS_PER_NOTE_MIN = 1;
+export const TPS_GCM_TASK_ROWS_PER_NOTE_MAX = 50;
+export const TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT = 5;
+
 /**
  * Plugin settings interface defining all configurable options
  * Settings are organized by tab for easier maintenance
@@ -589,6 +594,11 @@ export interface NotebookNavigatorSettings {
     vaultProfile: string;
     vaultTitle: VaultTitleOption;
     syncModes: Record<SyncModeSettingId, SettingSyncMode>;
+
+    // TPS integration
+    tpsGcmTaskRowsEnabled: boolean;
+    tpsGcmTaskRowsIncludeCompleted: boolean;
+    tpsGcmTaskRowsPerNote: number;
 
     // General tab - Behavior
     createNewNotesInNewTab: boolean;

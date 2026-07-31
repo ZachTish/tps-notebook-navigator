@@ -316,7 +316,7 @@ export abstract class BaseFontIconProvider implements IconProvider {
     }
 
     private renderLoadedIcon(container: HTMLElement, unicode: string, size: number | undefined): void {
-        container.addClass('nn-iconfont');
+        container.addClass('tps-nn-iconfont');
         container.addClass(this.getCssClass());
         container.setText(this.unicodeToGlyph(unicode));
 

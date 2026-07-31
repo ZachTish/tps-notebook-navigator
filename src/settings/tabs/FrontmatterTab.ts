@@ -284,7 +284,7 @@ export function createFrontmatterSettingDefinitions(context: SettingsTabContext)
                                 showNotice(strings.settings.items.frontmatterDateFormat.help, { timeout: TIMEOUTS.NOTICE_HELP });
                             })
                     );
-                    setting.controlEl.addClass('nn-setting-wide-input');
+                    setting.controlEl.addClass('tps-nn-setting-wide-input');
                 }
             }),
             createRenderDefinition({
@@ -293,7 +293,7 @@ export function createFrontmatterSettingDefinitions(context: SettingsTabContext)
                 visible: () => plugin.settings.useFrontmatterMetadata,
                 render: setting => {
                     setting.setName('').setDesc('');
-                    setting.settingEl.addClass('nn-setting-info-container');
+                    setting.settingEl.addClass('tps-nn-setting-info-container');
                     setting.descEl.empty();
                     setting.addButton(button => {
                         context.registerMetadataInfoElement(setting.descEl, button);
@@ -330,7 +330,7 @@ function createFrontmatterTextRenderDefinition(options: {
                 undefined,
                 options.onAfterUpdate
             );
-            setting.controlEl.addClass('nn-setting-wide-input');
+            setting.controlEl.addClass('tps-nn-setting-wide-input');
         }
     });
 }

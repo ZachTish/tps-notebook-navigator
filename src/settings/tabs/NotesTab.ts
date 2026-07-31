@@ -446,7 +446,7 @@ export function createNotesSettingDefinitions(context: SettingsTabContext): Sett
                             plugin.settings.wordCountTargetProperty = value.trim();
                         }
                     );
-                    setting.controlEl.addClass('nn-setting-wide-input');
+                    setting.controlEl.addClass('tps-nn-setting-wide-input');
                 }
             }),
             createToggleDefinition('showWordCountPercentage', {
@@ -467,15 +467,15 @@ function renderColorSetting(
 
     setting.setName(params.name).setDesc(params.desc);
 
-    const previewEl = setting.controlEl.createDiv({ cls: 'nn-setting-color-preview' });
+    const previewEl = setting.controlEl.createDiv({ cls: 'tps-nn-setting-color-preview' });
     const swatchButtonEl = previewEl.createEl('button', {
-        cls: 'nn-setting-color-swatch-button',
+        cls: 'tps-nn-setting-color-swatch-button',
         attr: {
             type: 'button',
             'aria-label': params.name
         }
     });
-    const swatchEl = swatchButtonEl.createDiv({ cls: 'nn-setting-color-swatch' });
+    const swatchEl = swatchButtonEl.createDiv({ cls: 'tps-nn-setting-color-swatch' });
 
     const renderValue = () => {
         const current = params.access.getValue();
@@ -560,13 +560,13 @@ function renderFileTypeIconPresetSetting(setting: Setting, context: SettingsTabC
 
     setting.setName(strings.settings.items.fileTypeIconPreset.name).setDesc(strings.settings.items.fileTypeIconPreset.desc);
     const warningEl = setting.descEl.createDiv({
-        cls: 'setting-item-description nn-setting-hidden nn-setting-warning'
+        cls: 'setting-item-description tps-nn-setting-hidden tps-nn-setting-warning'
     });
 
     const updateWarning = () => {
         const showWarning = isSelectedFileTypeIconPresetUnavailable(context);
         warningEl.setText(showWarning ? strings.settings.items.fileTypeIconPreset.notInstalledWarning : '');
-        warningEl.toggleClass('nn-setting-hidden', !showWarning);
+        warningEl.toggleClass('tps-nn-setting-hidden', !showWarning);
     };
 
     setting.addDropdown(dropdown => {
@@ -667,7 +667,7 @@ function renderIconMapSetting(
                 });
             })
     );
-    setting.controlEl.addClass('nn-setting-wide-input');
+    setting.controlEl.addClass('tps-nn-setting-wide-input');
 }
 
 function renderFileNameRowsSetting(setting: Setting, context: SettingsTabContext): void {
@@ -732,7 +732,7 @@ function renderCommaSeparatedTextSetting(
         undefined,
         options.onAfterUpdate
     );
-    setting.controlEl.addClass('nn-setting-wide-input');
+    setting.controlEl.addClass('tps-nn-setting-wide-input');
 }
 
 function renderFeatureImageSizeSetting(setting: Setting, context: SettingsTabContext): void {

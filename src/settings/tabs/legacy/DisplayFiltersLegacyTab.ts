@@ -84,7 +84,7 @@ export function renderDisplayFiltersTab(context: SettingsTabContext): void {
             }
         );
     });
-    hiddenFileNamesSetting.controlEl.addClass('nn-setting-wide-input');
+    hiddenFileNamesSetting.controlEl.addClass('tps-nn-setting-wide-input');
     hiddenFileNamesInput = hiddenFileNamesSetting.controlEl.querySelector('input');
 
     const excludedFoldersSetting = filteringGroup.addSetting(setting => {
@@ -104,7 +104,7 @@ export function renderDisplayFiltersTab(context: SettingsTabContext): void {
             }
         );
     });
-    excludedFoldersSetting.controlEl.addClass('nn-setting-wide-input');
+    excludedFoldersSetting.controlEl.addClass('tps-nn-setting-wide-input');
     excludedFoldersInput = excludedFoldersSetting.controlEl.querySelector('input');
 
     const descendantExcludedFoldersSetting = filteringGroup.addSetting(setting => {
@@ -124,7 +124,7 @@ export function renderDisplayFiltersTab(context: SettingsTabContext): void {
             }
         );
     });
-    descendantExcludedFoldersSetting.controlEl.addClass('nn-setting-wide-input');
+    descendantExcludedFoldersSetting.controlEl.addClass('tps-nn-setting-wide-input');
     descendantExcludedFoldersInput = descendantExcludedFoldersSetting.controlEl.querySelector('input');
 
     const hiddenTagsSetting = filteringGroup.addSetting(setting => {
@@ -147,7 +147,7 @@ export function renderDisplayFiltersTab(context: SettingsTabContext): void {
             }
         );
     });
-    hiddenTagsSetting.controlEl.addClass('nn-setting-wide-input');
+    hiddenTagsSetting.controlEl.addClass('tps-nn-setting-wide-input');
     hiddenTagsInput = hiddenTagsSetting.controlEl.querySelector('input');
 
     const hiddenFileTagsSetting = filteringGroup.addSetting(setting => {
@@ -171,7 +171,7 @@ export function renderDisplayFiltersTab(context: SettingsTabContext): void {
             }
         );
     });
-    hiddenFileTagsSetting.controlEl.addClass('nn-setting-wide-input');
+    hiddenFileTagsSetting.controlEl.addClass('tps-nn-setting-wide-input');
     hiddenFileTagsInput = hiddenFileTagsSetting.controlEl.querySelector('input');
 
     const excludedFilesSetting = filteringGroup.addSetting(setting => {
@@ -191,7 +191,7 @@ export function renderDisplayFiltersTab(context: SettingsTabContext): void {
             }
         );
     });
-    excludedFilesSetting.controlEl.addClass('nn-setting-wide-input');
+    excludedFilesSetting.controlEl.addClass('tps-nn-setting-wide-input');
     excludedFilesInput = excludedFilesSetting.controlEl.querySelector('input');
 
     refreshFilterControls();

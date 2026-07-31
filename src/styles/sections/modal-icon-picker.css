@@ -5,14 +5,14 @@
    ======================================================================== */
 
 /* Icon picker modal width - adjust for mobile */
-.modal.nn-icon-picker-modal {
+.modal.tps-nn-icon-picker-modal {
     width: 480px;
     max-width: calc(100vw - 40px);
     height: auto;
 }
 
 /* Icon picker content layout */
-.modal.nn-icon-picker-modal .modal-content {
+.modal.tps-nn-icon-picker-modal .modal-content {
     padding: 0;
     height: 100%;
     min-height: 380px;
@@ -21,19 +21,19 @@
     overflow: hidden;
 }
 
-.modal.nn-icon-picker-modal .modal-close-button {
+.modal.tps-nn-icon-picker-modal .modal-close-button {
     z-index: 10;
     pointer-events: auto;
 }
 
 /* Icon search container with bottom border */
-.nn-icon-search-container {
+.tps-nn-icon-search-container {
     padding: 12px;
     border-bottom: 1px solid var(--background-modifier-border);
 }
 
 /* Icon search input field */
-.nn-icon-search-input {
+.tps-nn-icon-search-input {
     width: 100%;
     padding: 8px 12px;
     font-size: 14px;
@@ -43,13 +43,13 @@
 }
 
 /* Icon search input focus */
-.nn-icon-search-input:focus {
+.tps-nn-icon-search-input:focus {
     outline: none;
     border-color: var(--interactive-accent);
 }
 
 /* Icon results scrollable container */
-.nn-icon-results-container {
+.tps-nn-icon-results-container {
     height: 240px;
     min-height: 240px;
     overflow-y: auto;
@@ -57,7 +57,7 @@
     flex: 0 0 auto;
 }
 
-.nn-icon-button-container {
+.tps-nn-icon-button-container {
     display: flex;
     justify-content: center;
     gap: 12px;
@@ -67,28 +67,28 @@
 }
 
 /* Icon category headers */
-.nn-icon-section-header {
+.tps-nn-icon-section-header {
     font-size: var(--font-ui-small);
     font-weight: 600;
-    color: var(--nn-theme-foreground-muted);
+    color: var(--tps-nn-theme-foreground-muted);
     letter-spacing: 0.5px;
     margin-top: 12px;
     margin-bottom: 4px;
 }
 
-.nn-icon-section-header:first-child {
+.tps-nn-icon-section-header:first-child {
     margin-top: 0;
 }
 
 /* Icon grid layout - 5 columns */
-.nn-icon-grid {
+.tps-nn-icon-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 4px;
 }
 
 /* Individual icon item */
-.nn-icon-item {
+.tps-nn-icon-item {
     position: relative;
     display: flex;
     flex-direction: column;
@@ -97,7 +97,7 @@
     border-radius: var(--radius-s);
 }
 
-.nn-icon-recent-remove-button {
+.tps-nn-icon-recent-remove-button {
     position: absolute;
     top: 2px;
     right: 2px;
@@ -108,7 +108,7 @@
     border-radius: 999px;
     border: 1px solid var(--background-modifier-border);
     background: var(--background-primary);
-    color: var(--nn-theme-foreground-muted);
+    color: var(--tps-nn-theme-foreground-muted);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -116,32 +116,32 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .nn-icon-recent-remove-button {
+    .tps-nn-icon-recent-remove-button {
         opacity: 0;
         visibility: hidden;
         pointer-events: none;
         transition: opacity 120ms ease;
     }
 
-    .nn-icon-item:hover .nn-icon-recent-remove-button,
-    .nn-icon-item:focus-within .nn-icon-recent-remove-button {
+    .tps-nn-icon-item:hover .tps-nn-icon-recent-remove-button,
+    .tps-nn-icon-item:focus-within .tps-nn-icon-recent-remove-button {
         opacity: 1;
         visibility: visible;
         pointer-events: auto;
     }
 }
 
-.nn-icon-recent-remove-button:hover {
-    color: var(--nn-theme-foreground);
+.tps-nn-icon-recent-remove-button:hover {
+    color: var(--tps-nn-theme-foreground);
     border-color: var(--interactive-accent);
 }
 
-.nn-icon-recent-remove-button:focus-visible {
+.tps-nn-icon-recent-remove-button:focus-visible {
     outline: 2px solid var(--interactive-accent);
     outline-offset: 1px;
 }
 
-.nn-icon-recent-remove-glyph {
+.tps-nn-icon-recent-remove-glyph {
     font-size: 11px;
     line-height: 1;
     transform: translateY(-1px);
@@ -149,48 +149,48 @@
 }
 
 /* Icon item hover/focus states */
-.nn-icon-item:hover,
-.nn-icon-item:focus {
+.tps-nn-icon-item:hover,
+.tps-nn-icon-item:focus {
     background-color: var(--background-modifier-hover);
     outline: none;
 }
 
 /* Icon item keyboard focus indicator */
-.nn-icon-item:focus-visible {
+.tps-nn-icon-item:focus-visible {
     box-shadow: 0 0 0 2px var(--interactive-accent);
 }
 
 /* Icon preview container */
-.nn-icon-item-preview {
+.tps-nn-icon-item-preview {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 32px;
     height: 32px;
     margin-bottom: 4px;
-    color: var(--nn-theme-foreground-muted);
+    color: var(--tps-nn-theme-foreground-muted);
 }
 
 /* Icon SVG size */
-.nn-icon-item-preview svg {
+.tps-nn-icon-item-preview svg {
     width: 24px;
     height: 24px;
 }
 
-.nn-icon-item-preview.nn-iconfont {
+.tps-nn-icon-item-preview.tps-nn-iconfont {
     font-size: 28px;
     line-height: 1;
 }
 
-.nn-icon-item-preview.nn-emoji-icon {
+.tps-nn-icon-item-preview.tps-nn-emoji-icon {
     font-size: 24px;
     line-height: 1;
 }
 
 /* Icon name label */
-.nn-icon-item-name {
+.tps-nn-icon-item-name {
     font-size: 11px;
-    color: var(--nn-theme-foreground-muted);
+    color: var(--tps-nn-theme-foreground-muted);
     text-align: center;
     word-break: break-word;
     line-height: 1.2;
@@ -198,10 +198,10 @@
 }
 
 /* Empty search and additional icons messages */
-.nn-icon-empty-message,
-.nn-icon-more-message {
+.tps-nn-icon-empty-message,
+.tps-nn-icon-more-message {
     text-align: center;
-    color: var(--nn-theme-foreground-muted);
+    color: var(--tps-nn-theme-foreground-muted);
     padding: 24px;
     font-size: 14px;
 }

@@ -76,7 +76,7 @@ export function useNavigationPaneShortcutMenus({
             }
 
             const targetElement = event.target;
-            if (targetElement instanceof HTMLElement && targetElement.closest('.nn-drag-handle')) {
+            if (targetElement instanceof HTMLElement && targetElement.closest('.tps-nn-drag-handle')) {
                 event.preventDefault();
                 event.stopPropagation();
                 return;

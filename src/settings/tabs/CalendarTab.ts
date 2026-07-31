@@ -173,7 +173,7 @@ function renderCalendarLocaleSetting(setting: Setting, context: SettingsTabConte
     });
 
     return setting.descEl.createDiv({
-        cls: 'setting-item-description nn-setting-hidden nn-setting-warning'
+        cls: 'setting-item-description tps-nn-setting-hidden tps-nn-setting-warning'
     });
 }
 

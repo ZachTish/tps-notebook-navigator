@@ -61,7 +61,7 @@ describe('CalendarYearPanel', () => {
         expect(html).toContain('>Jan<');
         expect(html).not.toContain('Jan (');
         expect(html).toMatch(/class="[^"]*has-daily-note[^"]*has-unfinished-tasks[^"]*"/);
-        expect(html).toContain('nn-navigation-calendar-year-month-unfinished-task-indicator');
+        expect(html).toContain('tps-nn-navigation-calendar-year-month-unfinished-task-indicator');
     });
 
     it('renders feature-image month state through the same month button classes', () => {

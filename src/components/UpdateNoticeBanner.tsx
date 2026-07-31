@@ -20,6 +20,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ReleaseUpdateNotice } from '../services/ReleaseCheckService';
 import { strings } from '../i18n';
 import { useAutoDismissFade } from '../hooks/useAutoDismissFade';
+import { TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID } from '../constants/tpsIdentity';
 
 /** Props for the UpdateNoticeBanner component */
 interface UpdateNoticeBannerProps {
@@ -53,7 +54,7 @@ export function UpdateNoticeBanner({ notice, onDismiss }: UpdateNoticeBannerProp
     }, [visibleNotice, onDismiss]);
 
     const handleOpenUpdatePage = useCallback(() => {
-        window.open('obsidian://show-plugin?id=notebook-navigator');
+        window.open(`obsidian://show-plugin?id=${TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID}`);
         handleDismiss();
     }, [handleDismiss]);
 
@@ -68,7 +69,7 @@ export function UpdateNoticeBanner({ notice, onDismiss }: UpdateNoticeBannerProp
         return null;
     }
 
-    const className = `nn-update-banner${isFading ? ' fade-out' : ''}`;
+    const className = `tps-nn-update-banner${isFading ? ' fade-out' : ''}`;
 
     return (
         <button
@@ -78,9 +79,9 @@ export function UpdateNoticeBanner({ notice, onDismiss }: UpdateNoticeBannerProp
             aria-label={strings.common.updateBannerTitle}
             title={strings.common.updateBannerInstruction}
         >
-            <div className="nn-update-banner__text">
-                <span className="nn-update-banner__label">{strings.common.updateBannerTitle}</span>
-                <span className="nn-update-banner__instruction">{strings.common.updateBannerInstruction}</span>
+            <div className="tps-nn-update-banner__text">
+                <span className="tps-nn-update-banner__label">{strings.common.updateBannerTitle}</span>
+                <span className="tps-nn-update-banner__instruction">{strings.common.updateBannerInstruction}</span>
             </div>
         </button>
     );

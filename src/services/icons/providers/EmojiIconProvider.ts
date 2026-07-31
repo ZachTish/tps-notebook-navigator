@@ -57,7 +57,7 @@ export class EmojiIconProvider implements IconProvider {
             return 'not-found';
         }
 
-        container.addClass('nn-emoji-icon');
+        container.addClass('tps-nn-emoji-icon');
         container.setText(emojiId);
 
         if (size) {

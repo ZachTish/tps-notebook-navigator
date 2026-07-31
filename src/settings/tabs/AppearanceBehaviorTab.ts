@@ -650,7 +650,7 @@ function renderDateFormatSetting(setting: Setting, context: SettingsTabContext):
                 showNotice(strings.settings.items.dateFormat.help, { timeout: TIMEOUTS.NOTICE_HELP });
             })
     );
-    setting.controlEl.addClass('nn-setting-wide-input');
+    setting.controlEl.addClass('tps-nn-setting-wide-input');
 }
 
 function renderTimeFormatSetting(setting: Setting, context: SettingsTabContext): void {
@@ -677,7 +677,7 @@ function renderTimeFormatSetting(setting: Setting, context: SettingsTabContext):
                 showNotice(strings.settings.items.timeFormat.help, { timeout: TIMEOUTS.NOTICE_HELP });
             })
     );
-    setting.controlEl.addClass('nn-setting-wide-input');
+    setting.controlEl.addClass('tps-nn-setting-wide-input');
 }
 
 interface RenderedToggleOptions extends DefinitionOptions {

@@ -474,7 +474,7 @@ for (const result of results) {
 `;
 }
 
-const tempDir = mkdtempSync(path.join(tmpdir(), 'nn-edit-hotpath-benchmark-'));
+const tempDir = mkdtempSync(path.join(tmpdir(), 'tps-nn-edit-hotpath-benchmark-'));
 
 try {
     const runnerEntryPath = path.join(tempDir, 'runner-entry.mjs');

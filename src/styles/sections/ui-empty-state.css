@@ -5,18 +5,18 @@
    ======================================================================== */
 
 /* Empty state container - shown when no files in folder */
-.nn-empty-state {
+.tps-nn-empty-state {
     display: flex;
     align-items: center;
     justify-content: center;
     height: 100%;
     padding: 40px 20px;
     text-align: center;
-    color: var(--nn-theme-foreground-muted);
+    color: var(--tps-nn-theme-foreground-muted);
     font-size: 14px;
 }
 
 /* Empty state message text */
-.nn-empty-message {
+.tps-nn-empty-message {
     text-align: center;
 }

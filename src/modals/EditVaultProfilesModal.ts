@@ -78,11 +78,11 @@ export class EditVaultProfilesModal extends Modal {
 
     // Initializes the modal UI with profile list and footer buttons
     onOpen(): void {
-        this.modalEl.addClass('nn-edit-profiles-modal');
+        this.modalEl.addClass('tps-nn-edit-profiles-modal');
         this.titleEl.setText(strings.settings.items.vaultProfiles.editProfilesModalTitle);
         this.contentEl.empty();
 
-        this.listEl = this.contentEl.createDiv({ cls: 'nn-edit-profiles-list' });
+        this.listEl = this.contentEl.createDiv({ cls: 'tps-nn-edit-profiles-list' });
         this.renderRows();
         this.renderFooter();
 
@@ -94,7 +94,7 @@ export class EditVaultProfilesModal extends Modal {
         this.applyChanges(false);
         this.disposeRowDisposers();
         this.disposeFooterDisposers();
-        this.modalEl.removeClass('nn-edit-profiles-modal');
+        this.modalEl.removeClass('tps-nn-edit-profiles-modal');
         this.contentEl.empty();
     }
 
@@ -110,13 +110,13 @@ export class EditVaultProfilesModal extends Modal {
         this.listEl.empty();
 
         this.profiles.forEach((profile, index) => {
-            const row = this.listEl?.createDiv({ cls: 'nn-edit-profiles-row' });
+            const row = this.listEl?.createDiv({ cls: 'tps-nn-edit-profiles-row' });
             if (!row) {
                 return;
             }
 
             const input = row.createEl('input', {
-                cls: 'nn-input',
+                cls: 'tps-nn-input',
                 attr: {
                     type: 'text',
                     placeholder: getLocalizedDefaultVaultProfileName()
@@ -136,10 +136,10 @@ export class EditVaultProfilesModal extends Modal {
                 })
             );
 
-            const actions = row.createDiv({ cls: 'nn-edit-profiles-actions' });
+            const actions = row.createDiv({ cls: 'tps-nn-edit-profiles-actions' });
 
             const upBtn = actions.createEl('button', {
-                cls: 'nn-action-btn',
+                cls: 'tps-nn-action-btn',
                 attr: {
                     type: 'button',
                     'aria-label': strings.settings.items.vaultProfiles.moveUp
@@ -154,7 +154,7 @@ export class EditVaultProfilesModal extends Modal {
             );
 
             const downBtn = actions.createEl('button', {
-                cls: 'nn-action-btn',
+                cls: 'tps-nn-action-btn',
                 attr: {
                     type: 'button',
                     'aria-label': strings.settings.items.vaultProfiles.moveDown
@@ -169,7 +169,7 @@ export class EditVaultProfilesModal extends Modal {
             );
 
             const deleteBtn = actions.createEl('button', {
-                cls: 'nn-action-btn mod-warning',
+                cls: 'tps-nn-action-btn mod-warning',
                 attr: {
                     type: 'button',
                     'aria-label': strings.settings.items.vaultProfiles.deleteButton
@@ -198,7 +198,7 @@ export class EditVaultProfilesModal extends Modal {
 
     // Creates the footer with add and apply buttons
     private renderFooter(): void {
-        const footer = this.contentEl.createDiv({ cls: 'nn-button-container' });
+        const footer = this.contentEl.createDiv({ cls: 'tps-nn-button-container' });
 
         const addButton = footer.createEl('button', {
             text: strings.settings.items.vaultProfiles.addButton,

@@ -22,6 +22,7 @@ import { normalizePropertyNodeId } from '../utils/propertyTree';
 import { casefold } from '../utils/recordUtils';
 import { normalizeTagPath } from '../utils/tagUtils';
 import type { SearchProvider } from './search';
+import { TPS_NOTEBOOK_NAVIGATOR_SHORTCUT_DRAG_MIME } from '../constants/tpsIdentity';
 
 /**
  * Enum-like object defining all supported shortcut types
@@ -39,7 +40,7 @@ export type ShortcutType = (typeof ShortcutType)[keyof typeof ShortcutType];
 /**
  * MIME type for drag-and-drop operations with shortcuts
  */
-export const SHORTCUT_DRAG_MIME = 'application/x-notebook-shortcut';
+export const SHORTCUT_DRAG_MIME = TPS_NOTEBOOK_NAVIGATOR_SHORTCUT_DRAG_MIME;
 
 /**
  * Shortcut pointing to a folder in the vault

@@ -18,7 +18,7 @@
 
 import type { Setting } from 'obsidian';
 
-const SETTING_HIDDEN_CLASS = 'nn-setting-hidden';
+const SETTING_HIDDEN_CLASS = 'tps-nn-setting-hidden';
 
 export function setElementVisible(element: HTMLElement, visible: boolean): void {
     element.classList.toggle(SETTING_HIDDEN_CLASS, !visible);

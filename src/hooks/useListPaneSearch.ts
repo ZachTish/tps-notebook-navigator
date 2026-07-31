@@ -483,7 +483,7 @@ export function useListPaneSearch({
 
         // Dual pane switches views without a sliding transition and never gets the
         // show-files class, so waiting would always run until the full deadline.
-        if (!container.classList.contains('nn-single-pane')) {
+        if (!container.classList.contains('tps-nn-single-pane')) {
             return;
         }
 
@@ -496,7 +496,7 @@ export function useListPaneSearch({
 
     const focusListScroller = useCallback(() => {
         const scope = rootContainerRef.current ?? activeDocument;
-        const listPaneScroller = scope.querySelector('.nn-list-pane-scroller');
+        const listPaneScroller = scope.querySelector('.tps-nn-list-pane-scroller');
         if (listPaneScroller instanceof HTMLElement) {
             focusElementPreventScroll(listPaneScroller);
         }
@@ -505,7 +505,7 @@ export function useListPaneSearch({
     const focusSearchInput = useCallback(() => {
         window.setTimeout(() => {
             const scope = rootContainerRef.current ?? activeDocument;
-            const searchInput = scope.querySelector('.nn-search-input');
+            const searchInput = scope.querySelector('.tps-nn-search-input');
             if (searchInput instanceof HTMLInputElement) {
                 searchInput.focus();
                 uiDispatch({ type: 'ACTIVATE_PANE', target: 'search' });
@@ -553,7 +553,7 @@ export function useListPaneSearch({
             // The sliding view transition only exists in single pane. Dual pane switches
             // instantly, so suppressing the post-search scroll there would swallow the
             // first legitimate scroll to top after filtering.
-            if (rootContainerRef.current?.classList.contains('nn-single-pane')) {
+            if (rootContainerRef.current?.classList.contains('tps-nn-single-pane')) {
                 suppressSearchTopScrollRef.current = true;
                 await waitForSinglePaneTransition();
             }

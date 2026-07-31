@@ -330,36 +330,36 @@ export class NavRainbowSectionModal extends Modal {
         separateThemeColors: boolean;
     }): void {
         const setting = new Setting(params.containerEl).setName(params.name).setDesc(params.desc);
-        const previewEl = setting.controlEl.createDiv({ cls: 'nn-setting-color-preview' });
+        const previewEl = setting.controlEl.createDiv({ cls: 'tps-nn-setting-color-preview' });
         const createThemedSwatchButton = (theme: 'light' | 'dark'): { buttonEl: HTMLButtonElement; swatchEl: HTMLDivElement } => {
             const isDark = theme === 'dark';
             const themeLabel = isDark ? strings.common.darkMode : strings.common.lightMode;
             const buttonEl = previewEl.createEl('button', {
-                cls: `nn-setting-color-swatch-button${isDark ? ' nn-setting-color-swatch-button-dark' : ''}`,
+                cls: `tps-nn-setting-color-swatch-button${isDark ? ' tps-nn-setting-color-swatch-button-dark' : ''}`,
                 attr: {
                     type: 'button',
                     'aria-label': `${params.name} (${themeLabel})`
                 }
             });
-            const swatchEl = buttonEl.createDiv({ cls: 'nn-setting-color-swatch' });
+            const swatchEl = buttonEl.createDiv({ cls: 'tps-nn-setting-color-swatch' });
             return { buttonEl, swatchEl };
         };
         const createSingleSwatchButton = (): { buttonEl: HTMLButtonElement; swatchEl: HTMLDivElement } => {
             const buttonEl = previewEl.createEl('button', {
-                cls: 'nn-setting-color-swatch-button',
+                cls: 'tps-nn-setting-color-swatch-button',
                 attr: {
                     type: 'button',
                     'aria-label': params.name
                 }
             });
-            const swatchEl = buttonEl.createDiv({ cls: 'nn-setting-color-swatch' });
+            const swatchEl = buttonEl.createDiv({ cls: 'tps-nn-setting-color-swatch' });
             return { buttonEl, swatchEl };
         };
         const lightSwatch = params.separateThemeColors ? createThemedSwatchButton('light') : null;
         const copyLightToDarkButton =
             params.separateThemeColors && lightSwatch
                 ? previewEl.createEl('button', {
-                      cls: 'clickable-icon nn-setting-color-copy-button',
+                      cls: 'clickable-icon tps-nn-setting-color-copy-button',
                       attr: {
                           type: 'button',
                           'aria-label': strings.settings.items.navRainbowCopyLightToDark,

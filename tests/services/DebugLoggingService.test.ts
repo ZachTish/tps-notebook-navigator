@@ -85,14 +85,14 @@ describe('DebugLoggingService', () => {
     });
 
     it('uses a timestamped root markdown file for each debug session', () => {
-        expect(getDebugLogPathForTimestamp(new Date('2026-05-23T21:30:12.123Z'))).toBe('nn-debug-2026-05-23T21-30-12-123Z.md');
+        expect(getDebugLogPathForTimestamp(new Date('2026-05-23T21:30:12.123Z'))).toBe('tps-nn-debug-2026-05-23T21-30-12-123Z.md');
     });
 
     it('identifies root debug log files for vault-event suppression', () => {
-        expect(isDebugLogPath('nn-debug-2026-05-23T21-30-12-123Z.md')).toBe(true);
-        expect(isDebugLogPath('folder/nn-debug-2026-05-23T21-30-12-123Z.md')).toBe(false);
-        expect(isDebugLogPath('nn-debug-notes.md')).toBe(false);
-        expect(isDebugLogPath('nn-debug-2026-05-23T21-30-12-123Z.txt')).toBe(false);
+        expect(isDebugLogPath('tps-nn-debug-2026-05-23T21-30-12-123Z.md')).toBe(true);
+        expect(isDebugLogPath('folder/tps-nn-debug-2026-05-23T21-30-12-123Z.md')).toBe(false);
+        expect(isDebugLogPath('tps-nn-debug-notes.md')).toBe(false);
+        expect(isDebugLogPath('tps-nn-debug-2026-05-23T21-30-12-123Z.txt')).toBe(false);
     });
 
     it('does not append reports while disabled', async () => {
@@ -117,7 +117,7 @@ describe('DebugLoggingService', () => {
         await service.flush();
 
         expect(append).toHaveBeenCalledTimes(1);
-        expect(append).toHaveBeenCalledWith('nn-debug-2026-05-23T21-30-12-123Z.md', expect.stringContaining('## '));
+        expect(append).toHaveBeenCalledWith('tps-nn-debug-2026-05-23T21-30-12-123Z.md', expect.stringContaining('## '));
         expect(append.mock.calls[0]?.[1]).toContain('Test report');
         expect(append.mock.calls[0]?.[1]).toContain('"value": 1');
 

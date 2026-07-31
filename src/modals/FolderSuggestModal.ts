@@ -106,6 +106,6 @@ export class FolderSuggestModal extends BaseSuggestModal<TFolder> {
      * @returns The CSS class name
      */
     protected getItemClass(): string {
-        return 'nn-folder-suggest-item';
+        return 'tps-nn-folder-suggest-item';
     }
 }

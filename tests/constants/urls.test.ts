@@ -16,9 +16,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 import { describe, expect, it } from 'vitest';
-import { getReleaseVideoOpenUrl, getReleaseVideoUrl } from '../../src/constants/urls';
+import { getReleaseVideoOpenUrl, getReleaseVideoUrl, NOTEBOOK_NAVIGATOR_RELEASE_CHECK_URL } from '../../src/constants/urls';
 
 describe('release video URLs', () => {
+    it('checks releases from the TPS fork while retaining upstream-hosted media assets', () => {
+        expect(NOTEBOOK_NAVIGATOR_RELEASE_CHECK_URL).toBe('https://api.github.com/repos/ZachTish/tps-notebook-navigator/releases/latest');
+        expect(getReleaseVideoUrl(true, '3.1.3')).toContain('johansan/notebook-navigator');
+    });
+
     it('uses raw GitHub URLs for embedded release videos', () => {
         expect(getReleaseVideoUrl(true, '3.1.3')).toBe(
             'https://raw.githubusercontent.com/johansan/notebook-navigator/main/images/version-banners/3.1.3.mp4'

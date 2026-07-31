@@ -68,7 +68,7 @@ export type SectionReorderRenderItem = RootReorderRenderItem & {
     sectionId: NavigationSectionId;
 };
 
-const TAGS_VIRTUAL_REORDER_KEY = '__nn-tags-root__';
+const TAGS_VIRTUAL_REORDER_KEY = '__tps-nn-tags-root__';
 const REMOVE_MISSING_LABEL = strings.common.remove;
 
 export interface UseNavigationRootReorderOptions {
@@ -598,7 +598,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
             <span
                 role="button"
                 tabIndex={0}
-                className="nn-root-reorder-remove"
+                className="tps-nn-root-reorder-remove"
                 onClick={event => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -657,7 +657,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
                     isDragSource: false,
                     isMissing,
                     itemType: 'folder',
-                    className: showHiddenItems && isHidden ? 'nn-excluded' : undefined,
+                    className: showHiddenItems && isHidden ? 'tps-nn-excluded' : undefined,
                     trailingAccessory: removeAction
                 }
             };
@@ -712,7 +712,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
                     isDragSource: false,
                     isMissing,
                     itemType: 'tag',
-                    className: showHiddenItems && isHidden ? 'nn-excluded' : undefined,
+                    className: showHiddenItems && isHidden ? 'tps-nn-excluded' : undefined,
                     trailingAccessory: removeAction
                 }
             };
@@ -835,7 +835,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
                     onClick,
                     chevronIcon,
                     itemType: 'section',
-                    className: isHidden ? 'nn-excluded' : undefined
+                    className: isHidden ? 'tps-nn-excluded' : undefined
                 }
             };
         });

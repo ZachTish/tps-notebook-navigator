@@ -17,6 +17,7 @@
  */
 
 import { STORAGE_KEYS } from '../types';
+import { getTpsNotebookNavigatorDatabaseName } from '../constants/tpsIdentity';
 import { localStorage } from '../utils/localStorage';
 import { recordStartupDiagnostic } from '../services/diagnostics/DebugLoggingService';
 import type { ContentProviderType, FileContentType } from '../interfaces/IContentProvider';
@@ -100,7 +101,7 @@ export class IndexedDBStorage {
     private pendingRebuildNotice = false;
 
     constructor(appId: string, options?: IndexedDBStorageOptions) {
-        this.dbName = `notebooknavigator/cache/${appId}`;
+        this.dbName = getTpsNotebookNavigatorDatabaseName('cache', appId);
         const previewTextCacheMaxEntries = options?.previewTextCacheMaxEntries ?? DEFAULT_PREVIEW_TEXT_CACHE_MAX_ENTRIES;
         this.cache = options?.cache ?? new MemoryFileCache({ previewTextCacheMaxEntries });
         const normalizedPreviewTextCacheMaxEntries = Math.max(0, previewTextCacheMaxEntries);

@@ -1,10 +1,10 @@
-# Notebook Navigator API Reference
+# TPS Notebook Navigator API Reference
 
-Updated: July 1, 2026
+Updated: July 31, 2026
 
-The Notebook Navigator plugin exposes a public API for other plugins and scripts to interact with navigator features.
+TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 2.0.0
+**Current API Version:** 2.2.0
 
 ## Table of Contents
 
@@ -16,6 +16,7 @@ The Notebook Navigator plugin exposes a public API for other plugins and scripts
 - [Navigation API](#navigation-api)
 - [Tag Collections API](#tag-collections-api)
 - [Property Nodes API](#property-nodes-api)
+- [Rows API](#rows-api)
 - [Selection API](#selection-api)
 - [Menus API](#menus-api)
 - [Events](#events)
@@ -27,14 +28,14 @@ The Notebook Navigator plugin exposes a public API for other plugins and scripts
 
 ### Accessing the API
 
-The Notebook Navigator API is available at runtime through the Obsidian app object. The plugin manifest id is
-`notebook-navigator`; the current manifest requires Obsidian `1.11.0` or newer and sets `isDesktopOnly` to `false`.
+The TPS Notebook Navigator API is available at runtime through the Obsidian app object. The plugin manifest id is
+`tps-notebook-navigator`; the current manifest requires Obsidian `1.11.0` or newer and sets `isDesktopOnly` to `false`.
 
 Here's a practical example using Templater:
 
 ```javascript
-<%* // Templater script to pin the current file in Notebook Navigator
-const nn = app.plugins.plugins['notebook-navigator']?.api;
+<%* // Templater script to pin the current file in TPS Notebook Navigator
+const nn = app.plugins.plugins['tps-notebook-navigator']?.api;
 
 if (nn) {
   // Pin the current file in folder, tag, and property contexts
@@ -49,7 +50,7 @@ Or set a folder color based on the current date:
 
 ```javascript
 <%* // Set folder color based on day of week
-const nn = app.plugins.plugins['notebook-navigator']?.api;
+const nn = app.plugins.plugins['tps-notebook-navigator']?.api;
 if (nn) {
   const folder = tp.config.target_file.parent;
   const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff'];
@@ -62,12 +63,13 @@ if (nn) {
 
 ## API Overview
 
-The API provides six main namespaces:
+The API provides seven main namespaces:
 
 - **`metadata`** - Folder, tag, and property node colors/icons, and pinned files
 - **`navigation`** - Navigate to files in the navigator
 - **`tagCollections`** - Work with aggregate tag rows such as "Tags" and "Untagged"
 - **`propertyNodes`** - Build and parse property node ids
+- **`rows`** - Register transient rows and actions beneath owning note files
 - **`selection`** - Query current selection state
 - **`menus`** - Add items to Notebook Navigator context menus
 
@@ -339,6 +341,60 @@ const parsed = nn.propertyNodes.parse('key:Status=Done');
 const root = nn.propertyNodes.parse(nn.propertyNodes.rootId);
 ```
 
+## Rows API
+
+Register transient records that render directly beneath their owning Markdown notes. Registration activates the provider immediately in every open TPS navigator view and returns an idempotent handle.
+
+| Method | Description | Returns |
+| ------ | ----------- | ------- |
+| `registerProvider(provider, options?)` | Register and activate one namespaced row provider | `NavigatorRowProviderRegistration` |
+| `registration.updateOptions(options)` | Replace that provider's immutable option snapshot and refresh open views | `void` |
+| `registration.unregister()` | Disable and unregister the provider; safe to call repeatedly | `void` |
+
+Provider requirements and safeguards:
+
+- `provider.id` uses `vendor/name` form and must be unique.
+- `sourcePath` must exactly match a Markdown path in `context.scope.visibleFilePaths`; orphan rows are discarded.
+- Row IDs are provider-local. Rows are transient and never enter file selection, drag, rename, persistence, or file indexes.
+- `activate` may open or focus the provider-owned record.
+- A checkbox `indicator.onChange(checked)` is optional. Without it, the checkbox is explicitly display-only.
+- A provider can subscribe to its own data source and call `invalidate()` when rows need to be queried again.
+- Provider failures, malformed results, timeouts, and oversized result sets are isolated from the ordinary file list.
+
+```typescript
+import type { NotebookNavigatorAPI, NavigatorRowProvider } from './notebook-navigator';
+
+const nn = app.plugins.plugins['tps-notebook-navigator']?.api as NotebookNavigatorAPI | undefined;
+if (!nn) {
+  return;
+}
+
+const provider: NavigatorRowProvider = {
+  id: 'example/tasks',
+  async getRows({ scope }) {
+    return scope.visibleFilePaths.map(path => ({
+      id: `${path}:review`,
+      kind: 'example/task',
+      label: 'Review note',
+      sourcePath: path,
+      indicator: {
+        type: 'checkbox',
+        checked: false,
+        onChange: async checked => {
+          await updateExampleTask(path, checked);
+        }
+      },
+      activate: async () => {
+        await openExampleTask(path);
+      }
+    }));
+  }
+};
+
+const registration = nn.rows.registerProvider(provider, { limit: 5 });
+this.register(() => registration.unregister());
+```
+
 ## Selection API
 
 Query the current selection state in the navigator.
@@ -400,7 +456,7 @@ Single selection example:
 ```typescript
 import type { NotebookNavigatorAPI } from './notebook-navigator';
 
-const nn = app.plugins.plugins['notebook-navigator']?.api as Partial<NotebookNavigatorAPI> | undefined;
+const nn = app.plugins.plugins['tps-notebook-navigator']?.api as Partial<NotebookNavigatorAPI> | undefined;
 
 const dispose = nn?.menus?.registerFileMenu(({ addItem, file, selection }) => {
   if (selection.mode !== 'single') {
@@ -535,14 +591,14 @@ Since Obsidian plugins don't export types like npm packages, you have two option
 
 Download the TypeScript definitions file:
 
-**[📄 notebook-navigator.d.ts](https://github.com/johansan/notebook-navigator/blob/main/src/api/public/notebook-navigator.d.ts)**
+**[📄 notebook-navigator.d.ts](https://github.com/ZachTish/tps-notebook-navigator/blob/main/src/api/public/notebook-navigator.d.ts)**
 
 Save it to your plugin project and import:
 
 ```typescript
 import type { NotebookNavigatorAPI, IconString } from './notebook-navigator';
 
-const nn = app.plugins.plugins['notebook-navigator']?.api as NotebookNavigatorAPI | undefined;
+const nn = app.plugins.plugins['tps-notebook-navigator']?.api as NotebookNavigatorAPI | undefined;
 if (!nn) {
   return;
 }
@@ -568,7 +624,7 @@ nn.on('selection-changed', ({ state }) => {
 
 ```javascript
 // Works without type definitions
-const nn = app.plugins.plugins['notebook-navigator']?.api;
+const nn = app.plugins.plugins['tps-notebook-navigator']?.api;
 if (nn) {
   // Wait for storage if you need storage-backed navigation/tag/property reads
   await nn.whenReady();
@@ -590,11 +646,19 @@ The type definitions provide:
 - **Typed event names and payloads** (`NotebookNavigatorEventType`, `NotebookNavigatorEvents`)
 - **Readonly return types** (selected files arrays, pinned map)
 - **Menu extension context types** (file, folder, tag, and property menus)
+- **Transient row provider types** (scope, rows, checkbox mutation, subscription, and registration handles)
 
 **Note**: These type checks are compile-time only. At runtime, the API is permissive and accepts any values (see Runtime
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 2.2.0 (2026-07-31)
+
+- Added `rows.registerProvider(provider, options?)`
+- Added transient row scope, provider, registration, activation, and checkbox-indicator types
+- Added optional mutable checkbox indicators; omitting `onChange` keeps a checkbox display-only
+- Provider registrations now refresh open views when options change and unregister automatically on plugin unload
 
 ### Version 2.0.0 (2026-03-07)
 

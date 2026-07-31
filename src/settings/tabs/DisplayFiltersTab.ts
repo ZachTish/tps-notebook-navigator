@@ -58,7 +58,7 @@ export function createDisplayFiltersSettingDefinitions(context: SettingsTabConte
                             activeProfile.hiddenFileNames = Array.from(new Set(parseCommaSeparatedList(value)));
                         }
                     );
-                    setting.controlEl.addClass('nn-setting-wide-input');
+                    setting.controlEl.addClass('tps-nn-setting-wide-input');
                 }
             }),
             createRenderDefinition({
@@ -80,7 +80,7 @@ export function createDisplayFiltersSettingDefinitions(context: SettingsTabConte
                             activeProfile.hiddenFolders = Array.from(new Set(parseCommaSeparatedList(value)));
                         }
                     );
-                    setting.controlEl.addClass('nn-setting-wide-input');
+                    setting.controlEl.addClass('tps-nn-setting-wide-input');
                 }
             }),
             createRenderDefinition({
@@ -102,7 +102,7 @@ export function createDisplayFiltersSettingDefinitions(context: SettingsTabConte
                             activeProfile.descendantExcludedFolders = Array.from(new Set(parseCommaSeparatedList(value)));
                         }
                     );
-                    setting.controlEl.addClass('nn-setting-wide-input');
+                    setting.controlEl.addClass('tps-nn-setting-wide-input');
                 }
             }),
             createRenderDefinition({
@@ -128,7 +128,7 @@ export function createDisplayFiltersSettingDefinitions(context: SettingsTabConte
                             activeProfile.hiddenTags = Array.from(new Set(normalizedHiddenTags));
                         }
                     );
-                    setting.controlEl.addClass('nn-setting-wide-input');
+                    setting.controlEl.addClass('tps-nn-setting-wide-input');
                 }
             }),
             createRenderDefinition({
@@ -155,7 +155,7 @@ export function createDisplayFiltersSettingDefinitions(context: SettingsTabConte
                             activeProfile.hiddenFileTags = Array.from(new Set(normalizedHiddenFileTags));
                         }
                     );
-                    setting.controlEl.addClass('nn-setting-wide-input');
+                    setting.controlEl.addClass('tps-nn-setting-wide-input');
                 }
             }),
             createRenderDefinition({
@@ -177,7 +177,7 @@ export function createDisplayFiltersSettingDefinitions(context: SettingsTabConte
                             activeProfile.hiddenFileProperties = Array.from(new Set(parseCommaSeparatedList(value)));
                         }
                     );
-                    setting.controlEl.addClass('nn-setting-wide-input');
+                    setting.controlEl.addClass('tps-nn-setting-wide-input');
                 }
             })
         ])

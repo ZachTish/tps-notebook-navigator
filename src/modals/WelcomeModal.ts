@@ -29,24 +29,24 @@ export class WelcomeModal extends Modal {
     onOpen(): void {
         const pluginName = strings.plugin.viewName;
 
-        this.modalEl.addClass('nn-welcome-modal');
+        this.modalEl.addClass('tps-nn-welcome-modal');
         this.titleEl.setText(strings.modals.welcome.title.replace('{pluginName}', pluginName));
         this.contentEl.empty();
 
         this.attachCloseButtonHandler();
 
-        const body = this.contentEl.createDiv({ cls: 'nn-welcome-body' });
+        const body = this.contentEl.createDiv({ cls: 'tps-nn-welcome-body' });
 
         const paragraphs = [strings.modals.welcome.introText, strings.modals.welcome.continueText, strings.modals.welcome.thanksText];
         paragraphs.forEach(text => {
             body.createEl('p', {
                 text,
-                cls: 'nn-welcome-text'
+                cls: 'tps-nn-welcome-text'
             });
         });
 
         const thumbnailLink = body.createEl('a', {
-            cls: 'nn-welcome-thumbnail-link',
+            cls: 'tps-nn-welcome-thumbnail-link',
             attr: {
                 href: WELCOME_VIDEO_URL,
                 target: '_blank',
@@ -54,12 +54,12 @@ export class WelcomeModal extends Modal {
             }
         });
 
-        const thumbnailFrame = thumbnailLink.createDiv({ cls: 'nn-welcome-thumbnail-frame' });
+        const thumbnailFrame = thumbnailLink.createDiv({ cls: 'tps-nn-welcome-thumbnail-frame' });
 
         const videoId = getYoutubeVideoId(WELCOME_VIDEO_URL);
         if (videoId) {
             const image = thumbnailFrame.createEl('img', {
-                cls: 'nn-welcome-thumbnail',
+                cls: 'tps-nn-welcome-thumbnail',
                 attr: {
                     alt: strings.modals.welcome.videoAlt,
                     width: '1920',
@@ -71,7 +71,7 @@ export class WelcomeModal extends Modal {
             const fallbackUrl = getYoutubeThumbnailUrl(videoId, 'hqdefault.jpg');
 
             const playButton = thumbnailFrame.createDiv({
-                cls: ['nn-youtube-play', 'nn-welcome-youtube-play']
+                cls: ['tps-nn-youtube-play', 'tps-nn-welcome-youtube-play']
             });
             playButton.setAttr('aria-hidden', 'true');
 
@@ -94,7 +94,7 @@ export class WelcomeModal extends Modal {
             image.src = primaryUrl;
         }
 
-        const buttonContainer = this.contentEl.createDiv({ cls: 'nn-welcome-buttons' });
+        const buttonContainer = this.contentEl.createDiv({ cls: 'tps-nn-welcome-buttons' });
 
         const openVideoButton = buttonContainer.createEl('button', {
             text: strings.modals.welcome.openVideoButton,
@@ -129,7 +129,7 @@ export class WelcomeModal extends Modal {
 
     onClose(): void {
         this.contentEl.empty();
-        this.modalEl.removeClass('nn-welcome-modal');
+        this.modalEl.removeClass('tps-nn-welcome-modal');
         this.openVideoButton = null;
 
         if (this.domDisposers.length) {

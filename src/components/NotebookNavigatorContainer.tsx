@@ -73,25 +73,25 @@ export const NotebookNavigatorContainer = React.memo(
 
         if (!isStorageReady) {
             // Build CSS classes for skeleton view
-            const containerClasses = ['nn-split-container'];
+            const containerClasses = ['tps-nn-split-container'];
             // Apply platform-specific classes and background mode
             if (isMobile) {
-                containerClasses.push('nn-mobile');
+                containerClasses.push('tps-nn-mobile');
             } else {
-                containerClasses.push('nn-desktop');
+                containerClasses.push('tps-nn-desktop');
                 containerClasses.push(...getBackgroundClasses(desktopBackground));
             }
             // Apply pane mode classes
             if (uiState.singlePane) {
-                containerClasses.push('nn-single-pane');
+                containerClasses.push('tps-nn-single-pane');
                 containerClasses.push(uiState.currentSinglePaneView === 'navigation' ? 'show-navigation' : 'show-files');
             } else {
-                containerClasses.push('nn-dual-pane');
-                containerClasses.push(`nn-orientation-${orientation}`);
+                containerClasses.push('tps-nn-dual-pane');
+                containerClasses.push(`tps-nn-orientation-${orientation}`);
             }
 
             return (
-                <div className="nn-scale-wrapper" data-ui-scale={scaleWrapperDataAttr} style={scaleWrapperStyle}>
+                <div className="tps-nn-scale-wrapper" data-ui-scale={scaleWrapperDataAttr} style={scaleWrapperStyle}>
                     <div className={containerClasses.join(' ')}>
                         <SkeletonView
                             paneSize={paneSize}

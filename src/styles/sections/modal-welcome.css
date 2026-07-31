@@ -4,26 +4,26 @@
    Welcome Modal
    ======================================================================== */
 
-.modal.nn-welcome-modal {
+.modal.tps-nn-welcome-modal {
     width: 620px;
     max-width: calc(100vw - 40px);
 }
 
-.modal.nn-welcome-modal .modal-content {
+.modal.tps-nn-welcome-modal .modal-content {
     padding: 16px;
 }
 
-.modal.nn-welcome-modal .modal-title {
+.modal.tps-nn-welcome-modal .modal-title {
     width: 100%;
     text-align: center;
 }
 
-.modal.nn-welcome-modal .modal-close-button {
+.modal.tps-nn-welcome-modal .modal-close-button {
     z-index: 10;
     pointer-events: auto;
 }
 
-.nn-welcome-body {
+.tps-nn-welcome-body {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -31,21 +31,21 @@
     text-align: left;
 }
 
-.nn-welcome-text {
+.tps-nn-welcome-text {
     margin: 0;
-    color: var(--nn-theme-foreground);
+    color: var(--tps-nn-theme-foreground);
     line-height: 1.5;
     font-size: 14px;
 }
 
-.nn-welcome-thumbnail-link {
+.tps-nn-welcome-thumbnail-link {
     display: block;
     width: 100%;
     max-width: 560px;
     align-self: center;
 }
 
-.nn-welcome-thumbnail-frame {
+.tps-nn-welcome-thumbnail-frame {
     position: relative;
     display: block;
     width: 100%;
@@ -56,24 +56,24 @@
     overflow: hidden;
 }
 
-.nn-welcome-thumbnail {
+.tps-nn-welcome-thumbnail {
     display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.nn-welcome-youtube-play {
-    --nn-youtube-play-x: 80%;
-    --nn-youtube-play-y: 49%;
-    --nn-youtube-play-scale: 1.8;
+.tps-nn-welcome-youtube-play {
+    --tps-nn-youtube-play-x: 80%;
+    --tps-nn-youtube-play-y: 49%;
+    --tps-nn-youtube-play-scale: 1.8;
 }
 
-.nn-welcome-thumbnail-link:hover .nn-welcome-youtube-play {
+.tps-nn-welcome-thumbnail-link:hover .tps-nn-welcome-youtube-play {
     background-color: #cc0000;
 }
 
-.nn-welcome-buttons {
+.tps-nn-welcome-buttons {
     display: flex;
     justify-content: center;
     gap: 8px;
@@ -81,17 +81,17 @@
 }
 
 @media (max-width: 768px) {
-    .modal.nn-welcome-modal {
+    .modal.tps-nn-welcome-modal {
         width: calc(100vw - 40px);
         max-width: calc(100vw - 40px);
         margin: 0 auto;
     }
 
-    .modal.nn-welcome-modal .modal-content {
+    .modal.tps-nn-welcome-modal .modal-content {
         padding: 12px;
     }
 
-    .nn-welcome-text {
+    .tps-nn-welcome-text {
         font-size: 15px;
         line-height: 1.6;
     }

@@ -828,7 +828,7 @@ export function useFileItemPills({
         const entries = new Map<
             string,
             {
-                style?: (React.CSSProperties & { '--nn-file-tag-custom-bg'?: string }) | undefined;
+                style?: (React.CSSProperties & { '--tps-nn-file-tag-custom-bg'?: string }) | undefined;
                 hasColor: boolean;
                 hasBackground: boolean;
             }
@@ -850,12 +850,12 @@ export function useFileItemPills({
                 continue;
             }
 
-            const pillStyle: React.CSSProperties & { '--nn-file-tag-custom-bg'?: string } = {};
+            const pillStyle: React.CSSProperties & { '--tps-nn-file-tag-custom-bg'?: string } = {};
             let hasColor = false;
             let hasBackground = false;
 
             if (backgroundToken && isSupportedCssColor(backgroundToken)) {
-                pillStyle['--nn-file-tag-custom-bg'] = backgroundToken;
+                pillStyle['--tps-nn-file-tag-custom-bg'] = backgroundToken;
                 hasBackground = true;
             }
 
@@ -999,10 +999,10 @@ export function useFileItemPills({
                 (pill.linkTarget?.kind === 'external' && settings.enablePropertyExternalLinks);
             const isClickable = canNavigateToProperty || isPropertyLink;
             const className = [
-                'nn-file-tag',
-                'nn-file-property',
-                isClickable ? 'nn-clickable-tag' : '',
-                isPropertyLink ? 'nn-file-property-link' : ''
+                'tps-nn-file-tag',
+                'tps-nn-file-property',
+                isClickable ? 'tps-nn-clickable-tag' : '',
+                isPropertyLink ? 'tps-nn-file-property-link' : ''
             ]
                 .filter(classToken => classToken.length > 0)
                 .join(' ');
@@ -1028,7 +1028,7 @@ export function useFileItemPills({
                     style={resolvedColorData?.style}
                 >
                     {propertyIconId ? (
-                        <ServiceIcon iconId={propertyIconId} className="nn-file-pill-inline-icon" aria-hidden={true} />
+                        <ServiceIcon iconId={propertyIconId} className="tps-nn-file-pill-inline-icon" aria-hidden={true} />
                     ) : null}
                     {label}
                 </span>
@@ -1049,17 +1049,17 @@ export function useFileItemPills({
         }
 
         return (
-            <div className="nn-file-tags">
+            <div className="tps-nn-file-tags">
                 {categorizedTags.map((tag, index) => {
                     const tagColors = tagColorData.get(tag);
                     const tagColor = tagColors?.color;
                     const tagBackground = tagColors?.background;
                     const displayTag = getTagDisplayName(tag);
                     const tagIconId = tagPillIcons.get(tag);
-                    const tagStyle: React.CSSProperties & { '--nn-file-tag-custom-bg'?: string } = {};
+                    const tagStyle: React.CSSProperties & { '--tps-nn-file-tag-custom-bg'?: string } = {};
 
                     if (tagBackground) {
-                        tagStyle['--nn-file-tag-custom-bg'] = tagBackground;
+                        tagStyle['--tps-nn-file-tag-custom-bg'] = tagBackground;
                     }
 
                     if (tagColor) {
@@ -1069,7 +1069,7 @@ export function useFileItemPills({
                     return (
                         <span
                             key={index}
-                            className="nn-file-tag nn-clickable-tag"
+                            className="tps-nn-file-tag tps-nn-clickable-tag"
                             data-has-color={tagColor ? 'true' : undefined}
                             data-has-background={tagBackground ? 'true' : undefined}
                             onClick={event => handleTagClick(event, tag)}
@@ -1077,7 +1077,9 @@ export function useFileItemPills({
                             tabIndex={0}
                             style={tagColor || tagBackground ? tagStyle : undefined}
                         >
-                            {tagIconId ? <ServiceIcon iconId={tagIconId} className="nn-file-pill-inline-icon" aria-hidden={true} /> : null}
+                            {tagIconId ? (
+                                <ServiceIcon iconId={tagIconId} className="tps-nn-file-pill-inline-icon" aria-hidden={true} />
+                            ) : null}
                             {displayTag}
                         </span>
                     );
@@ -1092,13 +1094,13 @@ export function useFileItemPills({
         }
 
         if (!settings.showPropertiesOnSeparateRows) {
-            return <div className="nn-file-property-row">{propertyPills.map(renderPropertyPill)}</div>;
+            return <div className="tps-nn-file-property-row">{propertyPills.map(renderPropertyPill)}</div>;
         }
 
         return (
             <>
                 {propertyRows.map((row, rowIndex) => (
-                    <div key={rowIndex} className="nn-file-property-row">
+                    <div key={rowIndex} className="tps-nn-file-property-row">
                         {row.map((pill, index) => renderPropertyPill(pill, index))}
                     </div>
                 ))}
@@ -1111,7 +1113,7 @@ export function useFileItemPills({
             return null;
         }
 
-        return <div className="nn-file-property-row">{textCountPropertyPills.map(renderPropertyPill)}</div>;
+        return <div className="tps-nn-file-property-row">{textCountPropertyPills.map(renderPropertyPill)}</div>;
     }, [renderPropertyPill, shouldShowTextCountProperty, textCountPropertyPills]);
 
     const pillRows = useMemo(() => {

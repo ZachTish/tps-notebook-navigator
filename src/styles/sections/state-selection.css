@@ -5,7 +5,7 @@
    ======================================================================== */
 
 /* Selected file background pseudo-element - better control over styling */
-.nn-file.nn-selected .nn-file-content::before {
+.tps-nn-file.tps-nn-selected .tps-nn-file-content::before {
     content: '';
     position: absolute;
     top: 0px;
@@ -13,56 +13,57 @@
     inset-inline-end: 0;
     bottom: 0;
     /* Pre-composited solid color prevents hairlines by blending alpha with pane background */
-    background-color: var(--nn-selected-file-bg-color);
-    border-top-left-radius: var(--nn-file-top-left-radius, var(--nn-file-item-border-radius));
-    border-top-right-radius: var(--nn-file-top-right-radius, var(--nn-file-item-border-radius));
-    border-bottom-left-radius: var(--nn-file-bottom-left-radius, var(--nn-file-item-border-radius));
-    border-bottom-right-radius: var(--nn-file-bottom-right-radius, var(--nn-file-item-border-radius));
-    box-shadow: inset 0 0 0 var(--nn-theme-file-border-width) var(--nn-selected-file-border-color);
+    background-color: var(--tps-nn-selected-file-bg-color);
+    border-top-left-radius: var(--tps-nn-file-top-left-radius, var(--tps-nn-file-item-border-radius));
+    border-top-right-radius: var(--tps-nn-file-top-right-radius, var(--tps-nn-file-item-border-radius));
+    border-bottom-left-radius: var(--tps-nn-file-bottom-left-radius, var(--tps-nn-file-item-border-radius));
+    border-bottom-right-radius: var(--tps-nn-file-bottom-right-radius, var(--tps-nn-file-item-border-radius));
+    box-shadow: inset 0 0 0 var(--tps-nn-theme-file-border-width) var(--tps-nn-selected-file-border-color);
     z-index: 0; /* Below separator lines */
 }
 
 /* Adjust rounded corners for multiselection */
-.nn-file.nn-selected.nn-has-selected-above .nn-file-content::before {
+.tps-nn-file.tps-nn-selected.tps-nn-has-selected-above .tps-nn-file-content::before {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
 }
 
-.nn-file.nn-selected.nn-has-selected-below .nn-file-content::before {
+.tps-nn-file.tps-nn-selected.tps-nn-has-selected-below .tps-nn-file-content::before {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
 
-.nn-navitem.nn-selected > .nn-navitem-content:not(.nn-navitem-content--search-include):not(.nn-navitem-content--search-exclude) {
+.tps-nn-navitem.tps-nn-selected
+    > .tps-nn-navitem-content:not(.tps-nn-navitem-content--search-include):not(.tps-nn-navitem-content--search-exclude) {
     background: transparent;
 }
 
 /* Selection overlay lives above the custom background while mirroring trimmed corners */
-.nn-navitem.nn-selected::after {
+.tps-nn-navitem.tps-nn-selected::after {
     content: '';
     position: absolute;
     top: 0px;
     inset-inline-start: 0;
     inset-inline-end: 0;
-    bottom: var(--nn-navitem-background-bottom-overdraw);
+    bottom: var(--tps-nn-navitem-background-bottom-overdraw);
     /* Pre-composited solid color prevents hairlines by blending alpha with pane background */
-    background-color: var(--nn-selected-navitem-bg-color);
-    border-top-left-radius: var(--nn-navitem-top-left-radius, min(14px, var(--nn-theme-navitem-border-radius)));
-    border-top-right-radius: var(--nn-navitem-top-right-radius, min(14px, var(--nn-theme-navitem-border-radius)));
-    border-bottom-left-radius: var(--nn-navitem-bottom-left-radius, min(14px, var(--nn-theme-navitem-border-radius)));
-    border-bottom-right-radius: var(--nn-navitem-bottom-right-radius, min(14px, var(--nn-theme-navitem-border-radius)));
-    box-shadow: inset 0 0 0 var(--nn-theme-navitem-border-width) var(--nn-selected-navitem-border-color);
+    background-color: var(--tps-nn-selected-navitem-bg-color);
+    border-top-left-radius: var(--tps-nn-navitem-top-left-radius, min(14px, var(--tps-nn-theme-navitem-border-radius)));
+    border-top-right-radius: var(--tps-nn-navitem-top-right-radius, min(14px, var(--tps-nn-theme-navitem-border-radius)));
+    border-bottom-left-radius: var(--tps-nn-navitem-bottom-left-radius, min(14px, var(--tps-nn-theme-navitem-border-radius)));
+    border-bottom-right-radius: var(--tps-nn-navitem-bottom-right-radius, min(14px, var(--tps-nn-theme-navitem-border-radius)));
+    box-shadow: inset 0 0 0 var(--tps-nn-theme-navitem-border-width) var(--tps-nn-selected-navitem-border-color);
     z-index: 1;
     pointer-events: none;
 }
 
-.nn-navitem.nn-selected > .nn-navitem-content {
+.tps-nn-navitem.tps-nn-selected > .tps-nn-navitem-content {
     position: relative;
     z-index: 2;
 }
 
 /* Selected file inner content z-index - ensures content above background */
-.nn-file.nn-selected .nn-file-inner-content {
+.tps-nn-file.tps-nn-selected .tps-nn-file-inner-content {
     position: relative;
     z-index: 5; /* Above selection background but below separators */
 }

@@ -64,7 +64,7 @@ const getManualSortPageSize = (scrollElement: HTMLElement | null): number => {
         return 1;
     }
 
-    const firstRow = scrollElement.querySelector<HTMLElement>('.nn-manual-sort-row');
+    const firstRow = scrollElement.querySelector<HTMLElement>('.tps-nn-manual-sort-row');
     const rowHeight = firstRow?.getBoundingClientRect().height ?? 0;
     if (rowHeight <= 0) {
         return 1;
@@ -113,7 +113,7 @@ export function useManualSortKeyboard({
             }
 
             let selectedElement: HTMLElement | null = null;
-            for (const element of scrollElement.querySelectorAll<HTMLElement>('.nn-file')) {
+            for (const element of scrollElement.querySelectorAll<HTMLElement>('.tps-nn-file')) {
                 if (element.dataset.path === filePath) {
                     selectedElement = element;
                     break;

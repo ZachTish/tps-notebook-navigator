@@ -91,7 +91,7 @@ export class IconPickerSurface {
         this.cleanupVaultRecentIcons();
         this.createProviderTabs();
         this.createSearchInput();
-        this.resultsContainer = this.rootEl.createDiv('nn-icon-results-container');
+        this.resultsContainer = this.rootEl.createDiv('tps-nn-icon-results-container');
         this.domDisposers.push(addAsyncEventListener(this.resultsContainer, 'click', event => this.handleResultsClick(event)));
         this.createProviderLinkRow();
         this.updateProviderLink(this.currentProvider);
@@ -149,7 +149,7 @@ export class IconPickerSurface {
             return;
         }
 
-        const removeButton = target.closest<HTMLButtonElement>('.nn-icon-recent-remove-button');
+        const removeButton = target.closest<HTMLButtonElement>('.tps-nn-icon-recent-remove-button');
         if (removeButton) {
             event.stopPropagation();
             event.preventDefault();
@@ -160,7 +160,7 @@ export class IconPickerSurface {
             return;
         }
 
-        const iconItem = target.closest<HTMLElement>('.nn-icon-item');
+        const iconItem = target.closest<HTMLElement>('.tps-nn-icon-item');
         if (!iconItem) {
             return;
         }
@@ -174,7 +174,7 @@ export class IconPickerSurface {
     }
 
     private createProviderTabs(): void {
-        this.tabContainer = this.rootEl.createDiv('nn-icon-provider-tabs');
+        this.tabContainer = this.rootEl.createDiv('tps-nn-icon-provider-tabs');
         this.tabContainer.setAttribute('role', 'tablist');
         this.providerTabs = [];
 
@@ -194,7 +194,7 @@ export class IconPickerSurface {
 
     private addProviderTab(providerId: string, label: string): void {
         const tab = this.tabContainer.createDiv({
-            cls: 'nn-icon-provider-tab',
+            cls: 'tps-nn-icon-provider-tab',
             text: label
         });
         tab.setAttribute('role', 'tab');
@@ -214,11 +214,11 @@ export class IconPickerSurface {
     }
 
     private createSearchInput(): void {
-        const searchContainer = this.rootEl.createDiv('nn-icon-search-container');
+        const searchContainer = this.rootEl.createDiv('tps-nn-icon-search-container');
         this.searchInput = searchContainer.createEl('input', {
             type: 'text',
             placeholder: strings.modals.iconPicker.searchPlaceholder,
-            cls: 'nn-icon-search-input'
+            cls: 'tps-nn-icon-search-input'
         });
         this.searchInput.setAttribute('enterkeyhint', 'done');
 
@@ -235,11 +235,11 @@ export class IconPickerSurface {
     }
 
     private createProviderLinkRow(): void {
-        this.providerLinkContainer = this.rootEl.createDiv('nn-icon-provider-link-row');
-        this.providerLinkEl = this.providerLinkContainer.createEl('a', { cls: 'nn-icon-provider-link' });
+        this.providerLinkContainer = this.rootEl.createDiv('tps-nn-icon-provider-link-row');
+        this.providerLinkEl = this.providerLinkContainer.createEl('a', { cls: 'tps-nn-icon-provider-link' });
         this.providerLinkEl.setAttribute('target', '_blank');
         this.providerLinkEl.setAttribute('rel', 'noopener noreferrer');
-        this.providerLinkContainer.addClass('nn-icon-provider-link-row-hidden');
+        this.providerLinkContainer.addClass('tps-nn-icon-provider-link-row-hidden');
     }
 
     private sortProvidersForDisplay(providers: IconProvider[]): IconProvider[] {
@@ -370,7 +370,7 @@ export class IconPickerSurface {
 
             if (!hasRecents) {
                 if (this.currentProvider === 'emoji') {
-                    const emptyMessage = this.resultsContainer.createDiv('nn-icon-empty-message');
+                    const emptyMessage = this.resultsContainer.createDiv('tps-nn-icon-empty-message');
                     emptyMessage.setText(strings.modals.iconPicker.emojiInstructions);
                 } else {
                     this.showEmptyState();
@@ -384,14 +384,14 @@ export class IconPickerSurface {
             : this.iconService.search(searchTerm, this.currentProvider);
 
         if (results.length > 0 && (isAllProvider || provider)) {
-            const grid = this.resultsContainer.createDiv('nn-icon-grid');
+            const grid = this.resultsContainer.createDiv('tps-nn-icon-grid');
 
             results.slice(0, MAX_SEARCH_RESULTS).forEach(iconDef => {
                 this.createIconItem(iconDef, grid, provider);
             });
 
             if (results.length > MAX_SEARCH_RESULTS) {
-                const moreMessage = this.resultsContainer.createDiv('nn-icon-more-message');
+                const moreMessage = this.resultsContainer.createDiv('tps-nn-icon-more-message');
                 moreMessage.setText(strings.modals.iconPicker.showingResultsInfo.replace('{count}', results.length.toString()));
             }
             return;
@@ -408,9 +408,9 @@ export class IconPickerSurface {
             return false;
         }
 
-        const header = this.resultsContainer.createDiv('nn-icon-section-header');
+        const header = this.resultsContainer.createDiv('tps-nn-icon-section-header');
         header.setText(strings.modals.iconPicker.recentlyUsedHeader);
-        const grid = this.resultsContainer.createDiv('nn-icon-grid');
+        const grid = this.resultsContainer.createDiv('tps-nn-icon-grid');
 
         let rendered = 0;
         const providerCache = new Map<string, IconDefinition[]>();
@@ -465,7 +465,7 @@ export class IconPickerSurface {
 
     private addRecentIconRemoveButton(iconItem: HTMLElement, iconId: string): void {
         const removeButton = iconItem.createEl('button', {
-            cls: 'nn-icon-recent-remove-button',
+            cls: 'tps-nn-icon-recent-remove-button',
             attr: {
                 type: 'button',
                 'aria-label': strings.modals.iconPicker.removeFromRecents,
@@ -473,7 +473,7 @@ export class IconPickerSurface {
                 'data-recent-icon-id': iconId
             }
         });
-        removeButton.createSpan({ text: '×', cls: 'nn-icon-recent-remove-glyph', attr: { 'aria-hidden': 'true' } });
+        removeButton.createSpan({ text: '×', cls: 'tps-nn-icon-recent-remove-glyph', attr: { 'aria-hidden': 'true' } });
     }
 
     private removeRecentIcon(iconId: string): void {
@@ -515,7 +515,7 @@ export class IconPickerSurface {
     }
 
     private showEmptyState(isSearch: boolean = false): void {
-        const emptyMessage = this.resultsContainer.createDiv('nn-icon-empty-message');
+        const emptyMessage = this.resultsContainer.createDiv('tps-nn-icon-empty-message');
         emptyMessage.setText(isSearch ? strings.modals.iconPicker.emptyStateNoResults : strings.modals.iconPicker.emptyStateSearch);
     }
 
@@ -534,18 +534,18 @@ export class IconPickerSurface {
             fullIconId = iconDef.id;
         }
 
-        const iconItem = container.createDiv('nn-icon-item');
+        const iconItem = container.createDiv('tps-nn-icon-item');
         iconItem.setAttribute('data-icon-id', fullIconId);
-        iconItem.toggleClass('nn-icon-item-selected', fullIconId === this.currentIcon);
+        iconItem.toggleClass('tps-nn-icon-item-selected', fullIconId === this.currentIcon);
 
-        const iconPreview = iconItem.createDiv('nn-icon-item-preview');
+        const iconPreview = iconItem.createDiv('tps-nn-icon-item-preview');
         this.iconService.renderIcon(iconPreview, fullIconId);
 
         if (resolvedProvider.id === 'emoji' && iconDef.preview) {
-            iconPreview.addClass('nn-emoji-preview');
+            iconPreview.addClass('tps-nn-emoji-preview');
         }
 
-        const iconName = iconItem.createDiv('nn-icon-item-name');
+        const iconName = iconItem.createDiv('tps-nn-icon-item-name');
         iconName.setText(iconDef.displayName);
 
         iconItem.setAttribute('tabindex', '0');
@@ -594,7 +594,7 @@ export class IconPickerSurface {
 
             const currentFocused = activeDocument.activeElement instanceof HTMLElement ? activeDocument.activeElement : null;
 
-            if (currentFocused?.classList.contains('nn-icon-provider-tab')) {
+            if (currentFocused?.classList.contains('tps-nn-icon-provider-tab')) {
                 evt.preventDefault();
                 return;
             }
@@ -602,7 +602,7 @@ export class IconPickerSurface {
             evt.preventDefault();
             const activeTab = this.getActiveProviderTab();
 
-            if (currentFocused?.classList.contains('nn-icon-item')) {
+            if (currentFocused?.classList.contains('tps-nn-icon-item')) {
                 this.searchInput.focus();
                 return;
             }
@@ -622,16 +622,16 @@ export class IconPickerSurface {
 
             const activeElement = activeDocument.activeElement;
             const currentFocused = activeElement instanceof HTMLElement ? activeElement : null;
-            if (currentFocused?.classList.contains('nn-icon-provider-tab')) {
+            if (currentFocused?.classList.contains('tps-nn-icon-provider-tab')) {
                 evt.preventDefault();
                 this.searchInput.focus();
                 return;
             }
-            const isInGrid = currentFocused?.classList.contains('nn-icon-item');
+            const isInGrid = currentFocused?.classList.contains('tps-nn-icon-item');
 
             if (!isInGrid) {
                 evt.preventDefault();
-                const firstIcon = this.resultsContainer.querySelector<HTMLElement>('.nn-icon-item');
+                const firstIcon = this.resultsContainer.querySelector<HTMLElement>('.tps-nn-icon-item');
                 if (firstIcon) firstIcon.focus();
             }
         });
@@ -655,7 +655,7 @@ export class IconPickerSurface {
                 return;
             }
 
-            if (currentFocused?.classList.contains('nn-icon-item')) {
+            if (currentFocused?.classList.contains('tps-nn-icon-item')) {
                 evt.preventDefault();
                 const iconId = currentFocused.getAttribute('data-icon-id');
                 if (iconId) {
@@ -675,7 +675,7 @@ export class IconPickerSurface {
             return;
         }
         const currentFocused = activeElement;
-        if (currentFocused.classList.contains('nn-icon-provider-tab')) {
+        if (currentFocused.classList.contains('tps-nn-icon-provider-tab')) {
             if (deltaX === 0) {
                 return;
             }
@@ -683,10 +683,10 @@ export class IconPickerSurface {
             this.focusAdjacentTab(currentFocused, deltaX);
             return;
         }
-        if (!currentFocused.classList.contains('nn-icon-item')) return;
+        if (!currentFocused.classList.contains('tps-nn-icon-item')) return;
 
         evt.preventDefault();
-        const iconItems = Array.from(this.resultsContainer.querySelectorAll<HTMLElement>('.nn-icon-item'));
+        const iconItems = Array.from(this.resultsContainer.querySelectorAll<HTMLElement>('.tps-nn-icon-item'));
         const currentIndex = iconItems.indexOf(currentFocused);
 
         const newIndex = deltaX !== 0 ? currentIndex + deltaX : currentIndex + deltaY * GRID_COLUMNS;
@@ -738,10 +738,10 @@ export class IconPickerSurface {
         this.providerTabs.forEach(tab => {
             const isActive = tab.dataset.providerId === providerId;
             if (isActive) {
-                tab.addClass('nn-active');
+                tab.addClass('tps-nn-active');
                 tab.setAttribute('tabindex', '0');
             } else {
-                tab.removeClass('nn-active');
+                tab.removeClass('tps-nn-active');
                 tab.setAttribute('tabindex', '-1');
             }
         });
@@ -755,14 +755,14 @@ export class IconPickerSurface {
 
         const catalogUrl = getProviderCatalogUrl(providerId);
         if (!catalogUrl) {
-            this.providerLinkContainer.addClass('nn-icon-provider-link-row-hidden');
+            this.providerLinkContainer.addClass('tps-nn-icon-provider-link-row-hidden');
             this.providerLinkEl.removeAttribute('href');
             this.providerLinkEl.setText('');
             this.providerLinkEl.removeAttribute('title');
             return;
         }
 
-        this.providerLinkContainer.removeClass('nn-icon-provider-link-row-hidden');
+        this.providerLinkContainer.removeClass('tps-nn-icon-provider-link-row-hidden');
         this.providerLinkEl.setAttribute('href', catalogUrl);
         this.providerLinkEl.setAttribute('title', catalogUrl);
         const provider = this.iconService.getProvider(providerId);

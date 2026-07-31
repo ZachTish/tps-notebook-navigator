@@ -155,33 +155,33 @@ export function NavigationListRow({
 
     // Builds CSS class names based on component state (disabled, excluded, dragging, etc.)
     const classes = useMemo(() => {
-        const classList = ['nn-navitem', 'nn-drag-item'];
+        const classList = ['tps-nn-navitem', 'tps-nn-drag-item'];
         if (className) {
             classList.push(className);
         }
         if (isDisabled) {
-            classList.push('nn-shortcut-disabled');
+            classList.push('tps-nn-shortcut-disabled');
         }
         if (isExcluded) {
-            classList.push('nn-excluded');
+            classList.push('tps-nn-excluded');
         }
         if (dragHandleConfig?.visible) {
-            classList.push('nn-drag-item-has-handle');
+            classList.push('tps-nn-drag-item-has-handle');
         }
         if (backgroundColor) {
-            classList.push('nn-has-custom-background');
+            classList.push('tps-nn-has-custom-background');
         }
         return classList.join(' ');
     }, [backgroundColor, className, dragHandleConfig?.visible, isDisabled, isExcluded]);
 
     // Builds CSS classes for the label element, combining base class with optional custom class
     const labelClasses = useMemo(() => {
-        const classList = ['nn-navitem-name'];
+        const classList = ['tps-nn-navitem-name'];
         if (labelClassName) {
             classList.push(labelClassName);
         }
         if (applyColorToLabel && color) {
-            classList.push('nn-has-custom-color');
+            classList.push('tps-nn-has-custom-color');
         }
         return classList.join(' ');
     }, [applyColorToLabel, color, labelClassName]);
@@ -262,7 +262,7 @@ export function NavigationListRow({
         }
         return {
             '--level': level,
-            '--nn-navitem-custom-bg-color': backgroundColor
+            '--tps-nn-navitem-custom-bg-color': backgroundColor
         } as CSSProperties;
     }, [backgroundColor, level]);
 
@@ -353,16 +353,16 @@ export function NavigationListRow({
             {...(!bindToHandle ? rowDragAttributes : undefined)}
             {...(!bindToHandle ? dragListeners : undefined)}
         >
-            <div className="nn-navitem-content">
+            <div className="tps-nn-navitem-content">
                 <span
                     ref={chevronRef}
-                    className={`nn-navitem-chevron${chevronIcon ? '' : ' nn-navitem-chevron--no-children'}`}
+                    className={`tps-nn-navitem-chevron${chevronIcon ? '' : ' tps-nn-navitem-chevron--no-children'}`}
                     aria-hidden="true"
                 />
                 {showIcon ? (
                     <span
                         ref={iconRef}
-                        className="nn-navitem-icon"
+                        className="tps-nn-navitem-icon"
                         aria-hidden="true"
                         data-has-color={color ? 'true' : 'false'}
                         style={color ? { color } : undefined}
@@ -373,18 +373,18 @@ export function NavigationListRow({
                     onClick={onLabelClick ? handleLabelClick : undefined}
                     onMouseDown={onLabelMouseDown ? handleLabelMouseDown : undefined}
                 >
-                    <span className="nn-shortcut-label" data-has-color={applyColorToLabel ? 'true' : undefined} style={labelStyle}>
+                    <span className="tps-nn-shortcut-label" data-has-color={applyColorToLabel ? 'true' : undefined} style={labelStyle}>
                         {label}
                     </span>
-                    {description ? <span className="nn-shortcut-description">{description}</span> : null}
+                    {description ? <span className="tps-nn-shortcut-description">{description}</span> : null}
                 </span>
-                <span className={`nn-navitem-spacer${shouldShowCountLeader ? ' nn-navitem-spacer--leader' : ''}`} />
-                {shouldShowCount ? (countSlot ?? <span className="nn-navitem-count">{count}</span>) : null}
-                {trailingAccessory ? <div className="nn-navitem-accessory">{trailingAccessory}</div> : null}
+                <span className={`tps-nn-navitem-spacer${shouldShowCountLeader ? ' tps-nn-navitem-spacer--leader' : ''}`} />
+                {shouldShowCount ? (countSlot ?? <span className="tps-nn-navitem-count">{count}</span>) : null}
+                {trailingAccessory ? <div className="tps-nn-navitem-accessory">{trailingAccessory}</div> : null}
                 {handleVisible ? (
                     <span
-                        className={`nn-drag-handle${handleLooksInteractive ? '' : ' nn-drag-handle-disabled'}${
-                            handleActive ? ' nn-drag-handle-active' : ''
+                        className={`tps-nn-drag-handle${handleLooksInteractive ? '' : ' tps-nn-drag-handle-disabled'}${
+                            handleActive ? ' tps-nn-drag-handle-active' : ''
                         }`}
                         role="button"
                         tabIndex={-1}

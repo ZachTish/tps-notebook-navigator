@@ -233,7 +233,7 @@ export function createCalendarCustomPatternRenderers(options: CalendarCustomPatt
                 getActiveProfile().periodicNotesFolder = normalizeCalendarCustomRootFolder(value);
             }
         );
-        setting.controlEl.addClass('nn-setting-wide-input');
+        setting.controlEl.addClass('tps-nn-setting-wide-input');
         const inputEl = setting.controlEl.querySelector<HTMLInputElement>('input');
         calendarCustomRootFolderInputEl = inputEl;
 
@@ -266,15 +266,15 @@ export function createCalendarCustomPatternRenderers(options: CalendarCustomPatt
             undefined,
             params.onAfterUpdate
         );
-        setting.controlEl.addClass('nn-setting-wide-input');
+        setting.controlEl.addClass('tps-nn-setting-wide-input');
 
         const descEl = setting.descEl;
         descEl.empty();
 
-        const exampleEl = descEl.createDiv({ cls: 'nn-setting-calendar-pattern-example nn-setting-hidden' });
-        const exampleTextEl = exampleEl.createSpan({ cls: 'nn-setting-calendar-pattern-example-text' });
-        const templateEl = descEl.createDiv({ cls: 'nn-setting-calendar-template-file nn-setting-hidden' });
-        const templateTextEl = templateEl.createSpan({ cls: 'nn-setting-calendar-pattern-example-text' });
+        const exampleEl = descEl.createDiv({ cls: 'tps-nn-setting-calendar-pattern-example tps-nn-setting-hidden' });
+        const exampleTextEl = exampleEl.createSpan({ cls: 'tps-nn-setting-calendar-pattern-example-text' });
+        const templateEl = descEl.createDiv({ cls: 'tps-nn-setting-calendar-template-file tps-nn-setting-hidden' });
+        const templateTextEl = templateEl.createSpan({ cls: 'tps-nn-setting-calendar-pattern-example-text' });
         const inputEl = setting.controlEl.querySelector<HTMLInputElement>('input');
 
         let templateButton: ExtraButtonComponent | null = null;
@@ -331,7 +331,7 @@ export function createCalendarCustomPatternRenderers(options: CalendarCustomPatt
         });
         calendarCustomFilePattern = target;
         calendarCustomFilePatternErrorEl = calendarCustomFilePattern.descEl.createDiv({
-            cls: 'setting-item-description nn-setting-hidden nn-setting-warning'
+            cls: 'setting-item-description tps-nn-setting-hidden tps-nn-setting-warning'
         });
         requestVisibilityRefresh();
 
@@ -360,10 +360,10 @@ export function createCalendarCustomPatternRenderers(options: CalendarCustomPatt
         });
         calendarCustomWeekPattern = target;
         calendarCustomWeekPatternErrorEl = calendarCustomWeekPattern.descEl.createDiv({
-            cls: 'setting-item-description nn-setting-hidden nn-setting-warning'
+            cls: 'setting-item-description tps-nn-setting-hidden tps-nn-setting-warning'
         });
         calendarCustomWeekPatternWarningEl = calendarCustomWeekPattern.descEl.createDiv({
-            cls: 'setting-item-description nn-setting-hidden nn-setting-warning'
+            cls: 'setting-item-description tps-nn-setting-hidden tps-nn-setting-warning'
         });
         requestVisibilityRefresh();
 
@@ -393,7 +393,7 @@ export function createCalendarCustomPatternRenderers(options: CalendarCustomPatt
         });
         calendarCustomMonthPattern = target;
         calendarCustomMonthPatternErrorEl = calendarCustomMonthPattern.descEl.createDiv({
-            cls: 'setting-item-description nn-setting-hidden nn-setting-warning'
+            cls: 'setting-item-description tps-nn-setting-hidden tps-nn-setting-warning'
         });
         requestVisibilityRefresh();
 
@@ -422,7 +422,7 @@ export function createCalendarCustomPatternRenderers(options: CalendarCustomPatt
         });
         calendarCustomQuarterPattern = target;
         calendarCustomQuarterPatternErrorEl = calendarCustomQuarterPattern.descEl.createDiv({
-            cls: 'setting-item-description nn-setting-hidden nn-setting-warning'
+            cls: 'setting-item-description tps-nn-setting-hidden tps-nn-setting-warning'
         });
         requestVisibilityRefresh();
 
@@ -451,7 +451,7 @@ export function createCalendarCustomPatternRenderers(options: CalendarCustomPatt
         });
         calendarCustomYearPattern = target;
         calendarCustomYearPatternErrorEl = calendarCustomYearPattern.descEl.createDiv({
-            cls: 'setting-item-description nn-setting-hidden nn-setting-warning'
+            cls: 'setting-item-description tps-nn-setting-hidden tps-nn-setting-warning'
         });
         requestVisibilityRefresh();
 
@@ -466,7 +466,7 @@ export function createCalendarCustomPatternRenderers(options: CalendarCustomPatt
 
     const renderPatternInfoSetting = (setting: Setting): void => {
         setting.setName('').setDesc('');
-        setting.settingEl.addClass('nn-setting-info-container');
+        setting.settingEl.addClass('tps-nn-setting-info-container');
         setting.descEl.empty();
         const description = createInlineExternalLinkText({
             prefix: strings.settings.items.calendarCustomFilePattern.momentDescPrefix,

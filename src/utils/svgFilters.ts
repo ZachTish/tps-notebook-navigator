@@ -16,10 +16,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { TPS_NOTEBOOK_NAVIGATOR_FROSTED_FILTER_ID, TPS_NOTEBOOK_NAVIGATOR_SVG_FILTERS_ID } from '../constants/tpsIdentity';
+
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
-const NOTEBOOK_NAVIGATOR_SVG_FILTERS_ID = 'notebook-navigator-svg-filters';
-const NOTEBOOK_NAVIGATOR_FROSTED_FILTER_ID = 'notebook-navigator-frosted';
+const NOTEBOOK_NAVIGATOR_SVG_FILTERS_ID = TPS_NOTEBOOK_NAVIGATOR_SVG_FILTERS_ID;
+const NOTEBOOK_NAVIGATOR_FROSTED_FILTER_ID = TPS_NOTEBOOK_NAVIGATOR_FROSTED_FILTER_ID;
 
 function createSvgElement(tagName: string) {
     return activeDocument.createElementNS(SVG_NAMESPACE, tagName);
@@ -101,7 +103,7 @@ export function ensureNotebookNavigatorSvgFilters() {
     svg.setAttribute('id', NOTEBOOK_NAVIGATOR_SVG_FILTERS_ID);
     svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('focusable', 'false');
-    svg.classList.add('nn-svg-filters');
+    svg.classList.add('tps-nn-svg-filters');
 
     ensureFilterDefs(svg);
     activeDocument.body.append(svg);

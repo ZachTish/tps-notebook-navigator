@@ -18,10 +18,10 @@
 
 import { TFile, TFolder } from 'obsidian';
 import type NotebookNavigatorPlugin from '../../main';
-import { strings } from '../../i18n';
 import { getIconService } from '../icons';
 import { runAsyncAction } from '../../utils/async';
 import { NOTEBOOK_NAVIGATOR_ICON_ID } from '../../constants/notebookNavigatorIcon';
+import { TPS_NOTEBOOK_NAVIGATOR_DISPLAY_NAME } from '../../constants/tpsIdentity';
 import { removeHiddenFolderExactMatches, updateHiddenFolderExactMatches } from '../../utils/vaultProfiles';
 import {
     invalidateVaultIconSvgCache,
@@ -97,7 +97,7 @@ export default function registerWorkspaceEvents(plugin: NotebookNavigatorPlugin)
 
             menu.addSeparator();
             menu.addItem(item => {
-                item.setTitle(strings.plugin.revealInNavigator)
+                item.setTitle(`Reveal in ${TPS_NOTEBOOK_NAVIGATOR_DISPLAY_NAME}`)
                     .setIcon('lucide-folder-open')
                     .onClick(() => {
                         // Wrap file reveal with error handling
@@ -116,7 +116,7 @@ export default function registerWorkspaceEvents(plugin: NotebookNavigatorPlugin)
             // Add navigate option for folders
             if (file instanceof TFolder) {
                 menu.addItem(item => {
-                    item.setTitle(strings.plugin.revealInNavigator)
+                    item.setTitle(`Reveal in ${TPS_NOTEBOOK_NAVIGATOR_DISPLAY_NAME}`)
                         .setIcon(NOTEBOOK_NAVIGATOR_ICON_ID)
                         .onClick(() => {
                             // Wrap folder navigation with error handling
@@ -130,7 +130,7 @@ export default function registerWorkspaceEvents(plugin: NotebookNavigatorPlugin)
     );
 
     // Add ribbon icon to open the navigator
-    plugin.ribbonIconEl = plugin.addRibbonIcon(NOTEBOOK_NAVIGATOR_ICON_ID, strings.plugin.ribbonTooltip, () => {
+    plugin.ribbonIconEl = plugin.addRibbonIcon(NOTEBOOK_NAVIGATOR_ICON_ID, TPS_NOTEBOOK_NAVIGATOR_DISPLAY_NAME, () => {
         // Activate navigator view with error handling
         runAsyncAction(() => plugin.activateView());
     });

@@ -30,6 +30,11 @@ import { createNavigationPaneSettingDefinitions } from './tabs/NavigationTab';
 import { createNotesSettingDefinitions } from './tabs/NotesTab';
 import { createShortcutsSettingDefinitions } from './tabs/ShortcutsTab';
 import { createAppearanceBehaviorSettingDefinitions } from './tabs/AppearanceBehaviorTab';
+import {
+    createTpsIntegrationSettingDefinitions,
+    TPS_INTEGRATION_SETTINGS_DESCRIPTION,
+    TPS_INTEGRATION_SETTINGS_LABEL
+} from './tabs/TpsIntegrationTab';
 import { renderAdvancedTab } from './tabs/legacy/AdvancedLegacyTab';
 import { renderAppearanceBehaviorTab } from './tabs/legacy/AppearanceBehaviorLegacyTab';
 import { renderCalendarTab } from './tabs/legacy/CalendarLegacyTab';
@@ -42,6 +47,7 @@ import { renderIconPacksTab } from './tabs/legacy/IconPacksLegacyTab';
 import { renderListPaneTab } from './tabs/legacy/ListLegacyTab';
 import { renderNavigationPaneTab } from './tabs/legacy/NavigationLegacyTab';
 import { renderNotesTab } from './tabs/legacy/NotesLegacyTab';
+import { renderTpsIntegrationTab } from './tabs/legacy/TpsIntegrationLegacyTab';
 import { renderShortcutsTab } from './tabs/legacy/ShortcutsLegacyTab';
 import type { SettingsTabContext, SettingsTabId } from './tabs/SettingsTabContext';
 
@@ -64,7 +70,7 @@ export interface SettingsPaneDefinition {
 export const SETTINGS_PAGE_GROUP_DEFINITIONS: SettingsPageGroupDefinition[] = [
     {
         getHeading: () => strings.settings.pageGroups.configuration,
-        items: ['vault-filters', 'appearance-behavior', 'file-operations']
+        items: ['tps-integration', 'vault-filters', 'appearance-behavior', 'file-operations']
     },
     {
         getHeading: () => strings.settings.pageGroups.navigationAndContent,
@@ -82,6 +88,7 @@ export const SETTINGS_PAGE_GROUP_DEFINITIONS: SettingsPageGroupDefinition[] = [
 
 export const SETTINGS_PAGE_DESCRIPTION_GETTERS: Record<SettingsPaneId, () => string> = {
     general: () => strings.settings.pageDescriptions.general,
+    'tps-integration': () => TPS_INTEGRATION_SETTINGS_DESCRIPTION,
     'vault-filters': () => strings.settings.pageDescriptions.vaultFilters,
     'appearance-behavior': () => strings.settings.pageDescriptions.appearanceBehavior,
     'navigation-pane': () => strings.settings.pageDescriptions.navigationPane,
@@ -100,6 +107,12 @@ export const SETTINGS_PAGE_DESCRIPTION_GETTERS: Record<SettingsPaneId, () => str
 // Native pages use createDefinitions; legacy pages use render.
 const SETTINGS_PANE_DEFINITIONS: SettingsPaneDefinition[] = [
     { id: 'general', getLabel: () => strings.settings.sections.general, render: renderGeneralTab },
+    {
+        id: 'tps-integration',
+        getLabel: () => TPS_INTEGRATION_SETTINGS_LABEL,
+        render: renderTpsIntegrationTab,
+        createDefinitions: createTpsIntegrationSettingDefinitions
+    },
     {
         id: 'vault-filters',
         getLabel: () => strings.settings.sections.vaultFilters,

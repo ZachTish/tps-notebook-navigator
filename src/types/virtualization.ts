@@ -23,6 +23,7 @@ import { PropertyTreeNode, TagTreeNode } from '../types/storage';
 import type { SearchShortcut, ShortcutEntry } from '../types/shortcuts';
 import type { NoteCountInfo } from '../types/noteCounts';
 import type { ManualSortGroupHeaderData } from '../utils/manualSort';
+import type { NavigatorProvidedRow } from '../services/rows/types';
 
 export interface VirtualItem<T> {
     type: string;
@@ -40,7 +41,7 @@ export interface ListPaneFolderPathSegment {
 
 export interface ListPaneItem {
     type: ListPaneItemType;
-    data: TFile | string; // File, header text, or spacer payload
+    data: TFile | string | NavigatorProvidedRow; // File, header text, spacer payload, or transient provider row
     parentFolder?: string | null;
     // Folder path associated with a folder-group header.
     // Present only when grouping by folder in the list pane.

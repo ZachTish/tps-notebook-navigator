@@ -4,32 +4,32 @@
    Edit Vault Profiles Modal
    ======================================================================== */
 
-.modal.nn-edit-profiles-modal .modal-content {
+.modal.tps-nn-edit-profiles-modal .modal-content {
     display: flex;
     flex-direction: column;
     gap: var(--size-2-2);
     padding: var(--size-4-4);
 }
 
-.nn-edit-profiles-list {
+.tps-nn-edit-profiles-list {
     display: flex;
     flex-direction: column;
     gap: var(--size-1-5);
     width: 100%;
 }
 
-.nn-edit-profiles-row {
+.tps-nn-edit-profiles-row {
     display: flex;
     align-items: center;
     gap: var(--size-2-1);
 }
 
-.nn-edit-profiles-row .nn-input {
+.tps-nn-edit-profiles-row .tps-nn-input {
     flex: 1;
     min-width: 0;
 }
 
-.nn-edit-profiles-actions {
+.tps-nn-edit-profiles-actions {
     display: flex;
     gap: var(--size-1-5);
     flex-shrink: 0;

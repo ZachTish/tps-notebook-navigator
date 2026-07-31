@@ -198,23 +198,23 @@ export const TagTreeItem = React.memo(
 
         // Memoize className to avoid string concatenation on every render
         const className = useMemo(() => {
-            const classes = ['nn-navitem', 'nn-tag'];
-            if (isSelected) classes.push('nn-selected');
-            if (isHidden) classes.push('nn-excluded');
-            if (tagBackground) classes.push('nn-has-custom-background');
-            if (searchMatch) classes.push('nn-has-search-match');
+            const classes = ['tps-nn-navitem', 'tps-nn-tag'];
+            if (isSelected) classes.push('tps-nn-selected');
+            if (isHidden) classes.push('tps-nn-excluded');
+            if (tagBackground) classes.push('tps-nn-has-custom-background');
+            if (searchMatch) classes.push('tps-nn-has-search-match');
             if (adjacentFilledClassName) classes.push(adjacentFilledClassName);
             return classes.join(' ');
         }, [adjacentFilledClassName, isSelected, isHidden, tagBackground, searchMatch]);
 
         const tagNameClassName = useMemo(() => {
-            const classes = ['nn-navitem-name'];
-            if (applyColorToName) classes.push('nn-has-custom-color');
+            const classes = ['tps-nn-navitem-name'];
+            if (applyColorToName) classes.push('tps-nn-has-custom-color');
             return classes.join(' ');
         }, [applyColorToName]);
 
         // Apply search highlight classes when tag matches include or exclude filters
-        const contentClassName = useMemo(() => buildSearchMatchContentClass(['nn-navitem-content'], searchMatch), [searchMatch]);
+        const contentClassName = useMemo(() => buildSearchMatchContentClass(['tps-nn-navitem-content'], searchMatch), [searchMatch]);
 
         // Stable event handlers
         const handleDoubleClick = useCallback(
@@ -282,7 +282,7 @@ export const TagTreeItem = React.memo(
 
         const tagStyle: CSSPropertiesWithVars = {
             '--level': level,
-            ...(tagBackground ? { '--nn-navitem-custom-bg-color': tagBackground } : {})
+            ...(tagBackground ? { '--tps-nn-navitem-custom-bg-color': tagBackground } : {})
         };
 
         return (
@@ -321,28 +321,28 @@ export const TagTreeItem = React.memo(
                     <IndentGuideColumns levels={indentGuideLevels} />
                     <div
                         ref={chevronRef}
-                        className={`nn-navitem-chevron ${hasChildren ? 'nn-navitem-chevron--has-children' : 'nn-navitem-chevron--no-children'}`}
+                        className={`tps-nn-navitem-chevron ${hasChildren ? 'tps-nn-navitem-chevron--has-children' : 'tps-nn-navitem-chevron--no-children'}`}
                         onClick={handleChevronClick}
                         onDoubleClick={handleChevronDoubleClick}
                         tabIndex={-1}
                     />
                     {settings.showTagIcons && (
-                        <span className="nn-navitem-icon" ref={iconRef} style={tagColor ? { color: tagColor } : undefined} />
+                        <span className="tps-nn-navitem-icon" ref={iconRef} style={tagColor ? { color: tagColor } : undefined} />
                     )}
                     {inlineRename ? (
-                        <InlineRenameInput {...inlineRename} className="nn-navitem-inline-rename" />
+                        <InlineRenameInput {...inlineRename} className="tps-nn-navitem-inline-rename" />
                     ) : (
                         <span className={tagNameClassName} style={applyColorToName ? { color: tagColor } : undefined}>
                             {tagNode.name}
                         </span>
                     )}
-                    <span className="nn-navitem-spacer nn-navitem-spacer--leader" />
+                    <span className="tps-nn-navitem-spacer tps-nn-navitem-spacer--leader" />
                     {shouldDisplayOperatorIndicator ? (
-                        <span className="nn-navitem-count nn-navitem-operator-indicator" data-operator={inclusionOperator}>
-                            <ObsidianIcon name={operatorIconName} className="nn-navitem-operator-icon" aria-hidden={true} />
+                        <span className="tps-nn-navitem-count tps-nn-navitem-operator-indicator" data-operator={inclusionOperator}>
+                            <ObsidianIcon name={operatorIconName} className="tps-nn-navitem-operator-icon" aria-hidden={true} />
                         </span>
                     ) : shouldDisplayCount ? (
-                        <span className="nn-navitem-count">{noteCountLabel}</span>
+                        <span className="tps-nn-navitem-count">{noteCountLabel}</span>
                     ) : null}
                 </div>
             </div>

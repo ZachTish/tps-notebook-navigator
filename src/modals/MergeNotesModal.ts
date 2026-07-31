@@ -66,7 +66,7 @@ export class MergeNotesModal extends Modal {
         this.titleEl.setText(strings.modals.mergeNotes.title);
 
         this.contentEl.createDiv({
-            cls: 'nn-input-description nn-merge-notes-summary',
+            cls: 'tps-nn-input-description tps-nn-merge-notes-summary',
             text: strings.modals.mergeNotes.summary
                 .replace('{count}', this.noteCount.toString())
                 .replace('{folder}', this.getDestinationFolderLabel())
@@ -107,7 +107,7 @@ export class MergeNotesModal extends Modal {
 
         this.renderMergeNotesDetails();
 
-        const buttonContainer = this.contentEl.createDiv('nn-button-container');
+        const buttonContainer = this.contentEl.createDiv('tps-nn-button-container');
         const cancelBtn = buttonContainer.createEl('button', { text: strings.common.cancel });
         cancelBtn.addEventListener('click', () => this.close());
 
@@ -147,7 +147,7 @@ export class MergeNotesModal extends Modal {
 
     private renderMergeNotesDetails(): void {
         const detailsEl = this.contentEl.createEl('p', {
-            cls: 'nn-merge-notes-details',
+            cls: 'tps-nn-merge-notes-details',
             attr: { dir: 'auto' }
         });
         detailsEl.createSpan({ text: strings.modals.mergeNotes.frontmatterRule });
@@ -157,7 +157,7 @@ export class MergeNotesModal extends Modal {
 
         detailsEl.appendText(' ');
         detailsEl.createSpan({
-            cls: 'nn-merge-notes-warning',
+            cls: 'tps-nn-merge-notes-warning',
             text: strings.modals.mergeNotes.crossFolderWarning,
             attr: { dir: 'auto' }
         });

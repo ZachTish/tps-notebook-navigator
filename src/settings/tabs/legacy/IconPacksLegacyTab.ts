@@ -115,7 +115,7 @@ function renderIconPacksContent(context: SettingsTabContext, iconPacksRootEl: HT
         }
     });
 
-    addInfoSetting(iconPacksGroup.addSetting, 'nn-setting-info-container', descEl => {
+    addInfoSetting(iconPacksGroup.addSetting, 'tps-nn-setting-info-container', descEl => {
         descEl.createDiv().append(
             createExternalLinkText({
                 text: strings.settings.items.externalIcons.infoNote,

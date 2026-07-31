@@ -2,18 +2,18 @@
 
 /* @settings
 
-name: Notebook Navigator
-id: notebook-navigator-style-settings
+name: TPS Notebook Navigator
+id: tps-notebook-navigator-style-settings
 settings:
     -
-        id: nn-theme-foreground-heading
+        id: tps-nn-theme-foreground-heading
         title: Foreground colors
         description: Base colors for text, icons, and lines. Most other colors default to these.
         type: heading
         level: 1
         collapsed: true
     -
-        id: nn-theme-foreground
+        id: tps-nn-theme-foreground
         title: Base foreground
         description: Base foreground color.
         type: variable-themed-color
@@ -21,7 +21,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-foreground-muted
+        id: tps-nn-theme-foreground-muted
         title: Muted foreground
         description: Muted foreground color.
         type: variable-themed-color
@@ -29,7 +29,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-foreground-faded
+        id: tps-nn-theme-foreground-faded
         title: Faded foreground
         description: Faded foreground color.
         type: variable-themed-color
@@ -37,7 +37,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-foreground-faint
+        id: tps-nn-theme-foreground-faint
         title: Faint foreground
         description: Faint foreground color.
         type: variable-themed-color
@@ -45,14 +45,14 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-nav-pane-heading
+        id: tps-nn-nav-pane-heading
         title: Navigation pane
         description: Customize the background and items within the navigation pane.
         type: heading
         level: 1
         collapsed: true
     -
-        id: nn-theme-nav-bg
+        id: tps-nn-theme-nav-bg
         title: Navigation pane background
         description: Background color of the navigation pane (desktop only).
         type: variable-themed-color
@@ -60,7 +60,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-nav-separator-color
+        id: tps-nn-theme-nav-separator-color
         title: Navigation separator color
         description: Line color for separators rendered inside navigation spacers.
         type: variable-themed-color
@@ -68,7 +68,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-nav-indent-guide-color
+        id: tps-nn-theme-nav-indent-guide-color
         title: Indent guide color
         description: Line color for navigation indent guides.
         type: variable-themed-color
@@ -77,7 +77,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-nav-leader-color
+        id: tps-nn-theme-nav-leader-color
         title: Leader color
         description: Color for leaders between item names and trailing values.
         type: variable-themed-color
@@ -86,7 +86,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-pinned-shortcut-shadow-color
+        id: tps-nn-theme-pinned-shortcut-shadow-color
         title: Pinned shortcut shadow color
         description: Gradient overlay color rendered beneath pinned shortcuts.
         type: variable-themed-color
@@ -94,13 +94,13 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-nav-pane-items-heading
+        id: tps-nn-nav-pane-items-heading
         title: Navigation items
         type: heading
         level: 2
         collapsed: false
     -
-        id: nn-theme-navitem-chevron-color
+        id: tps-nn-theme-navitem-chevron-color
         title: Expand/collapse arrow color
         description: Color for expand/collapse arrows.
         type: variable-themed-color
@@ -108,7 +108,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-icon-color
+        id: tps-nn-theme-navitem-icon-color
         title: Icon color
         description: Icon color for navigation items.
         type: variable-themed-color
@@ -116,7 +116,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-name-color
+        id: tps-nn-theme-navitem-name-color
         title: Text color
         description: Text color for navigation item names.
         type: variable-themed-color
@@ -124,7 +124,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-file-name-color
+        id: tps-nn-theme-navitem-file-name-color
         title: File text color
         description: Text color for file shortcuts and recent files. Defaults to the navigation item text color.
         type: variable-themed-color
@@ -132,7 +132,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-border-radius
+        id: tps-nn-theme-navitem-border-radius
         title: Item border radius
         description: Corner radius for navigation items.
         type: variable-number-slider
@@ -142,7 +142,7 @@ settings:
         max: 14
         step: 1
     -
-        id: nn-theme-navitem-border-width
+        id: tps-nn-theme-navitem-border-width
         title: Item border width
         description: Border width on navigation item backgrounds, hover state, and selection.
         type: variable-number-slider
@@ -152,7 +152,7 @@ settings:
         max: 4
         step: 1
     -
-        id: nn-theme-navitem-custom-border-color
+        id: tps-nn-theme-navitem-custom-border-color
         title: Custom background border color
         description: Border color on navigation items with custom backgrounds.
         type: variable-themed-color
@@ -161,7 +161,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-hover-bg
+        id: tps-nn-theme-navitem-hover-bg
         title: Hover background
         description: Item hover background color.
         type: variable-themed-color
@@ -169,7 +169,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-hover-border-color
+        id: tps-nn-theme-navitem-hover-border-color
         title: Hover border color
         description: Border color on hovered navigation items.
         type: variable-themed-color
@@ -178,7 +178,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-tag-positive-bg
+        id: tps-nn-theme-tag-positive-bg
         title: Tag highlight (include)
         description: Background color for positive tag highlights and tag drop targets.
         type: variable-themed-color
@@ -186,7 +186,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-tag-negative-bg
+        id: tps-nn-theme-tag-negative-bg
         title: Tag highlight (exclude)
         description: Background color for negative tag highlights and the untagged drop target.
         type: variable-themed-color
@@ -194,13 +194,13 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-nav-selection-heading
+        id: tps-nn-nav-selection-heading
         title: Selection
         type: heading
         level: 2
         collapsed: false
     -
-        id: nn-theme-navitem-selected-bg
+        id: tps-nn-theme-navitem-selected-bg
         title: Selection background
         description: Selected item background color.
         type: variable-themed-color
@@ -208,7 +208,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-border-color
+        id: tps-nn-theme-navitem-selected-border-color
         title: Selection border color
         description: Border color on selected navigation items.
         type: variable-themed-color
@@ -217,7 +217,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-chevron-color
+        id: tps-nn-theme-navitem-selected-chevron-color
         title: Selected chevron color
         description: Expand/collapse arrow color when item is selected.
         type: variable-themed-color
@@ -225,7 +225,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-icon-color
+        id: tps-nn-theme-navitem-selected-icon-color
         title: Selected icon color
         description: Icon color when item is selected.
         type: variable-themed-color
@@ -233,7 +233,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-name-color
+        id: tps-nn-theme-navitem-selected-name-color
         title: Selected name color
         description: Name color when selected.
         type: variable-themed-color
@@ -241,7 +241,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-inactive-bg
+        id: tps-nn-theme-navitem-selected-inactive-bg
         title: Selection background (inactive)
         description: Selected item background color when pane is inactive.
         type: variable-themed-color
@@ -249,7 +249,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-inactive-border-color
+        id: tps-nn-theme-navitem-selected-inactive-border-color
         title: Selection border color (inactive)
         description: Border color on selected navigation items when pane is inactive.
         type: variable-themed-color
@@ -258,7 +258,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-inactive-chevron-color
+        id: tps-nn-theme-navitem-selected-inactive-chevron-color
         title: Selected chevron color (inactive)
         description: Expand/collapse arrow color when item is selected and pane is inactive.
         type: variable-themed-color
@@ -266,7 +266,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-inactive-icon-color
+        id: tps-nn-theme-navitem-selected-inactive-icon-color
         title: Selected icon color (inactive)
         description: Icon color when item is selected and pane is inactive.
         type: variable-themed-color
@@ -274,7 +274,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-inactive-name-color
+        id: tps-nn-theme-navitem-selected-inactive-name-color
         title: Selected name color (inactive)
         description: Name color when selected and pane is inactive.
         type: variable-themed-color
@@ -282,13 +282,13 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-nav-file-counts-heading
+        id: tps-nn-nav-file-counts-heading
         title: File counts
         type: heading
         level: 2
         collapsed: false
     -
-        id: nn-theme-navitem-count-color
+        id: tps-nn-theme-navitem-count-color
         title: File count text color
         description: Text color for file count badges.
         type: variable-themed-color
@@ -296,7 +296,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-count-bg
+        id: tps-nn-theme-navitem-count-bg
         title: File count background
         description: Background color for file count badges.
         type: variable-themed-color
@@ -304,7 +304,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-count-border-radius
+        id: tps-nn-theme-navitem-count-border-radius
         title: File count border radius
         description: Corner radius for file count badges.
         type: variable-number-slider
@@ -314,7 +314,7 @@ settings:
         max: 8
         step: 1
     -
-        id: nn-theme-navitem-count-border-width
+        id: tps-nn-theme-navitem-count-border-width
         title: File count border width
         description: Border width on navigation file count badges.
         type: variable-number-slider
@@ -324,7 +324,7 @@ settings:
         max: 4
         step: 1
     -
-        id: nn-theme-navitem-count-border-color
+        id: tps-nn-theme-navitem-count-border-color
         title: File count border color
         description: Border color on navigation file count badges.
         type: variable-themed-color
@@ -333,7 +333,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-count-font-weight
+        id: tps-nn-theme-navitem-count-font-weight
         title: File count font weight
         description: Font weight for file count badges.
         type: variable-number-slider
@@ -342,7 +342,7 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-theme-navitem-selected-count-color
+        id: tps-nn-theme-navitem-selected-count-color
         title: Selected count text color
         description: File count text color when item is selected.
         type: variable-themed-color
@@ -350,7 +350,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-count-bg
+        id: tps-nn-theme-navitem-selected-count-bg
         title: Selected count background
         description: File count background color when selected.
         type: variable-themed-color
@@ -358,7 +358,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-count-border-color
+        id: tps-nn-theme-navitem-selected-count-border-color
         title: Selected file count border color
         description: Border color on file count badges when selected.
         type: variable-themed-color
@@ -367,7 +367,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-inactive-count-color
+        id: tps-nn-theme-navitem-selected-inactive-count-color
         title: Selected count text color (inactive)
         description: File count text color when item is selected and pane is inactive.
         type: variable-themed-color
@@ -375,7 +375,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-inactive-count-bg
+        id: tps-nn-theme-navitem-selected-inactive-count-bg
         title: Selected count background (inactive)
         description: File count background color when item is selected and pane is inactive.
         type: variable-themed-color
@@ -383,7 +383,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-navitem-selected-inactive-count-border-color
+        id: tps-nn-theme-navitem-selected-inactive-count-border-color
         title: Selected file count border color (inactive)
         description: Border color on file count badges when selected and pane is inactive.
         type: variable-themed-color
@@ -392,13 +392,13 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-navitem-text-styling-heading
+        id: tps-nn-navitem-text-styling-heading
         title: Text styling
         type: heading
         level: 2
         collapsed: false
     -
-        id: nn-theme-navitem-name-font-weight
+        id: tps-nn-theme-navitem-name-font-weight
         title: Name weight
         description: Font weight of folder, tag, property, note, and section names, including shortcuts and recent files.
         type: variable-number-slider
@@ -407,7 +407,7 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-theme-navitem-custom-color-name-font-weight
+        id: tps-nn-theme-navitem-custom-color-name-font-weight
         title: Custom color name weight
         description: Font weight of names with custom or rainbow colors (overrides name weight).
         type: variable-number-slider
@@ -416,7 +416,7 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-theme-navitem-folder-note-name-decoration
+        id: tps-nn-theme-navitem-folder-note-name-decoration
         title: Folder note decoration
         description: Text decoration for folders with notes.
         type: variable-select
@@ -432,7 +432,7 @@ settings:
             label: Dotted underline
             value: underline dotted
     -
-        id: nn-theme-navitem-folder-note-name-hover-decoration
+        id: tps-nn-theme-navitem-folder-note-name-hover-decoration
         title: Folder note hover decoration
         description: Text decoration when hovering folders with notes.
         type: variable-select
@@ -448,14 +448,14 @@ settings:
             label: Dotted underline
             value: underline dotted
     -
-        id: nn-file-list-heading
+        id: tps-nn-file-list-heading
         title: List pane
         description: Customize the file list appearance.
         type: heading
         level: 1
         collapsed: true
     -
-        id: nn-theme-list-bg
+        id: tps-nn-theme-list-bg
         title: List pane background
         description: Background color of the list pane (desktop only).
         type: variable-themed-color
@@ -463,7 +463,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-list-search-active-bg
+        id: tps-nn-theme-list-search-active-bg
         title: Search field active background
         description: Background color for the search field when a search query is active (desktop only).
         type: variable-themed-color
@@ -471,7 +471,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-list-search-border-color
+        id: tps-nn-theme-list-search-border-color
         title: Search border color
         description: Border and focus ring color for the search field.
         type: variable-themed-color
@@ -480,7 +480,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-list-separator-color
+        id: tps-nn-theme-list-separator-color
         title: List separator color
         description: Divider line color between files.
         type: variable-themed-color
@@ -488,13 +488,13 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-list-header-heading
+        id: tps-nn-list-header-heading
         title: List header
         type: heading
         level: 2
         collapsed: false
     -
-        id: nn-theme-list-heading-color
+        id: tps-nn-theme-list-heading-color
         title: List heading text color
         description: Text color for the list pane title area and vault title.
         type: variable-themed-color
@@ -502,7 +502,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-list-heading-font-weight
+        id: tps-nn-theme-list-heading-font-weight
         title: List heading font weight
         description: Font weight for the list pane title area and vault title.
         type: variable-number-slider
@@ -511,7 +511,7 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-theme-list-header-icon-color
+        id: tps-nn-theme-list-header-icon-color
         title: List header icon color
         description: Color for the folder/tag icon shown beside the desktop list header breadcrumb.
         type: variable-themed-color
@@ -519,7 +519,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-list-header-breadcrumb-color
+        id: tps-nn-theme-list-header-breadcrumb-color
         title: List header breadcrumb color
         description: Text color for the breadcrumb path in the desktop list header.
         type: variable-themed-color
@@ -527,7 +527,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-list-header-breadcrumb-font-weight
+        id: tps-nn-theme-list-header-breadcrumb-font-weight
         title: List header breadcrumb font weight
         description: Font weight for breadcrumb text in the desktop list header.
         type: variable-number-slider
@@ -536,13 +536,13 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-list-group-headers-heading
+        id: tps-nn-list-group-headers-heading
         title: Group headers
         type: heading
         level: 2
         collapsed: false
     -
-        id: nn-theme-list-group-header-color
+        id: tps-nn-theme-list-group-header-color
         title: Group header text color
         description: Text color for date groups and pinned section.
         type: variable-themed-color
@@ -550,7 +550,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-list-group-header-font-weight
+        id: tps-nn-theme-list-group-header-font-weight
         title: Group header font weight
         description: Font weight for date groups and pinned section.
         type: variable-number-slider
@@ -559,13 +559,13 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-file-list-items-heading
+        id: tps-nn-file-list-items-heading
         title: File items
         type: heading
         level: 2
         collapsed: false
     -
-        id: nn-theme-file-task-icon-color
+        id: tps-nn-theme-file-task-icon-color
         title: Unfinished task icon color
         description: Icon color for notes with unfinished tasks.
         type: variable-themed-color
@@ -573,7 +573,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-name-color
+        id: tps-nn-theme-file-name-color
         title: File name color
         description: Text color for file names.
         type: variable-themed-color
@@ -581,7 +581,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-preview-color
+        id: tps-nn-theme-file-preview-color
         title: File preview text color
         description: Text color for content preview.
         type: variable-themed-color
@@ -589,7 +589,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-date-color
+        id: tps-nn-theme-file-date-color
         title: File date color
         description: Text color for creation or modification dates.
         type: variable-themed-color
@@ -597,7 +597,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-word-count-color
+        id: tps-nn-theme-file-word-count-color
         title: File word count color
         description: Text color for word count suffixes.
         type: variable-themed-color
@@ -605,7 +605,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-parent-color
+        id: tps-nn-theme-file-parent-color
         title: File parent folder color
         description: Text color for parent folder path (when showing subfolders).
         type: variable-themed-color
@@ -613,7 +613,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-feature-border-radius
+        id: tps-nn-theme-file-feature-border-radius
         title: Feature image border radius
         description: Corner radius for feature images.
         type: variable-number-slider
@@ -623,7 +623,7 @@ settings:
         max: 32
         step: 1
     -
-        id: nn-theme-file-border-radius
+        id: tps-nn-theme-file-border-radius
         title: File item border radius
         description: Corner radius for file items.
         type: variable-number-slider
@@ -633,13 +633,13 @@ settings:
         max: 16
         step: 1
     -
-        id: nn-list-selection-heading
+        id: tps-nn-list-selection-heading
         title: Selection
         type: heading
         level: 2
         collapsed: false
     -
-        id: nn-theme-file-selected-bg
+        id: tps-nn-theme-file-selected-bg
         title: Selection background
         description: Selected file background color.
         type: variable-themed-color
@@ -647,7 +647,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-border-width
+        id: tps-nn-theme-file-border-width
         title: Selection border width
         description: Border width on selected file items.
         type: variable-number-slider
@@ -657,7 +657,7 @@ settings:
         max: 4
         step: 1
     -
-        id: nn-theme-file-selected-border-color
+        id: tps-nn-theme-file-selected-border-color
         title: Selection border color
         description: Border color on selected file items.
         type: variable-themed-color
@@ -666,7 +666,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-name-color
+        id: tps-nn-theme-file-selected-name-color
         title: Selected file name color
         description: Text color for file names when selected.
         type: variable-themed-color
@@ -674,7 +674,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-preview-color
+        id: tps-nn-theme-file-selected-preview-color
         title: Selected file preview color
         description: Text color for content preview when selected.
         type: variable-themed-color
@@ -682,7 +682,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-date-color
+        id: tps-nn-theme-file-selected-date-color
         title: Selected file date color
         description: Text color for file dates when selected.
         type: variable-themed-color
@@ -690,7 +690,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-word-count-color
+        id: tps-nn-theme-file-selected-word-count-color
         title: Selected file word count color
         description: Text color for word count suffixes when selected.
         type: variable-themed-color
@@ -698,7 +698,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-parent-color
+        id: tps-nn-theme-file-selected-parent-color
         title: Selected file parent folder color
         description: Text color for parent folder path when selected.
         type: variable-themed-color
@@ -706,7 +706,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-inactive-bg
+        id: tps-nn-theme-file-selected-inactive-bg
         title: Selection background (inactive)
         description: Selected file background color when pane is inactive.
         type: variable-themed-color
@@ -714,7 +714,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-inactive-border-color
+        id: tps-nn-theme-file-selected-inactive-border-color
         title: Selection border color (inactive)
         description: Border color on selected file items when pane is inactive.
         type: variable-themed-color
@@ -723,7 +723,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-inactive-name-color
+        id: tps-nn-theme-file-selected-inactive-name-color
         title: Selected file name color (inactive)
         description: File name color when selected and pane is inactive.
         type: variable-themed-color
@@ -731,7 +731,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-inactive-preview-color
+        id: tps-nn-theme-file-selected-inactive-preview-color
         title: Selected file preview color (inactive)
         description: Content preview color when file is selected and pane is inactive.
         type: variable-themed-color
@@ -739,7 +739,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-inactive-date-color
+        id: tps-nn-theme-file-selected-inactive-date-color
         title: Selected file date color (inactive)
         description: File date color when selected and pane is inactive.
         type: variable-themed-color
@@ -747,7 +747,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-inactive-word-count-color
+        id: tps-nn-theme-file-selected-inactive-word-count-color
         title: Selected file word count color (inactive)
         description: Word count suffix color when file is selected and pane is inactive.
         type: variable-themed-color
@@ -755,7 +755,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-inactive-parent-color
+        id: tps-nn-theme-file-selected-inactive-parent-color
         title: Selected file parent folder color (inactive)
         description: Parent folder color when file is selected and pane is inactive.
         type: variable-themed-color
@@ -763,13 +763,13 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-list-pills-heading
+        id: tps-nn-list-pills-heading
         title: Tag & property pills
         type: heading
         level: 2
         collapsed: false
     -
-        id: nn-theme-file-tag-color
+        id: tps-nn-theme-file-tag-color
         title: File tag text color
         description: Text color for tag pills.
         type: variable-themed-color
@@ -777,7 +777,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-tag-custom-color-text-color
+        id: tps-nn-theme-file-tag-custom-color-text-color
         title: Custom tag text color
         description: Text color for tags with custom colors.
         type: variable-themed-color
@@ -785,7 +785,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-tag-bg
+        id: tps-nn-theme-file-tag-bg
         title: File tag background
         description: Background color for tag pills.
         type: variable-themed-color
@@ -793,7 +793,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-tag-border-radius
+        id: tps-nn-theme-file-tag-border-radius
         title: Tag pill border radius
         description: Corner radius for tag pills.
         type: variable-number-slider
@@ -803,7 +803,7 @@ settings:
         max: 10
         step: 1
     -
-        id: nn-theme-file-property-color
+        id: tps-nn-theme-file-property-color
         title: Custom property text color
         description: Text color for custom property pill.
         type: variable-themed-color
@@ -811,7 +811,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-property-bg
+        id: tps-nn-theme-file-property-bg
         title: Custom property background
         description: Background color for custom property pill.
         type: variable-themed-color
@@ -819,7 +819,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-property-border-radius
+        id: tps-nn-theme-file-property-border-radius
         title: Custom property pill border radius
         description: Corner radius for custom property pills.
         type: variable-number-slider
@@ -829,7 +829,7 @@ settings:
         max: 10
         step: 1
     -
-        id: nn-theme-file-pill-border-width
+        id: tps-nn-theme-file-pill-border-width
         title: Pill border width
         description: Border width on tag and custom property pills.
         type: variable-number-slider
@@ -839,7 +839,7 @@ settings:
         max: 4
         step: 1
     -
-        id: nn-theme-file-tag-border-color
+        id: tps-nn-theme-file-tag-border-color
         title: Tag pill border color
         description: Border color on tag pills without custom colors.
         type: variable-themed-color
@@ -848,7 +848,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-property-border-color
+        id: tps-nn-theme-file-property-border-color
         title: Custom property pill border color
         description: Border color on custom property pills without custom colors.
         type: variable-themed-color
@@ -857,7 +857,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-tag-font-weight
+        id: tps-nn-theme-file-tag-font-weight
         title: Tag text font weight
         description: Font weight for tag pill text.
         type: variable-number-slider
@@ -866,7 +866,7 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-theme-file-selected-tag-color
+        id: tps-nn-theme-file-selected-tag-color
         title: Selected file tag text color
         description: Text color for tag pills when selected.
         type: variable-themed-color
@@ -874,7 +874,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-tag-bg
+        id: tps-nn-theme-file-selected-tag-bg
         title: Selected file tag background
         description: Background color for tag pills when selected.
         type: variable-themed-color
@@ -882,7 +882,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-tag-border-color
+        id: tps-nn-theme-file-selected-tag-border-color
         title: Selected tag pill border color
         description: Border color on tag pills without custom colors in selected files.
         type: variable-themed-color
@@ -891,7 +891,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-property-color
+        id: tps-nn-theme-file-selected-property-color
         title: Selected custom property text color
         description: Text color for custom property pill when selected.
         type: variable-themed-color
@@ -899,7 +899,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-property-bg
+        id: tps-nn-theme-file-selected-property-bg
         title: Selected custom property background
         description: Background color for custom property pill when selected.
         type: variable-themed-color
@@ -907,7 +907,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-property-border-color
+        id: tps-nn-theme-file-selected-property-border-color
         title: Selected custom property pill border color
         description: Border color on custom property pills without custom colors in selected files.
         type: variable-themed-color
@@ -916,7 +916,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-inactive-tag-color
+        id: tps-nn-theme-file-selected-inactive-tag-color
         title: Selected file tag text color (inactive)
         description: Tag text color when file is selected and pane is inactive.
         type: variable-themed-color
@@ -924,7 +924,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-inactive-tag-bg
+        id: tps-nn-theme-file-selected-inactive-tag-bg
         title: Selected file tag background (inactive)
         description: Tag background color when file is selected and pane is inactive.
         type: variable-themed-color
@@ -932,7 +932,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-inactive-property-color
+        id: tps-nn-theme-file-selected-inactive-property-color
         title: Selected custom property text color (inactive)
         description: Text color for custom property pill when file is selected and pane is inactive.
         type: variable-themed-color
@@ -940,7 +940,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-file-selected-inactive-property-bg
+        id: tps-nn-theme-file-selected-inactive-property-bg
         title: Selected custom property background (inactive)
         description: Background color for custom property pill when file is selected and pane is inactive.
         type: variable-themed-color
@@ -948,13 +948,13 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-file-text-styling-heading
+        id: tps-nn-file-text-styling-heading
         title: Text styling
         type: heading
         level: 2
         collapsed: false
     -
-        id: nn-theme-file-name-font-weight
+        id: tps-nn-theme-file-name-font-weight
         title: File name font weight
         description: Font weight for file names.
         type: variable-number-slider
@@ -963,7 +963,7 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-theme-file-compact-name-font-weight
+        id: tps-nn-theme-file-compact-name-font-weight
         title: File name font weight (compact mode)
         description: Font weight for file names in compact mode.
         type: variable-number-slider
@@ -972,7 +972,7 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-theme-file-preview-font-weight
+        id: tps-nn-theme-file-preview-font-weight
         title: File preview font weight
         description: Font weight for file preview text.
         type: variable-number-slider
@@ -981,7 +981,7 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-theme-file-date-font-weight
+        id: tps-nn-theme-file-date-font-weight
         title: Date font weight
         description: Font weight for file dates.
         type: variable-number-slider
@@ -990,7 +990,7 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-theme-file-word-count-font-weight
+        id: tps-nn-theme-file-word-count-font-weight
         title: Word count font weight
         description: Font weight for word count suffixes.
         type: variable-number-slider
@@ -999,7 +999,7 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-theme-file-parent-font-weight
+        id: tps-nn-theme-file-parent-font-weight
         title: Parent folder font weight
         description: Font weight for parent folder path.
         type: variable-number-slider
@@ -1008,13 +1008,13 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-theme-quick-actions-heading
+        id: tps-nn-theme-quick-actions-heading
         title: Quick actions
         type: heading
         level: 2
         collapsed: false
     -
-        id: nn-theme-quick-actions-bg
+        id: tps-nn-theme-quick-actions-bg
         title: Toolbar background
         description: Background color of quick actions toolbar (supports transparency).
         type: variable-themed-color
@@ -1023,7 +1023,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-quick-actions-border
+        id: tps-nn-theme-quick-actions-border
         title: Toolbar border color
         description: Border color of quick actions toolbar.
         type: variable-themed-color
@@ -1032,7 +1032,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-quick-actions-border-radius
+        id: tps-nn-theme-quick-actions-border-radius
         title: Toolbar border radius
         description: Corner radius for quick actions panel.
         type: variable-number-slider
@@ -1042,7 +1042,7 @@ settings:
         max: 12
         step: 1
     -
-        id: nn-theme-quick-actions-icon-color
+        id: tps-nn-theme-quick-actions-icon-color
         title: Icon color
         description: Icon color for quick action buttons.
         type: variable-themed-color
@@ -1050,7 +1050,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-quick-actions-icon-hover-color
+        id: tps-nn-theme-quick-actions-icon-hover-color
         title: Icon hover color
         description: Icon color when hovering quick action buttons.
         type: variable-themed-color
@@ -1058,7 +1058,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-quick-actions-separator-color
+        id: tps-nn-theme-quick-actions-separator-color
         title: Separator color
         description: Divider color between quick action buttons.
         type: variable-themed-color
@@ -1066,14 +1066,14 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-header-heading
+        id: tps-nn-header-heading
         title: Header buttons
         description: Buttons in the navigation pane and list pane headers.
         type: heading
         level: 1
         collapsed: true
     -
-        id: nn-theme-header-button-icon-color
+        id: tps-nn-theme-header-button-icon-color
         title: Button icon color
         description: Default icon color for header buttons.
         type: variable-themed-color
@@ -1081,7 +1081,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-header-button-hover-bg
+        id: tps-nn-theme-header-button-hover-bg
         title: Button hover background
         description: Background color when hovering header buttons.
         type: variable-themed-color
@@ -1089,7 +1089,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-header-button-active-bg
+        id: tps-nn-theme-header-button-active-bg
         title: Button active background
         description: Background color for active/toggled header buttons.
         type: variable-themed-color
@@ -1097,7 +1097,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-header-button-active-icon-color
+        id: tps-nn-theme-header-button-active-icon-color
         title: Button active icon color
         description: Icon color for active/toggled header buttons.
         type: variable-themed-color
@@ -1105,7 +1105,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-header-button-disabled-icon-color
+        id: tps-nn-theme-header-button-disabled-icon-color
         title: Button disabled icon color
         description: Icon color for disabled header buttons.
         type: variable-themed-color
@@ -1113,14 +1113,14 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-calendar-heading
+        id: tps-nn-calendar-heading
         title: Calendar
         description: Customize the daily notes calendar.
         type: heading
         level: 1
         collapsed: true
     -
-        id: nn-theme-calendar-header-color
+        id: tps-nn-theme-calendar-header-color
         title: Header text color
         description: Text color for month/year and header buttons.
         type: variable-themed-color
@@ -1128,7 +1128,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-weekday-color
+        id: tps-nn-theme-calendar-weekday-color
         title: Weekday label text color
         description: Text color for weekday labels (Mon, Tue, Wed...).
         type: variable-themed-color
@@ -1136,7 +1136,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-week-color
+        id: tps-nn-theme-calendar-week-color
         title: Week number text color
         description: Text color for week numbers.
         type: variable-themed-color
@@ -1144,7 +1144,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-day-in-month-color
+        id: tps-nn-theme-calendar-day-in-month-color
         title: Day text color (current month)
         description: Text color for days within the current month.
         type: variable-themed-color
@@ -1152,7 +1152,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-day-outside-month-color
+        id: tps-nn-theme-calendar-day-outside-month-color
         title: Day text color (outside month)
         description: Text color for days outside the current month.
         type: variable-themed-color
@@ -1160,7 +1160,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-weekend-bg
+        id: tps-nn-theme-calendar-weekend-bg
         title: Weekend day background
         description: Background color for weekend day cells.
         type: variable-themed-color
@@ -1168,7 +1168,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-hover-bg
+        id: tps-nn-theme-calendar-hover-bg
         title: Hover background
         description: Background color when hovering calendar buttons and days.
         type: variable-themed-color
@@ -1176,7 +1176,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-note-indicator-color
+        id: tps-nn-theme-calendar-note-indicator-color
         title: Daily note indicator
         description: Color for the dot indicator shown on dates with a daily note.
         type: variable-themed-color
@@ -1184,7 +1184,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-unfinished-task-indicator-color
+        id: tps-nn-theme-calendar-unfinished-task-indicator-color
         title: Unfinished task indicator
         description: Color for the hollow indicator shown on dates with unfinished tasks.
         type: variable-themed-color
@@ -1192,7 +1192,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-feature-image-text-color
+        id: tps-nn-theme-calendar-feature-image-text-color
         title: Feature image text color
         description: Text color for dates with feature images.
         type: variable-themed-color
@@ -1200,7 +1200,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-feature-image-overlay-color
+        id: tps-nn-theme-calendar-feature-image-overlay-color
         title: Feature image overlay color
         description: Adds a color overlay to darken or tint feature images in calendar days and months. Set separate colors for light and dark mode.
         type: variable-themed-color
@@ -1209,7 +1209,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-day-today-color
+        id: tps-nn-theme-calendar-day-today-color
         title: Day text color (today)
         description: Text color for today's date.
         type: variable-themed-color
@@ -1217,7 +1217,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-day-today-bg
+        id: tps-nn-theme-calendar-day-today-bg
         title: Today highlight background
         description: Background color for today's date highlight.
         type: variable-themed-color
@@ -1225,7 +1225,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-day-active-border-color
+        id: tps-nn-theme-calendar-day-active-border-color
         title: Selection outline color
         description: Border color for active calendar outlines.
         type: variable-themed-color
@@ -1234,7 +1234,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-calendar-day-active-border-width
+        id: tps-nn-theme-calendar-day-active-border-width
         title: Selection outline thickness
         description: Border width for active calendar outlines.
         type: variable-number-slider
@@ -1244,14 +1244,14 @@ settings:
         max: 4
         step: 1
     -
-        id: nn-theme-pane-divider-heading
+        id: tps-nn-theme-pane-divider-heading
         title: Pane divider
         description: Vertical divider between navigation and file list panes.
         type: heading
         level: 1
         collapsed: true
     -
-        id: nn-theme-divider-border-color
+        id: tps-nn-theme-divider-border-color
         title: Divider border color
         description: Color of the vertical border between panes.
         type: variable-themed-color
@@ -1260,7 +1260,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-divider-resize-handle-hover-bg
+        id: tps-nn-theme-divider-resize-handle-hover-bg
         title: Resize handle hover background
         description: Background color when hovering the pane divider to resize.
         type: variable-themed-color
@@ -1268,14 +1268,14 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-mobile-heading
+        id: tps-nn-mobile-heading
         title: Mobile
         description: Customize mobile interface elements.
         type: heading
         level: 1
         collapsed: true
     -
-        id: nn-theme-mobile-bg
+        id: tps-nn-theme-mobile-bg
         title: Mobile pane background
         description: Background color of navigation and list panes on mobile.
         type: variable-themed-color
@@ -1283,7 +1283,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-mobile-list-header-link-color
+        id: tps-nn-theme-mobile-list-header-link-color
         title: Mobile header link color
         description: Color for back button and clickable breadcrumb segments on mobile.
         type: variable-themed-color
@@ -1291,7 +1291,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-mobile-list-header-breadcrumb-color
+        id: tps-nn-theme-mobile-list-header-breadcrumb-color
         title: Mobile header breadcrumb color
         description: Color for current folder and separators in breadcrumb on mobile.
         type: variable-themed-color
@@ -1299,7 +1299,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-mobile-list-header-breadcrumb-font-weight
+        id: tps-nn-theme-mobile-list-header-breadcrumb-font-weight
         title: Mobile breadcrumb font weight
         description: Font weight for mobile header breadcrumb.
         type: variable-number-slider
@@ -1308,7 +1308,7 @@ settings:
         max: 900
         step: 100
     -
-        id: nn-theme-mobile-toolbar-glass-bg
+        id: tps-nn-theme-mobile-toolbar-glass-bg
         title: iOS glass toolbar background
         description: Background color of the iOS glass toolbar (used for border and background, supports transparency).
         type: variable-themed-color
@@ -1317,7 +1317,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-mobile-toolbar-button-icon-color
+        id: tps-nn-theme-mobile-toolbar-button-icon-color
         title: Toolbar button icon color
         description: Icon color in mobile toolbar.
         type: variable-themed-color
@@ -1325,7 +1325,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-mobile-toolbar-button-active-bg
+        id: tps-nn-theme-mobile-toolbar-button-active-bg
         title: Toolbar button active background
         description: Background color for active toolbar button.
         type: variable-themed-color
@@ -1333,7 +1333,7 @@ settings:
         default-light: '#'
         default-dark: '#'
     -
-        id: nn-theme-mobile-toolbar-button-active-icon-color
+        id: tps-nn-theme-mobile-toolbar-button-active-icon-color
         title: Toolbar button active icon color
         description: Icon color for active toolbar button.
         type: variable-themed-color

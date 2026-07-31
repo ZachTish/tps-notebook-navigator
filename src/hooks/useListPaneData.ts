@@ -58,10 +58,15 @@ import {
     type ListPaneConfig
 } from './listPaneData/listItems';
 import { useListPaneRefresh } from './listPaneData/useListPaneRefresh';
+import { useProviderRows } from './useProviderRows';
+import { navigatorRowProviderRegistry } from '../services/rows/defaultRegistry';
+import { mergeProviderRowsIntoList } from '../services/rows/providerListItems';
+import type { NavigatorRowProviderSelection, NavigatorRowScope } from '../services/rows/types';
 
 const EMPTY_SEARCH_META = new Map<string, SearchResultMeta>();
 const EMPTY_HIDDEN_FILE_STATE = new Map<string, boolean>();
 const EMPTY_CUSTOM_GROUP_HEADER_FILE_PATHS: ReadonlySet<string> = new Set();
+const NO_ROW_PROVIDERS: NavigatorRowProviderSelection = Object.freeze({ enabledProviderIds: Object.freeze([]) });
 
 /**
  * Parameters for the useListPaneData hook
@@ -95,6 +100,8 @@ interface UseListPaneDataParams {
     visibility: VisibilityPreferences;
     /** Optional markdown path order applied before list items are built */
     propertySortOrderOverride?: readonly string[] | null;
+    /** Optional provider-backed rows. Omit to keep the upstream file-only list. */
+    rowProviderSelection?: NavigatorRowProviderSelection;
 }
 
 /**
@@ -142,7 +149,8 @@ export function useListPaneData({
     searchQuery,
     searchTokens,
     visibility,
-    propertySortOrderOverride
+    propertySortOrderOverride,
+    rowProviderSelection = NO_ROW_PROVIDERS
 }: UseListPaneDataParams): UseListPaneDataResult {
     const { app, tagTreeService, propertyTreeService, commandQueue, omnisearchService } = useServices();
     const { getFileTimestamps, getDB, getFileDisplayName } = useFileCache();
@@ -436,7 +444,7 @@ export function useListPaneData({
         return filePaths;
     }, [groupItemCountData]);
 
-    const listItems = useMemo(() => {
+    const coreListItems = useMemo(() => {
         return buildListItems({
             app,
             dayKey,
@@ -489,6 +497,33 @@ export function useListPaneData({
         settings.wordCountTargetProperty,
         groupItemCountData
     ]);
+
+    const providerScope = useMemo<NavigatorRowScope>(() => {
+        const seen = new Set<string>();
+        const visibleFilePaths: string[] = [];
+        coreListItems.forEach(item => {
+            if (item.type !== ListPaneItemType.FILE || !(item.data instanceof TFile) || seen.has(item.data.path)) {
+                return;
+            }
+            seen.add(item.data.path);
+            visibleFilePaths.push(item.data.path);
+        });
+
+        return {
+            visibleFilePaths,
+            selectionType,
+            selectedFolderPath: selectedFolder?.path ?? null,
+            selectedTag,
+            selectedProperty
+        };
+    }, [coreListItems, selectedFolder, selectedProperty, selectedTag, selectionType]);
+    const providerRows = useProviderRows({
+        app,
+        registry: navigatorRowProviderRegistry,
+        scope: providerScope,
+        selection: rowProviderSelection
+    });
+    const listItems = useMemo(() => mergeProviderRowsIntoList(coreListItems, providerRows), [coreListItems, providerRows]);
 
     const filePathToIndex = useMemo(() => {
         return buildFilePathToIndexMap(listItems);

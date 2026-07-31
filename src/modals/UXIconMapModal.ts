@@ -86,12 +86,12 @@ export class UXIconMapModal extends Modal {
     }
 
     onOpen(): void {
-        this.modalEl.addClass('nn-ux-icon-map-modal');
+        this.modalEl.addClass('tps-nn-ux-icon-map-modal');
         this.titleEl.setText(strings.modals.interfaceIcons.title);
         this.contentEl.empty();
 
-        const scrollContainer = this.contentEl.createDiv({ cls: 'nn-ux-icon-map-scroll' });
-        this.listEl = scrollContainer.createDiv({ cls: 'nn-ux-icon-map-list' });
+        const scrollContainer = this.contentEl.createDiv({ cls: 'tps-nn-ux-icon-map-scroll' });
+        this.listEl = scrollContainer.createDiv({ cls: 'tps-nn-ux-icon-map-list' });
         this.renderRows();
         this.renderFooter();
         this.updateApplyButtonState();
@@ -103,7 +103,7 @@ export class UXIconMapModal extends Modal {
         this.rowControls.clear();
         this.listEl = null;
         this.applyButton = null;
-        this.modalEl.removeClass('nn-ux-icon-map-modal');
+        this.modalEl.removeClass('tps-nn-ux-icon-map-modal');
         this.contentEl.empty();
     }
 
@@ -199,15 +199,15 @@ export class UXIconMapModal extends Modal {
         });
 
         const renderRow = (row: UXIconRow) => {
-            const rowEl = this.listEl?.createDiv({ cls: 'nn-ux-icon-map-row' });
+            const rowEl = this.listEl?.createDiv({ cls: 'tps-nn-ux-icon-map-row' });
             if (!rowEl) {
                 return;
             }
 
-            rowEl.createDiv({ cls: 'nn-ux-icon-map-label', text: row.label });
+            rowEl.createDiv({ cls: 'tps-nn-ux-icon-map-label', text: row.label });
 
             const iconButtonEl = rowEl.createEl('button', {
-                cls: 'nn-action-btn',
+                cls: 'tps-nn-action-btn',
                 attr: { type: 'button', 'aria-label': strings.contextMenu.file.changeIcon }
             });
             const iconSpan = iconButtonEl.createSpan();
@@ -219,7 +219,7 @@ export class UXIconMapModal extends Modal {
             );
 
             const resetBtn = rowEl.createEl('button', {
-                cls: 'nn-action-btn',
+                cls: 'tps-nn-action-btn',
                 attr: { type: 'button', 'aria-label': strings.common.clear }
             });
             setIcon(resetBtn, 'lucide-rotate-ccw');
@@ -246,8 +246,8 @@ export class UXIconMapModal extends Modal {
             }
 
             const headingClassName = hasRenderedGroup
-                ? 'nn-ux-icon-map-group-heading nn-ux-icon-map-group-heading--spaced'
-                : 'nn-ux-icon-map-group-heading';
+                ? 'tps-nn-ux-icon-map-group-heading tps-nn-ux-icon-map-group-heading--spaced'
+                : 'tps-nn-ux-icon-map-group-heading';
             this.listEl?.createEl('h3', { cls: headingClassName, text: categoryLabel });
 
             groupRows.forEach(row => {
@@ -342,7 +342,7 @@ export class UXIconMapModal extends Modal {
     private renderFooter(): void {
         this.disposeFooterDisposers();
 
-        const footer = this.contentEl.createDiv({ cls: 'nn-ux-icon-map-footer nn-button-container' });
+        const footer = this.contentEl.createDiv({ cls: 'tps-nn-ux-icon-map-footer tps-nn-button-container' });
 
         const cancelButton = footer.createEl('button', { text: strings.common.cancel, attr: { type: 'button' } });
         this.footerDisposers.push(

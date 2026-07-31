@@ -61,11 +61,11 @@ export const CalendarYearPanel = React.memo(function CalendarYearPanel({
     }
 
     return (
-        <div className="nn-navigation-calendar-year-panel">
-            <div className="nn-navigation-calendar-year-nav">
+        <div className="tps-nn-navigation-calendar-year-panel">
+            <div className="tps-nn-navigation-calendar-year-nav">
                 <button
                     type="button"
-                    className="nn-navigation-calendar-nav-button nn-navigation-calendar-year-nav-button"
+                    className="tps-nn-navigation-calendar-nav-button tps-nn-navigation-calendar-year-nav-button"
                     aria-label={strings.common.previous}
                     onClick={() => onNavigateYear(-1)}
                 >
@@ -74,8 +74,8 @@ export const CalendarYearPanel = React.memo(function CalendarYearPanel({
                 <button
                     type="button"
                     className={[
-                        'nn-navigation-calendar-year-label',
-                        'nn-navigation-calendar-period-button',
+                        'tps-nn-navigation-calendar-year-label',
+                        'tps-nn-navigation-calendar-period-button',
                         hasYearPeriodNote ? 'has-period-note' : '',
                         isYearPeriodActive ? 'is-active-editor-file' : ''
                     ]
@@ -86,12 +86,12 @@ export const CalendarYearPanel = React.memo(function CalendarYearPanel({
                     onClick={onYearPeriodClick}
                     onContextMenu={onYearPeriodContextMenu}
                 >
-                    <span className="nn-navigation-calendar-active-outline" aria-hidden="true" />
+                    <span className="tps-nn-navigation-calendar-active-outline" aria-hidden="true" />
                     {displayedYearValue}
                 </button>
                 <button
                     type="button"
-                    className="nn-navigation-calendar-nav-button nn-navigation-calendar-year-nav-button"
+                    className="tps-nn-navigation-calendar-nav-button tps-nn-navigation-calendar-year-nav-button"
                     aria-label={strings.common.next}
                     onClick={() => onNavigateYear(1)}
                 >
@@ -99,7 +99,7 @@ export const CalendarYearPanel = React.memo(function CalendarYearPanel({
                 </button>
             </div>
 
-            <div className="nn-navigation-calendar-year-grid">
+            <div className="tps-nn-navigation-calendar-year-grid">
                 {yearMonthEntries.map(entry => {
                     const isSelectedMonth = displayedYearValue === activeYearValue && entry.monthIndex === activeMonthIndex;
                     const isCurrentMonth = entry.key === currentMonthKey;
@@ -115,7 +115,7 @@ export const CalendarYearPanel = React.memo(function CalendarYearPanel({
                             key={entry.key}
                             type="button"
                             className={[
-                                'nn-navigation-calendar-year-month',
+                                'tps-nn-navigation-calendar-year-month',
                                 isCurrentMonth ? 'is-current-month' : '',
                                 isSelectedMonth ? 'is-selected-month' : '',
                                 entry.hasDailyNote ? 'has-daily-note' : '',
@@ -129,10 +129,10 @@ export const CalendarYearPanel = React.memo(function CalendarYearPanel({
                             style={style}
                             onClick={event => onSelectYearMonth(event, entry.date)}
                         >
-                            <span className="nn-navigation-calendar-active-outline" aria-hidden="true" />
-                            <span className="nn-navigation-calendar-year-month-label">{entry.shortLabel}</span>
+                            <span className="tps-nn-navigation-calendar-active-outline" aria-hidden="true" />
+                            <span className="tps-nn-navigation-calendar-year-month-label">{entry.shortLabel}</span>
                             {entry.hasUnfinishedTasks ? (
-                                <span className="nn-navigation-calendar-year-month-unfinished-task-indicator" aria-hidden="true" />
+                                <span className="tps-nn-navigation-calendar-year-month-unfinished-task-indicator" aria-hidden="true" />
                             ) : null}
                         </button>
                     );

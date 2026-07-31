@@ -87,9 +87,9 @@ describe('calendar active editor state', () => {
             })
         );
 
-        expect(html).toContain('nn-navigation-calendar-period-month has-period-note is-active-editor-file');
-        expect(html).toContain('nn-navigation-calendar-quarter-button has-period-note is-active-editor-file');
-        expect(html).toContain('nn-navigation-calendar-period-year has-period-note is-active-editor-file');
+        expect(html).toContain('tps-nn-navigation-calendar-period-month has-period-note is-active-editor-file');
+        expect(html).toContain('tps-nn-navigation-calendar-quarter-button has-period-note is-active-editor-file');
+        expect(html).toContain('tps-nn-navigation-calendar-period-year has-period-note is-active-editor-file');
     });
 
     it('renders an active outline on the selected weekly note button', () => {
@@ -137,7 +137,7 @@ describe('calendar active editor state', () => {
             })
         );
 
-        expect(html).toContain('nn-navigation-calendar-weeknumber-button has-period-note is-active-editor-file');
+        expect(html).toContain('tps-nn-navigation-calendar-weeknumber-button has-period-note is-active-editor-file');
     });
 
     it('does not render a stale feature image for a hidden daily note', () => {
@@ -232,7 +232,7 @@ describe('calendar active editor state', () => {
         );
 
         expect(html).toContain(
-            'nn-navigation-calendar-year-label nn-navigation-calendar-period-button has-period-note is-active-editor-file'
+            'tps-nn-navigation-calendar-year-label tps-nn-navigation-calendar-period-button has-period-note is-active-editor-file'
         );
     });
 });

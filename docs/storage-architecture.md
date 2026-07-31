@@ -36,7 +36,7 @@ Notebook Navigator stores user configuration in `data.json` and uses rebuildable
 ```mermaid
 graph TB
     Vault["Vault (files + metadata cache)"] --> Storage["StorageContext"]
-    Storage --> CacheDB["IndexedDB cache (notebooknavigator/cache/{appId})"]
+    Storage --> CacheDB["IndexedDB cache (tps-notebook-navigator/cache/{appId})"]
     Providers["Content providers"] --> CacheDB
     CacheDB --> Memory["Memory caches (MemoryFileCache + LRUs)"]
     Memory --> UI["React UI"]
@@ -44,7 +44,7 @@ graph TB
     Settings["Settings (data.json)"] --> UI
     Local["vault-scoped localStorage"] --> UI
     Local --> CacheDB
-    Icons["Icon assets DB (notebooknavigator/icons/{appId})"] --> UI
+    Icons["Icon assets DB (tps-notebook-navigator/icons/{appId})"] --> UI
 ```
 
 ## Storage Containers
@@ -59,7 +59,7 @@ graph TB
 
 **Key space and stores**:
 
-- Database name: `notebooknavigator/cache/{appId}`
+- Database name: `tps-notebook-navigator/cache/{appId}`
 - Namespace key: `appId` from Obsidian (vault-scoped) passed through `initializeDatabase(...)`.
 - Keys: file paths (`TFile.path`) used as the IndexedDB keys across stores (the main record does not store the path).
 - Object stores:
@@ -184,64 +184,64 @@ and cache version/migration markers.
 
 ```typescript
 export const STORAGE_KEYS: LocalStorageKeys = {
-  expandedFoldersKey: 'notebook-navigator-expanded-folders',
-  expandedTagsKey: 'notebook-navigator-expanded-tags',
-  expandedPropertiesKey: 'notebook-navigator-expanded-properties',
-  expandedVirtualFoldersKey: 'notebook-navigator-expanded-virtual-folders',
-  selectedFolderKey: 'notebook-navigator-selected-folder',
-  selectedPropertyKey: 'notebook-navigator-selected-property',
-  selectedFileKey: 'notebook-navigator-selected-file',
-  selectedFilesKey: 'notebook-navigator-selected-files',
-  selectedTagKey: 'notebook-navigator-selected-tag',
-  navigationPaneWidthKey: 'notebook-navigator-navigation-pane-width',
-  navigationPaneHeightKey: 'notebook-navigator-navigation-pane-height',
-  dualPaneOrientationKey: 'notebook-navigator-dual-pane-orientation',
-  narrowSidebarLayoutKey: 'notebook-navigator-narrow-sidebar-layout',
-  narrowSidebarTriggerModeKey: 'notebook-navigator-narrow-sidebar-trigger-mode',
-  narrowSidebarCustomWidthKey: 'notebook-navigator-narrow-sidebar-custom-width',
-  dualPaneKey: 'notebook-navigator-dual-pane',
-  uiScaleKey: 'notebook-navigator-ui-scale',
-  shortcutsExpandedKey: 'notebook-navigator-shortcuts-expanded',
-  recentNotesExpandedKey: 'notebook-navigator-recent-notes-expanded',
-  recentNotesKey: 'notebook-navigator-recent-notes',
-  recentIconsKey: 'notebook-navigator-recent-icons',
-  navigationSectionOrderKey: 'notebook-navigator-section-order',
-  pinnedShortcutsMaxHeightKey: 'notebook-navigator-pinned-shortcuts-max-height',
-  uxPreferencesKey: 'notebook-navigator-ux-preferences',
-  databaseSchemaVersionKey: 'notebook-navigator-db-schema-version',
-  databaseContentVersionKey: 'notebook-navigator-db-content-version',
-  frontmatterMetadataCacheSignatureKey: 'notebook-navigator-frontmatter-metadata-cache-signature',
-  cacheRebuildNoticeKey: 'notebook-navigator-cache-rebuild-notice',
-  debugLoggingEnabledKey: 'notebook-navigator-debug-logging-enabled',
-  pdfProcessingDiagnosticKey: 'notebook-navigator-pdf-processing-diagnostic',
-  localStorageVersionKey: 'notebook-navigator-localstorage-version',
-  vaultProfileKey: 'notebook-navigator-vault-profile',
-  releaseCheckTimestampKey: 'notebook-navigator-release-check-timestamp',
-  searchProviderKey: 'notebook-navigator-search-provider',
-  homepageKey: 'notebook-navigator-homepage',
-  folderSortOrderKey: 'notebook-navigator-folder-sort-order',
-  tagSortOrderKey: 'notebook-navigator-tag-sort-order',
-  propertySortOrderKey: 'notebook-navigator-property-sort-order',
-  recentColorsKey: 'notebook-navigator-recent-colors',
-  paneTransitionDurationKey: 'notebook-navigator-pane-transition-duration',
-  toolbarVisibilityKey: 'notebook-navigator-toolbar-visibility',
-  useFloatingToolbarsKey: 'notebook-navigator-use-floating-toolbars',
-  pinNavigationBannerKey: 'notebook-navigator-pin-navigation-banner',
-  navIndentKey: 'notebook-navigator-nav-indent',
-  navItemHeightKey: 'notebook-navigator-nav-item-height',
-  navItemHeightScaleTextKey: 'notebook-navigator-nav-item-height-scale-text',
-  calendarPlacementKey: 'notebook-navigator-calendar-placement',
-  calendarLeftPlacementKey: 'notebook-navigator-calendar-left-placement',
-  calendarWeeksToShowKey: 'notebook-navigator-calendar-weeks-to-show',
-  compactItemHeightKey: 'notebook-navigator-compact-item-height',
-  compactItemHeightScaleTextKey: 'notebook-navigator-compact-item-height-scale-text',
-  featureImageSizeKey: 'notebook-navigator-feature-image-size',
-  featureImagePixelSizeKey: 'notebook-navigator-feature-image-pixel-size',
-  collapsedListGroupsKey: 'notebook-navigator-collapsed-list-groups',
-  collapsedPinnedContextsKey: 'notebook-navigator-collapsed-pinned-contexts',
-  mergeNotesSeparatorKey: 'notebook-navigator-merge-notes-separator',
-  mergeNotesMoveSourcesToTrashKey: 'notebook-navigator-merge-notes-move-sources-to-trash',
-  settingsImportBackupToRootKey: 'notebook-navigator-settings-import-backup-to-root'
+  expandedFoldersKey: 'tps-notebook-navigator-expanded-folders',
+  expandedTagsKey: 'tps-notebook-navigator-expanded-tags',
+  expandedPropertiesKey: 'tps-notebook-navigator-expanded-properties',
+  expandedVirtualFoldersKey: 'tps-notebook-navigator-expanded-virtual-folders',
+  selectedFolderKey: 'tps-notebook-navigator-selected-folder',
+  selectedPropertyKey: 'tps-notebook-navigator-selected-property',
+  selectedFileKey: 'tps-notebook-navigator-selected-file',
+  selectedFilesKey: 'tps-notebook-navigator-selected-files',
+  selectedTagKey: 'tps-notebook-navigator-selected-tag',
+  navigationPaneWidthKey: 'tps-notebook-navigator-navigation-pane-width',
+  navigationPaneHeightKey: 'tps-notebook-navigator-navigation-pane-height',
+  dualPaneOrientationKey: 'tps-notebook-navigator-dual-pane-orientation',
+  narrowSidebarLayoutKey: 'tps-notebook-navigator-narrow-sidebar-layout',
+  narrowSidebarTriggerModeKey: 'tps-notebook-navigator-narrow-sidebar-trigger-mode',
+  narrowSidebarCustomWidthKey: 'tps-notebook-navigator-narrow-sidebar-custom-width',
+  dualPaneKey: 'tps-notebook-navigator-dual-pane',
+  uiScaleKey: 'tps-notebook-navigator-ui-scale',
+  shortcutsExpandedKey: 'tps-notebook-navigator-shortcuts-expanded',
+  recentNotesExpandedKey: 'tps-notebook-navigator-recent-notes-expanded',
+  recentNotesKey: 'tps-notebook-navigator-recent-notes',
+  recentIconsKey: 'tps-notebook-navigator-recent-icons',
+  navigationSectionOrderKey: 'tps-notebook-navigator-section-order',
+  pinnedShortcutsMaxHeightKey: 'tps-notebook-navigator-pinned-shortcuts-max-height',
+  uxPreferencesKey: 'tps-notebook-navigator-ux-preferences',
+  databaseSchemaVersionKey: 'tps-notebook-navigator-db-schema-version',
+  databaseContentVersionKey: 'tps-notebook-navigator-db-content-version',
+  frontmatterMetadataCacheSignatureKey: 'tps-notebook-navigator-frontmatter-metadata-cache-signature',
+  cacheRebuildNoticeKey: 'tps-notebook-navigator-cache-rebuild-notice',
+  debugLoggingEnabledKey: 'tps-notebook-navigator-debug-logging-enabled',
+  pdfProcessingDiagnosticKey: 'tps-notebook-navigator-pdf-processing-diagnostic',
+  localStorageVersionKey: 'tps-notebook-navigator-localstorage-version',
+  vaultProfileKey: 'tps-notebook-navigator-vault-profile',
+  releaseCheckTimestampKey: 'tps-notebook-navigator-release-check-timestamp',
+  searchProviderKey: 'tps-notebook-navigator-search-provider',
+  homepageKey: 'tps-notebook-navigator-homepage',
+  folderSortOrderKey: 'tps-notebook-navigator-folder-sort-order',
+  tagSortOrderKey: 'tps-notebook-navigator-tag-sort-order',
+  propertySortOrderKey: 'tps-notebook-navigator-property-sort-order',
+  recentColorsKey: 'tps-notebook-navigator-recent-colors',
+  paneTransitionDurationKey: 'tps-notebook-navigator-pane-transition-duration',
+  toolbarVisibilityKey: 'tps-notebook-navigator-toolbar-visibility',
+  useFloatingToolbarsKey: 'tps-notebook-navigator-use-floating-toolbars',
+  pinNavigationBannerKey: 'tps-notebook-navigator-pin-navigation-banner',
+  navIndentKey: 'tps-notebook-navigator-nav-indent',
+  navItemHeightKey: 'tps-notebook-navigator-nav-item-height',
+  navItemHeightScaleTextKey: 'tps-notebook-navigator-nav-item-height-scale-text',
+  calendarPlacementKey: 'tps-notebook-navigator-calendar-placement',
+  calendarLeftPlacementKey: 'tps-notebook-navigator-calendar-left-placement',
+  calendarWeeksToShowKey: 'tps-notebook-navigator-calendar-weeks-to-show',
+  compactItemHeightKey: 'tps-notebook-navigator-compact-item-height',
+  compactItemHeightScaleTextKey: 'tps-notebook-navigator-compact-item-height-scale-text',
+  featureImageSizeKey: 'tps-notebook-navigator-feature-image-size',
+  featureImagePixelSizeKey: 'tps-notebook-navigator-feature-image-pixel-size',
+  collapsedListGroupsKey: 'tps-notebook-navigator-collapsed-list-groups',
+  collapsedPinnedContextsKey: 'tps-notebook-navigator-collapsed-pinned-contexts',
+  mergeNotesSeparatorKey: 'tps-notebook-navigator-merge-notes-separator',
+  mergeNotesMoveSourcesToTrashKey: 'tps-notebook-navigator-merge-notes-move-sources-to-trash',
+  settingsImportBackupToRootKey: 'tps-notebook-navigator-settings-import-backup-to-root'
 };
 ```
 
@@ -274,7 +274,7 @@ React render paths.
 
 **Purpose**: Stores user configuration and vault-scoped metadata that the plugin needs to restore deterministically.
 
-**Location**: `.obsidian/plugins/notebook-navigator/data.json`
+**Location**: `.obsidian/plugins/tps-notebook-navigator/data.json`
 
 **Synchronization**: Synchronized by Obsidian Sync (when enabled) and by any other vault/file synchronization method.
 
@@ -366,9 +366,9 @@ export interface NotebookNavigatorSettings {
 
 **Key characteristics**:
 
-- Database name: `notebooknavigator/icons/{appId}`
+- Database name: `tps-notebook-navigator/icons/{appId}`
 - Object store: `providers` keyed by `id` (one record per provider)
-- Separate from the main cache database (`notebooknavigator/cache/{appId}`)
+- Separate from the main cache database (`tps-notebook-navigator/cache/{appId}`)
 
 **Available icon providers**: Bootstrap Icons, Font Awesome, Material Icons, Phosphor Icons, RPG Awesome, Simple Icons
 
