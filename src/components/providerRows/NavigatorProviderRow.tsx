@@ -2,10 +2,16 @@
  * TPS Notebook Navigator - neutral rendering for transient provider rows.
  */
 
+import { Menu } from 'obsidian';
 import React, { useCallback, useEffect, useState } from 'react';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
 import { runAsyncAction } from '../../utils/async';
+import {
+    showProviderRowContextMenuAtMouseEvent,
+    showProviderRowContextMenuAtPosition
+} from '../../utils/contextMenu/providerRowContextMenu';
 import { showNotice } from '../../utils/noticeUtils';
+import { ObsidianIcon } from '../ObsidianIcon';
 
 interface NavigatorProviderRowProps {
     row: NavigatorProvidedRow;
@@ -95,6 +101,34 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
             })
         );
     }, [checkboxBusy, displayedChecked, row]);
+    const handleContextMenu = useCallback(
+        (event: React.MouseEvent<HTMLDivElement>) => {
+            if (!row.contextMenu) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            showProviderRowContextMenuAtMouseEvent(new Menu(), row, event.nativeEvent);
+        },
+        [row]
+    );
+    const handleMoreActions = useCallback(
+        (event: React.MouseEvent<HTMLButtonElement>) => {
+            if (!row.contextMenu) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            const rect = event.currentTarget.getBoundingClientRect();
+            showProviderRowContextMenuAtPosition(new Menu(), row, {
+                x: rect.left + rect.width / 2,
+                y: rect.bottom
+            });
+        },
+        [row]
+    );
     const lineDescription = row.sourceLineNumber === undefined ? '' : `, line ${row.sourceLineNumber + 1}`;
     const checkboxLabel = displayedChecked ? 'Mark task incomplete' : 'Mark task complete';
 
@@ -105,6 +139,8 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
             data-provider-id={row.providerId}
             data-provider-kind={row.kind}
             data-source-path={row.sourcePath}
+            data-provider-context-menu={row.contextMenu ? 'true' : undefined}
+            onContextMenu={handleContextMenu}
             onKeyDown={stopProviderRowKeyboardPropagation}
             onKeyUp={stopProviderRowKeyboardPropagation}
         >
@@ -147,6 +183,18 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
                 <span className="nn-provider-row-label">{row.label}</span>
                 {row.secondaryLabel ? <span className="nn-provider-row-secondary">{row.secondaryLabel}</span> : null}
             </button>
+            {row.contextMenu ? (
+                <button
+                    type="button"
+                    className="nn-provider-row-more"
+                    aria-label={`More actions for ${row.label}`}
+                    aria-haspopup="menu"
+                    title="More actions"
+                    onClick={handleMoreActions}
+                >
+                    <ObsidianIcon name="lucide-ellipsis-vertical" aria-hidden={true} />
+                </button>
+            ) : null}
         </div>
     );
 });

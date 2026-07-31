@@ -7,7 +7,12 @@ import {
     NAVIGATOR_ROW_PROVIDER_QUERY_TIMEOUT_MS
 } from '../../src/services/rows/composeProviderRows';
 import { mergeNavigatorRowProviderSelections } from '../../src/services/rows/providerSelections';
-import type { NavigatorRowProvider, NavigatorRowProviderContext } from '../../src/services/rows/types';
+import type {
+    NavigatorProvidedRow,
+    NavigatorRowDefinition,
+    NavigatorRowProvider,
+    NavigatorRowProviderContext
+} from '../../src/services/rows/types';
 
 const context = {
     app: {} as App,
@@ -101,6 +106,32 @@ describe('composeProviderRows', () => {
         expect(getRows).not.toHaveBeenCalled();
     });
 
+    it('preserves callable context-menu builders and rejects malformed ones', async () => {
+        const registry = new NavigatorRowProviderRegistry();
+        const contextMenu = vi.fn();
+        registry.register(
+            provider('tps/actions', [
+                { id: 'valid', kind: 'tps/example', label: 'Valid', sourcePath: 'Notes/one.md', contextMenu },
+                {
+                    id: 'invalid',
+                    kind: 'tps/example',
+                    label: 'Invalid',
+                    sourcePath: 'Notes/one.md',
+                    contextMenu: 'not callable'
+                } as never
+            ])
+        );
+
+        const rows = await composeProviderRows({
+            registry,
+            context,
+            selection: { enabledProviderIds: ['tps/actions'] }
+        });
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0]?.contextMenu).toBe(contextMenu);
+    });
+
     it('isolates a provider that violates the array result contract', async () => {
         const registry = new NavigatorRowProviderRegistry();
         registry.register({
@@ -150,7 +181,7 @@ describe('composeProviderRows', () => {
         ).resolves.toEqual([]);
     });
 
-    it('times out a hanging provider without blocking a healthy provider', async () => {
+    it('publishes healthy provider rows before a hanging provider reaches its timeout', async () => {
         vi.useFakeTimers();
         const registry = new NavigatorRowProviderRegistry();
         registry.register({
@@ -159,17 +190,199 @@ describe('composeProviderRows', () => {
         });
         registry.register(provider('tps/healthy', [{ id: 'ok', kind: 'tps/example', label: 'OK', sourcePath: 'Notes/one.md' }]));
         const failures = vi.fn();
+        const snapshots: string[][] = [];
+        const settled = vi.fn();
 
         const resultPromise = composeProviderRows({
             registry,
             context,
             selection: { enabledProviderIds: ['tps/hanging', 'tps/healthy'] },
-            onFailure: failures
+            onFailure: failures,
+            onSnapshot: snapshot => snapshots.push(snapshot.rows.map(row => `${row.providerId}:${row.id}`))
         });
+        void resultPromise.then(settled);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(snapshots).toEqual([['tps/healthy:ok']]);
+        expect(settled).not.toHaveBeenCalled();
+        expect(failures).not.toHaveBeenCalled();
+
         await vi.advanceTimersByTimeAsync(NAVIGATOR_ROW_PROVIDER_QUERY_TIMEOUT_MS);
 
         await expect(resultPromise).resolves.toMatchObject([{ providerId: 'tps/healthy', id: 'ok' }]);
         expect(failures).toHaveBeenCalledWith(expect.objectContaining({ providerId: 'tps/hanging' }));
+    });
+
+    it('publishes an empty first settlement so retained rows clear before another provider times out', async () => {
+        vi.useFakeTimers();
+        const registry = new NavigatorRowProviderRegistry();
+        registry.register(provider('tps/empty', []));
+        registry.register({
+            id: 'tps/hanging',
+            getRows: () => new Promise(() => undefined)
+        });
+        const snapshots: { settledProviderIds: readonly string[]; rows: readonly NavigatorProvidedRow[] }[] = [];
+
+        const resultPromise = composeProviderRows({
+            registry,
+            context,
+            selection: { enabledProviderIds: ['tps/empty', 'tps/hanging'] },
+            onSnapshot: snapshot =>
+                snapshots.push({
+                    settledProviderIds: snapshot.settledProviderIds,
+                    rows: snapshot.rows
+                })
+        });
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(snapshots).toEqual([{ settledProviderIds: ['tps/empty'], rows: [] }]);
+
+        await vi.advanceTimersByTimeAsync(NAVIGATOR_ROW_PROVIDER_QUERY_TIMEOUT_MS);
+        await expect(resultPromise).resolves.toEqual([]);
+        expect(snapshots).toEqual([
+            { settledProviderIds: ['tps/empty'], rows: [] },
+            { settledProviderIds: ['tps/empty', 'tps/hanging'], rows: [] }
+        ]);
+    });
+
+    it('recomposes a late higher-priority provider ahead of an already published provider', async () => {
+        vi.useFakeTimers();
+        const registry = new NavigatorRowProviderRegistry();
+        let resolveSlow: ((rows: readonly NavigatorRowDefinition[]) => void) | null = null;
+        const slowRows = new Promise<readonly NavigatorRowDefinition[]>(resolve => {
+            resolveSlow = resolve;
+        });
+        registry.register({ id: 'tps/slow', getRows: () => slowRows });
+        registry.register(provider('tps/healthy', [{ id: 'ok', kind: 'tps/example', label: 'OK', sourcePath: 'Notes/one.md' }]));
+        const snapshots: string[][] = [];
+
+        const resultPromise = composeProviderRows({
+            registry,
+            context,
+            selection: { enabledProviderIds: ['tps/slow', 'tps/healthy'] },
+            onSnapshot: snapshot => snapshots.push(snapshot.rows.map(row => `${row.providerId}:${row.id}`))
+        });
+        await vi.advanceTimersByTimeAsync(0);
+        expect(snapshots).toEqual([['tps/healthy:ok']]);
+
+        resolveSlow?.([{ id: 'late', kind: 'tps/example', label: 'Late', sourcePath: 'Notes/one.md' }]);
+        await vi.advanceTimersByTimeAsync(0);
+
+        await expect(resultPromise).resolves.toMatchObject([
+            { providerId: 'tps/slow', id: 'late' },
+            { providerId: 'tps/healthy', id: 'ok' }
+        ]);
+        expect(snapshots).toEqual([['tps/healthy:ok'], ['tps/slow:late', 'tps/healthy:ok']]);
+    });
+
+    it('displaces fast lower-priority rows as delayed higher-priority rows settle without exceeding the global cap', async () => {
+        vi.useFakeTimers();
+        const registry = new NavigatorRowProviderRegistry();
+        let resolvePriority: ((rows: readonly NavigatorRowDefinition[]) => void) | null = null;
+        const priorityRowsPromise = new Promise<readonly NavigatorRowDefinition[]>(resolve => {
+            resolvePriority = resolve;
+        });
+        const createRows = (prefix: string) =>
+            Array.from({ length: 800 }, (_, index) => ({
+                id: `${prefix}-${index}`,
+                kind: 'tps/example',
+                label: `${prefix} ${index}`,
+                sourcePath: 'Notes/one.md'
+            }));
+        registry.register({ id: 'tps/priority', getRows: () => priorityRowsPromise });
+        registry.register(provider('tps/fast', createRows('fast')));
+        const snapshots: NavigatorProvidedRow[][] = [];
+
+        const resultPromise = composeProviderRows({
+            registry,
+            context,
+            selection: { enabledProviderIds: ['tps/priority', 'tps/fast'] },
+            onSnapshot: snapshot => snapshots.push([...snapshot.rows])
+        });
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(snapshots).toHaveLength(1);
+        expect(snapshots[0]).toHaveLength(800);
+        expect(snapshots[0]?.every(row => row.providerId === 'tps/fast')).toBe(true);
+
+        resolvePriority?.(createRows('priority'));
+        await vi.advanceTimersByTimeAsync(0);
+
+        const finalRows = await resultPromise;
+        expect(snapshots.every(snapshot => snapshot.length <= NAVIGATOR_ROW_PROVIDER_MAX_ROWS)).toBe(true);
+        expect(finalRows).toHaveLength(NAVIGATOR_ROW_PROVIDER_MAX_ROWS);
+        expect(finalRows.filter(row => row.providerId === 'tps/priority')).toHaveLength(800);
+        expect(finalRows.filter(row => row.providerId === 'tps/fast')).toHaveLength(200);
+        expect(finalRows[799]).toMatchObject({ providerId: 'tps/priority', id: 'priority-799' });
+        expect(finalRows[800]).toMatchObject({ providerId: 'tps/fast', id: 'fast-0' });
+        expect(finalRows[999]).toMatchObject({ providerId: 'tps/fast', id: 'fast-199' });
+    });
+
+    it('enforces the 1,000-row ceiling across all providers in configured order', async () => {
+        const registry = new NavigatorRowProviderRegistry();
+        const createRows = (prefix: string) =>
+            Array.from({ length: 600 }, (_, index) => ({
+                id: `${prefix}-${index}`,
+                kind: 'tps/example',
+                label: `${prefix} ${index}`,
+                sourcePath: 'Notes/one.md'
+            }));
+        registry.register(provider('tps/first', createRows('first')));
+        registry.register(provider('tps/second', createRows('second')));
+
+        const rows = await composeProviderRows({
+            registry,
+            context,
+            selection: { enabledProviderIds: ['tps/first', 'tps/second'] }
+        });
+
+        expect(rows).toHaveLength(NAVIGATOR_ROW_PROVIDER_MAX_ROWS);
+        expect(rows.filter(row => row.providerId === 'tps/first')).toHaveLength(600);
+        expect(rows.filter(row => row.providerId === 'tps/second')).toHaveLength(400);
+        expect(rows[599]).toMatchObject({ providerId: 'tps/first', id: 'first-599' });
+        expect(rows[600]).toMatchObject({ providerId: 'tps/second', id: 'second-0' });
+        expect(rows[999]).toMatchObject({ providerId: 'tps/second', id: 'second-399' });
+    });
+
+    it('does not spend the global budget on invalid, duplicate, or orphan rows', async () => {
+        const registry = new NavigatorRowProviderRegistry();
+        const validRows: NavigatorRowDefinition[] = Array.from({ length: 997 }, (_, index) => ({
+            id: `first-${index}`,
+            kind: 'tps/example',
+            label: `First ${index}`,
+            sourcePath: 'Notes/one.md'
+        }));
+        registry.register(
+            provider('tps/first', [
+                ...validRows,
+                validRows[0],
+                { id: 'orphan', kind: 'tps/example', label: 'Orphan', sourcePath: 'Notes/missing.md' },
+                { id: 'invalid', kind: 'tps/example', label: 42, sourcePath: 'Notes/one.md' } as never
+            ])
+        );
+        registry.register(
+            provider(
+                'tps/second',
+                Array.from({ length: 5 }, (_, index) => ({
+                    id: `second-${index}`,
+                    kind: 'tps/example',
+                    label: `Second ${index}`,
+                    sourcePath: 'Notes/one.md'
+                }))
+            )
+        );
+
+        const rows = await composeProviderRows({
+            registry,
+            context,
+            selection: { enabledProviderIds: ['tps/first', 'tps/second'] }
+        });
+
+        expect(rows).toHaveLength(NAVIGATOR_ROW_PROVIDER_MAX_ROWS);
+        expect(rows.filter(row => row.providerId === 'tps/first')).toHaveLength(997);
+        expect(rows.filter(row => row.providerId === 'tps/second')).toHaveLength(3);
+        expect(rows.some(row => row.id === 'orphan' || row.id === 'invalid')).toBe(false);
+        expect(rows[rows.length - 1]).toMatchObject({ providerId: 'tps/second', id: 'second-2' });
     });
 
     it('drops an oversized provider result before it reaches virtualization', async () => {

@@ -27,7 +27,7 @@ The release assets are `main.js`, `manifest.json`, and `styles.css`. The minimum
 
 The integration surface is intentionally modular. The navigator owns presentation and row composition; a provider owns its data and actions. Provider failures are isolated and never block the normal file list.
 
-The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.13.1 or later is the tested integration baseline: task checkboxes complete or reopen the exact task through GCM, while selecting the title resolves and opens its source line. Older structurally compatible APIs without task mutation remain display-only. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
+The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.13.1 or later is the tested integration baseline: task checkboxes complete or reopen the exact task through GCM, while selecting the title resolves and opens its source line. Generic row providers can also add their own synchronous context-menu actions without granting the navigator access to provider internals. Older structurally compatible APIs without task mutation remain display-only. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
 
 ### Settings map
 
@@ -41,10 +41,11 @@ All three task-row values persist in the TPS plugin's own `data.json`. The impor
 ### Provider behavior and limits
 
 - Rows are transient UI records, never fake `TFile` objects. They do not participate in file selection, multi-select, drag, rename, or file indexes.
-- Providers are queried only for exact paths already present in the current list. Large lists load progressively in bounded 64-note passes, retain completed pass state for the active scope, and stop once the global 1,000-row safety ceiling is full. GCM tasks are cached per path, capped independently per note, and invalidated by GCM/vault or plugin-lifecycle events.
+- Providers are queried only for exact paths already present in the current list. Independent providers stream in as they settle, in configured order, without exceeding one global 1,000-row ceiling. During a same-scope refresh, each provider's prior rows remain visible until that provider itself settles, including empty or failed results. Large GCM lists load progressively in bounded 64-note passes, retain completed pass state for the active scope, and cache tasks per path with independent per-note limits and GCM/vault lifecycle invalidation.
 - A provider exception is isolated and logged without replacing or blocking the file list.
 - A mutable GCM checkbox updates optimistically, rolls back with a visible warning on failure, and refreshes from GCM's file event. Older compatible GCM APIs retain a labeled display-only checkbox.
 - Provider controls own their keyboard and context-menu events, so completing a task cannot accidentally trigger file deletion, selection, or the empty-list menu.
+- A provider may expose synchronous row actions through `contextMenu(context)`. The same actions open from desktop right-click, the native mobile long-press context-menu event, or the keyboard-focusable **More actions** button. Failed, asynchronous, and empty builders are isolated and never open a blank menu.
 - TPS settings import is a copy, not synchronization. Later upstream setting changes are not mirrored unless the import is explicitly run again.
 
 ## Keeping up with Notebook Navigator
@@ -59,6 +60,15 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 4.1.0 — provider actions and resilient composition
+
+- Advances the public Rows API to 2.3.0 with optional synchronous `contextMenu(context)` actions for any provider row.
+- Opens the same guarded actions from desktop right-click, native mobile long-press, or an accessible **More actions** button without exposing the host menu to providers.
+- Streams independent providers as each settles while preserving configured order and one true 1,000-row global budget.
+- Retains each unresolved provider's prior rows during same-scope refreshes, preventing GCM and external rows from flickering while another provider is slow.
+- Preserves GCM checkbox mutation, exact-line activation, ordinary file navigation, and the co-installable TPS/upstream identity boundary.
+- Requires no settings or note-data migration and keeps the minimum supported Obsidian version at 1.11.0.
 
 ### 4.0.0 — isolated TPS fork
 

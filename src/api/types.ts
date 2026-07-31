@@ -89,6 +89,17 @@ export interface NavigatorRowCheckboxIndicator {
     readonly onChange?: (checked: boolean) => void | Promise<void>;
 }
 
+/** Immutable identity and menu builder exposed when a provider row requests actions. */
+export interface NavigatorRowContextMenuContext {
+    readonly providerId: string;
+    readonly rowId: string;
+    readonly kind: string;
+    readonly sourcePath: string;
+    readonly sourceLineNumber?: number;
+    /** Add menu items synchronously. Async work belongs inside each item's onClick handler. */
+    readonly addItem: (cb: (item: MenuItem) => void) => void;
+}
+
 export interface NavigatorRowDefinition {
     /** Provider-local transient ID. */
     readonly id: string;
@@ -103,6 +114,8 @@ export interface NavigatorRowDefinition {
     readonly sourceLineNumber?: number;
     readonly indicator?: NavigatorRowCheckboxIndicator;
     readonly activate?: () => void | Promise<void>;
+    /** Optional synchronous builder for right-click, long-press, and keyboard-accessible row actions. */
+    readonly contextMenu?: (context: NavigatorRowContextMenuContext) => void;
 }
 
 export interface NavigatorRowProvider {

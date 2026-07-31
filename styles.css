@@ -4418,6 +4418,43 @@ button.tps-nn-navigation-calendar-day {
     cursor: default;
 }
 
+.tps-nn-provider-row-more {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--tps-nn-theme-foreground-muted);
+    cursor: pointer;
+}
+
+.tps-nn-provider-row-more:hover {
+    background: var(--background-modifier-hover);
+    color: var(--tps-nn-theme-foreground);
+}
+
+.tps-nn-provider-row-more:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+}
+
+.tps-nn-provider-row-more .svg-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-provider-row-more {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+}
+
 .tps-nn-provider-row-label,
 .tps-nn-provider-row-secondary {
     width: 100%;

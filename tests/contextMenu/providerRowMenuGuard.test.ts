@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ItemType } from '../../src/types';
 import { EMPTY_LIST_MENU_TYPE } from '../../src/utils/contextMenu/menuTypes';
-import { consumeProviderRowEmptyListContextMenu } from '../../src/utils/contextMenu/providerRowMenuGuard';
+import { consumeProviderRowEmptyListContextMenu, routeProviderRowContextMenu } from '../../src/utils/contextMenu/providerRowMenuGuard';
 
 function contextMenuEvent() {
     return {
@@ -12,10 +12,11 @@ function contextMenuEvent() {
     };
 }
 
-function closestTarget(providerRowMatch: boolean) {
+function closestTarget(providerRowMatch: boolean, ownsContextMenu = false) {
     const providerRow = providerRowMatch ? ({} as Element) : null;
+    const actionProviderRow = providerRowMatch && ownsContextMenu ? providerRow : null;
     return {
-        closest: vi.fn().mockReturnValue(providerRow)
+        closest: vi.fn((selector: string) => (selector.includes('[data-provider-context-menu=') ? actionProviderRow : providerRow))
     };
 }
 
@@ -25,6 +26,7 @@ describe('consumeProviderRowEmptyListContextMenu', () => {
         const target = closestTarget(true);
 
         expect(consumeProviderRowEmptyListContextMenu(event, EMPTY_LIST_MENU_TYPE, target)).toBe(true);
+        expect(target.closest).toHaveBeenCalledWith('.tps-nn-provider-row[data-provider-context-menu="true"]');
         expect(target.closest).toHaveBeenCalledWith('.tps-nn-provider-row');
         expect(event.preventDefault).toHaveBeenCalledOnce();
         expect(event.stopPropagation).toHaveBeenCalledOnce();
@@ -35,6 +37,7 @@ describe('consumeProviderRowEmptyListContextMenu', () => {
         const nestedControl = closestTarget(true);
 
         expect(consumeProviderRowEmptyListContextMenu(event, EMPTY_LIST_MENU_TYPE, nestedControl)).toBe(true);
+        expect(nestedControl.closest).toHaveBeenCalledWith('.tps-nn-provider-row[data-provider-context-menu="true"]');
         expect(nestedControl.closest).toHaveBeenCalledWith('.tps-nn-provider-row');
         expect(event.preventDefault).toHaveBeenCalledOnce();
         expect(event.stopPropagation).toHaveBeenCalledOnce();
@@ -56,6 +59,17 @@ describe('consumeProviderRowEmptyListContextMenu', () => {
 
         expect(consumeProviderRowEmptyListContextMenu(event, ItemType.FILE, target)).toBe(false);
         expect(target.closest).not.toHaveBeenCalled();
+        expect(event.preventDefault).not.toHaveBeenCalled();
+        expect(event.stopPropagation).not.toHaveBeenCalled();
+    });
+
+    it('defers an action-capable provider row to its delegated React context-menu handler', () => {
+        const event = contextMenuEvent();
+        const nestedControl = closestTarget(true, true);
+
+        expect(routeProviderRowContextMenu(event, EMPTY_LIST_MENU_TYPE, nestedControl)).toBe('defer-to-provider');
+        expect(nestedControl.closest).toHaveBeenCalledWith('.tps-nn-provider-row[data-provider-context-menu="true"]');
+        expect(nestedControl.closest).not.toHaveBeenCalledWith('.tps-nn-provider-row');
         expect(event.preventDefault).not.toHaveBeenCalled();
         expect(event.stopPropagation).not.toHaveBeenCalled();
     });

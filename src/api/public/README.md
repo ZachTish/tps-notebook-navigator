@@ -33,7 +33,7 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 - Core methods: `getVersion()`, `isStorageReady()`, `whenReady()`, `on(...)`, `once(...)`, `off(...)`
 - Namespaces: `metadata`, `navigation`, `selection`, `menus`, `tagCollections`, `propertyNodes`, `rows`
 - Exported types: metadata records and updates, navigation and selection state, pin contexts, tag collections, property
-  nodes, menu extension contexts, transient row providers and actions, event names, and event payloads
+  nodes, menu extension contexts, transient row providers, row context-menu actions, event names, and event payloads
 
 **For Maintainers:**
 
@@ -44,7 +44,7 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 
 ## Version
 
-Current API Version: **2.2.0**
+Current API Version: **2.3.0**
 
 ## Documentation
 

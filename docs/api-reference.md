@@ -4,7 +4,7 @@ Updated: July 31, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 2.2.0
+**Current API Version:** 2.3.0
 
 ## Table of Contents
 
@@ -358,6 +358,8 @@ Provider requirements and safeguards:
 - Row IDs are provider-local. Rows are transient and never enter file selection, drag, rename, persistence, or file indexes.
 - `activate` may open or focus the provider-owned record.
 - A checkbox `indicator.onChange(checked)` is optional. Without it, the checkbox is explicitly display-only.
+- `contextMenu(context)` may synchronously add row actions. It receives an immutable provider/row identity and an `addItem(...)` function, never the host `Menu` object.
+- Row actions open from right-click, the native mobile long-press `contextmenu` event, or the accessible **More actions** button. Empty, throwing, and Promise-returning builders do not open a menu.
 - A provider can subscribe to its own data source and call `invalidate()` when rows need to be queried again.
 - Provider failures, malformed results, timeouts, and oversized result sets are isolated from the ordinary file list.
 
@@ -386,6 +388,13 @@ const provider: NavigatorRowProvider = {
       },
       activate: async () => {
         await openExampleTask(path);
+      },
+      contextMenu({ providerId, rowId, sourcePath, addItem }) {
+        addItem(item => {
+          item.setTitle('Open provider record').onClick(() => {
+            void openProviderRecord({ providerId, rowId, sourcePath });
+          });
+        });
       }
     }));
   }
@@ -652,6 +661,13 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 2.3.0 (2026-07-31)
+
+- Added optional synchronous `NavigatorRowDefinition.contextMenu(context)` builders
+- Added immutable provider-row action identity with guarded `addItem(...)` access
+- Added right-click, native long-press, and accessible **More actions** entry points
+- Promise-returning, throwing, and empty builders are isolated and never open blank menus
 
 ### Version 2.2.0 (2026-07-31)
 

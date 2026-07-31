@@ -10,6 +10,7 @@ import type { NavigatorRowDefinition, NavigatorRowProviderOptions } from '../../
 
 export type {
     NavigatorRowCheckboxIndicator,
+    NavigatorRowContextMenuContext,
     NavigatorRowDefinition,
     NavigatorRowProvider,
     NavigatorRowProviderContext,
@@ -24,7 +25,7 @@ export interface NavigatorProvidedRow extends NavigatorRowDefinition {
 
 export type NavigatorProvidedRowCandidate = NavigatorRowDefinition;
 
-/** Hard ceiling for one provider's contribution to a single composed list. */
+/** Hard ceiling for all provider contributions to one composed list. */
 export const NAVIGATOR_ROW_PROVIDER_MAX_ROWS = 1_000;
 
 export interface NavigatorRowProviderSelection {

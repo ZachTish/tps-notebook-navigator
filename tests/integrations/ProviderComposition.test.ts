@@ -1,0 +1,149 @@
+/* TPS Notebook Navigator - built-in and external provider composition contract. */
+
+import type { App, MenuItem } from 'obsidian';
+import { describe, expect, it, vi } from 'vitest';
+import { TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID } from '../../src/constants/tpsIdentity';
+import {
+    createGcmTaskRowProviderSelection,
+    GCM_TASK_ROW_PROVIDER_ID,
+    GcmTaskRowProvider
+} from '../../src/integrations/gcm/GcmTaskRowProvider';
+import type { GcmTaskApiLike, GcmTaskRecordLike } from '../../src/integrations/gcm/gcmTaskApi';
+import { NavigatorRowProviderRegistry } from '../../src/services/rows/NavigatorRowProviderRegistry';
+import { composeProviderRows } from '../../src/services/rows/composeProviderRows';
+import { mergeProviderRowsIntoList } from '../../src/services/rows/providerListItems';
+import { mergeNavigatorRowProviderSelections } from '../../src/services/rows/providerSelections';
+import type { NavigatorRowContextMenuContext } from '../../src/services/rows/types';
+import { ListPaneItemType } from '../../src/types';
+import type { ListPaneItem } from '../../src/types/virtualization';
+import { createTestTFile } from '../utils/createTestTFile';
+
+const SOURCE_PATH = 'Notes/one.md';
+const EXTERNAL_PROVIDER_ID = 'example/actions';
+
+function createApp(api: GcmTaskApiLike): App {
+    const plugin = { api: { tasks: api } };
+    return {
+        plugins: {
+            enabledPlugins: new Set([TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]),
+            getPlugin: vi.fn(() => plugin),
+            plugins: { [TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]: plugin }
+        }
+    } as unknown as App;
+}
+
+function task(): GcmTaskRecordLike {
+    return {
+        path: SOURCE_PATH,
+        lineNumber: 4,
+        rawLine: '- [ ] Review navigator',
+        title: 'Review navigator',
+        checkbox: '[ ]',
+        marker: ' ',
+        status: 'todo',
+        isComplete: false,
+        tags: []
+    };
+}
+
+describe('built-in and external row provider composition', () => {
+    it('streams the external row, then preserves built-in-first behavior and both providers actions beneath one file', async () => {
+        let resolveList: ((records: GcmTaskRecordLike[]) => void) | null = null;
+        const list = vi.fn(
+            () =>
+                new Promise<GcmTaskRecordLike[]>(resolve => {
+                    resolveList = resolve;
+                })
+        );
+        const focus = vi.fn(async () => true);
+        const setCheckbox = vi.fn(async () => ({ ok: true, changed: true }));
+        const app = createApp({ version: 1, list, focus, setCheckbox });
+        const contextMenu = vi.fn((_context: NavigatorRowContextMenuContext) => undefined);
+        const registry = new NavigatorRowProviderRegistry();
+        registry.register(new GcmTaskRowProvider());
+        registry.register({
+            id: EXTERNAL_PROVIDER_ID,
+            getRows: async () => [
+                {
+                    id: 'open-related',
+                    kind: 'example/action',
+                    label: 'Open related record',
+                    sourcePath: SOURCE_PATH,
+                    contextMenu
+                }
+            ]
+        });
+        const selection = mergeNavigatorRowProviderSelections(
+            createGcmTaskRowProviderSelection({ enabled: true, includeCompleted: false, maxRowsPerFile: 10 }),
+            { enabledProviderIds: [EXTERNAL_PROVIDER_ID] }
+        );
+        const snapshots: string[][] = [];
+
+        const resultPromise = composeProviderRows({
+            registry,
+            context: {
+                app,
+                scope: {
+                    visibleFilePaths: [SOURCE_PATH],
+                    selectionType: null,
+                    selectedFolderPath: null,
+                    selectedTag: null,
+                    selectedProperty: null
+                }
+            },
+            selection,
+            onSnapshot: snapshot => snapshots.push(snapshot.rows.map(row => row.providerId))
+        });
+
+        await vi.waitFor(() => expect(snapshots).toEqual([[EXTERNAL_PROVIDER_ID]]));
+        resolveList?.([task()]);
+        const rows = await resultPromise;
+
+        expect(snapshots).toEqual([[EXTERNAL_PROVIDER_ID], [GCM_TASK_ROW_PROVIDER_ID, EXTERNAL_PROVIDER_ID]]);
+        expect(rows).toHaveLength(2);
+        expect(rows[0]).toMatchObject({
+            providerId: GCM_TASK_ROW_PROVIDER_ID,
+            sourcePath: SOURCE_PATH,
+            sourceLineNumber: 4,
+            indicator: { type: 'checkbox', checked: false }
+        });
+        expect(rows[1]).toMatchObject({
+            providerId: EXTERNAL_PROVIDER_ID,
+            sourcePath: SOURCE_PATH,
+            contextMenu
+        });
+
+        await rows[0]?.activate?.();
+        await rows[0]?.indicator?.onChange?.(true);
+        expect(focus).toHaveBeenCalledWith({
+            path: SOURCE_PATH,
+            lineNumber: 4,
+            rawLine: '- [ ] Review navigator',
+            title: 'Review navigator'
+        });
+        expect(setCheckbox).toHaveBeenCalledWith(expect.objectContaining({ path: SOURCE_PATH, lineNumber: 4 }), 'x');
+
+        const externalContext = {
+            providerId: EXTERNAL_PROVIDER_ID,
+            rowId: 'open-related',
+            kind: 'example/action',
+            sourcePath: SOURCE_PATH,
+            addItem: vi.fn((_configure: (item: MenuItem) => void) => undefined)
+        };
+        rows[1]?.contextMenu?.(externalContext);
+        expect(contextMenu).toHaveBeenCalledWith(externalContext);
+
+        const file = createTestTFile(SOURCE_PATH);
+        const listItems: ListPaneItem[] = [
+            { type: ListPaneItemType.FILE, data: file, key: 'file' },
+            { type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom' }
+        ];
+        const merged = mergeProviderRowsIntoList(listItems, rows);
+        expect(merged.map(item => item.key)).toEqual([
+            'file',
+            `provider:${GCM_TASK_ROW_PROVIDER_ID}:${SOURCE_PATH}:4`,
+            `provider:${EXTERNAL_PROVIDER_ID}:open-related`,
+            'bottom'
+        ]);
+    });
+});

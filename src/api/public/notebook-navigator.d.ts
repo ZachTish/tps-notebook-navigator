@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 2.2.0
+ * Version: 2.3.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -94,6 +94,17 @@ export interface NavigatorRowCheckboxIndicator {
     readonly onChange?: (checked: boolean) => void | Promise<void>;
 }
 
+/** Immutable identity and menu builder exposed when a provider row requests actions. */
+export interface NavigatorRowContextMenuContext {
+    readonly providerId: string;
+    readonly rowId: string;
+    readonly kind: string;
+    readonly sourcePath: string;
+    readonly sourceLineNumber?: number;
+    /** Add menu items synchronously. Async work belongs inside each item's onClick handler. */
+    readonly addItem: (cb: (item: MenuItem) => void) => void;
+}
+
 export interface NavigatorRowDefinition {
     readonly id: string;
     readonly kind: string;
@@ -104,6 +115,8 @@ export interface NavigatorRowDefinition {
     readonly sourceLineNumber?: number;
     readonly indicator?: NavigatorRowCheckboxIndicator;
     readonly activate?: () => void | Promise<void>;
+    /** Optional synchronous builder for right-click, long-press, and keyboard-accessible row actions. */
+    readonly contextMenu?: (context: NavigatorRowContextMenuContext) => void;
 }
 
 export interface NavigatorRowProvider {
@@ -349,7 +362,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 2.2.0
+ * @version 2.3.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */

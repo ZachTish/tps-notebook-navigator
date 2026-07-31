@@ -45,7 +45,7 @@ import {
     buildFileMenu,
     buildEmptyListMenu,
     EMPTY_LIST_MENU_TYPE,
-    consumeProviderRowEmptyListContextMenu
+    routeProviderRowContextMenu
 } from '../utils/contextMenu';
 import { getFolderNote } from '../utils/folderNoteLookup';
 
@@ -116,7 +116,7 @@ export function useContextMenu(elementRef: React.RefObject<HTMLElement | null>, 
             const targetElement = targetNode.instanceOf(HTMLElement) ? targetNode : targetNode.parentElement;
             let menuElement: HTMLElement = elementRef.current;
 
-            if (consumeProviderRowEmptyListContextMenu(e, config.type, targetElement)) {
+            if (routeProviderRowContextMenu(e, config.type, targetElement) !== 'continue') {
                 return;
             }
 

@@ -106,6 +106,23 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.1.0',
+        date: '2026-07-31',
+        showOnUpdate: true,
+        info: 'Provider rows can now expose their own guarded actions, and mixed providers refresh independently without making unrelated rows disappear.',
+        new: [
+            'Provider rows can add synchronous context-menu actions that open from desktop right-click, native mobile long-press, or an accessible **More actions** button.',
+            'The public Rows API is now version `2.3.0` and gives action builders an immutable provider and row identity without exposing the host menu.'
+        ],
+        improved: [
+            'Independent providers now stream results as they settle while preserving configured provider order and one shared 1,000-row safety ceiling.',
+            'During a same-scope refresh, each unresolved provider keeps its previous rows until that provider settles, so a slow integration cannot make unrelated GCM or external rows flicker.'
+        ],
+        fixed: [
+            'Action-capable provider rows no longer lose their right-click or long-press event to the list pane empty-area context menu.'
+        ]
+    },
+    {
         version: '4.0.0',
         date: '2026-07-31',
         showOnUpdate: true,

@@ -10,13 +10,17 @@ import {
 } from '../../src/components/providerRows/NavigatorProviderRow';
 import type { NavigatorProvidedRow } from '../../src/services/rows/types';
 
-function row(onChange?: (checked: boolean) => void | Promise<void>): NavigatorProvidedRow {
+function row(
+    onChange?: (checked: boolean) => void | Promise<void>,
+    contextMenu?: NavigatorProvidedRow['contextMenu']
+): NavigatorProvidedRow {
     return {
         providerId: 'tps/tasks',
         id: 'one',
         kind: 'tps/task',
         label: 'Review navigator',
         sourcePath: 'Inbox/Tasks.md',
+        contextMenu,
         indicator: {
             type: 'checkbox',
             checked: false,
@@ -80,6 +84,23 @@ describe('NavigatorProviderRow', () => {
         expect(markup).toContain('aria-readonly="true"');
         expect(markup).toContain('title="Task state is display-only"');
         expect(markup).not.toContain('is-interactive');
+    });
+
+    it('renders an accessible More actions button only when the provider supplies actions', () => {
+        const withActions = renderToStaticMarkup(
+            React.createElement(NavigatorProviderRow, {
+                row: row(undefined, context => context.addItem(() => undefined))
+            })
+        );
+        const withoutActions = renderToStaticMarkup(React.createElement(NavigatorProviderRow, { row: row() }));
+
+        expect(withActions).toContain('class="tps-nn-provider-row-more"');
+        expect(withActions).toContain('data-provider-context-menu="true"');
+        expect(withActions).toContain('aria-label="More actions for Review navigator"');
+        expect(withActions).toContain('aria-haspopup="menu"');
+        expect(withActions).toContain('title="More actions"');
+        expect(withoutActions).not.toContain('tps-nn-provider-row-more');
+        expect(withoutActions).not.toContain('data-provider-context-menu');
     });
 
     it.each(['keydown', 'keyup'])('keeps pane-level keyboard shortcuts from consuming provider control %s events', () => {

@@ -23,4 +23,4 @@ export { buildPropertyMenu } from './propertyMenuBuilder';
 export { buildFileMenu } from './fileMenuBuilder';
 export { buildEmptyListMenu } from './emptyListMenuBuilder';
 export { showNavigationSectionContextMenu } from './navigationSectionMenuBuilder';
-export { consumeProviderRowEmptyListContextMenu } from './providerRowMenuGuard';
+export { consumeProviderRowEmptyListContextMenu, routeProviderRowContextMenu } from './providerRowMenuGuard';
