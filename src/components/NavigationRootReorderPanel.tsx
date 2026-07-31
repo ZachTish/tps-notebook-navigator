@@ -141,9 +141,9 @@ interface ResetActionProps {
 
 function ResetAction({ label, onClick }: ResetActionProps) {
     return (
-        <div className="tps-nn-root-reorder-actions">
-            <button type="button" className="tps-nn-root-reorder-reset tps-nn-support-button" onClick={onClick}>
-                <span className="tps-nn-root-reorder-reset-icon" aria-hidden="true">
+        <div className="nn-root-reorder-actions">
+            <button type="button" className="nn-root-reorder-reset nn-support-button" onClick={onClick}>
+                <span className="nn-root-reorder-reset-icon" aria-hidden="true">
                     Aa
                 </span>
                 <span>{label}</span>
@@ -377,13 +377,13 @@ export function NavigationRootReorderPanel({
     );
 
     return (
-        <div className="tps-nn-root-reorder-panel">
-            <div className="tps-nn-root-reorder-header">
-                <span className="tps-nn-root-reorder-title">{strings.navigationPane.reorderRootFoldersTitle}</span>
-                <span className="tps-nn-root-reorder-hint">{strings.navigationPane.reorderRootFoldersHint}</span>
+        <div className="nn-root-reorder-panel">
+            <div className="nn-root-reorder-header">
+                <span className="nn-root-reorder-title">{strings.navigationPane.reorderRootFoldersTitle}</span>
+                <span className="nn-root-reorder-hint">{strings.navigationPane.reorderRootFoldersHint}</span>
             </div>
 
-            <div className="tps-nn-root-reorder-list" role="presentation">
+            <div className="nn-root-reorder-list" role="presentation">
                 {hasSortableContent ? (
                     <DndContext
                         sensors={sensors}
@@ -400,10 +400,10 @@ export function NavigationRootReorderPanel({
                                 const canMoveDown = canReorderSections && sectionIndex >= 0 && sectionIndex < sectionIds.length - 1;
                                 const showControls = canReorderSections && sectionIds.length > 1;
                                 const trailingAccessory = showControls ? (
-                                    <div className="tps-nn-root-reorder-section-controls">
+                                    <div className="nn-root-reorder-section-controls">
                                         <button
                                             type="button"
-                                            className="tps-nn-icon-button tps-nn-root-reorder-section-button"
+                                            className="nn-icon-button nn-root-reorder-section-button"
                                             aria-label={strings.settings.items.vaultProfiles.moveUp}
                                             onClick={createSectionMoveHandler(sectionId, -1)}
                                             disabled={!canMoveUp}
@@ -412,7 +412,7 @@ export function NavigationRootReorderPanel({
                                         </button>
                                         <button
                                             type="button"
-                                            className="tps-nn-icon-button tps-nn-root-reorder-section-button"
+                                            className="nn-icon-button nn-root-reorder-section-button"
                                             aria-label={strings.settings.items.vaultProfiles.moveDown}
                                             onClick={createSectionMoveHandler(sectionId, 1)}
                                             disabled={!canMoveDown}
@@ -432,7 +432,7 @@ export function NavigationRootReorderPanel({
                                     showRootPropertySection;
 
                                 return (
-                                    <div key={`section:${item.key}`} className="tps-nn-root-reorder-section">
+                                    <div key={`section:${item.key}`} className="nn-root-reorder-section">
                                         <RootFolderReorderItem {...item.props} trailingAccessory={trailingAccessory} />
 
                                         {shouldRenderFolders && folderEntries.length > 0 ? (
@@ -464,7 +464,7 @@ export function NavigationRootReorderPanel({
                         ) : (
                             <>
                                 {showRootFolderSection && folderEntries.length > 0 ? (
-                                    <div className="tps-nn-root-reorder-section">
+                                    <div className="nn-root-reorder-section">
                                         <SortableList entries={folderEntries} canReorder={canReorderFolders} isMobile={isMobile}>
                                             {showRootFolderReset ? (
                                                 <ResetAction label={RESET_FOLDER_LABEL} onClick={handleResetFolders} />
@@ -474,7 +474,7 @@ export function NavigationRootReorderPanel({
                                 ) : null}
 
                                 {showRootTagSection && tagEntries.length > 0 ? (
-                                    <div className="tps-nn-root-reorder-section">
+                                    <div className="nn-root-reorder-section">
                                         <SortableList entries={tagEntries} canReorder={canReorderTags} isMobile={isMobile}>
                                             {showRootTagReset ? (
                                                 <ResetAction label={resetRootTagOrderLabel} onClick={handleResetTags} />
@@ -484,7 +484,7 @@ export function NavigationRootReorderPanel({
                                 ) : null}
 
                                 {showRootPropertySection && propertyEntries.length > 0 ? (
-                                    <div className="tps-nn-root-reorder-section">
+                                    <div className="nn-root-reorder-section">
                                         <SortableList entries={propertyEntries} canReorder={canReorderProperties} isMobile={isMobile}>
                                             {showRootPropertyReset ? (
                                                 <ResetAction label={resetRootPropertyOrderLabel} onClick={handleResetProperties} />

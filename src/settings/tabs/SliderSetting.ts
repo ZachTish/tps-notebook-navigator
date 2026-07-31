@@ -66,9 +66,9 @@ export function renderSliderSetting(setting: Setting, options: SliderSettingOpti
     let sliderComponent: SliderComponent | null = null;
 
     setting.setName(options.name).setDesc(options.desc);
-    setting.controlEl.addClass('tps-nn-slider-control');
+    setting.controlEl.addClass('nn-slider-control');
 
-    const valueEl = usesNativeSliderValueDisplay ? null : setting.controlEl.createDiv({ cls: 'tps-nn-slider-value' });
+    const valueEl = usesNativeSliderValueDisplay ? null : setting.controlEl.createDiv({ cls: 'nn-slider-value' });
     const updateValueLabel = (value: number) => {
         valueEl?.setText(formatValue(value));
     };

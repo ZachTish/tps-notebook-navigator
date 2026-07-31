@@ -113,11 +113,11 @@ export class IconPickerModal extends Modal {
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        this.modalEl.addClass('tps-nn-icon-picker-modal');
+        this.modalEl.addClass('nn-icon-picker-modal');
         this.cleanupVaultRecentIcons();
 
         // Header showing the folder/tag name
-        const header = contentEl.createDiv('tps-nn-icon-picker-header');
+        const header = contentEl.createDiv('nn-icon-picker-header');
         const headerText = (() => {
             if (this.titleOverride) {
                 return this.titleOverride;
@@ -145,24 +145,24 @@ export class IconPickerModal extends Modal {
         this.createProviderTabs();
 
         // Create search input
-        const searchContainer = contentEl.createDiv('tps-nn-icon-search-container');
+        const searchContainer = contentEl.createDiv('nn-icon-search-container');
         this.searchInput = searchContainer.createEl('input', {
             type: 'text',
             placeholder: strings.modals.iconPicker.searchPlaceholder,
-            cls: 'tps-nn-icon-search-input'
+            cls: 'nn-icon-search-input'
         });
         this.searchInput.setAttribute('enterkeyhint', 'done');
 
         this.attachCloseButtonHandler();
 
         // Create results container
-        this.resultsContainer = contentEl.createDiv('tps-nn-icon-results-container');
+        this.resultsContainer = contentEl.createDiv('nn-icon-results-container');
         this.domDisposers.push(addAsyncEventListener(this.resultsContainer, 'click', event => this.handleResultsClick(event)));
         this.createProviderLinkRow();
         this.updateProviderLink(this.currentProvider);
 
         if (this.showRemoveButton) {
-            const buttonContainer = contentEl.createDiv('tps-nn-icon-button-container');
+            const buttonContainer = contentEl.createDiv('nn-icon-button-container');
             const removeButton = buttonContainer.createEl('button');
             const removeButtonLabel = strings.modals.iconPicker.removeIcon;
             removeButton.setText(removeButtonLabel);
@@ -208,7 +208,7 @@ export class IconPickerModal extends Modal {
             return;
         }
 
-        const removeButton = target.closest<HTMLButtonElement>('.tps-nn-icon-recent-remove-button');
+        const removeButton = target.closest<HTMLButtonElement>('.nn-icon-recent-remove-button');
         if (removeButton) {
             event.stopPropagation();
             event.preventDefault();
@@ -219,7 +219,7 @@ export class IconPickerModal extends Modal {
             return;
         }
 
-        const iconItem = target.closest<HTMLElement>('.tps-nn-icon-item');
+        const iconItem = target.closest<HTMLElement>('.nn-icon-item');
         if (!iconItem) {
             return;
         }
@@ -233,7 +233,7 @@ export class IconPickerModal extends Modal {
     }
 
     private createProviderTabs() {
-        this.tabContainer = this.contentEl.createDiv('tps-nn-icon-provider-tabs');
+        this.tabContainer = this.contentEl.createDiv('nn-icon-provider-tabs');
         this.tabContainer.setAttribute('role', 'tablist');
         this.providerTabs = [];
 
@@ -257,7 +257,7 @@ export class IconPickerModal extends Modal {
         }
 
         const tab = this.tabContainer.createDiv({
-            cls: 'tps-nn-icon-provider-tab',
+            cls: 'nn-icon-provider-tab',
             text: label
         });
         tab.setAttribute('role', 'tab');
@@ -280,11 +280,11 @@ export class IconPickerModal extends Modal {
      * Creates the provider link row UI elements below the icon tabs
      */
     private createProviderLinkRow(): void {
-        this.providerLinkContainer = this.contentEl.createDiv('tps-nn-icon-provider-link-row');
-        this.providerLinkEl = this.providerLinkContainer.createEl('a', { cls: 'tps-nn-icon-provider-link' });
+        this.providerLinkContainer = this.contentEl.createDiv('nn-icon-provider-link-row');
+        this.providerLinkEl = this.providerLinkContainer.createEl('a', { cls: 'nn-icon-provider-link' });
         this.providerLinkEl.setAttribute('target', '_blank');
         this.providerLinkEl.setAttribute('rel', 'noopener noreferrer');
-        this.providerLinkContainer.addClass('tps-nn-icon-provider-link-row-hidden');
+        this.providerLinkContainer.addClass('nn-icon-provider-link-row-hidden');
     }
 
     /**
@@ -430,7 +430,7 @@ export class IconPickerModal extends Modal {
 
             if (!hasRecents) {
                 if (this.currentProvider === 'emoji') {
-                    const emptyMessage = this.resultsContainer.createDiv('tps-nn-icon-empty-message');
+                    const emptyMessage = this.resultsContainer.createDiv('nn-icon-empty-message');
                     emptyMessage.setText(strings.modals.iconPicker.emojiInstructions);
                 } else {
                     this.showEmptyState();
@@ -444,14 +444,14 @@ export class IconPickerModal extends Modal {
             : this.iconService.search(searchTerm, this.currentProvider);
 
         if (results.length > 0 && (isAllProvider || provider)) {
-            const grid = this.resultsContainer.createDiv('tps-nn-icon-grid');
+            const grid = this.resultsContainer.createDiv('nn-icon-grid');
 
             results.slice(0, MAX_SEARCH_RESULTS).forEach(iconDef => {
                 this.createIconItem(iconDef, grid, provider);
             });
 
             if (results.length > MAX_SEARCH_RESULTS) {
-                const moreMessage = this.resultsContainer.createDiv('tps-nn-icon-more-message');
+                const moreMessage = this.resultsContainer.createDiv('nn-icon-more-message');
                 moreMessage.setText(strings.modals.iconPicker.showingResultsInfo.replace('{count}', results.length.toString()));
             }
             return;
@@ -472,9 +472,9 @@ export class IconPickerModal extends Modal {
             return false;
         }
 
-        const header = this.resultsContainer.createDiv('tps-nn-icon-section-header');
+        const header = this.resultsContainer.createDiv('nn-icon-section-header');
         header.setText(strings.modals.iconPicker.recentlyUsedHeader);
-        const grid = this.resultsContainer.createDiv('tps-nn-icon-grid');
+        const grid = this.resultsContainer.createDiv('nn-icon-grid');
 
         let rendered = 0;
         // Cache provider icons to avoid multiple getAll() calls
@@ -533,7 +533,7 @@ export class IconPickerModal extends Modal {
 
     private addRecentIconRemoveButton(iconItem: HTMLElement, iconId: string): void {
         const removeButton = iconItem.createEl('button', {
-            cls: 'tps-nn-icon-recent-remove-button',
+            cls: 'nn-icon-recent-remove-button',
             attr: {
                 type: 'button',
                 'aria-label': strings.modals.iconPicker.removeFromRecents,
@@ -541,7 +541,7 @@ export class IconPickerModal extends Modal {
                 'data-recent-icon-id': iconId
             }
         });
-        removeButton.createSpan({ text: '×', cls: 'tps-nn-icon-recent-remove-glyph', attr: { 'aria-hidden': 'true' } });
+        removeButton.createSpan({ text: '×', cls: 'nn-icon-recent-remove-glyph', attr: { 'aria-hidden': 'true' } });
     }
 
     private removeRecentIcon(iconId: string): void {
@@ -590,7 +590,7 @@ export class IconPickerModal extends Modal {
     }
 
     private showEmptyState(isSearch: boolean = false) {
-        const emptyMessage = this.resultsContainer.createDiv('tps-nn-icon-empty-message');
+        const emptyMessage = this.resultsContainer.createDiv('nn-icon-empty-message');
         emptyMessage.setText(isSearch ? strings.modals.iconPicker.emptyStateNoResults : strings.modals.iconPicker.emptyStateSearch);
     }
 
@@ -609,20 +609,20 @@ export class IconPickerModal extends Modal {
             fullIconId = iconDef.id;
         }
 
-        const iconItem = container.createDiv('tps-nn-icon-item');
+        const iconItem = container.createDiv('nn-icon-item');
         iconItem.setAttribute('data-icon-id', fullIconId);
 
         // Icon preview
-        const iconPreview = iconItem.createDiv('tps-nn-icon-item-preview');
+        const iconPreview = iconItem.createDiv('nn-icon-item-preview');
         this.iconService.renderIcon(iconPreview, fullIconId);
 
         // For emojis, also show the emoji as preview text if available
         if (resolvedProvider.id === 'emoji' && iconDef.preview) {
-            iconPreview.addClass('tps-nn-emoji-preview');
+            iconPreview.addClass('nn-emoji-preview');
         }
 
         // Icon name
-        const iconName = iconItem.createDiv('tps-nn-icon-item-name');
+        const iconName = iconItem.createDiv('nn-icon-item-name');
         iconName.setText(iconDef.displayName);
 
         // Make focusable
@@ -765,7 +765,7 @@ export class IconPickerModal extends Modal {
             const currentFocused = activeDocument.activeElement instanceof HTMLElement ? activeDocument.activeElement : null;
 
             // Prevent default tab cycling when on provider tabs
-            if (currentFocused?.classList.contains('tps-nn-icon-provider-tab')) {
+            if (currentFocused?.classList.contains('nn-icon-provider-tab')) {
                 evt.preventDefault();
                 return;
             }
@@ -774,7 +774,7 @@ export class IconPickerModal extends Modal {
             const activeTab = this.getActiveProviderTab();
 
             // From icon grid -> back to search input
-            if (currentFocused?.classList.contains('tps-nn-icon-item')) {
+            if (currentFocused?.classList.contains('nn-icon-item')) {
                 this.searchInput.focus();
                 return;
             }
@@ -792,16 +792,16 @@ export class IconPickerModal extends Modal {
         this.scope.register([], 'Tab', evt => {
             const activeElement = activeDocument.activeElement;
             const currentFocused = activeElement instanceof HTMLElement ? activeElement : null;
-            if (currentFocused?.classList.contains('tps-nn-icon-provider-tab')) {
+            if (currentFocused?.classList.contains('nn-icon-provider-tab')) {
                 evt.preventDefault();
                 this.searchInput.focus();
                 return;
             }
-            const isInGrid = currentFocused?.classList.contains('tps-nn-icon-item');
+            const isInGrid = currentFocused?.classList.contains('nn-icon-item');
 
             if (!isInGrid) {
                 evt.preventDefault();
-                const firstIcon = this.resultsContainer.querySelector<HTMLElement>('.tps-nn-icon-item');
+                const firstIcon = this.resultsContainer.querySelector<HTMLElement>('.nn-icon-item');
                 if (firstIcon) firstIcon.focus();
             }
         });
@@ -822,7 +822,7 @@ export class IconPickerModal extends Modal {
                 return;
             }
 
-            if (currentFocused?.classList.contains('tps-nn-icon-item')) {
+            if (currentFocused?.classList.contains('nn-icon-item')) {
                 evt.preventDefault();
                 const iconId = currentFocused.getAttribute('data-icon-id');
                 if (iconId) {
@@ -845,7 +845,7 @@ export class IconPickerModal extends Modal {
         }
         const currentFocused = activeElement;
         // Handle horizontal navigation between provider tabs
-        if (currentFocused?.classList.contains('tps-nn-icon-provider-tab')) {
+        if (currentFocused?.classList.contains('nn-icon-provider-tab')) {
             if (deltaX === 0) {
                 return; // Ignore vertical arrows on tabs
             }
@@ -853,10 +853,10 @@ export class IconPickerModal extends Modal {
             this.focusAdjacentTab(currentFocused, deltaX);
             return;
         }
-        if (!currentFocused?.classList.contains('tps-nn-icon-item')) return;
+        if (!currentFocused?.classList.contains('nn-icon-item')) return;
 
         evt.preventDefault();
-        const iconItems = Array.from(this.resultsContainer.querySelectorAll<HTMLElement>('.tps-nn-icon-item'));
+        const iconItems = Array.from(this.resultsContainer.querySelectorAll<HTMLElement>('.nn-icon-item'));
         const currentIndex = iconItems.indexOf(currentFocused);
 
         const newIndex = deltaX !== 0 ? currentIndex + deltaX : currentIndex + deltaY * GRID_COLUMNS;
@@ -919,10 +919,10 @@ export class IconPickerModal extends Modal {
         this.providerTabs.forEach(tab => {
             const isActive = tab.dataset.providerId === providerId;
             if (isActive) {
-                tab.addClass('tps-nn-active');
+                tab.addClass('nn-active');
                 tab.setAttribute('tabindex', '0'); // Make tab focusable
             } else {
-                tab.removeClass('tps-nn-active');
+                tab.removeClass('nn-active');
                 tab.setAttribute('tabindex', '-1'); // Remove from tab order
             }
         });
@@ -940,14 +940,14 @@ export class IconPickerModal extends Modal {
 
         const catalogUrl = getProviderCatalogUrl(providerId);
         if (!catalogUrl) {
-            this.providerLinkContainer.addClass('tps-nn-icon-provider-link-row-hidden');
+            this.providerLinkContainer.addClass('nn-icon-provider-link-row-hidden');
             this.providerLinkEl.removeAttribute('href');
             this.providerLinkEl.setText('');
             this.providerLinkEl.removeAttribute('title');
             return;
         }
 
-        this.providerLinkContainer.removeClass('tps-nn-icon-provider-link-row-hidden');
+        this.providerLinkContainer.removeClass('nn-icon-provider-link-row-hidden');
         this.providerLinkEl.setAttribute('href', catalogUrl);
         this.providerLinkEl.setAttribute('title', catalogUrl);
         const provider = this.iconService.getProvider(providerId);
@@ -1026,7 +1026,7 @@ export class IconPickerModal extends Modal {
 
         const { contentEl } = this;
         contentEl.empty();
-        this.modalEl.removeClass('tps-nn-icon-picker-modal');
+        this.modalEl.removeClass('nn-icon-picker-modal');
         this.removeButton = null;
         this.providerLinkContainer = null;
         this.providerLinkEl = null;

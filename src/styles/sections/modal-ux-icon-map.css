@@ -4,19 +4,19 @@
    UX Icon Map Modal
    ======================================================================== */
 
-.modal.tps-nn-ux-icon-map-modal {
+.modal.nn-ux-icon-map-modal {
     width: 520px;
     max-width: calc(100vw - 40px);
     max-height: 500px;
 }
 
-.is-mobile .modal.tps-nn-ux-icon-map-modal {
+.is-mobile .modal.nn-ux-icon-map-modal {
     width: 560px;
     max-width: calc(100vw - 24px);
     max-height: min(560px, calc(100vh - 24px));
 }
 
-.modal.tps-nn-ux-icon-map-modal .modal-content {
+.modal.nn-ux-icon-map-modal .modal-content {
     display: flex;
     flex-direction: column;
     gap: var(--size-2-2);
@@ -24,12 +24,12 @@
     overflow: hidden;
 }
 
-.is-mobile .modal.tps-nn-ux-icon-map-modal .modal-content {
+.is-mobile .modal.nn-ux-icon-map-modal .modal-content {
     gap: var(--size-2-3);
     padding: var(--size-4-6);
 }
 
-.tps-nn-ux-icon-map-scroll {
+.nn-ux-icon-map-scroll {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
@@ -37,67 +37,67 @@
     padding-bottom: var(--size-1-5);
 }
 
-.is-mobile .modal.tps-nn-ux-icon-map-modal .tps-nn-ux-icon-map-scroll {
+.is-mobile .modal.nn-ux-icon-map-modal .nn-ux-icon-map-scroll {
     padding-bottom: var(--size-2-2);
 }
 
-.tps-nn-ux-icon-map-list {
+.nn-ux-icon-map-list {
     display: flex;
     flex-direction: column;
     gap: var(--size-1-5);
     width: 100%;
 }
 
-.is-mobile .modal.tps-nn-ux-icon-map-modal .tps-nn-ux-icon-map-list {
+.is-mobile .modal.nn-ux-icon-map-modal .nn-ux-icon-map-list {
     gap: var(--size-2-2);
 }
 
-.tps-nn-ux-icon-map-footer {
+.nn-ux-icon-map-footer {
     flex-shrink: 0;
     margin-top: 0;
     padding-top: var(--size-2-2);
     border-top: 1px solid var(--background-modifier-border);
 }
 
-.is-mobile .modal.tps-nn-ux-icon-map-modal .tps-nn-ux-icon-map-footer {
+.is-mobile .modal.nn-ux-icon-map-modal .nn-ux-icon-map-footer {
     padding-top: var(--size-2-3);
 }
 
-.tps-nn-ux-icon-map-row {
+.nn-ux-icon-map-row {
     display: flex;
     align-items: center;
     gap: var(--size-2-2);
 }
 
-.is-mobile .modal.tps-nn-ux-icon-map-modal .tps-nn-ux-icon-map-row {
+.is-mobile .modal.nn-ux-icon-map-modal .nn-ux-icon-map-row {
     gap: var(--size-2-3);
 }
 
-.tps-nn-ux-icon-map-label {
+.nn-ux-icon-map-label {
     flex: 1;
     min-width: 0;
 }
 
-.is-mobile .modal.tps-nn-ux-icon-map-modal .tps-nn-ux-icon-map-label {
+.is-mobile .modal.nn-ux-icon-map-modal .nn-ux-icon-map-label {
     font-size: 1.05em;
 }
 
-.is-mobile .modal.tps-nn-ux-icon-map-modal .tps-nn-action-btn {
+.is-mobile .modal.nn-ux-icon-map-modal .nn-action-btn {
     min-width: 36px;
     min-height: 36px;
 }
 
-.tps-nn-ux-icon-map-group-heading {
+.nn-ux-icon-map-group-heading {
     margin: 0;
     font-size: 0.95em;
     font-weight: 600;
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
 }
 
-.is-mobile .modal.tps-nn-ux-icon-map-modal .tps-nn-ux-icon-map-group-heading {
+.is-mobile .modal.nn-ux-icon-map-modal .nn-ux-icon-map-group-heading {
     font-size: 1em;
 }
 
-.tps-nn-ux-icon-map-group-heading--spaced {
+.nn-ux-icon-map-group-heading--spaced {
     margin-top: var(--size-4-4);
 }

@@ -69,10 +69,10 @@ export function usesMobileChrome(): boolean {
 /** Returns CSS classes for the configured background mode */
 export function getBackgroundClasses(mode: BackgroundMode | null | undefined): string[] {
     if (mode === 'primary') {
-        return ['tps-nn-bg-primary'];
+        return ['nn-bg-primary'];
     }
     if (mode === 'secondary') {
-        return ['tps-nn-bg-secondary'];
+        return ['nn-bg-secondary'];
     }
     return [];
 }

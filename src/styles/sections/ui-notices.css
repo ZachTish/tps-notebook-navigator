@@ -4,7 +4,7 @@
    Notices
    ======================================================================== */
 
-.tps-nn-cache-rebuild-notice {
+.nn-cache-rebuild-notice {
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -12,30 +12,30 @@
     box-sizing: border-box;
 }
 
-.tps-nn-cache-rebuild-notice-container {
+.nn-cache-rebuild-notice-container {
     width: 100%;
     box-sizing: border-box;
 }
 
-.tps-nn-cache-rebuild-notice-message {
+.nn-cache-rebuild-notice-message {
     width: 100%;
     min-width: 0;
     flex: 1 1 auto;
     box-sizing: border-box;
 }
 
-.tps-nn-cache-rebuild-notice-title {
+.nn-cache-rebuild-notice-title {
     font-weight: 600;
     line-height: 1.25;
 }
 
-.tps-nn-cache-rebuild-notice-description {
+.nn-cache-rebuild-notice-description {
     font-size: 13px;
     line-height: 1.25;
     opacity: 0.85;
 }
 
-.tps-nn-cache-rebuild-notice-progress-bar {
+.nn-cache-rebuild-notice-progress-bar {
     display: block;
     width: 100%;
     max-width: none;
@@ -44,18 +44,18 @@
     overflow: hidden;
 }
 
-.tps-nn-cache-rebuild-notice-progress-bar::-webkit-progress-bar {
+.nn-cache-rebuild-notice-progress-bar::-webkit-progress-bar {
     background-color: var(--background-modifier-border);
     border-radius: 999px;
 }
 
-.tps-nn-cache-rebuild-notice-progress-bar::-webkit-progress-value {
+.nn-cache-rebuild-notice-progress-bar::-webkit-progress-value {
     background-color: var(--interactive-accent);
     border-radius: 999px;
 }
 
 @media (max-width: 600px) {
-    .tps-nn-cache-rebuild-notice-description {
+    .nn-cache-rebuild-notice-description {
         font-size: 14px;
     }
 }

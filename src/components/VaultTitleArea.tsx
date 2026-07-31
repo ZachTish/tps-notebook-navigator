@@ -41,18 +41,18 @@ export const VaultTitleArea = React.memo(function VaultTitleArea() {
     }
 
     return (
-        <div className="tps-nn-vault-title-area">
+        <div className="nn-vault-title-area">
             <div
-                className="tps-nn-vault-title-content tps-nn-vault-title-trigger"
+                className="nn-vault-title-content nn-vault-title-trigger"
                 aria-label={strings.navigationPane.profileMenuAria}
                 role="button"
                 tabIndex={0}
                 onClick={handleTriggerClick}
                 onKeyDown={handleTriggerKeyDown}
             >
-                <span className="tps-nn-vault-title-text">{activeProfileName}</span>
+                <span className="nn-vault-title-text">{activeProfileName}</span>
                 <ServiceIcon
-                    className="tps-nn-vault-title-chevron"
+                    className="nn-vault-title-chevron"
                     iconId={resolveUXIcon(settings.interfaceIcons, 'nav-profile-chevron')}
                     aria-hidden={true}
                 />

@@ -60,9 +60,9 @@ export function NavigationToolbar({
         Boolean
     ).length;
     const totalButtonCount = leftButtonCount + (showNewFolderButton ? 1 : 0);
-    const leftGroupClassName = leftButtonCount === 1 ? 'tps-nn-mobile-toolbar-circle' : 'tps-nn-mobile-toolbar-pill';
+    const leftGroupClassName = leftButtonCount === 1 ? 'nn-mobile-toolbar-circle' : 'nn-mobile-toolbar-pill';
     const leftButtonBaseClassName =
-        leftButtonCount === 1 ? 'tps-nn-mobile-toolbar-button tps-nn-mobile-toolbar-button-circle' : 'tps-nn-mobile-toolbar-button';
+        leftButtonCount === 1 ? 'nn-mobile-toolbar-button nn-mobile-toolbar-button-circle' : 'nn-mobile-toolbar-button';
 
     if (totalButtonCount === 0) {
         return null;
@@ -92,7 +92,7 @@ export function NavigationToolbar({
         showHiddenItemsButton ? (
             <button
                 key="hidden-items"
-                className={`${leftButtonBaseClassName}${showHiddenItems ? ' tps-nn-mobile-toolbar-button-active' : ''}`}
+                className={`${leftButtonBaseClassName}${showHiddenItems ? ' nn-mobile-toolbar-button-active' : ''}`}
                 aria-label={showHiddenItems ? strings.paneHeader.hideExcludedItems : strings.paneHeader.showExcludedItems}
                 onClick={() => {
                     handleToggleShowExcludedFolders();
@@ -110,7 +110,7 @@ export function NavigationToolbar({
         showCalendarButton ? (
             <button
                 key="calendar"
-                className={`${leftButtonBaseClassName}${isCalendarVisible ? ' tps-nn-mobile-toolbar-button-active' : ''}`}
+                className={`${leftButtonBaseClassName}${isCalendarVisible ? ' nn-mobile-toolbar-button-active' : ''}`}
                 aria-label={isCalendarVisible ? strings.paneHeader.hideCalendar : strings.paneHeader.showCalendar}
                 onClick={toggleShowCalendar}
                 tabIndex={-1}
@@ -121,7 +121,7 @@ export function NavigationToolbar({
         showRootReorderButton ? (
             <button
                 key="root-reorder"
-                className={`${leftButtonBaseClassName}${rootReorderActive ? ' tps-nn-mobile-toolbar-button-active' : ''}`}
+                className={`${leftButtonBaseClassName}${rootReorderActive ? ' nn-mobile-toolbar-button-active' : ''}`}
                 aria-label={rootReorderActive ? strings.paneHeader.finishRootFolderReorder : strings.paneHeader.reorderRootFolders}
                 onClick={onToggleRootFolderReorder}
                 disabled={rootReorderDisabled}
@@ -134,7 +134,7 @@ export function NavigationToolbar({
     const newFolderButton = showNewFolderButton ? (
         <button
             key="new-folder"
-            className="tps-nn-mobile-toolbar-button tps-nn-mobile-toolbar-button-circle"
+            className="nn-mobile-toolbar-button nn-mobile-toolbar-button-circle"
             aria-label={strings.paneHeader.newFolder}
             onClick={() => {
                 runAsyncAction(() => handleNewFolder());
@@ -148,7 +148,7 @@ export function NavigationToolbar({
 
     if (!useFloatingLayout) {
         return (
-            <div className="tps-nn-mobile-toolbar">
+            <div className="nn-mobile-toolbar">
                 {leftButtons}
                 {newFolderButton}
             </div>
@@ -156,14 +156,14 @@ export function NavigationToolbar({
     }
 
     return (
-        <div className="tps-nn-mobile-toolbar">
-            <div className="tps-nn-mobile-toolbar-left">
+        <div className="nn-mobile-toolbar">
+            <div className="nn-mobile-toolbar-left">
                 {leftButtonCount > 0 ? <div className={leftGroupClassName}>{leftButtons}</div> : null}
             </div>
 
             {showNewFolderButton ? (
-                <div className="tps-nn-mobile-toolbar-right">
-                    <div className="tps-nn-mobile-toolbar-circle">{newFolderButton}</div>
+                <div className="nn-mobile-toolbar-right">
+                    <div className="nn-mobile-toolbar-circle">{newFolderButton}</div>
                 </div>
             ) : null}
         </div>

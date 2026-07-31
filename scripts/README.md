@@ -79,11 +79,11 @@ Standalone GitHub checkouts can run formatting, tests, TypeScript, ESLint, Style
 
 ## tps-namespace.mjs
 
-Reapplies the narrow CSS/DOM namespace transform after merging a new upstream Notebook Navigator release.
+Keeps inherited source in its merge-friendly upstream CSS/DOM namespace. Runtime JavaScript, tests, and generated CSS use the shared transform in `tps-runtime-namespace.mjs`.
 
 ```bash
-npm run tps:namespace        # Apply missing TPS prefixes
-npm run tps:namespace:check  # Report drift without changing files
+npm run tps:namespace        # Restore accidental TPS prefixes to upstream source tokens
+npm run tps:namespace:check  # Report committed runtime-prefix drift without changing files
 ```
 
 The transform is idempotent and intentionally does not change manifest IDs, storage keys, URLs, or integration behavior. Follow [the upstream sync guide](../docs/upstream-sync.md) and review every generated diff.
@@ -181,7 +181,7 @@ node scripts/check-unused-css.mjs --project-root /path/to/project-root
 To keep intentional dynamic CSS usage, add an allowlist comment:
 
 ```css
-/* unused-css keep tps-nn-dynamic-class --tps-nn-dynamic-variable */
+/* unused-css keep nn-dynamic-class --nn-dynamic-variable */
 ```
 
 ## update-icon-packs.sh

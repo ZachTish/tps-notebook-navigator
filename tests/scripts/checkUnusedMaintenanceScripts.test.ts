@@ -206,16 +206,16 @@ describe('check-unused-css.mjs', () => {
             'src/styles/sections/base.css',
             `/* Source: src/styles/sections/base.css */
 
-.tps-nn-used {
-    color: var(--tps-nn-color);
+.nn-used {
+    color: var(--nn-color);
 }
 
 :root {
-    --tps-nn-color: #ff0000;
+    --nn-color: #ff0000;
 }
 `
         );
-        await writeProjectFile(projectRoot, 'src/app.ts', "const className = 'tps-nn-used';\nconsole.log(className);\n");
+        await writeProjectFile(projectRoot, 'src/app.ts', "const className = 'nn-used';\nconsole.log(className);\n");
         await writeProjectFile(projectRoot, 'styles.css', 'stale\n');
 
         const fixResult = await runScript('scripts/check-unused-css.mjs', ['--project-root', projectRoot, '--fix']);
@@ -239,28 +239,28 @@ describe('check-unused-css.mjs', () => {
             projectRoot,
             'src/styles/sections/base.css',
             `/* Source: src/styles/sections/base.css */
-/* unused-css keep tps-nn-kept --tps-nn-kept-var */
+/* unused-css keep nn-kept --nn-kept-var */
 
 :root {
-    --tps-nn-color: #000000;
-    --tps-nn-unused-var: #111111;
-    --tps-nn-kept-var: #222222;
+    --nn-color: #000000;
+    --nn-unused-var: #111111;
+    --nn-kept-var: #222222;
 }
 
-.tps-nn-used {
-    color: var(--tps-nn-color);
+.nn-used {
+    color: var(--nn-color);
 }
 
-.tps-nn-unused {
+.nn-unused {
     color: #ffffff;
 }
 
-.tps-nn-kept {
+.nn-kept {
     color: #eeeeee;
 }
 `
         );
-        await writeProjectFile(projectRoot, 'src/app.ts', "const className = 'tps-nn-used';\nconsole.log(className);\n");
+        await writeProjectFile(projectRoot, 'src/app.ts', "const className = 'nn-used';\nconsole.log(className);\n");
         await writeProjectFile(projectRoot, 'styles.css', 'stale\n');
 
         const fixResult = await runScript('scripts/check-unused-css.mjs', ['--project-root', projectRoot, '--fix']);

@@ -65,7 +65,7 @@ export class MoveFileConflictModal extends Modal {
             text: descriptionTemplate.replace('{count}', this.conflicts.length.toString()).replace('{folder}', this.targetFolderName)
         });
 
-        const previewContainer = this.contentEl.createDiv('tps-nn-tag-rename-file-preview');
+        const previewContainer = this.contentEl.createDiv('nn-tag-rename-file-preview');
         previewContainer.createEl('h4', { text: strings.modals.fileSystem.moveFileConflictAffectedFiles });
         const listEl = previewContainer.createEl('ul');
         const previewConflicts = this.conflicts.slice(0, MOVE_CONFLICT_PREVIEW_LIMIT);
@@ -85,7 +85,7 @@ export class MoveFileConflictModal extends Modal {
             });
         }
 
-        const buttonContainer = this.contentEl.createDiv('tps-nn-button-container');
+        const buttonContainer = this.contentEl.createDiv('nn-button-container');
         const cancelBtn = buttonContainer.createEl('button', { text: strings.common.cancel });
         cancelBtn.addEventListener('click', () => this.resolveAndClose(null));
 

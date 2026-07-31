@@ -22,51 +22,51 @@ Keep this list ordered: later files override earlier ones.
 */
 
 /* Core */
-/* core-variables.css: body-level --tps-nn-* tokens (spacing, sizing, theme colors), plus `.tps-nn-visually-hidden` and `.tps-nn-color-resolver`. */
+/* core-variables.css: body-level --nn-* tokens (spacing, sizing, theme colors), plus `.nn-visually-hidden` and `.nn-color-resolver`. */
 @import './sections/core-variables.css';
 
 /* Layout + shared UI */
-/* layout-base.css: root containers (`.tps-notebook-navigator`, `.tps-nn-split-container`), focus/selection CSS variables, UI scale wrapper. */
+/* layout-base.css: root containers (`.notebook-navigator`, `.nn-split-container`), focus/selection CSS variables, UI scale wrapper. */
 @import './sections/layout-base.css';
-/* ui-update-notice.css: update banner (`.tps-nn-update-banner`) with mobile breakpoints. */
+/* ui-update-notice.css: update banner (`.nn-update-banner`) with mobile breakpoints. */
 @import './sections/ui-update-notice.css';
 /* ui-notices.css: custom Obsidian notices (cache rebuild progress notice). */
 @import './sections/ui-notices.css';
-/* layout-panes.css: pane sizing and orientation (`.tps-nn-navigation-pane`, `.tps-nn-list-pane`), background modes, resize handle. */
+/* layout-panes.css: pane sizing and orientation (`.nn-navigation-pane`, `.nn-list-pane`), background modes, resize handle. */
 @import './sections/layout-panes.css';
 /* ui-headers.css: pane headers, breadcrumb/profile header, search bar container + input, tag suggestion popover. */
 @import './sections/ui-headers.css';
 /* ui-search.css: mobile search overrides, clear/star buttons, clickable header path segments. */
 @import './sections/ui-search.css';
-/* ui-buttons.css: header icon buttons (`.tps-nn-icon-button`), active/disabled states, SVG sizing. */
+/* ui-buttons.css: header icon buttons (`.nn-icon-button`), active/disabled states, SVG sizing. */
 @import './sections/ui-buttons.css';
-/* layout-spacers.css: navigation/list spacer rows and separators (`.tps-nn-nav-*-spacer`, `.tps-nn-list-*-spacer`). */
+/* layout-spacers.css: navigation/list spacer rows and separators (`.nn-nav-*-spacer`, `.nn-list-*-spacer`). */
 @import './sections/layout-spacers.css';
 
 /* Navigation + list */
-/* navigation-scroller.css: navigation scroller chrome (`.tps-nn-navigation-pane-scroller`), overlay stack, pinned shortcuts container, nav banner. */
+/* navigation-scroller.css: navigation scroller chrome (`.nn-navigation-pane-scroller`), overlay stack, pinned shortcuts container, nav banner. */
 @import './sections/navigation-scroller.css';
-/* navigation-tree.css: navigation rows (`.tps-nn-navitem`), chevrons/icons/counts, shortcut rows, root reorder panel. */
+/* navigation-tree.css: navigation rows (`.nn-navitem`), chevrons/icons/counts, shortcut rows, root reorder panel. */
 @import './sections/navigation-tree.css';
-/* navigation-properties.css: property-tree row refinements (`.tps-nn-navitem.tps-nn-property`). */
+/* navigation-properties.css: property-tree row refinements (`.nn-navitem.nn-property`). */
 @import './sections/navigation-properties.css';
-/* calendar.css: bottom overlay calendar in navigation pane (`.tps-nn-navigation-calendar*`). */
+/* calendar.css: bottom overlay calendar in navigation pane (`.nn-navigation-calendar*`). */
 @import './sections/calendar.css';
-/* list-files.css: list scroller (`.tps-nn-list-pane-scroller`), overlay stack, list title area, file rows (`.tps-nn-file`), separators, quick actions panel. */
+/* list-files.css: list scroller (`.nn-list-pane-scroller`), overlay stack, list title area, file rows (`.nn-file`), separators, quick actions panel. */
 @import './sections/list-files.css';
 /* list-provider-rows.css: transient, non-selectable rows supplied by optional integrations. */
 @import './sections/list-provider-rows.css';
-/* list-tags.css: file tag pills (`.tps-nn-file-tag*`) and selected file text color rules. */
+/* list-tags.css: file tag pills (`.nn-file-tag*`) and selected file text color rules. */
 @import './sections/list-tags.css';
-/* list-compact-mode.css: compact file row layout (`.tps-nn-file.tps-nn-compact`) and extension badge alignment. */
+/* list-compact-mode.css: compact file row layout (`.nn-file.nn-compact`) and extension badge alignment. */
 @import './sections/list-compact-mode.css';
-/* list-file-thumbnails.css: file thumbnails (`.tps-nn-file-thumbnail*`) and extension badge rendering for non-markdown files. */
+/* list-file-thumbnails.css: file thumbnails (`.nn-file-thumbnail*`) and extension badge rendering for non-markdown files. */
 @import './sections/list-file-thumbnails.css';
-/* list-group-headers.css: list group headers (`.tps-nn-list-group-header*`) plus skeleton view layout during load. */
+/* list-group-headers.css: list group headers (`.nn-list-group-header*`) plus skeleton view layout during load. */
 @import './sections/list-group-headers.css';
 /* inline-rename.css: inline rename input sizing in navigation and list rows. */
 @import './sections/inline-rename.css';
-/* ui-empty-state.css: empty state layout for the list pane (`.tps-nn-empty-state`, `.tps-nn-empty-message`). */
+/* ui-empty-state.css: empty state layout for the list pane (`.nn-empty-state`, `.nn-empty-message`). */
 @import './sections/ui-empty-state.css';
 
 /* States */

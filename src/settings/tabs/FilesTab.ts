@@ -75,7 +75,7 @@ export function createFilesSettingDefinitions(context: SettingsTabContext, headi
 
 function renderTemplateFolderInfoSetting(setting: Setting, context: SettingsTabContext): void {
     setting.setName('').setDesc('');
-    setting.settingEl.addClass('tps-nn-setting-info-container');
+    setting.settingEl.addClass('nn-setting-info-container');
     setting.descEl.empty();
 
     setting.descEl.createDiv({ text: strings.settings.items.calendarTemplateFolder.usage });

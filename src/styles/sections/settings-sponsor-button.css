@@ -5,6 +5,6 @@
    ======================================================================== */
 
 /* Support button hover - subtle opacity change */
-.tps-nn-support-button:hover {
+.nn-support-button:hover {
     opacity: 0.8;
 }

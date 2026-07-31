@@ -95,18 +95,18 @@ export function RootFolderReorderItem({
 
     // Builds the CSS class names for the reorder item, combining base class with optional modifiers
     const rowClassName = (() => {
-        const classes = ['tps-nn-root-reorder-item'];
+        const classes = ['nn-root-reorder-item'];
         if (itemType === 'folder') {
-            classes.push('tps-nn-folder');
+            classes.push('nn-folder');
         } else if (itemType === 'tag') {
-            classes.push('tps-nn-tag');
+            classes.push('nn-tag');
         } else if (itemType === 'property') {
-            classes.push('tps-nn-property');
+            classes.push('nn-property');
         } else if (itemType === 'section') {
-            classes.push('tps-nn-section');
+            classes.push('nn-section');
         }
         if (isMissing) {
-            classes.push('tps-nn-root-reorder-item--missing');
+            classes.push('nn-root-reorder-item--missing');
         }
         if (className) {
             classes.push(className);

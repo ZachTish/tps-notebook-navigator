@@ -287,13 +287,13 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
     };
 
     const markDraggingElement = useCallback((element: HTMLElement) => {
-        element.classList.add('tps-nn-dragging');
+        element.classList.add('nn-dragging');
         draggingElementsRef.current.add(element);
     }, []);
 
     const clearDraggingElements = useCallback(() => {
         draggingElementsRef.current.forEach(element => {
-            element.classList.remove('tps-nn-dragging');
+            element.classList.remove('nn-dragging');
         });
         draggingElementsRef.current.clear();
     }, []);
@@ -304,7 +304,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
             return;
         }
 
-        container.querySelectorAll<HTMLElement>('.tps-nn-file[data-drag-path]').forEach(element => {
+        container.querySelectorAll<HTMLElement>('.nn-file[data-drag-path]').forEach(element => {
             const selectedPath = getPathFromDataAttribute(element, 'data-drag-path');
             if (selectedPath && selectionState.selectedFiles.has(selectedPath)) {
                 markDraggingElement(element);
@@ -316,7 +316,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
         (event: DragEvent, count: number): boolean => {
             const ownerWindow = containerRef.current?.win ?? activeWindow;
             const badge = ownerWindow.createDiv();
-            badge.className = 'tps-nn-drag-preview-badge';
+            badge.className = 'nn-drag-preview-badge';
             badge.textContent = `${count}`;
             return setNativeDragPreview(event, badge);
         },
@@ -339,7 +339,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
 
             const ownerWindow = containerRef.current?.win ?? activeWindow;
             const iconWrapper = ownerWindow.createDiv();
-            iconWrapper.className = 'tps-nn-drag-preview-icon';
+            iconWrapper.className = 'nn-drag-preview-icon';
             const resolvedIconColor = iconColor ?? '#ffffff';
             iconWrapper.style.color = resolvedIconColor;
             iconWrapper.style.setProperty('--icon-color', resolvedIconColor);
@@ -800,7 +800,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
             const isShortcutDrag = Boolean(e.dataTransfer?.types?.includes(SHORTCUT_DRAG_MIME));
 
             if (dragOverElement.current && dragOverElement.current !== dropZone) {
-                dragOverElement.current.classList.remove('tps-nn-drag-over');
+                dragOverElement.current.classList.remove('nn-drag-over');
                 dragOverElement.current = null;
                 dragOverDropEffectRef.current = null;
                 clearAutoExpandTimer();
@@ -822,7 +822,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
             }
 
             if (isShortcutDrag) {
-                dropZone.classList.remove('tps-nn-drag-over');
+                dropZone.classList.remove('nn-drag-over');
                 dragOverElement.current = null;
                 dragOverDropEffectRef.current = null;
                 clearAutoExpandTimer();
@@ -833,7 +833,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
             }
 
             if (dragTypeRef.current === ItemType.PROPERTY) {
-                dropZone.classList.remove('tps-nn-drag-over');
+                dropZone.classList.remove('nn-drag-over');
                 dragOverElement.current = null;
                 dragOverDropEffectRef.current = null;
                 clearAutoExpandTimer();
@@ -867,7 +867,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
                     const isNavigatorTagDrag = dragTypeRef.current === ItemType.TAG;
                     if (isNavigatorFolderDrag || isNavigatorTagDrag || !hasObsidianData || isExternalOnly) {
                         if (dragOverElement.current === dropZone) {
-                            dropZone.classList.remove('tps-nn-drag-over');
+                            dropZone.classList.remove('nn-drag-over');
                             dragOverElement.current = null;
                             dragOverDropEffectRef.current = null;
                         }
@@ -880,7 +880,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
                 // Block drops that do not meet drop zone permissions
                 if ((isInternalTransfer && !allowInternalDrop) || (isExternalOnly && !allowExternalDrop)) {
                     if (dragOverElement.current === dropZone) {
-                        dropZone.classList.remove('tps-nn-drag-over');
+                        dropZone.classList.remove('nn-drag-over');
                         dragOverElement.current = null;
                         dragOverDropEffectRef.current = null;
                     }
@@ -891,7 +891,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
 
                 if (!isSupportedDropPayload(dropType, { hasObsidianData, hasTagPayload, isExternalOnly })) {
                     if (dragOverElement.current === dropZone) {
-                        dropZone.classList.remove('tps-nn-drag-over');
+                        dropZone.classList.remove('nn-drag-over');
                         dragOverElement.current = null;
                         dragOverDropEffectRef.current = null;
                     }
@@ -908,7 +908,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
                 if (dropType === 'folder') {
                     if (dragTypeRef.current === ItemType.TAG) {
                         if (dragOverElement.current === dropZone) {
-                            dropZone.classList.remove('tps-nn-drag-over');
+                            dropZone.classList.remove('nn-drag-over');
                             dragOverElement.current = null;
                             dragOverDropEffectRef.current = null;
                         }
@@ -923,7 +923,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
                 } else if (dropType === 'tag') {
                     if (dragTypeRef.current === ItemType.FOLDER) {
                         if (dragOverElement.current === dropZone) {
-                            dropZone.classList.remove('tps-nn-drag-over');
+                            dropZone.classList.remove('nn-drag-over');
                         }
                         dragOverElement.current = null;
                         dragOverDropEffectRef.current = null;
@@ -950,7 +950,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
                 if (dropType === 'tag-root') {
                     if (dragTypeRef.current !== ItemType.TAG) {
                         if (dragOverElement.current === dropZone) {
-                            dropZone.classList.remove('tps-nn-drag-over');
+                            dropZone.classList.remove('nn-drag-over');
                             dragOverElement.current = null;
                             dragOverDropEffectRef.current = null;
                         }
@@ -969,7 +969,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
             }
 
             if (dragOverElement.current !== dropZone) {
-                dropZone.classList.add('tps-nn-drag-over');
+                dropZone.classList.add('nn-drag-over');
             }
             dragOverElement.current = dropZone;
             dragOverDropEffectRef.current = e.dataTransfer?.dropEffect ?? null;
@@ -1130,7 +1130,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
             try {
                 let dropZone = dragOverElement.current;
                 if (dropZone) {
-                    dropZone.classList.remove('tps-nn-drag-over');
+                    dropZone.classList.remove('nn-drag-over');
                 }
                 dragOverElement.current = null;
                 dragOverDropEffectRef.current = null;
@@ -1368,7 +1368,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
                 // Only remove if we're actually leaving the drop zone, not just moving to a child
                 const relatedTarget = e.relatedTarget;
                 if (!(relatedTarget instanceof Node) || !dropZone.contains(relatedTarget)) {
-                    dropZone.classList.remove('tps-nn-drag-over');
+                    dropZone.classList.remove('nn-drag-over');
                     dragOverElement.current = null;
                     dragOverDropEffectRef.current = null;
                     clearAutoExpandTimer();
@@ -1387,7 +1387,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
         clearDraggingElements();
 
         if (dragOverElement.current) {
-            dragOverElement.current.classList.remove('tps-nn-drag-over');
+            dragOverElement.current.classList.remove('nn-drag-over');
             dragOverElement.current = null;
         }
         dragOverDropEffectRef.current = null;

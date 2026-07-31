@@ -37,7 +37,7 @@ export class MaterialIconProvider extends BaseFontIconProvider {
     }
 
     protected getCssClass(): string {
-        return 'tps-nn-iconfont-material-icons';
+        return 'nn-iconfont-material-icons';
     }
 
     /**

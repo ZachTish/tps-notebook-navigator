@@ -5,24 +5,24 @@
    ======================================================================== */
 
 /* Navigation selection adornments follow the container focus state */
-.tps-nn-navitem.tps-nn-selected .tps-nn-navitem-chevron {
-    color: var(--tps-nn-selected-navitem-chevron-color);
+.nn-navitem.nn-selected .nn-navitem-chevron {
+    color: var(--nn-selected-navitem-chevron-color);
 }
 
-.tps-nn-navitem.tps-nn-selected .tps-nn-navitem-icon {
-    color: var(--tps-nn-selected-navitem-icon-color);
+.nn-navitem.nn-selected .nn-navitem-icon {
+    color: var(--nn-selected-navitem-icon-color);
 }
 
-.tps-nn-navitem.tps-nn-selected .tps-nn-navitem-name {
-    color: var(--tps-nn-selected-navitem-name-color);
+.nn-navitem.nn-selected .nn-navitem-name {
+    color: var(--nn-selected-navitem-name-color);
 }
 
-.tps-nn-navitem.tps-nn-selected[data-nav-item-type='note'] .tps-nn-navitem-name {
-    color: var(--tps-nn-selected-file-name-color);
+.nn-navitem.nn-selected[data-nav-item-type='note'] .nn-navitem-name {
+    color: var(--nn-selected-file-name-color);
 }
 
-.tps-nn-navitem.tps-nn-selected .tps-nn-navitem-count {
-    color: var(--tps-nn-selected-navitem-count-color);
-    background-color: var(--tps-nn-selected-navitem-count-bg);
-    box-shadow: inset 0 0 0 var(--tps-nn-theme-navitem-count-border-width) var(--tps-nn-selected-navitem-count-border-color);
+.nn-navitem.nn-selected .nn-navitem-count {
+    color: var(--nn-selected-navitem-count-color);
+    background-color: var(--nn-selected-navitem-count-bg);
+    box-shadow: inset 0 0 0 var(--nn-theme-navitem-count-border-width) var(--nn-selected-navitem-count-border-color);
 }

@@ -58,7 +58,7 @@ export class WhatsNewModal extends Modal {
 
                 if (match[1]) {
                     // ==highlight== -> highlight span, supports nested formatting inside
-                    const highlight = dest.createSpan({ cls: 'tps-nn-highlight' });
+                    const highlight = dest.createSpan({ cls: 'nn-highlight' });
                     renderInline(match[1], highlight);
                 } else if (match[2] && match[3]) {
                     // Markdown link [label](url)
@@ -117,7 +117,7 @@ export class WhatsNewModal extends Modal {
             .filter(paragraph => paragraph.length > 0);
 
         paragraphs.forEach(paragraph => {
-            const p = container.createEl('p', { cls: 'tps-nn-whats-new-info' });
+            const p = container.createEl('p', { cls: 'nn-whats-new-info' });
             this.renderFormattedText(p, paragraph);
         });
     }
@@ -125,17 +125,17 @@ export class WhatsNewModal extends Modal {
     private renderReleaseBanner(container: HTMLElement, imageUrl: string, isClickable: boolean): void {
         let banner: HTMLElement;
         if (isClickable) {
-            const link = container.createEl('a', { cls: 'tps-nn-whats-new-banner' });
+            const link = container.createEl('a', { cls: 'nn-whats-new-banner' });
             link.setAttr('href', imageUrl);
             link.setAttr('rel', 'noopener noreferrer');
             link.setAttr('target', '_blank');
             link.setAttr('aria-label', strings.whatsNew.openBannerImage);
             banner = link;
         } else {
-            banner = container.createDiv({ cls: 'tps-nn-whats-new-banner' });
+            banner = container.createDiv({ cls: 'nn-whats-new-banner' });
         }
 
-        const image = banner.createEl('img', { cls: 'tps-nn-whats-new-banner-image' });
+        const image = banner.createEl('img', { cls: 'nn-whats-new-banner-image' });
         image.setAttr('alt', '');
         image.setAttr('loading', 'lazy');
         image.setAttr('decoding', 'async');
@@ -148,8 +148,8 @@ export class WhatsNewModal extends Modal {
     }
 
     private renderReleaseVideo(container: HTMLElement, videoUrl: string, openUrl: string | null): void {
-        const frame = container.createDiv({ cls: 'tps-nn-whats-new-video-frame' });
-        const video = frame.createEl('video', { cls: 'tps-nn-whats-new-video' });
+        const frame = container.createDiv({ cls: 'nn-whats-new-video-frame' });
+        const video = frame.createEl('video', { cls: 'nn-whats-new-video' });
 
         video.autoplay = true;
         video.defaultMuted = true;
@@ -170,7 +170,7 @@ export class WhatsNewModal extends Modal {
         video.src = videoUrl;
 
         if (openUrl) {
-            const openLink = frame.createEl('a', { cls: 'tps-nn-whats-new-video-open' });
+            const openLink = frame.createEl('a', { cls: 'nn-whats-new-video-open' });
             openLink.setAttr('href', openUrl);
             openLink.setAttr('rel', 'noopener noreferrer');
             openLink.setAttr('target', '_blank');
@@ -180,33 +180,33 @@ export class WhatsNewModal extends Modal {
     }
 
     private renderYoutubeLink(container: HTMLElement, youtubeUrl: string, playButtonOptions?: YoutubePlayButtonOptions): void {
-        const link = container.createEl('a', { cls: 'tps-nn-whats-new-youtube-link' });
+        const link = container.createEl('a', { cls: 'nn-whats-new-youtube-link' });
         link.setAttr('href', youtubeUrl);
         link.setAttr('rel', 'noopener noreferrer');
         link.setAttr('target', '_blank');
         link.setAttr('aria-label', strings.modals.welcome.openVideoButton);
 
-        const thumbnail = link.createDiv({ cls: 'tps-nn-whats-new-youtube-thumbnail' });
+        const thumbnail = link.createDiv({ cls: 'nn-whats-new-youtube-thumbnail' });
 
         const videoId = getYoutubeVideoId(youtubeUrl);
         let image: HTMLImageElement | null = null;
         if (videoId) {
-            image = thumbnail.createEl('img', { cls: 'tps-nn-whats-new-youtube-image' });
+            image = thumbnail.createEl('img', { cls: 'nn-whats-new-youtube-image' });
             image.setAttr('alt', strings.modals.welcome.openVideoButton);
             image.setAttr('loading', 'lazy');
         } else {
-            thumbnail.createDiv({ cls: 'tps-nn-whats-new-youtube-placeholder', text: strings.modals.welcome.openVideoButton });
+            thumbnail.createDiv({ cls: 'nn-whats-new-youtube-placeholder', text: strings.modals.welcome.openVideoButton });
         }
 
-        const playButton = thumbnail.createDiv({ cls: 'tps-nn-youtube-play' });
+        const playButton = thumbnail.createDiv({ cls: 'nn-youtube-play' });
         playButton.setAttr('aria-hidden', 'true');
 
         if (playButtonOptions) {
             // Thumbnail-relative percentages preserve the intended placement as the modal width changes.
-            playButton.style.setProperty('--tps-nn-youtube-play-x', `${playButtonOptions.x}%`);
-            playButton.style.setProperty('--tps-nn-youtube-play-y', `${playButtonOptions.y}%`);
+            playButton.style.setProperty('--nn-youtube-play-x', `${playButtonOptions.x}%`);
+            playButton.style.setProperty('--nn-youtube-play-y', `${playButtonOptions.y}%`);
             if (playButtonOptions.scale !== undefined) {
-                playButton.style.setProperty('--tps-nn-youtube-play-scale', playButtonOptions.scale.toString());
+                playButton.style.setProperty('--nn-youtube-play-scale', playButtonOptions.scale.toString());
             }
         }
 
@@ -244,17 +244,17 @@ export class WhatsNewModal extends Modal {
         const { contentEl } = this;
 
         contentEl.empty();
-        this.modalEl.addClass('tps-nn-whats-new-modal');
+        this.modalEl.addClass('nn-whats-new-modal');
         this.titleEl.setText(strings.whatsNew.title);
 
         this.attachCloseButtonHandler();
 
-        const scrollContainer = contentEl.createDiv('tps-nn-whats-new-scroll');
+        const scrollContainer = contentEl.createDiv('nn-whats-new-scroll');
 
         const displayLocale = (getCurrentLanguage() || 'en').replace(/_/g, '-');
 
         this.releaseNotes.forEach(note => {
-            const versionContainer = scrollContainer.createDiv('tps-nn-whats-new-version');
+            const versionContainer = scrollContainer.createDiv('nn-whats-new-version');
             let headerText = `Version ${note.version}`;
 
             const parsedDate = DateUtils.parseLocalDayKey(note.date);
@@ -296,12 +296,12 @@ export class WhatsNewModal extends Modal {
                     // Create category header
                     versionContainer.createEl('h4', {
                         text: category.label,
-                        cls: 'tps-nn-whats-new-category'
+                        cls: 'nn-whats-new-category'
                     });
 
                     // Create list for this category
                     const categoryList = versionContainer.createEl('ul', {
-                        cls: 'tps-nn-whats-new-features'
+                        cls: 'nn-whats-new-features'
                     });
 
                     items.forEach(item => {
@@ -313,29 +313,29 @@ export class WhatsNewModal extends Modal {
         });
 
         // Add divider line right after scroll container
-        contentEl.createDiv('tps-nn-whats-new-divider');
+        contentEl.createDiv('nn-whats-new-divider');
 
-        const supportContainer = contentEl.createDiv('tps-nn-whats-new-support');
+        const supportContainer = contentEl.createDiv('nn-whats-new-support');
 
         supportContainer.createEl('p', {
             text: strings.whatsNew.supportMessage,
-            cls: 'tps-nn-whats-new-support-text'
+            cls: 'nn-whats-new-support-text'
         });
 
-        const buttonContainer = contentEl.createDiv('tps-nn-whats-new-buttons');
+        const buttonContainer = contentEl.createDiv('nn-whats-new-buttons');
 
         // Create buttons directly without Setting wrapper
         const supportButton = buttonContainer.createEl('button', {
-            cls: 'tps-nn-support-button-small'
+            cls: 'nn-support-button-small'
         });
         supportButton.setAttr('type', 'button');
 
-        const supportIcon = supportButton.createSpan({ cls: 'tps-nn-support-button-icon' });
+        const supportIcon = supportButton.createSpan({ cls: 'nn-support-button-icon' });
         supportIcon.setAttr('aria-hidden', 'true');
         supportIcon.setText('☕');
 
         supportButton.createSpan({
-            cls: 'tps-nn-support-button-label',
+            cls: 'nn-support-button-label',
             text: strings.whatsNew.supportButton
         });
         this.domDisposers.push(
@@ -374,7 +374,7 @@ export class WhatsNewModal extends Modal {
     onClose(): void {
         const { contentEl } = this;
         contentEl.empty();
-        this.modalEl.removeClass('tps-nn-whats-new-modal');
+        this.modalEl.removeClass('nn-whats-new-modal');
         if (this.domDisposers.length) {
             this.domDisposers.forEach(dispose => {
                 try {

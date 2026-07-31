@@ -42,14 +42,14 @@ class FolderNoteTypeModal extends Modal {
     }
 
     onOpen(): void {
-        this.modalEl.addClass('tps-nn-folder-note-type-modal');
+        this.modalEl.addClass('nn-folder-note-type-modal');
         this.titleEl.setText(strings.modals.folderNoteType.title);
 
-        const infoEl = this.contentEl.createDiv('tps-nn-folder-note-type-info');
+        const infoEl = this.contentEl.createDiv('nn-folder-note-type-info');
         const displayName = this.folderDisplayName && this.folderDisplayName.length > 0 ? this.folderDisplayName : this.folder.name;
         infoEl.setText(strings.modals.folderNoteType.folderLabel.replace('{name}', displayName));
 
-        const buttonContainer = this.contentEl.createDiv('tps-nn-folder-note-type-buttons');
+        const buttonContainer = this.contentEl.createDiv('nn-folder-note-type-buttons');
 
         const markdownButton = this.createTypeButton(buttonContainer, strings.settings.items.folderNoteType.options.markdown, 'markdown');
 

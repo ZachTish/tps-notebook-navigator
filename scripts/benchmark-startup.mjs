@@ -324,7 +324,7 @@ console.error = () => {};
     if (mode === 'onload') {
       const PluginClass = required.default ?? required;
       const plugin = new PluginClass(createMockApp(), {
-        id: 'tps-notebook-navigator',
+        id: 'notebook-navigator',
         version: '0.0.0',
         minAppVersion: '1.11.0'
       });
@@ -359,7 +359,7 @@ async function run() {
     });
 
     const output = build.outputFiles[0];
-    const tempDir = mkdtempSync(path.join(tmpdir(), 'tps-nn-startup-benchmark-'));
+    const tempDir = mkdtempSync(path.join(tmpdir(), 'nn-startup-benchmark-'));
     const bundlePath = path.join(tempDir, 'main.cjs');
     const runnerPath = path.join(tempDir, 'runner.cjs');
 

@@ -78,7 +78,7 @@ export class InputModal extends Modal {
         const initialValue = inputFilter ? inputFilter(defaultValue) : defaultValue;
 
         if (options?.description) {
-            this.contentEl.createDiv({ cls: 'tps-nn-input-description', text: options.description });
+            this.contentEl.createDiv({ cls: 'nn-input-description', text: options.description });
         }
 
         this.inputEl = this.contentEl.createEl('input', {
@@ -86,14 +86,14 @@ export class InputModal extends Modal {
             placeholder: placeholder,
             value: initialValue
         });
-        this.inputEl.addClass('tps-nn-input');
+        this.inputEl.addClass('nn-input');
 
         // Store handlers for cleanup
         this.cancelHandler = () => this.close();
         this.submitHandler = () => this.handleSubmit();
 
         if (options?.checkbox) {
-            const checkboxRow = this.contentEl.createEl('label', { cls: 'tps-nn-input-checkbox-row' });
+            const checkboxRow = this.contentEl.createEl('label', { cls: 'nn-input-checkbox-row' });
             this.checkboxEl = checkboxRow.createEl('input', {
                 type: 'checkbox'
             });
@@ -101,7 +101,7 @@ export class InputModal extends Modal {
             checkboxRow.createSpan({ text: options.checkbox.label });
         }
 
-        const buttonContainer = this.contentEl.createDiv('tps-nn-button-container');
+        const buttonContainer = this.contentEl.createDiv('nn-button-container');
 
         this.cancelBtn = buttonContainer.createEl('button', { text: strings.common.cancel });
         this.cancelBtn.addEventListener('click', this.cancelHandler);

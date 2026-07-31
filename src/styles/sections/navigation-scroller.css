@@ -6,39 +6,39 @@
 
 /* Scroller container for both folder tree and tag list */
 
-.tps-nn-navigation-pane-chrome {
+.nn-navigation-pane-chrome {
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
 }
 
-.tps-nn-navigation-pane-panel {
+.nn-navigation-pane-panel {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
 }
 
-.tps-nn-navigation-pane-scroller {
+.nn-navigation-pane-scroller {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 0 var(--tps-nn-scroller-padding);
+    padding: 0 var(--nn-scroller-padding);
     line-height: 1; /* Reset to 1 - we'll use fixed line-heights on individual elements */
-    background-color: var(--tps-nn-theme-nav-bg); /* Opaque background for GPU scroll layer optimization */
+    background-color: var(--nn-theme-nav-bg); /* Opaque background for GPU scroll layer optimization */
 
     /* Ensure scroll events work properly with virtualization */
     position: relative;
 }
 
-.tps-nn-navigation-pane-content {
+.nn-navigation-pane-content {
     flex: 1 0 auto;
 }
 
-.tps-nn-navigation-pane-scroller[data-banner='true'] {
+.nn-navigation-pane-scroller[data-banner='true'] {
     /* Classic Windows scrollbars consume layout width when they appear. Setting a stable gutter
        keeps the width constant so TanStack Virtual's ResizeObserver doesn't retrigger endlessly
        when the navigation banner forces the content to overflow during resizing. */
@@ -46,10 +46,10 @@
 }
 
 /* Container for pinned shortcuts displayed above the scrollable navigation tree */
-.tps-nn-shortcut-pinned {
+.nn-shortcut-pinned {
     flex: 0 1 auto;
-    border-bottom: 1px solid var(--tps-nn-theme-divider-border-color);
-    background-color: var(--tps-nn-theme-nav-bg);
+    border-bottom: 1px solid var(--nn-theme-divider-border-color);
+    background-color: var(--nn-theme-nav-bg);
     position: relative;
     z-index: 1;
     overflow: visible;
@@ -58,37 +58,37 @@
     flex-direction: column;
 }
 
-.tps-nn-shortcut-pinned-scroll {
+.nn-shortcut-pinned-scroll {
     flex: 0 1 auto;
     min-height: 0;
-    padding: 8px var(--tps-nn-scroller-padding) 4px;
+    padding: 8px var(--nn-scroller-padding) 4px;
     overflow-x: hidden;
     overflow-y: hidden;
 }
 
-.tps-nn-shortcut-pinned[data-scroll='true'] .tps-nn-shortcut-pinned-scroll {
+.nn-shortcut-pinned[data-scroll='true'] .nn-shortcut-pinned-scroll {
     overflow-y: auto;
     overscroll-behavior: contain;
 }
 
 /* Remove top padding when banner is present to avoid double spacing */
-.tps-nn-shortcut-pinned[data-has-banner='true'] .tps-nn-shortcut-pinned-scroll {
+.nn-shortcut-pinned[data-has-banner='true'] .nn-shortcut-pinned-scroll {
     padding-top: 0;
 }
 
 /* Add top margin to banner inside pinned shortcuts area for consistent spacing */
-.tps-nn-shortcut-pinned[data-has-banner='true'] .tps-nn-nav-banner {
+.nn-shortcut-pinned[data-has-banner='true'] .nn-nav-banner {
     margin-top: 8px;
 }
 
 /* Inner wrapper for pinned shortcut items */
-.tps-nn-shortcut-pinned-inner {
+.nn-shortcut-pinned-inner {
     display: flex;
     flex-direction: column;
     gap: 0;
 }
 
-.tps-nn-shortcut-pinned::after {
+.nn-shortcut-pinned::after {
     content: '';
     position: absolute;
     left: 0;
@@ -96,10 +96,10 @@
     top: calc(100% + 1px);
     height: 4px;
     pointer-events: none;
-    background: linear-gradient(to bottom, var(--tps-nn-theme-pinned-shortcut-shadow-color) 0%, transparent 100%);
+    background: linear-gradient(to bottom, var(--nn-theme-pinned-shortcut-shadow-color) 0%, transparent 100%);
 }
 
-.tps-nn-shortcuts-resize-handle {
+.nn-shortcuts-resize-handle {
     height: 3px;
     cursor: row-resize;
     background-color: transparent;
@@ -114,15 +114,15 @@
     z-index: 2;
 }
 
-.tps-nn-shortcuts-resize-handle:hover {
-    background-color: var(--tps-nn-theme-divider-resize-handle-hover-bg);
+.nn-shortcuts-resize-handle:hover {
+    background-color: var(--nn-theme-divider-resize-handle-hover-bg);
 }
 
-.tps-nn-navigation-pane[data-shortcuts-resizing='true'] .tps-nn-shortcuts-resize-handle {
-    background-color: var(--tps-nn-theme-divider-resize-handle-hover-bg);
+.nn-navigation-pane[data-shortcuts-resizing='true'] .nn-shortcuts-resize-handle {
+    background-color: var(--nn-theme-divider-resize-handle-hover-bg);
 }
 
-.tps-notebook-navigator-mobile .tps-nn-shortcuts-resize-handle {
+.notebook-navigator-mobile .nn-shortcuts-resize-handle {
     height: 14px;
     position: relative;
     left: auto;
@@ -133,65 +133,65 @@
     z-index: 0;
 }
 
-.tps-notebook-navigator-mobile .tps-nn-navigation-pane[data-shortcuts-resizing='true'] .tps-nn-shortcuts-resize-handle {
+.notebook-navigator-mobile .nn-navigation-pane[data-shortcuts-resizing='true'] .nn-shortcuts-resize-handle {
     background-color: transparent;
 }
 
-.tps-notebook-navigator-mobile .tps-nn-shortcuts-resize-handle:hover {
+.notebook-navigator-mobile .nn-shortcuts-resize-handle:hover {
     background-color: transparent;
 }
 
 @media (hover: none) {
-    .tps-nn-shortcuts-resize-handle:hover {
+    .nn-shortcuts-resize-handle:hover {
         background-color: transparent;
     }
 }
 
-.tps-notebook-navigator-mobile .tps-nn-shortcuts-resize-handle::before {
+.notebook-navigator-mobile .nn-shortcuts-resize-handle::before {
     content: '';
     position: absolute;
     left: 20%;
     right: 20%;
     bottom: 3px;
     height: 5px;
-    background-color: var(--tps-nn-theme-divider-border-color);
+    background-color: var(--nn-theme-divider-border-color);
     border-radius: 3px;
     pointer-events: none;
 }
 
-.tps-notebook-navigator-mobile .tps-nn-shortcut-pinned {
-    background-color: var(--tps-nn-theme-nav-bg);
+.notebook-navigator-mobile .nn-shortcut-pinned {
+    background-color: var(--nn-theme-nav-bg);
     border-bottom: none;
 }
 
 /* Vault title displayed below the navigation header (desktop only). */
-.tps-nn-vault-title-area {
-    background-color: var(--tps-nn-theme-nav-bg);
-    padding: var(--tps-nn-list-title-padding-block) var(--tps-nn-scroller-padding) 8px;
+.nn-vault-title-area {
+    background-color: var(--nn-theme-nav-bg);
+    padding: var(--nn-list-title-padding-block) var(--nn-scroller-padding) 8px;
 }
 
-.tps-nn-vault-title-content {
+.nn-vault-title-content {
     display: inline-flex;
     align-items: center;
-    padding: 0 var(--tps-nn-nav-item-padding-horizontal);
-    font-size: var(--tps-nn-list-title-font-size);
-    font-weight: var(--tps-nn-theme-list-heading-font-weight);
-    color: var(--tps-nn-theme-list-heading-color);
+    padding: 0 var(--nn-nav-item-padding-horizontal);
+    font-size: var(--nn-list-title-font-size);
+    font-weight: var(--nn-theme-list-heading-font-weight);
+    color: var(--nn-theme-list-heading-color);
     gap: 4px;
     max-width: 100%;
 }
 
-.tps-nn-vault-title-trigger {
+.nn-vault-title-trigger {
     cursor: pointer;
 }
 
-.tps-nn-vault-title-trigger:focus-visible {
+.nn-vault-title-trigger:focus-visible {
     outline: 1px solid var(--interactive-accent);
     outline-offset: 1px;
     border-radius: 6px;
 }
 
-.tps-nn-vault-title-text {
+.nn-vault-title-text {
     line-height: 1.2;
     flex: 0 1 auto;
     min-width: 0;
@@ -200,36 +200,36 @@
     white-space: nowrap;
 }
 
-.tps-nn-vault-title-chevron {
-    width: var(--tps-nn-nav-icon-size);
-    height: var(--tps-nn-nav-icon-size);
+.nn-vault-title-chevron {
+    width: var(--nn-nav-icon-size);
+    height: var(--nn-nav-icon-size);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    color: var(--tps-nn-theme-list-heading-color);
+    color: var(--nn-theme-list-heading-color);
 }
 
 /* Mobile-only: hide the pinned shortcuts shadow overlay. */
-.tps-notebook-navigator-mobile .tps-nn-shortcut-pinned::after {
+.notebook-navigator-mobile .nn-shortcut-pinned::after {
     content: none;
 }
 
 /* Navigation banner displayed above tree items */
-.tps-nn-nav-banner {
-    padding: var(--tps-nn-nav-banner-padding-vertical, 8px) var(--tps-nn-nav-item-padding-horizontal);
+.nn-nav-banner {
+    padding: var(--nn-nav-banner-padding-vertical, 8px) var(--nn-nav-item-padding-horizontal);
     box-sizing: border-box;
 }
 
-.tps-nn-navigation-pane-banner {
-    margin-inline-start: calc(-1 * var(--tps-nn-scroller-padding));
-    margin-inline-end: calc(-1 * var(--tps-nn-scroller-padding));
+.nn-navigation-pane-banner {
+    margin-inline-start: calc(-1 * var(--nn-scroller-padding));
+    margin-inline-end: calc(-1 * var(--nn-scroller-padding));
 }
 
-.tps-nn-nav-banner-image {
+.nn-nav-banner-image {
     display: block;
     width: 100%;
     height: auto;
-    border-radius: min(14px, var(--tps-nn-theme-navitem-border-radius));
+    border-radius: min(14px, var(--nn-theme-navitem-border-radius));
     background-color: var(--background-tertiary);
 }

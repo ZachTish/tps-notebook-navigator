@@ -147,7 +147,7 @@ export function renderCalendarDisplaySections(
     });
 
     const calendarLocaleWarningEl = calendarLocaleSetting.descEl.createDiv({
-        cls: 'setting-item-description tps-nn-setting-hidden tps-nn-setting-warning'
+        cls: 'setting-item-description nn-setting-hidden nn-setting-warning'
     });
 
     appearanceGroup

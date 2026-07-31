@@ -81,8 +81,8 @@ export function NavigationBanner({ path, onHeightChange }: NavigationBannerProps
     }
 
     return (
-        <div className="tps-nn-nav-banner" aria-hidden="true" ref={containerRef}>
-            <img className="tps-nn-nav-banner-image" src={bannerData.resourcePath} alt="" />
+        <div className="nn-nav-banner" aria-hidden="true" ref={containerRef}>
+            <img className="nn-nav-banner-image" src={bannerData.resourcePath} alt="" />
         </div>
     );
 }

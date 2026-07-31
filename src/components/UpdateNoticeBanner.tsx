@@ -69,7 +69,7 @@ export function UpdateNoticeBanner({ notice, onDismiss }: UpdateNoticeBannerProp
         return null;
     }
 
-    const className = `tps-nn-update-banner${isFading ? ' fade-out' : ''}`;
+    const className = `nn-update-banner${isFading ? ' fade-out' : ''}`;
 
     return (
         <button
@@ -79,9 +79,9 @@ export function UpdateNoticeBanner({ notice, onDismiss }: UpdateNoticeBannerProp
             aria-label={strings.common.updateBannerTitle}
             title={strings.common.updateBannerInstruction}
         >
-            <div className="tps-nn-update-banner__text">
-                <span className="tps-nn-update-banner__label">{strings.common.updateBannerTitle}</span>
-                <span className="tps-nn-update-banner__instruction">{strings.common.updateBannerInstruction}</span>
+            <div className="nn-update-banner__text">
+                <span className="nn-update-banner__label">{strings.common.updateBannerTitle}</span>
+                <span className="nn-update-banner__instruction">{strings.common.updateBannerInstruction}</span>
             </div>
         </button>
     );

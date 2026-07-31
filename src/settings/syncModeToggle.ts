@@ -46,7 +46,7 @@ export function addSettingSyncModeToggle(options: SettingSyncModeToggleOptions):
     const baseName = getBaseSettingName(setting);
 
     setting.addExtraButton(button => {
-        button.extraSettingsEl.addClass('tps-nn-setting-sync-toggle');
+        button.extraSettingsEl.addClass('nn-setting-sync-toggle');
 
         const updateButtonState = () => {
             const isLocal = plugin.isLocal(settingId);

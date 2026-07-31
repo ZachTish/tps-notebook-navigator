@@ -5,60 +5,60 @@
    ======================================================================== */
 
 /* Dragging state - visual feedback during drag operations */
-.tps-nn-dragging {
+.nn-dragging {
     opacity: 0.5;
 }
 
 /* Resizing state - prevents text selection during pane resize */
-body.tps-nn-resizing {
+body.nn-resizing {
     -webkit-user-select: none;
     user-select: none;
 }
 
 /* Drag over state - highlights valid drop targets */
-.tps-nn-navitem.tps-nn-drag-over {
+.nn-navitem.nn-drag-over {
     background-color: var(--text-selection);
-    border-radius: min(14px, var(--tps-nn-theme-navitem-border-radius));
+    border-radius: min(14px, var(--nn-theme-navitem-border-radius));
 }
 
-.tps-nn-list-pane-scroller.tps-nn-drag-over {
+.nn-list-pane-scroller.nn-drag-over {
     outline: 2px solid var(--text-selection);
     outline-offset: -2px;
 }
 
 /* Special visual feedback for tag drop zones - uses pre-composited solid color */
-[data-drop-zone='tag'].tps-nn-drag-over {
-    background-color: var(--tps-nn-computed-tag-positive-bg, var(--tps-nn-theme-tag-positive-bg));
-    border-radius: min(14px, var(--tps-nn-theme-navitem-border-radius));
+[data-drop-zone='tag'].nn-drag-over {
+    background-color: var(--nn-computed-tag-positive-bg, var(--nn-theme-tag-positive-bg));
+    border-radius: min(14px, var(--nn-theme-navitem-border-radius));
 }
 
-[data-drop-zone='tag-root'].tps-nn-drag-over {
-    background-color: var(--tps-nn-computed-tag-positive-bg, var(--tps-nn-theme-tag-positive-bg));
-    border-radius: min(14px, var(--tps-nn-theme-navitem-border-radius));
+[data-drop-zone='tag-root'].nn-drag-over {
+    background-color: var(--nn-computed-tag-positive-bg, var(--nn-theme-tag-positive-bg));
+    border-radius: min(14px, var(--nn-theme-navitem-border-radius));
 }
 
 /* Different style for untagged drop zone - uses pre-composited solid color */
-[data-drop-zone='tag'][data-tag='__untagged__'].tps-nn-drag-over {
-    background-color: var(--tps-nn-computed-tag-negative-bg, var(--tps-nn-theme-tag-negative-bg));
-    border-radius: min(14px, var(--tps-nn-theme-navitem-border-radius));
+[data-drop-zone='tag'][data-tag='__untagged__'].nn-drag-over {
+    background-color: var(--nn-computed-tag-negative-bg, var(--nn-theme-tag-negative-bg));
+    border-radius: min(14px, var(--nn-theme-navitem-border-radius));
 }
 
 /* Disable drag and drop feedback on mobile */
-.tps-notebook-navigator-mobile [draggable='true'] {
+.notebook-navigator-mobile [draggable='true'] {
     cursor: default;
 }
 
-.tps-notebook-navigator-mobile .tps-nn-navitem.tps-nn-drag-over,
-.tps-notebook-navigator-mobile [data-drop-zone].tps-nn-drag-over {
+.notebook-navigator-mobile .nn-navitem.nn-drag-over,
+.notebook-navigator-mobile [data-drop-zone].nn-drag-over {
     background-color: transparent;
 }
 
-.tps-notebook-navigator-mobile .tps-nn-list-pane-scroller.tps-nn-drag-over {
+.notebook-navigator-mobile .nn-list-pane-scroller.nn-drag-over {
     outline: none;
 }
 
 /* Offscreen element used as the browser-native drag image */
-.tps-nn-drag-native-preview {
+.nn-drag-native-preview {
     position: fixed;
     left: -1000px;
     top: -1000px;
@@ -70,7 +70,7 @@ body.tps-nn-resizing {
 }
 
 /* Badge shown in the native drag image for multiple files */
-.tps-nn-drag-preview-badge {
+.nn-drag-preview-badge {
     background-color: #dc3545;
     color: white;
     font-weight: bold;
@@ -86,7 +86,7 @@ body.tps-nn-resizing {
 }
 
 /* Icon shown in the native drag image for single items */
-.tps-nn-drag-preview-icon {
+.nn-drag-preview-icon {
     background-color: #000000; /* Default black for light mode */
     border-radius: 50%;
     display: inline-flex;
@@ -98,12 +98,12 @@ body.tps-nn-resizing {
 }
 
 /* Dark mode: use dark gray background */
-.theme-dark .tps-nn-drag-preview-icon {
+.theme-dark .nn-drag-preview-icon {
     background-color: var(--background-modifier-border-hover);
 }
 
 /* Style the Lucide icon inside the drag preview */
-.tps-nn-drag-preview-icon svg {
+.nn-drag-preview-icon svg {
     width: 16px;
     height: 16px;
     color: #ffffff;
@@ -116,7 +116,7 @@ body.tps-nn-resizing {
    Different layouts are needed for mobile vs desktop views:
    - space-between: Mobile file pane (back button + folder name + actions)
 */
-.tps-nn-header-actions--space-between {
+.nn-header-actions--space-between {
     width: 100%;
     justify-content: space-between;
 }

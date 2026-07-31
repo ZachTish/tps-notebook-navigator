@@ -133,15 +133,15 @@ export function useCacheRebuildNotice(params: { app: App; stoppedRef: MutableRef
                 lastProgressMax = null;
 
                 const fragment = createFragment();
-                const wrapper = fragment.createDiv({ cls: 'tps-nn-cache-rebuild-notice' });
-                wrapper.createDiv({ cls: 'tps-nn-cache-rebuild-notice-title', text: title });
-                wrapper.createDiv({ cls: 'tps-nn-cache-rebuild-notice-description', text: description });
+                const wrapper = fragment.createDiv({ cls: 'nn-cache-rebuild-notice' });
+                wrapper.createDiv({ cls: 'nn-cache-rebuild-notice-title', text: title });
+                wrapper.createDiv({ cls: 'nn-cache-rebuild-notice-description', text: description });
 
-                progressBarEl = wrapper.createEl('progress', { cls: 'tps-nn-cache-rebuild-notice-progress-bar' });
+                progressBarEl = wrapper.createEl('progress', { cls: 'nn-cache-rebuild-notice-progress-bar' });
 
                 const notice = showNotice(fragment, { timeout: 0 });
-                notice.containerEl.addClass('tps-nn-cache-rebuild-notice-container');
-                notice.messageEl.addClass('tps-nn-cache-rebuild-notice-message');
+                notice.containerEl.addClass('nn-cache-rebuild-notice-container');
+                notice.messageEl.addClass('nn-cache-rebuild-notice-message');
                 cacheRebuildNoticeRef.current = notice;
             };
 

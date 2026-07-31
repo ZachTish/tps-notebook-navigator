@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /*
- * Reapplies the fork-owned CSS/DOM namespace after an upstream merge.
- * This codemod is intentionally narrow and idempotent: it changes only
- * Notebook Navigator's short class/custom-property prefix and root selector.
+ * Keeps inherited source merge-friendly by restoring upstream CSS/DOM tokens.
+ * Runtime and test builds apply the TPS namespace through
+ * tps-runtime-namespace.mjs instead of committing mechanical rewrites across
+ * the upstream source tree.
  */
 
 import { promises as fs } from 'node:fs';
@@ -11,12 +12,9 @@ import { fileURLToPath } from 'node:url';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultProjectRoot = path.resolve(dirname, '..');
-const sourceExtensions = new Set(['.css', '.js', '.mjs', '.ts', '.tsx']);
-const scanRoots = ['src', 'scripts', 'tests'];
-const excludedProjectPaths = new Set(['tests/constants/tpsIdentity.test.ts', 'tests/scripts/tpsNamespace.test.ts']);
+const sourceExtensions = new Set(['.cjs', '.css', '.cts', '.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx']);
+const scanRoots = ['src'];
 
-// Assemble upstream tokens so this maintenance script does not itself look
-// like an unnamespaced runtime source to the identity regression test.
 const upstreamShortPrefix = ['n', 'n-'].join('');
 const upstreamRootSelector = ['.notebook', '-navigator'].join('');
 const forkShortPrefix = 'tps-nn-';
@@ -77,16 +75,13 @@ async function collectFiles(root, projectRoot) {
             continue;
         }
         const relativePath = path.relative(projectRoot, absolutePath).split(path.sep).join(path.posix.sep);
-        if (!excludedProjectPaths.has(relativePath)) {
-            files.push({ absolutePath, relativePath });
-        }
+        files.push({ absolutePath, relativePath });
     }
     return files;
 }
 
-function applyNamespace(source) {
-    const shortPrefixPattern = new RegExp(`(?<!tps-)${upstreamShortPrefix}`, 'gu');
-    return source.replace(shortPrefixPattern, forkShortPrefix).replaceAll(upstreamRootSelector, forkRootSelector);
+function restoreUpstreamNamespace(source) {
+    return source.replaceAll(forkShortPrefix, upstreamShortPrefix).replaceAll(forkRootSelector, upstreamRootSelector);
 }
 
 const { mode, projectRoot } = parseArgs(process.argv.slice(2));
@@ -95,23 +90,23 @@ const changedPaths = [];
 
 for (const file of files) {
     const source = await fs.readFile(file.absolutePath, 'utf8');
-    const namespaced = applyNamespace(source);
-    if (namespaced === source) {
+    const mergeFriendly = restoreUpstreamNamespace(source);
+    if (mergeFriendly === source) {
         continue;
     }
     changedPaths.push(file.relativePath);
     if (mode === 'write') {
-        await fs.writeFile(file.absolutePath, namespaced, 'utf8');
+        await fs.writeFile(file.absolutePath, mergeFriendly, 'utf8');
     }
 }
 
 if (changedPaths.length === 0) {
-    console.log('TPS namespace is current.');
+    console.log('TPS source namespace is merge-friendly.');
 } else if (mode === 'write') {
-    console.log(`Reapplied the TPS namespace in ${changedPaths.length} file(s):`);
+    console.log(`Restored upstream namespace tokens in ${changedPaths.length} source file(s):`);
     changedPaths.forEach(filePath => console.log(`- ${filePath}`));
 } else {
-    console.error('TPS namespace reapplication is required in:');
+    console.error('Committed TPS runtime namespace tokens must be restored to their upstream source form in:');
     changedPaths.forEach(filePath => console.error(`- ${filePath}`));
     process.exitCode = 1;
 }

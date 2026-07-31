@@ -32,13 +32,13 @@ const DEFAULT_SETTINGS_IMPORT_BACKUP_TO_ROOT = true;
 
 function createEditorLabel(containerEl: HTMLElement, name: string, desc: string): void {
     const setting = new Setting(containerEl);
-    setting.settingEl.addClass('tps-nn-settings-transfer-editor-setting');
+    setting.settingEl.addClass('nn-settings-transfer-editor-setting');
     setting.setName(name).setDesc(desc);
 }
 
 function createEditor(containerEl: HTMLElement, value: string, placeholder: string): HTMLTextAreaElement {
     const editorEl = containerEl.createEl('textarea', {
-        cls: 'tps-nn-input tps-nn-settings-transfer-editor',
+        cls: 'nn-input nn-settings-transfer-editor',
         placeholder
     });
     editorEl.value = value;
@@ -52,7 +52,7 @@ function downloadTransferFile(content: string): void {
     const linkEl = createEl('a');
     linkEl.href = objectUrl;
     linkEl.download = createSettingsTransferFilename();
-    linkEl.addClass('tps-nn-visually-hidden');
+    linkEl.addClass('nn-visually-hidden');
     activeDocument.body.appendChild(linkEl);
     linkEl.click();
     linkEl.remove();
@@ -74,7 +74,7 @@ export class SettingsImportModal extends Modal {
     constructor(app: App, plugin: NotebookNavigatorPlugin) {
         super(app);
         this.plugin = plugin;
-        this.modalEl.addClass('tps-nn-settings-transfer-modal');
+        this.modalEl.addClass('nn-settings-transfer-modal');
         this.titleEl.setText(strings.settings.items.settingsTransfer.import.modalTitle);
     }
 
@@ -84,7 +84,7 @@ export class SettingsImportModal extends Modal {
 
         const fileInputEl = contentEl.createEl('input', { type: 'file' });
         fileInputEl.accept = SETTINGS_TRANSFER_FILE_ACCEPT;
-        fileInputEl.addClass('tps-nn-visually-hidden');
+        fileInputEl.addClass('nn-visually-hidden');
 
         let isBusy = false;
         let fileButton: ButtonComponent | null = null;
@@ -142,7 +142,7 @@ export class SettingsImportModal extends Modal {
             });
         });
 
-        const buttonContainer = contentEl.createDiv('tps-nn-button-container');
+        const buttonContainer = contentEl.createDiv('nn-button-container');
         importButton = new ButtonComponent(buttonContainer);
         importButton.setButtonText(strings.settings.items.settingsTransfer.import.confirmButtonText);
         importButton.setCta();
@@ -225,7 +225,7 @@ export class SettingsImportModal extends Modal {
     }
 
     onClose(): void {
-        this.modalEl.removeClass('tps-nn-settings-transfer-modal');
+        this.modalEl.removeClass('nn-settings-transfer-modal');
         this.contentEl.empty();
     }
 }
@@ -236,7 +236,7 @@ export class SettingsExportModal extends Modal {
     constructor(app: App, plugin: NotebookNavigatorPlugin) {
         super(app);
         this.plugin = plugin;
-        this.modalEl.addClass('tps-nn-settings-transfer-modal');
+        this.modalEl.addClass('nn-settings-transfer-modal');
         this.titleEl.setText(strings.settings.items.settingsTransfer.export.modalTitle);
     }
 
@@ -256,7 +256,7 @@ export class SettingsExportModal extends Modal {
             strings.settings.items.settingsTransfer.export.placeholder
         );
 
-        const buttonContainer = contentEl.createDiv('tps-nn-button-container');
+        const buttonContainer = contentEl.createDiv('nn-button-container');
 
         const copyButton = new ButtonComponent(buttonContainer);
         copyButton.setButtonText(strings.settings.items.settingsTransfer.export.copyButtonText);
@@ -293,7 +293,7 @@ export class SettingsExportModal extends Modal {
     }
 
     onClose(): void {
-        this.modalEl.removeClass('tps-nn-settings-transfer-modal');
+        this.modalEl.removeClass('nn-settings-transfer-modal');
         this.contentEl.empty();
     }
 }

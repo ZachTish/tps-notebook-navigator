@@ -22,8 +22,8 @@ import { foldSearchText } from './recordUtils';
 export type SearchMatchState = 'include' | 'exclude';
 
 // Internal constants not exported to prevent unused exports
-const SEARCH_MATCH_INCLUDE_CLASS = 'tps-nn-navitem-content--search-include';
-const SEARCH_MATCH_EXCLUDE_CLASS = 'tps-nn-navitem-content--search-exclude';
+const SEARCH_MATCH_INCLUDE_CLASS = 'nn-navitem-content--search-include';
+const SEARCH_MATCH_EXCLUDE_CLASS = 'nn-navitem-content--search-exclude';
 
 interface FoldedSearchOffsetMap {
     foldedText: string;

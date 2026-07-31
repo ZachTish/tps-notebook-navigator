@@ -287,34 +287,34 @@ export const ListPaneGroupHeader = React.memo(function ListPaneGroupHeader({
         },
         [header.collapseKey, header.isPinnedHeader, onListGroupHeaderToggle, onPinnedGroupHeaderToggle]
     );
-    const headerClasses = ['tps-nn-list-group-header'];
+    const headerClasses = ['nn-list-group-header'];
     if (header.isCollapsible) {
-        headerClasses.push('tps-nn-list-group-header--collapsible');
+        headerClasses.push('nn-list-group-header--collapsible');
     }
     if (header.isPinnedHeader) {
-        headerClasses.push('tps-nn-pinned-section-header');
+        headerClasses.push('nn-pinned-section-header');
     }
     if (manualSortHeader) {
-        headerClasses.push('tps-nn-list-group-header--manual-sort');
+        headerClasses.push('nn-list-group-header--manual-sort');
     }
     const handleContextMenu = (event: React.MouseEvent<HTMLDivElement>) => onGroupHeaderContextMenu(event, header);
-    const textClassName = `tps-nn-list-group-header-text ${
-        isClickableFolderGroupHeader ? 'tps-nn-list-group-header-text--folder-note' : ''
-    } ${header.applyFolderColorToLabel ? 'tps-nn-list-group-header-text--custom-color' : ''}`;
-    const folderPathClassName = `${textClassName} tps-nn-list-group-header-path`;
+    const textClassName = `nn-list-group-header-text ${
+        isClickableFolderGroupHeader ? 'nn-list-group-header-text--folder-note' : ''
+    } ${header.applyFolderColorToLabel ? 'nn-list-group-header-text--custom-color' : ''}`;
+    const folderPathClassName = `${textClassName} nn-list-group-header-path`;
     const renderFolderGroupHeaderText = () => {
         if (hasFolderPathSegments) {
             return (
                 <span className={folderPathClassName} style={folderLabelStyle}>
                     {header.folderGroupHeaderSegments.map((segment, index) => {
                         const segmentTarget = segment.target;
-                        const segmentClassName = `tps-nn-list-group-header-folder-segment ${
-                            segmentTarget ? 'tps-nn-list-group-header-text--folder-note' : ''
+                        const segmentClassName = `nn-list-group-header-folder-segment ${
+                            segmentTarget ? 'nn-list-group-header-text--folder-note' : ''
                         }`;
                         return (
                             <React.Fragment key={segment.path}>
                                 {index > 0 ? (
-                                    <span className="tps-nn-list-group-header-path-separator" aria-hidden="true">
+                                    <span className="nn-list-group-header-path-separator" aria-hidden="true">
                                         /
                                     </span>
                                 ) : null}
@@ -377,14 +377,14 @@ export const ListPaneGroupHeader = React.memo(function ListPaneGroupHeader({
                     {header.isPinnedHeader && pinnedSectionIcon ? (
                         <ServiceIcon
                             iconId={pinnedSectionIcon}
-                            className="tps-nn-list-group-header-icon tps-nn-pinned-section-icon"
+                            className="nn-list-group-header-icon nn-pinned-section-icon"
                             aria-hidden={true}
                         />
                     ) : null}
                     {!header.isPinnedHeader && header.folderIconId ? (
                         <ServiceIcon
                             iconId={header.folderIconId}
-                            className="tps-nn-list-group-header-icon tps-nn-list-group-header-folder-icon"
+                            className="nn-list-group-header-icon nn-list-group-header-folder-icon"
                             aria-hidden={true}
                             data-has-color={folderColor ? 'true' : 'false'}
                             style={folderIconStyle}
@@ -394,7 +394,7 @@ export const ListPaneGroupHeader = React.memo(function ListPaneGroupHeader({
                 </>
             )}
             {header.itemCount !== null ? (
-                <span className="tps-nn-list-group-header-item-count">
+                <span className="nn-list-group-header-item-count">
                     ({header.itemCount}
                     {header.totalItemCount !== null ? `/${header.totalItemCount}` : ''})
                 </span>
@@ -402,14 +402,14 @@ export const ListPaneGroupHeader = React.memo(function ListPaneGroupHeader({
             {header.isCollapsible ? (
                 <button
                     type="button"
-                    className="tps-nn-list-group-header-collapse-button"
+                    className="nn-list-group-header-collapse-button"
                     aria-label={header.isCollapsed ? strings.listPane.expandGroup : strings.listPane.collapseGroup}
                     aria-expanded={!header.isCollapsed}
                     onClick={handleCollapseToggle}
                 >
                     <ServiceIcon
                         iconId={header.isCollapsed ? collapseChevronIcons.collapsed : collapseChevronIcons.expanded}
-                        className="tps-nn-list-group-header-icon"
+                        className="nn-list-group-header-icon"
                         aria-hidden={true}
                     />
                 </button>
@@ -419,7 +419,7 @@ export const ListPaneGroupHeader = React.memo(function ListPaneGroupHeader({
 
     if (hasManualSortGoal) {
         return (
-            <div className="tps-nn-manual-sort-group-header-shell" onContextMenu={handleContextMenu}>
+            <div className="nn-manual-sort-group-header-shell" onContextMenu={handleContextMenu}>
                 {headerRow}
                 <ManualSortGroupHeaderProgress
                     header={manualSortHeader}
@@ -512,42 +512,42 @@ const ListPaneRow = React.memo(function ListPaneRow({
         top,
         '--item-height': `${rowHeight}px`
     };
-    const virtualItemClasses = ['tps-nn-virtual-item'];
+    const virtualItemClasses = ['nn-virtual-item'];
     if (item.type === ListPaneItemType.FILE) {
-        virtualItemClasses.push('tps-nn-virtual-file-item');
+        virtualItemClasses.push('nn-virtual-file-item');
     }
     if (item.type === ListPaneItemType.PROVIDER_ROW) {
-        virtualItemClasses.push('tps-nn-virtual-provider-row');
+        virtualItemClasses.push('nn-virtual-provider-row');
     }
     if (headerModel) {
-        virtualItemClasses.push('tps-nn-virtual-list-group-header');
+        virtualItemClasses.push('nn-virtual-list-group-header');
     }
     if (shouldHideHeaderSeparatorForGroup) {
-        virtualItemClasses.push('tps-nn-hide-list-group-header-separator');
+        virtualItemClasses.push('nn-hide-list-group-header-separator');
     }
     if (isLastFile) {
-        virtualItemClasses.push('tps-nn-last-file');
+        virtualItemClasses.push('nn-last-file');
     }
     if (hideSeparator) {
-        virtualItemClasses.push('tps-nn-hide-separator-selection');
+        virtualItemClasses.push('nn-hide-separator-selection');
     }
     if (hasFilledBackground) {
-        virtualItemClasses.push('tps-nn-virtual-file-item-has-filled-background');
+        virtualItemClasses.push('nn-virtual-file-item-has-filled-background');
     }
     if (hasPreviousFilledBackground) {
-        virtualItemClasses.push('tps-nn-virtual-file-item-has-filled-background-previous');
+        virtualItemClasses.push('nn-virtual-file-item-has-filled-background-previous');
     }
     if (hasNextFilledBackground) {
-        virtualItemClasses.push('tps-nn-virtual-file-item-has-filled-background-next');
+        virtualItemClasses.push('nn-virtual-file-item-has-filled-background-next');
     }
     if (hasCustomBackground) {
-        virtualItemClasses.push('tps-nn-virtual-file-item-has-custom-background');
+        virtualItemClasses.push('nn-virtual-file-item-has-custom-background');
     }
     if (hasPreviousCustomBackground) {
-        virtualItemClasses.push('tps-nn-virtual-file-item-has-custom-background-previous');
+        virtualItemClasses.push('nn-virtual-file-item-has-custom-background-previous');
     }
     if (hasNextCustomBackground) {
-        virtualItemClasses.push('tps-nn-virtual-file-item-has-custom-background-next');
+        virtualItemClasses.push('nn-virtual-file-item-has-custom-background-next');
     }
 
     return (
@@ -564,11 +564,11 @@ const ListPaneRow = React.memo(function ListPaneRow({
                     onGroupHeaderContextMenu={onGroupHeaderContextMenu}
                 />
             ) : item.type === ListPaneItemType.HEADER_SPACER ? (
-                <div className="tps-nn-list-group-header-spacer" />
+                <div className="nn-list-group-header-spacer" />
             ) : item.type === ListPaneItemType.TOP_SPACER ? (
-                <div className="tps-nn-list-top-spacer" style={{ height: `${topSpacerHeight}px` }} />
+                <div className="nn-list-top-spacer" style={{ height: `${topSpacerHeight}px` }} />
             ) : item.type === ListPaneItemType.BOTTOM_SPACER ? (
-                <div className="tps-nn-list-bottom-spacer" />
+                <div className="nn-list-bottom-spacer" />
             ) : item.type === ListPaneItemType.FILE && item.data instanceof TFile ? (
                 <FileItem
                     key={item.key}
@@ -601,7 +601,7 @@ function getHoveredFilePathFromTarget(target: EventTarget | null): string | null
         return null;
     }
 
-    const fileElement = target.closest('.tps-nn-file');
+    const fileElement = target.closest('.nn-file');
     return fileElement instanceof HTMLElement ? (fileElement.dataset.path ?? null) : null;
 }
 
@@ -1085,7 +1085,7 @@ export function ListPaneVirtualContent({
     return (
         <div
             ref={scrollContainerRefCallback}
-            className={`tps-nn-list-pane-scroller ${!isEmptySelection && !hasNoFiles && isCompactMode ? 'tps-nn-compact-mode' : ''}`}
+            className={`nn-list-pane-scroller ${!isEmptySelection && !hasNoFiles && isCompactMode ? 'nn-compact-mode' : ''}`}
             data-drop-zone={activeFolderDropPath ? 'folder' : undefined}
             data-drop-path={activeFolderDropPath ?? undefined}
             data-allow-internal-drop={activeFolderDropPath ? 'false' : undefined}
@@ -1097,7 +1097,7 @@ export function ListPaneVirtualContent({
             onMouseLeave={handleListMouseLeave}
         >
             {stickyHeader ? (
-                <div className="tps-nn-list-sticky-header">
+                <div className="nn-list-sticky-header">
                     <ListPaneGroupHeader
                         header={stickyHeader}
                         collapseChevronIcons={collapseChevronIcons}
@@ -1110,18 +1110,18 @@ export function ListPaneVirtualContent({
                     />
                 </div>
             ) : null}
-            <div className="tps-nn-list-pane-content">
+            <div className="nn-list-pane-content">
                 {isEmptySelection ? (
-                    <div className="tps-nn-empty-state">
-                        <div className="tps-nn-empty-message">{strings.listPane.emptyStateNoSelection}</div>
+                    <div className="nn-empty-state">
+                        <div className="nn-empty-message">{strings.listPane.emptyStateNoSelection}</div>
                     </div>
                 ) : hasNoFiles ? (
-                    <div className="tps-nn-empty-state">
-                        <div className="tps-nn-empty-message">{strings.listPane.emptyStateNoNotes}</div>
+                    <div className="nn-empty-state">
+                        <div className="nn-empty-message">{strings.listPane.emptyStateNoNotes}</div>
                     </div>
                 ) : listItems.length > 0 ? (
                     <div
-                        className="tps-nn-virtual-container"
+                        className="nn-virtual-container"
                         style={{
                             height: `${rowVirtualizer.getTotalSize()}px`
                         }}

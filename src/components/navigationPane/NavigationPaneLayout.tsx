@@ -108,7 +108,7 @@ const NavigationPaneRow = React.memo(function NavigationPaneRow({
         return <>{content}</>;
     }
     return (
-        <div data-index={index} className="tps-nn-virtual-nav-item" style={{ transform: `translateY(${top}px)` }}>
+        <div data-index={index} className="nn-virtual-nav-item" style={{ transform: `translateY(${top}px)` }}>
             {content}
         </div>
     );
@@ -129,10 +129,10 @@ function getAdjacentFilledClassName(
     const nextItem = index < items.length - 1 ? items[index + 1] : undefined;
 
     if (previousItem && isNavigationItemFilled(previousItem)) {
-        classes.push('tps-nn-navitem-has-filled-previous');
+        classes.push('nn-navitem-has-filled-previous');
     }
     if (nextItem && isNavigationItemFilled(nextItem)) {
-        classes.push('tps-nn-navitem-has-filled-next');
+        classes.push('nn-navitem-has-filled-next');
     }
 
     return classes.length > 0 ? classes.join(' ') : undefined;
@@ -183,13 +183,13 @@ export function NavigationPaneLayout({
     return (
         <div
             ref={navigationPaneRef}
-            className="tps-nn-navigation-pane"
+            className="nn-navigation-pane"
             style={navigationPaneStyle}
             data-calendar={shouldRenderCalendarOverlay ? 'true' : undefined}
             data-shortcut-sorting={isShortcutSorting ? 'true' : undefined}
             data-shortcuts-resizing={!isMobile && isPinnedShortcutsResizing ? 'true' : undefined}
         >
-            <div className="tps-nn-navigation-pane-chrome">
+            <div className="nn-navigation-pane-chrome">
                 <NavigationPaneHeader
                     onTreeUpdateComplete={onTreeUpdateComplete}
                     onToggleRootFolderReorder={onToggleRootReorder}
@@ -202,7 +202,7 @@ export function NavigationPaneLayout({
                 {pinNavigationBanner ? navigationBannerContent : null}
                 {shouldRenderPinnedShortcuts ? (
                     <div
-                        className="tps-nn-shortcut-pinned"
+                        className="nn-shortcut-pinned"
                         ref={pinnedShortcutsContainerRef}
                         role="presentation"
                         data-scroll={pinnedShortcutsHasOverflow ? 'true' : undefined}
@@ -210,8 +210,8 @@ export function NavigationPaneLayout({
                         onDragOver={allowEmptyShortcutDrop ? onShortcutRootDragOver : undefined}
                         onDrop={allowEmptyShortcutDrop ? onShortcutRootDrop : undefined}
                     >
-                        <div className="tps-nn-shortcut-pinned-scroll" ref={pinnedShortcutsScrollRefCallback}>
-                            <div className="tps-nn-shortcut-pinned-inner">
+                        <div className="nn-shortcut-pinned-scroll" ref={pinnedShortcutsScrollRefCallback}>
+                            <div className="nn-shortcut-pinned-inner">
                                 {pinnedNavigationItems.map((pinnedItem, index) => {
                                     const hotState = getRowHotState(pinnedItem);
                                     return (
@@ -235,7 +235,7 @@ export function NavigationPaneLayout({
                             </div>
                         </div>
                         <div
-                            className="tps-nn-shortcuts-resize-handle"
+                            className="nn-shortcuts-resize-handle"
                             role="separator"
                             aria-orientation="horizontal"
                             aria-label="Resize pinned shortcuts"
@@ -244,17 +244,17 @@ export function NavigationPaneLayout({
                     </div>
                 ) : null}
             </div>
-            <div className="tps-nn-navigation-pane-panel">
+            <div className="nn-navigation-pane-panel">
                 <div
                     ref={scrollContainerRefCallback}
-                    className="tps-nn-navigation-pane-scroller"
+                    className="nn-navigation-pane-scroller"
                     data-banner={hasNavigationBannerConfigured ? 'true' : undefined}
                     data-pane="navigation"
                     tabIndex={-1}
                 >
-                    <div className="tps-nn-navigation-pane-content">
+                    <div className="nn-navigation-pane-content">
                         {!pinNavigationBanner && navigationBannerContent ? (
-                            <div className="tps-nn-navigation-pane-banner" ref={navigationBannerRef}>
+                            <div className="nn-navigation-pane-banner" ref={navigationBannerRef}>
                                 {navigationBannerContent}
                             </div>
                         ) : null}
@@ -263,7 +263,7 @@ export function NavigationPaneLayout({
                                 ? rootReorderContent
                                 : items.length > 0 && (
                                       <div
-                                          className="tps-nn-virtual-container"
+                                          className="nn-virtual-container"
                                           style={{
                                               height: `${rowVirtualizer.getTotalSize()}px`
                                           }}
@@ -303,10 +303,10 @@ export function NavigationPaneLayout({
                         </div>
                     </div>
                 </div>
-                {shouldRenderBottomToolbarInsidePanel ? <div className="tps-nn-pane-bottom-toolbar">{navigationToolbar}</div> : null}
+                {shouldRenderBottomToolbarInsidePanel ? <div className="nn-pane-bottom-toolbar">{navigationToolbar}</div> : null}
             </div>
             {calendarOverlay}
-            {shouldRenderBottomToolbarOutsidePanel ? <div className="tps-nn-pane-bottom-toolbar">{navigationToolbar}</div> : null}
+            {shouldRenderBottomToolbarOutsidePanel ? <div className="nn-pane-bottom-toolbar">{navigationToolbar}</div> : null}
         </div>
     );
 }

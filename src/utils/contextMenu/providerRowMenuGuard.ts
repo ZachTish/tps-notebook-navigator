@@ -4,7 +4,7 @@
 
 import { EMPTY_LIST_MENU_TYPE, type MenuConfig } from './menuTypes';
 
-const PROVIDER_ROW_SELECTOR = '.tps-nn-provider-row';
+const PROVIDER_ROW_SELECTOR = '.nn-provider-row';
 
 type ContextMenuEventControls = Pick<MouseEvent, 'preventDefault' | 'stopPropagation'>;
 type ClosestTarget = Pick<Element, 'closest'>;

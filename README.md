@@ -49,7 +49,14 @@ All three task-row values persist in the TPS plugin's own `data.json`. The impor
 
 ## Keeping up with Notebook Navigator
 
-Fork-specific integrations live in separate modules, host-global identity is centralized in `src/constants/tpsIdentity.ts`, and the repository includes an idempotent namespace codemod plus isolation tests for new upstream files. Follow [the upstream sync guide](docs/upstream-sync.md) when merging a later Notebook Navigator tag. This keeps the unavoidable co-installation namespace work repeatable while preserving a normal Git merge history and the original upstream remote. A public standalone checkout builds in an explicit build-only mode; the contained test-vault workspace still requires and runs its adjacent atomic runtime deployment hook.
+Fork-specific integrations live in separate modules and host-global identity is centralized in `src/constants/tpsIdentity.ts`. Inherited source keeps upstream `nn-` CSS/DOM tokens so routine upstream edits merge normally; the test and production build pipelines apply the TPS namespace only at compilation and generated-style boundaries. The merge-friendly source check rejects accidentally committed runtime prefixes, while the final artifact gate proves that upstream tokens cannot ship. Follow [the upstream sync guide](docs/upstream-sync.md) when merging a later Notebook Navigator tag. A public standalone checkout builds in an explicit build-only mode; the contained test-vault workspace still requires and runs its adjacent atomic runtime deployment hook.
+
+### Merge-friendly namespace maintenance
+
+- `scripts/tps-runtime-namespace.mjs` is the single mechanical transformation used by esbuild, Vitest, and the generated stylesheet builder.
+- `npm run tps:namespace:check` verifies inherited source has not been permanently rewritten. `npm run tps:namespace` repairs accidental TPS CSS/DOM prefixes back to their upstream form after a conflict resolution.
+- `npm run tps:artifacts:check` verifies the opposite boundary after a build: `main.js` and `styles.css` must contain the TPS runtime namespace and no upstream CSS/DOM namespace.
+- This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
 

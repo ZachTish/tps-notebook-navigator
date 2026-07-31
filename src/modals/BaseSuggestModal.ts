@@ -139,7 +139,7 @@ export abstract class BaseSuggestModal<T> extends FuzzySuggestModal<T> {
      * @returns The CSS class name
      */
     protected getItemClass(): string {
-        return 'tps-nn-suggest-item';
+        return 'nn-suggest-item';
     }
 
     /**

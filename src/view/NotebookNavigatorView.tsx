@@ -232,7 +232,7 @@ export class NotebookNavigatorView extends ItemView {
         if (Platform.isAndroidApp) {
             // Attempts to find and apply compensation to the mobile root element
             const applyToMobileRoot = () => {
-                const mobileRoot = container.querySelector('.tps-nn-split-container.tps-nn-mobile');
+                const mobileRoot = container.querySelector('.nn-split-container.nn-mobile');
                 if (!(mobileRoot instanceof HTMLElement)) {
                     return false;
                 }

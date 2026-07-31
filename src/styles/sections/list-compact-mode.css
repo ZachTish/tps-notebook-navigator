@@ -5,59 +5,59 @@
    ======================================================================== */
 
 /* Compact file item - more compact list appearance */
-.tps-nn-file.tps-nn-compact {
-    --tps-nn-file-item-border-radius: min(14px, var(--tps-nn-theme-navitem-border-radius));
+.nn-file.nn-compact {
+    --nn-file-item-border-radius: min(14px, var(--nn-theme-navitem-border-radius));
 }
 
-.tps-nn-file.tps-nn-compact .tps-nn-file-content {
-    padding: var(--tps-nn-file-padding-vertical-compact) var(--tps-nn-file-item-padding-horizontal); /* Reduced vertical padding */
+.nn-file.nn-compact .nn-file-content {
+    padding: var(--nn-file-padding-vertical-compact) var(--nn-file-item-padding-horizontal); /* Reduced vertical padding */
 }
 
 /* Mobile compact file items use larger touch targets. */
-.tps-notebook-navigator-mobile .tps-nn-file.tps-nn-compact .tps-nn-file-content {
-    padding: var(--tps-nn-file-padding-vertical-compact-mobile) var(--tps-nn-file-item-padding-horizontal);
+.notebook-navigator-mobile .nn-file.nn-compact .nn-file-content {
+    padding: var(--nn-file-padding-vertical-compact-mobile) var(--nn-file-item-padding-horizontal);
 }
 
 /* Compact file name - no bold, smaller font like folder items */
-.tps-nn-file.tps-nn-compact .tps-nn-file-name {
-    font-size: var(--tps-nn-compact-font-size, var(--tps-nn-file-small-size-mobile, var(--tps-nn-file-small-size)));
-    font-weight: var(--tps-nn-theme-file-compact-name-font-weight);
+.nn-file.nn-compact .nn-file-name {
+    font-size: var(--nn-compact-font-size, var(--nn-file-small-size-mobile, var(--nn-file-small-size)));
+    font-weight: var(--nn-theme-file-compact-name-font-weight);
     margin-bottom: 0;
-    line-height: var(--tps-nn-file-title-line-height);
+    line-height: var(--nn-file-title-line-height);
 }
 
 /* Mobile compact mode file names use the mobile compact font variable. */
-.tps-notebook-navigator-mobile .tps-nn-file.tps-nn-compact .tps-nn-file-name {
-    font-size: var(--tps-nn-compact-font-size-mobile, var(--tps-nn-compact-font-size, 15px));
+.notebook-navigator-mobile .nn-file.nn-compact .nn-file-name {
+    font-size: var(--nn-compact-font-size-mobile, var(--nn-compact-font-size, 15px));
 }
 
 /* Apply standard font weight to colored file names in compact mode */
-.tps-nn-file.tps-nn-compact .tps-nn-file-name[data-has-color='true'] {
-    font-weight: var(--tps-nn-theme-file-name-font-weight);
+.nn-file.nn-compact .nn-file-name[data-has-color='true'] {
+    font-weight: var(--nn-theme-file-name-font-weight);
 }
 
-.tps-nn-compact-file-header {
+.nn-compact-file-header {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.tps-nn-compact-file-header .tps-nn-file-name {
+.nn-compact-file-header .nn-file-name {
     flex: 1;
     min-width: 0;
 }
 
-.tps-nn-compact-extension-badge {
+.nn-compact-extension-badge {
     margin-left: auto;
     display: flex;
 }
 
 /* Selected compact file - maintain selection styles */
-.tps-nn-file.tps-nn-compact.tps-nn-selected .tps-nn-file-name {
-    color: var(--tps-nn-selected-file-name-color);
+.nn-file.nn-compact.nn-selected .nn-file-name {
+    color: var(--nn-selected-file-name-color);
 }
 
 /* Preserve custom color for colored file names even when selected in compact mode */
-.tps-nn-file.tps-nn-compact.tps-nn-selected .tps-nn-file-name[data-has-color='true'] {
-    color: var(--tps-nn-file-name-custom-color);
+.nn-file.nn-compact.nn-selected .nn-file-name[data-has-color='true'] {
+    color: var(--nn-file-name-custom-color);
 }

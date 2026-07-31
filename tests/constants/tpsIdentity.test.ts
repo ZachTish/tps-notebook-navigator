@@ -164,18 +164,29 @@ describe('TPS Notebook Navigator identity isolation', () => {
         expect(apiReference).toContain(`**Current API Version:** ${version}`);
     });
 
-    it('does not emit upstream CSS classes or custom-property names from source', async () => {
-        const sourceGroups = await Promise.all([
+    it('keeps inherited source merge-friendly while generated runtime artifacts stay isolated', async () => {
+        const [sourceFiles, main, styles] = await Promise.all([
             readSourceFiles(path.join(repoRoot, 'src')),
-            readSourceFiles(path.join(repoRoot, 'scripts'))
+            readFile(path.join(repoRoot, 'main.js'), 'utf8'),
+            readFile(path.join(repoRoot, 'styles.css'), 'utf8')
         ]);
-        const source = sourceGroups.flat().join('\n');
+        const source = sourceFiles.join('\n');
 
-        expect(source).not.toMatch(/--nn-/);
-        expect(source).not.toMatch(/(?<!tps-)nn-/);
-        expect(source).not.toMatch(/\.notebook-navigator/);
-        expect(source).toContain('.tps-notebook-navigator');
-        expect(source).toContain('--tps-nn-');
+        expect(source).toMatch(/--nn-/);
+        expect(source).toMatch(/(?<!tps-)nn-/);
+        expect(source).toMatch(/\.notebook-navigator/);
+        expect(source).not.toMatch(/--tps-nn-/);
+        expect(source).not.toMatch(/(?<![\w-])tps-nn-/);
+        expect(source).not.toMatch(/\.tps-notebook-navigator/);
+
+        expect(main).not.toMatch(/--nn-/);
+        expect(main).not.toMatch(/\.notebook-navigator/);
+        expect(main).toContain('tps-nn-');
+        expect(styles).not.toMatch(/--nn-/);
+        expect(styles).not.toMatch(/(?<!tps-)nn-/);
+        expect(styles).not.toMatch(/\.notebook-navigator/);
+        expect(styles).toContain('.tps-notebook-navigator');
+        expect(styles).toContain('--tps-nn-');
     });
 
     it('uses the fork id in public API, documentation, and manual QA plugin lookups', async () => {

@@ -4,13 +4,13 @@
    Appearance Modal - icon, foreground color, and background color editor
    ======================================================================== */
 
-.modal.tps-nn-appearance-modal {
+.modal.nn-appearance-modal {
     width: 620px;
     max-width: calc(100vw - 40px);
     max-height: 86vh;
 }
 
-.modal.tps-nn-appearance-modal .modal-content {
+.modal.nn-appearance-modal .modal-content {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -20,12 +20,12 @@
     overflow: hidden;
 }
 
-.modal.tps-nn-appearance-modal .modal-close-button {
+.modal.nn-appearance-modal .modal-close-button {
     z-index: 10;
     pointer-events: auto;
 }
 
-.tps-nn-appearance-header {
+.nn-appearance-header {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -37,19 +37,19 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .tps-nn-appearance-preview-item:hover .tps-nn-appearance-clear-button,
-    .tps-nn-appearance-preview-item:focus-within .tps-nn-appearance-clear-button {
+    .nn-appearance-preview-item:hover .nn-appearance-clear-button,
+    .nn-appearance-preview-item:focus-within .nn-appearance-clear-button {
         opacity: 1;
         visibility: visible;
         pointer-events: auto;
     }
 }
 
-.tps-nn-appearance-clear-button.tps-nn-appearance-clear-hidden {
+.nn-appearance-clear-button.nn-appearance-clear-hidden {
     display: none;
 }
 
-.tps-nn-appearance-preview-item {
+.nn-appearance-preview-item {
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -57,41 +57,41 @@
     gap: 8px;
     padding: 6px 14px;
     border-radius: var(--radius-s);
-    background: var(--tps-nn-preview-bg, var(--background-secondary));
-    color: var(--tps-nn-preview-fg, var(--tps-nn-theme-foreground));
+    background: var(--nn-preview-bg, var(--background-secondary));
+    color: var(--nn-preview-fg, var(--nn-theme-foreground));
     font-size: 14px;
     font-weight: 600;
 }
 
-.tps-nn-appearance-preview-icon {
+.nn-appearance-preview-icon {
     display: inline-flex;
     align-items: center;
     flex: 0 0 auto;
 }
 
-.tps-nn-appearance-preview-icon svg {
+.nn-appearance-preview-icon svg {
     width: 18px;
     height: 18px;
 }
 
-.tps-nn-appearance-preview-icon-empty {
+.nn-appearance-preview-icon-empty {
     display: none;
 }
 
-.tps-nn-appearance-preview-name {
+.nn-appearance-preview-name {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.tps-nn-appearance-tabs {
+.nn-appearance-tabs {
     display: flex;
     gap: 4px;
     border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.tps-nn-appearance-tab {
+.nn-appearance-tab {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -102,22 +102,22 @@
     border-bottom: 2px solid transparent;
     border-radius: 0;
     background: transparent;
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
 }
 
-.tps-nn-appearance-tab:hover {
-    color: var(--tps-nn-theme-foreground);
+.nn-appearance-tab:hover {
+    color: var(--nn-theme-foreground);
 }
 
-.tps-nn-appearance-tab.tps-nn-active {
+.nn-appearance-tab.nn-active {
     border-bottom-color: var(--interactive-accent);
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
 }
 
-.tps-nn-appearance-tab-chip {
+.nn-appearance-tab-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -126,42 +126,42 @@
     border: 1px solid var(--background-modifier-border);
 }
 
-.tps-nn-appearance-tab-icon-chip {
+.nn-appearance-tab-icon-chip {
     width: 24px;
     height: 24px;
     border-radius: var(--radius-s);
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
 }
 
-.tps-nn-appearance-tab-icon-chip svg {
+.nn-appearance-tab-icon-chip svg {
     width: 16px;
     height: 16px;
 }
 
-.tps-nn-appearance-tab-color-chip {
+.nn-appearance-tab-color-chip {
     width: 32px;
     height: 18px;
     border-radius: 4px;
 }
 
-.tps-nn-appearance-tab-chip-empty {
+.nn-appearance-tab-chip-empty {
     opacity: 0.55;
 }
 
-.tps-nn-appearance-tab-label {
+.nn-appearance-tab-label {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.tps-nn-appearance-body {
+.nn-appearance-body {
     flex: 1 1 auto;
     height: 360px;
     overflow-y: auto;
     overflow-x: hidden;
 }
 
-.tps-nn-appearance-panel {
+.nn-appearance-panel {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -169,31 +169,31 @@
     min-height: 0;
 }
 
-.tps-nn-appearance-panel-hidden {
+.nn-appearance-panel-hidden {
     display: none;
 }
 
-.tps-nn-appearance-reset-button {
+.nn-appearance-reset-button {
     padding: 4px 10px;
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-s);
     background: transparent;
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     font-size: 12px;
     cursor: pointer;
 }
 
-.tps-nn-appearance-reset-button:hover {
+.nn-appearance-reset-button:hover {
     border-color: var(--background-modifier-border-hover);
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
 }
 
-.tps-nn-appearance-reset-button.tps-nn-appearance-reset-active {
+.nn-appearance-reset-button.nn-appearance-reset-active {
     border-color: var(--interactive-accent);
     color: var(--interactive-accent);
 }
 
-.tps-nn-appearance-picker-host {
+.nn-appearance-picker-host {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -201,62 +201,62 @@
     min-height: 0;
 }
 
-.tps-nn-appearance-picker-host .tps-nn-icon-provider-tabs {
+.nn-appearance-picker-host .nn-icon-provider-tabs {
     margin-bottom: 0;
 }
 
-.tps-nn-appearance-picker-host .tps-nn-icon-search-container {
+.nn-appearance-picker-host .nn-icon-search-container {
     padding: 0 8px;
     border-bottom: 0;
 }
 
-.tps-nn-appearance-picker-host .tps-nn-icon-results-container {
+.nn-appearance-picker-host .nn-icon-results-container {
     flex: 1 1 auto;
     height: auto;
     min-height: 0;
 }
 
-.tps-nn-appearance-picker-host .tps-nn-color-picker-content {
+.nn-appearance-picker-host .nn-color-picker-content {
     gap: 16px;
     padding-bottom: 0;
     overflow: visible;
 }
 
-.tps-nn-appearance-picker-host .tps-nn-color-picker-left {
+.nn-appearance-picker-host .nn-color-picker-left {
     flex-basis: 220px;
 }
 
-.tps-nn-appearance-picker-host .tps-nn-color-picker-left-no-preview .tps-nn-preset-section {
+.nn-appearance-picker-host .nn-color-picker-left-no-preview .nn-preset-section {
     margin-top: 0;
 }
 
-.tps-nn-appearance-picker-host .tps-nn-recent-section {
+.nn-appearance-picker-host .nn-recent-section {
     margin-top: 4px;
 }
 
-.tps-nn-appearance-picker-host .tps-nn-preset-header,
-.tps-nn-appearance-picker-host .tps-nn-hex-header,
-.tps-nn-appearance-picker-host .tps-nn-recent-header {
+.nn-appearance-picker-host .nn-preset-header,
+.nn-appearance-picker-host .nn-hex-header,
+.nn-appearance-picker-host .nn-recent-header {
     justify-content: flex-start;
     gap: 8px;
 }
 
-.tps-nn-appearance-picker-host .tps-nn-recent-colors {
+.nn-appearance-picker-host .nn-recent-colors {
     grid-template-columns: repeat(5, 1fr);
 }
 
-.tps-nn-appearance-picker-host .tps-nn-recent-colors .tps-nn-color-dot {
+.nn-appearance-picker-host .nn-recent-colors .nn-color-dot {
     width: auto;
     height: auto;
     aspect-ratio: 1;
 }
 
-.tps-nn-icon-item.tps-nn-icon-item-selected {
+.nn-icon-item.nn-icon-item-selected {
     outline: 2px solid var(--interactive-accent);
     outline-offset: -2px;
 }
 
-.tps-nn-appearance-footer {
+.nn-appearance-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -265,22 +265,22 @@
     border-top: 1px solid var(--background-modifier-border);
 }
 
-.tps-nn-appearance-footer-actions {
+.nn-appearance-footer-actions {
     display: flex;
     gap: 8px;
 }
 
 @media (max-width: 600px) {
-    .modal.tps-nn-appearance-modal {
+    .modal.nn-appearance-modal {
         width: 100%;
         max-width: calc(100vw - 20px);
     }
 
-    .tps-nn-appearance-tabs {
+    .nn-appearance-tabs {
         overflow-x: auto;
     }
 
-    .tps-nn-appearance-tab {
+    .nn-appearance-tab {
         flex: 0 0 auto;
     }
 
@@ -288,18 +288,18 @@
        fonts and display scaling. The base max-height caps it to the viewport and the body
        scrolls instead of clipping. The modal resizes between tabs because each tab fits its
        own content. */
-    .tps-nn-appearance-body {
+    .nn-appearance-body {
         height: auto;
         min-height: 0;
     }
 
-    .tps-nn-appearance-picker-host .tps-nn-icon-results-container {
+    .nn-appearance-picker-host .nn-icon-results-container {
         flex: 0 0 auto;
         height: 240px;
         min-height: 240px;
     }
 
-    .tps-nn-appearance-picker-host .tps-nn-recent-colors {
+    .nn-appearance-picker-host .nn-recent-colors {
         grid-template-columns: repeat(8, 1fr);
     }
 }

@@ -148,14 +148,14 @@ export const CalendarDayButton = React.memo(function CalendarDayButton({
             onClick={handleClick}
             onContextMenu={onContextMenu}
         >
-            <span className="tps-nn-navigation-calendar-active-outline" aria-hidden="true" />
-            <span className="tps-nn-navigation-calendar-day-number" aria-hidden="true">
+            <span className="nn-navigation-calendar-active-outline" aria-hidden="true" />
+            <span className="nn-navigation-calendar-day-number" aria-hidden="true">
                 {dayNumber}
             </span>
             {showUnfinishedTaskIndicator ? (
-                <span className="tps-nn-navigation-calendar-day-unfinished-task-indicator" aria-hidden="true" />
+                <span className="nn-navigation-calendar-day-unfinished-task-indicator" aria-hidden="true" />
             ) : null}
-            <span className="tps-nn-visually-hidden">{ariaText}</span>
+            <span className="nn-visually-hidden">{ariaText}</span>
         </button>
     );
 });

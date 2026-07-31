@@ -5,14 +5,14 @@
    ======================================================================== */
 
 /* What's new modal width */
-.modal.tps-nn-whats-new-modal {
+.modal.nn-whats-new-modal {
     width: 600px;
     max-width: calc(100vw - 40px);
     overflow: hidden;
 }
 
 /* What's new content layout */
-.modal.tps-nn-whats-new-modal .modal-content {
+.modal.nn-whats-new-modal .modal-content {
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -20,13 +20,13 @@
     padding: 16px;
 }
 
-.modal.tps-nn-whats-new-modal .modal-close-button {
+.modal.nn-whats-new-modal .modal-close-button {
     z-index: 10;
     pointer-events: auto;
 }
 
 /* What's new scrollable container */
-.tps-nn-whats-new-scroll {
+.nn-whats-new-scroll {
     flex: 1 1 auto;
     min-height: 0;
     max-height: min(70vh, 520px);
@@ -37,21 +37,21 @@
 }
 
 /* Version container */
-.tps-nn-whats-new-version {
+.nn-whats-new-version {
     margin-bottom: 16px;
 }
 
 /* Version container - last child no margin */
-.tps-nn-whats-new-version:last-child {
+.nn-whats-new-version:last-child {
     margin-bottom: 0;
 }
 
 /* Version header */
-.tps-nn-whats-new-version h3 {
+.nn-whats-new-version h3 {
     display: block;
     font-size: 14px;
     font-weight: 600;
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
     background: var(--background-secondary);
     margin: 0 0 4px;
     padding: 6px 10px;
@@ -59,35 +59,35 @@
 }
 
 /* Feature list */
-.tps-nn-whats-new-features {
+.nn-whats-new-features {
     margin-left: 16px;
 }
 
 /* Category headers */
-.tps-nn-whats-new-category {
+.nn-whats-new-category {
     font-weight: bold;
     margin-top: 8px;
     margin-bottom: 4px;
 }
 
 /* Info text */
-.tps-nn-whats-new-info {
+.nn-whats-new-info {
     margin-bottom: 12px;
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
     line-height: 1.5;
     /* Match list item text size on desktop */
     font-size: 14px;
 }
 
 /* What's new divider */
-.tps-nn-whats-new-divider {
+.nn-whats-new-divider {
     border-top: 1px solid var(--background-modifier-border);
     margin-top: 0;
     margin-bottom: 16px;
 }
 
 /* Release banner image */
-.tps-nn-whats-new-banner {
+.nn-whats-new-banner {
     position: relative;
     display: block;
     width: 100%;
@@ -100,12 +100,12 @@
     text-decoration: none;
 }
 
-.tps-nn-whats-new-banner:focus-visible {
+.nn-whats-new-banner:focus-visible {
     outline: 2px solid var(--interactive-accent);
     outline-offset: 2px;
 }
 
-.tps-nn-whats-new-banner-image {
+.nn-whats-new-banner-image {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -114,7 +114,7 @@
 }
 
 /* Release video */
-.tps-nn-whats-new-video-frame {
+.nn-whats-new-video-frame {
     position: relative;
     display: block;
     width: 100%;
@@ -126,7 +126,7 @@
     margin-bottom: 12px;
 }
 
-.tps-nn-whats-new-video {
+.nn-whats-new-video {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -135,7 +135,7 @@
     background: #000000;
 }
 
-.tps-nn-whats-new-video-open {
+.nn-whats-new-video-open {
     position: absolute;
     top: 8px;
     right: 8px;
@@ -153,35 +153,35 @@
     text-decoration: none;
 }
 
-.tps-nn-whats-new-video-open:hover {
+.nn-whats-new-video-open:hover {
     color: var(--text-normal);
     background: var(--background-secondary);
 }
 
-.tps-nn-whats-new-video-open:focus-visible {
+.nn-whats-new-video-open:focus-visible {
     outline: 2px solid var(--interactive-accent);
     outline-offset: 2px;
 }
 
-.tps-nn-whats-new-video-open svg {
+.nn-whats-new-video-open svg {
     width: 16px;
     height: 16px;
 }
 
 /* YouTube link preview */
-.tps-nn-whats-new-youtube-link {
+.nn-whats-new-youtube-link {
     display: block;
     width: 100%;
     margin-bottom: 12px;
     text-decoration: none;
 }
 
-.tps-nn-whats-new-youtube-link:focus-visible .tps-nn-whats-new-youtube-thumbnail {
+.nn-whats-new-youtube-link:focus-visible .nn-whats-new-youtube-thumbnail {
     outline: 2px solid var(--interactive-accent);
     outline-offset: 2px;
 }
 
-.tps-nn-whats-new-youtube-thumbnail {
+.nn-whats-new-youtube-thumbnail {
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
@@ -191,7 +191,7 @@
     border: 1px solid var(--background-modifier-border);
 }
 
-.tps-nn-whats-new-youtube-image {
+.nn-whats-new-youtube-image {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -199,46 +199,46 @@
     object-fit: cover;
 }
 
-.tps-nn-whats-new-youtube-placeholder {
+.nn-whats-new-youtube-placeholder {
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     font-size: 13px;
 }
 
-.tps-nn-whats-new-youtube-link:hover .tps-nn-youtube-play {
+.nn-whats-new-youtube-link:hover .nn-youtube-play {
     background-color: #cc0000;
 }
 
 /* Feature list */
-.tps-nn-whats-new-version ul {
+.nn-whats-new-version ul {
     list-style: disc;
     margin: 0;
     padding-left: 16px;
 }
 
 /* Feature list item */
-.tps-nn-whats-new-version li {
+.nn-whats-new-version li {
     margin-bottom: 4px;
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
     font-size: 14px;
     line-height: 1.5;
 }
 
 /* Highlight emphasis */
-.tps-nn-highlight {
+.nn-highlight {
     background-color: var(--text-highlight-bg);
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
     padding: 0 2px;
     border-radius: 3px;
     font-weight: 600;
 }
 
-.tps-nn-whats-new-info code,
-.tps-nn-whats-new-version li code {
+.nn-whats-new-info code,
+.nn-whats-new-version li code {
     color: var(--code-normal);
     background-color: var(--code-background);
     padding: 0.1em 0.35em;
@@ -247,20 +247,20 @@
 }
 
 /* Support container */
-.tps-nn-whats-new-support {
+.nn-whats-new-support {
     margin-top: 0;
     padding-top: 0;
 }
 
 /* Support text */
-.tps-nn-whats-new-support-text {
-    color: var(--tps-nn-theme-foreground-muted);
+.nn-whats-new-support-text {
+    color: var(--nn-theme-foreground-muted);
     font-size: 14px;
     margin-bottom: 12px;
 }
 
 /* Button container */
-.tps-nn-whats-new-buttons {
+.nn-whats-new-buttons {
     display: flex;
     gap: 8px;
     margin-top: 12px;
@@ -268,14 +268,14 @@
 }
 
 /* Support button styling */
-.tps-nn-support-button-small {
+.nn-support-button-small {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     font-size: 12px;
 }
 
-.tps-nn-support-button-icon {
+.nn-support-button-icon {
     display: inline-flex;
     font-size: 14px;
     line-height: 1;
@@ -283,31 +283,31 @@
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
-    .modal.tps-nn-whats-new-modal {
+    .modal.nn-whats-new-modal {
         width: calc(100vw - 40px);
         max-width: calc(100vw - 40px);
         margin: 0 auto;
     }
 
-    .modal.tps-nn-whats-new-modal .modal-content {
+    .modal.nn-whats-new-modal .modal-content {
         padding: 12px;
     }
 
-    .tps-nn-whats-new-scroll {
+    .nn-whats-new-scroll {
         max-height: min(60vh, 360px);
         padding-right: 4px;
     }
 
     /* Use standard text sizing for readability on mobile */
-    .tps-nn-whats-new-info,
-    .tps-nn-whats-new-version li,
-    .tps-nn-whats-new-category {
+    .nn-whats-new-info,
+    .nn-whats-new-version li,
+    .nn-whats-new-category {
         font-size: 15px;
         line-height: 1.6;
     }
 
     /* Version header size on mobile */
-    .tps-nn-whats-new-version h3 {
+    .nn-whats-new-version h3 {
         font-size: 15px;
     }
 }
@@ -315,15 +315,15 @@
 /* Obsidian mobile app adjustments */
 .is-mobile {
     /* Body text and labels */
-    .tps-nn-whats-new-info,
-    .tps-nn-whats-new-version li,
-    .tps-nn-whats-new-category {
+    .nn-whats-new-info,
+    .nn-whats-new-version li,
+    .nn-whats-new-category {
         font-size: 15px;
         line-height: 1.6;
     }
 
     /* Version header */
-    .tps-nn-whats-new-version h3 {
+    .nn-whats-new-version h3 {
         font-size: 15px;
     }
 }

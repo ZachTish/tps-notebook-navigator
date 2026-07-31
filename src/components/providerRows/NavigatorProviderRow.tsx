@@ -100,7 +100,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
 
     return (
         <div
-            className="tps-nn-provider-row"
+            className="nn-provider-row"
             role="listitem"
             data-provider-id={row.providerId}
             data-provider-kind={row.kind}
@@ -112,7 +112,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
                 row.indicator.onChange ? (
                     <button
                         type="button"
-                        className={`tps-nn-provider-row-checkbox is-interactive${displayedChecked ? ' is-checked' : ''}`}
+                        className={`nn-provider-row-checkbox is-interactive${displayedChecked ? ' is-checked' : ''}`}
                         role="checkbox"
                         aria-checked={displayedChecked}
                         aria-busy={checkboxBusy || undefined}
@@ -125,7 +125,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
                     </button>
                 ) : (
                     <span
-                        className={`tps-nn-provider-row-checkbox${displayedChecked ? ' is-checked' : ''}`}
+                        className={`nn-provider-row-checkbox${displayedChecked ? ' is-checked' : ''}`}
                         role="checkbox"
                         aria-checked={displayedChecked}
                         aria-readonly="true"
@@ -138,14 +138,14 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
             ) : null}
             <button
                 type="button"
-                className="tps-nn-provider-row-open"
+                className="nn-provider-row-open"
                 title={row.tooltip}
                 aria-label={`Open ${row.label} in ${row.sourcePath}${lineDescription}`}
                 onClick={handleActivate}
                 disabled={!row.activate}
             >
-                <span className="tps-nn-provider-row-label">{row.label}</span>
-                {row.secondaryLabel ? <span className="tps-nn-provider-row-secondary">{row.secondaryLabel}</span> : null}
+                <span className="nn-provider-row-label">{row.label}</span>
+                {row.secondaryLabel ? <span className="nn-provider-row-secondary">{row.secondaryLabel}</span> : null}
             </button>
         </div>
     );

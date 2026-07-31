@@ -5,13 +5,13 @@
    ================================================================================= */
 
 /* Plugin icon - ensure transparent background */
-.svg-icon.tps-notebook-navigator {
+.svg-icon.notebook-navigator {
     background: transparent;
     overflow: visible;
 }
 
 /* Emoji icon styles */
-.tps-nn-emoji-icon {
+.nn-emoji-icon {
     font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
     font-style: normal;
     font-weight: normal;
@@ -29,11 +29,11 @@
 }
 
 /* Ensure emojis in navigation items display properly */
-.tps-nn-navitem-icon.tps-nn-emoji-icon {
-    font-size: var(--tps-nn-nav-icon-size);
-    width: var(--tps-nn-nav-icon-size);
-    height: var(--tps-nn-nav-icon-size);
-    line-height: var(--tps-nn-nav-icon-size);
+.nn-navitem-icon.nn-emoji-icon {
+    font-size: var(--nn-nav-icon-size);
+    width: var(--nn-nav-icon-size);
+    height: var(--nn-nav-icon-size);
+    line-height: var(--nn-nav-icon-size);
     text-align: center;
     display: flex;
     align-items: center;
@@ -41,7 +41,7 @@
 }
 
 /* Ensure proper sizing when used in buttons */
-.tps-nn-icon-button .tps-nn-emoji-icon {
+.nn-icon-button .nn-emoji-icon {
     width: 1em;
     height: 1em;
     font-size: inherit;
@@ -55,23 +55,23 @@
  * `ServiceIcon` renders into a `<span>` container and injects an inline SVG.
  * Ensure the span/SVG don't participate in baseline alignment, so icons stay vertically centered inside flex buttons.
  */
-.tps-nn-icon-button > span,
-.tps-nn-mobile-toolbar-button > span,
-.tps-nn-navigation-calendar-nav-button > span {
+.nn-icon-button > span,
+.nn-mobile-toolbar-button > span,
+.nn-navigation-calendar-nav-button > span {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     line-height: 0;
 }
 
-.tps-nn-icon-button > span > svg,
-.tps-nn-mobile-toolbar-button > span > svg,
-.tps-nn-navigation-calendar-nav-button > span > svg {
+.nn-icon-button > span > svg,
+.nn-mobile-toolbar-button > span > svg,
+.nn-navigation-calendar-nav-button > span > svg {
     display: block;
 }
 
 /* Icon font styles */
-.tps-nn-iconfont {
+.nn-iconfont {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -81,55 +81,55 @@
     text-rendering: optimizeLegibility;
 }
 
-.tps-nn-iconfont-fa-solid,
-.tps-nn-iconfont-rpg-awesome,
-.tps-nn-iconfont-bootstrap-icons,
-.tps-nn-iconfont-material-icons,
-.tps-nn-iconfont-phosphor,
-.tps-nn-iconfont-simple-icons {
+.nn-iconfont-fa-solid,
+.nn-iconfont-rpg-awesome,
+.nn-iconfont-bootstrap-icons,
+.nn-iconfont-material-icons,
+.nn-iconfont-phosphor,
+.nn-iconfont-simple-icons {
     font-style: normal;
 }
 
-.tps-nn-iconfont-fa-solid {
+.nn-iconfont-fa-solid {
     font-weight: 900;
     font-family: 'TPSNotebookNavigatorFontAwesomeSolid', 'Font Awesome 7 Free', sans-serif;
 }
 
-.tps-nn-iconfont-rpg-awesome,
-.tps-nn-iconfont-bootstrap-icons,
-.tps-nn-iconfont-material-icons,
-.tps-nn-iconfont-phosphor,
-.tps-nn-iconfont-simple-icons {
+.nn-iconfont-rpg-awesome,
+.nn-iconfont-bootstrap-icons,
+.nn-iconfont-material-icons,
+.nn-iconfont-phosphor,
+.nn-iconfont-simple-icons {
     font-weight: 400;
 }
 
-.tps-nn-iconfont-rpg-awesome {
+.nn-iconfont-rpg-awesome {
     font-family: 'TPSNotebookNavigatorRpgAwesome', 'RPG Awesome', sans-serif;
 }
 
-.tps-nn-iconfont-bootstrap-icons {
+.nn-iconfont-bootstrap-icons {
     font-family: 'TPSNotebookNavigatorBootstrapIcons', 'Bootstrap Icons', sans-serif;
 }
 
-.tps-nn-iconfont-material-icons {
+.nn-iconfont-material-icons {
     font-family: 'TPSNotebookNavigatorMaterialIcons', 'Material Icons', sans-serif;
 }
 
-.tps-nn-iconfont-phosphor {
+.nn-iconfont-phosphor {
     font-family: 'TPSNotebookNavigatorPhosphorIcons', 'Phosphor', sans-serif;
 }
 
-.tps-nn-iconfont-simple-icons {
+.nn-iconfont-simple-icons {
     font-family: 'TPSNotebookNavigatorSimpleIcons', 'Simple Icons', sans-serif;
 }
 
-.tps-nn-vault-icon-svg {
+.nn-vault-icon-svg {
     display: block;
     width: 100%;
     height: 100%;
 }
 
-.tps-nn-icon-provider-tabs {
+.nn-icon-provider-tabs {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
@@ -138,16 +138,16 @@
     padding-bottom: 2px;
 }
 
-.tps-nn-icon-provider-link-row {
+.nn-icon-provider-link-row {
     padding: 8px 12px 0;
     text-align: center;
 }
 
-.tps-nn-icon-provider-link-row-hidden {
+.nn-icon-provider-link-row-hidden {
     display: none;
 }
 
-.tps-nn-icon-provider-link-row a {
+.nn-icon-provider-link-row a {
     display: inline-flex;
     align-items: center;
     color: var(--text-accent);
@@ -155,28 +155,28 @@
     text-decoration: none;
 }
 
-.tps-nn-icon-provider-link-row a:hover {
+.nn-icon-provider-link-row a:hover {
     text-decoration: underline;
 }
 
-.tps-nn-icon-provider-tab {
+.nn-icon-provider-tab {
     padding: 4px 12px;
     border-radius: var(--radius-s);
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     white-space: nowrap;
 }
 
-.tps-nn-icon-provider-tab:hover {
+.nn-icon-provider-tab:hover {
     background-color: var(--background-modifier-hover);
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
 }
 
-.tps-nn-icon-provider-tab.tps-nn-active {
+.nn-icon-provider-tab.nn-active {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
 }
 
 /* Emoji preview in icon picker */
-.tps-nn-icon-item-preview.tps-nn-emoji-preview {
+.nn-icon-item-preview.nn-emoji-preview {
     font-size: 24px;
 }

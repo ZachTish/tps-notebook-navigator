@@ -134,12 +134,12 @@ export const ShortcutItem = React.memo(function ShortcutItem({
     const shouldDisableRow = Boolean(isDisabled) && !isMissing;
     // Builds CSS class names for the shortcut item with conditional missing state
     const classNames = useMemo(() => {
-        const classes = ['tps-nn-shortcut-item'];
+        const classes = ['nn-shortcut-item'];
         if (isMissing) {
-            classes.push('tps-nn-shortcut-item--missing');
+            classes.push('nn-shortcut-item--missing');
         }
         if (hasRemove) {
-            classes.push('tps-nn-shortcut-item--removable');
+            classes.push('nn-shortcut-item--removable');
         }
         if (adjacentFilledClassName) {
             classes.push(adjacentFilledClassName);
@@ -227,7 +227,7 @@ export const ShortcutItem = React.memo(function ShortcutItem({
             tabIndex={-1}
             ariaDisabled={shouldDisableRow || isMissing}
             dragHandleConfig={dragHandleConfig}
-            labelClassName={hasFolderNote ? 'tps-nn-has-folder-note' : undefined}
+            labelClassName={hasFolderNote ? 'nn-has-folder-note' : undefined}
             tooltip={tooltip}
             onLabelClick={labelClickHandler}
             onLabelMouseDown={labelMouseDownHandler}

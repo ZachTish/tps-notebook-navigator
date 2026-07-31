@@ -271,10 +271,10 @@ function renderRebuildCacheSetting(setting: Setting, context: SettingsTabContext
 
 function renderCacheStatsSetting(setting: Setting, context: SettingsTabContext): void {
     setting.setName('').setDesc('');
-    setting.settingEl.addClass('tps-nn-database-stats');
-    setting.settingEl.addClass('tps-nn-stats-section');
+    setting.settingEl.addClass('nn-database-stats');
+    setting.settingEl.addClass('nn-stats-section');
 
-    const statsTextEl = setting.descEl.createDiv({ cls: 'tps-nn-stats-text' });
+    const statsTextEl = setting.descEl.createDiv({ cls: 'nn-stats-text' });
     context.registerStatsTextElement(statsTextEl);
     context.requestStatisticsRefresh();
     context.ensureStatisticsInterval();

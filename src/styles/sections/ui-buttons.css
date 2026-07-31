@@ -5,13 +5,13 @@
    ======================================================================== */
 
 /* Icon button base style - transparent buttons matching Obsidian's design */
-button.tps-nn-icon-button {
+button.nn-icon-button {
     background: transparent;
     background-color: transparent;
     border: none;
     border-radius: var(--radius-s);
     padding: 0 8px;
-    color: var(--tps-nn-theme-header-button-icon-color);
+    color: var(--nn-theme-header-button-icon-color);
     opacity: 0.85;
     display: flex;
     align-items: center;
@@ -21,16 +21,16 @@ button.tps-nn-icon-button {
 }
 
 /* Desktop pane header buttons - enforce Obsidian-muted icon color */
-.tps-nn-desktop .tps-nn-pane-header .tps-nn-icon-button {
-    color: var(--tps-nn-theme-header-button-icon-color);
+.nn-desktop .nn-pane-header .nn-icon-button {
+    color: var(--nn-theme-header-button-icon-color);
 }
 
-.tps-nn-desktop .tps-nn-pane-header .tps-nn-icon-button svg:not(.tps-nn-vault-icon-svg) {
+.nn-desktop .nn-pane-header .nn-icon-button svg:not(.nn-vault-icon-svg) {
     stroke: currentColor;
 }
 
 /* Header buttons - match Obsidian's standard dimensions */
-.tps-nn-header-actions button.tps-nn-icon-button {
+.nn-header-actions button.nn-icon-button {
     padding: 0 8px;
     width: auto;
     min-width: 34px;
@@ -38,65 +38,65 @@ button.tps-nn-icon-button {
 }
 
 /* Icon button hover state - subtle background on hover - desktop only */
-.tps-nn-desktop button.tps-nn-icon-button:hover {
-    background-color: var(--tps-nn-theme-header-button-hover-bg);
+.nn-desktop button.nn-icon-button:hover {
+    background-color: var(--nn-theme-header-button-hover-bg);
     opacity: 1;
 }
 
 /* Icon button active state - feedback on click */
-.tps-nn-icon-button:active {
+.nn-icon-button:active {
     opacity: 0.8;
 }
 
 /* Icon button active state - for toggle buttons that are "ON" */
-button.tps-nn-icon-button.tps-nn-icon-button-active {
-    background-color: var(--tps-nn-theme-header-button-active-bg);
-    color: var(--tps-nn-theme-header-button-active-icon-color);
+button.nn-icon-button.nn-icon-button-active {
+    background-color: var(--nn-theme-header-button-active-bg);
+    color: var(--nn-theme-header-button-active-icon-color);
 }
 
 /* Active button icon color */
-button.tps-nn-icon-button.tps-nn-icon-button-active svg:not(.tps-nn-vault-icon-svg) {
-    stroke: var(--tps-nn-theme-header-button-active-icon-color);
+button.nn-icon-button.nn-icon-button-active svg:not(.nn-vault-icon-svg) {
+    stroke: var(--nn-theme-header-button-active-icon-color);
 }
 
 /* Icon button disabled state - visual indicator for unavailable actions */
-.tps-nn-icon-button:disabled {
+.nn-icon-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    color: var(--tps-nn-theme-header-button-disabled-icon-color);
+    color: var(--nn-theme-header-button-disabled-icon-color);
 }
 
 /* Disabled icon svg stroke color */
-.tps-nn-icon-button:disabled svg:not(.tps-nn-vault-icon-svg) {
+.nn-icon-button:disabled svg:not(.nn-vault-icon-svg) {
     stroke: currentColor;
 }
 
 /* Disabled hover state - no hover effect when disabled */
-.tps-nn-desktop .tps-nn-icon-button:disabled:hover {
+.nn-desktop .nn-icon-button:disabled:hover {
     background-color: transparent;
-    color: var(--tps-nn-theme-header-button-disabled-icon-color);
+    color: var(--nn-theme-header-button-disabled-icon-color);
 }
 
 /* Disabled icon color - maintains muted appearance */
-.tps-nn-desktop .tps-nn-icon-button:disabled:hover svg:not(.tps-nn-vault-icon-svg) {
+.nn-desktop .nn-icon-button:disabled:hover svg:not(.nn-vault-icon-svg) {
     stroke: currentColor;
 }
 
 /* Icon styling - consistent size and appearance for all button icons */
-.tps-nn-icon-button > span {
+.nn-icon-button > span {
     color: inherit;
 }
 
-.tps-nn-icon-button > span > svg {
+.nn-icon-button > span > svg {
     color: inherit;
 }
 
-.tps-nn-icon-button svg {
+.nn-icon-button svg {
     width: 16px;
     height: 16px;
 }
 
-.tps-nn-icon-button svg:not(.tps-nn-vault-icon-svg) {
+.nn-icon-button svg:not(.nn-vault-icon-svg) {
     stroke: currentColor;
     stroke-width: 2;
     fill: none;

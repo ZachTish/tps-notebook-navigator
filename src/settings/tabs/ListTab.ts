@@ -487,8 +487,8 @@ function renderManualSortPropertyKeySetting(setting: Setting, context: SettingsT
 
 function renderInstructionSetting(setting: Setting, info: { intro: string; items: string[] }): void {
     setting.setName('').setDesc('');
-    setting.settingEl.addClass('tps-nn-setting-info-container');
-    setting.settingEl.addClass('tps-nn-setting-info-list');
+    setting.settingEl.addClass('nn-setting-info-container');
+    setting.settingEl.addClass('nn-setting-info-list');
     setting.descEl.empty();
     setting.descEl.createDiv({ text: info.intro });
     const listEl = setting.descEl.createEl('ol');
@@ -500,7 +500,7 @@ function renderInstructionSetting(setting: Setting, info: { intro: string; items
 
 function renderInfoTextSetting(setting: Setting, text: string): void {
     setting.setName('').setDesc('');
-    setting.settingEl.addClass('tps-nn-setting-info-container');
+    setting.settingEl.addClass('nn-setting-info-container');
     setting.descEl.empty();
     setting.descEl.createDiv({ text });
 }
@@ -509,10 +509,10 @@ function renderQuickActionsSetting(setting: Setting, context: SettingsTabContext
     const { plugin } = context;
 
     setting.setName(strings.settings.items.showQuickActions.name).setDesc(strings.settings.items.showQuickActions.desc);
-    setting.controlEl.addClass('tps-nn-quick-actions-control');
+    setting.controlEl.addClass('nn-quick-actions-control');
 
     const quickActionsButtonsEl = setting.controlEl.createDiv({
-        cls: ['tps-nn-toolbar-visibility-grid', 'tps-nn-quick-actions-buttons']
+        cls: ['nn-toolbar-visibility-grid', 'nn-quick-actions-buttons']
     });
 
     const updateButtonsDisabledState = (enabled: boolean) => {
@@ -532,19 +532,19 @@ function renderQuickActionsSetting(setting: Setting, context: SettingsTabContext
 
     quickActionButtons.forEach(buttonConfig => {
         const buttonEl = quickActionsButtonsEl.createEl('button', {
-            cls: ['tps-nn-toolbar-visibility-toggle', 'tps-nn-mobile-toolbar-button'],
+            cls: ['nn-toolbar-visibility-toggle', 'nn-mobile-toolbar-button'],
             attr: { type: 'button' }
         });
         buttonEl.setAttr('aria-label', buttonConfig.label);
         buttonEl.setAttr('title', buttonConfig.label);
 
-        const iconEl = buttonEl.createSpan({ cls: 'tps-nn-toolbar-visibility-icon' });
+        const iconEl = buttonEl.createSpan({ cls: 'nn-toolbar-visibility-icon' });
         setIcon(iconEl, buttonConfig.icon);
 
         const applyState = () => {
             const isEnabled = Boolean(plugin.settings[buttonConfig.key]);
             buttonEl.classList.toggle('is-active', isEnabled);
-            buttonEl.classList.toggle('tps-nn-mobile-toolbar-button-active', isEnabled);
+            buttonEl.classList.toggle('nn-mobile-toolbar-button-active', isEnabled);
             buttonEl.setAttr('aria-pressed', isEnabled ? 'true' : 'false');
         };
 
@@ -565,7 +565,7 @@ function renderQuickActionsSetting(setting: Setting, context: SettingsTabContext
             updateButtonsDisabledState(value);
             await plugin.saveSettingsAndUpdate();
         });
-        toggle.toggleEl.addClass('tps-nn-quick-actions-master-toggle');
+        toggle.toggleEl.addClass('nn-quick-actions-master-toggle');
     });
 
     updateButtonsDisabledState(plugin.settings.showQuickActions);

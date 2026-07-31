@@ -432,7 +432,7 @@ export class NotebookNavigatorSettingTab extends PluginSettingTab {
             });
         });
 
-        setting.settingEl.addClass('tps-nn-settings-legacy-page-link');
+        setting.settingEl.addClass('nn-settings-legacy-page-link');
         setting.settingEl.tabIndex = 0;
         setting.settingEl.setAttr('role', 'button');
         setting.settingEl.setAttr('aria-label', name);
@@ -480,7 +480,7 @@ export class NotebookNavigatorSettingTab extends PluginSettingTab {
 
     private renderLegacySettingsPageTitle(title: string): void {
         const titleSetting = new Setting(this.containerEl).setName(title).setHeading();
-        titleSetting.settingEl.addClass('tps-nn-settings-legacy-titlebar');
+        titleSetting.settingEl.addClass('nn-settings-legacy-titlebar');
         titleSetting.nameEl.empty();
         const backButton = new ButtonComponent(titleSetting.nameEl);
         backButton
@@ -488,7 +488,7 @@ export class NotebookNavigatorSettingTab extends PluginSettingTab {
             .setTooltip(strings.commands.navigateBack)
             .onClick(() => this.returnToLegacySettingsLanding());
         backButton.buttonEl.addClass('clickable-icon');
-        backButton.buttonEl.addClass('tps-nn-settings-legacy-back-button');
+        backButton.buttonEl.addClass('nn-settings-legacy-back-button');
         backButton.buttonEl.setAttr('aria-label', strings.commands.navigateBack);
         titleSetting.nameEl.createSpan({ text: title });
     }
@@ -651,7 +651,7 @@ export class NotebookNavigatorSettingTab extends PluginSettingTab {
             searchable: false,
             visible: false,
             render: (setting, group) => {
-                group.addClass('tps-nn-settings-lifecycle-group');
+                group.addClass('nn-settings-lifecycle-group');
                 setting.settingEl.detach();
                 onFirstRender(group);
                 return onLastCleanup;
@@ -671,14 +671,14 @@ export class NotebookNavigatorSettingTab extends PluginSettingTab {
         this.settingsRenderContainerEl = containerEl;
         this.activeSettingsPage = { tabId, containerEl };
         containerEl.empty();
-        containerEl.addClass('tps-nn-settings-tab-root');
+        containerEl.addClass('nn-settings-tab-root');
         this.resetRenderedSettingsState();
         this.diagnosticsController.handleTabActivation(tabId);
         definition.render(this.createTabContext(containerEl));
     }
 
     private hideNativeSettingsPage(containerEl: HTMLElement): void {
-        containerEl.removeClass('tps-nn-settings-tab-root');
+        containerEl.removeClass('nn-settings-tab-root');
         if (this.settingsRenderContainerEl === containerEl) {
             this.settingsRenderContainerEl = null;
         }
@@ -691,7 +691,7 @@ export class NotebookNavigatorSettingTab extends PluginSettingTab {
     private prepareSettingsRender(containerEl: HTMLElement): void {
         this.settingsRenderContainerEl = containerEl;
         containerEl.empty();
-        containerEl.addClass('tps-nn-settings-tab-root');
+        containerEl.addClass('nn-settings-tab-root');
 
         this.resetRenderedSettingsState();
     }
@@ -700,7 +700,7 @@ export class NotebookNavigatorSettingTab extends PluginSettingTab {
         this.ensureSettingsUpdateListener();
         this.activeSettingsPage = null;
         this.settingsRenderContainerEl = this.containerEl;
-        this.containerEl.addClass('tps-nn-settings-tab-root');
+        this.containerEl.addClass('nn-settings-tab-root');
         this.resetRenderedSettingsState();
     }
 
@@ -708,7 +708,7 @@ export class NotebookNavigatorSettingTab extends PluginSettingTab {
         this.ensureSettingsUpdateListener();
         this.activeSettingsPage = null;
         this.settingsRenderContainerEl = containerEl;
-        containerEl.addClass('tps-nn-settings-tab-root');
+        containerEl.addClass('nn-settings-tab-root');
         this.resetRenderedSettingsState();
         this.diagnosticsController.handleTabActivation(tabId);
     }
@@ -812,9 +812,9 @@ export class NotebookNavigatorSettingTab extends PluginSettingTab {
         this.tabSettingsUpdateListeners.clear();
         this.showTagsListeners = [];
         this.activeSettingsPage = null;
-        this.settingsRenderContainerEl?.removeClass('tps-nn-settings-tab-root');
+        this.settingsRenderContainerEl?.removeClass('nn-settings-tab-root');
         this.settingsRenderContainerEl = null;
-        this.containerEl.removeClass('tps-nn-settings-tab-root');
+        this.containerEl.removeClass('nn-settings-tab-root');
     }
 }
 

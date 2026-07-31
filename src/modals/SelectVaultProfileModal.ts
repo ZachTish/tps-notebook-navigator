@@ -44,7 +44,7 @@ export class SelectVaultProfileModal extends Modal {
 
     /** Renders the modal content with profile list and keyboard navigation */
     onOpen(): void {
-        this.modalEl.addClass('tps-nn-select-profile-modal');
+        this.modalEl.addClass('nn-select-profile-modal');
         this.titleEl.setText(strings.modals.selectVaultProfile.title);
         this.contentEl.empty();
 
@@ -52,13 +52,13 @@ export class SelectVaultProfileModal extends Modal {
         if (profiles.length === 0) {
             this.contentEl.createEl('p', {
                 text: strings.modals.selectVaultProfile.emptyState,
-                cls: 'tps-nn-select-profile-empty'
+                cls: 'nn-select-profile-empty'
             });
             return;
         }
 
         const listEl = this.contentEl.createDiv({
-            cls: 'tps-nn-select-profile-list',
+            cls: 'nn-select-profile-list',
             attr: {
                 role: 'listbox',
                 'aria-label': strings.modals.selectVaultProfile.title
@@ -67,7 +67,7 @@ export class SelectVaultProfileModal extends Modal {
 
         this.buttons = profiles.map((profile, index) => {
             const button = listEl.createEl('button', {
-                cls: 'tps-nn-select-profile-item',
+                cls: 'nn-select-profile-item',
                 attr: {
                     type: 'button',
                     role: 'option',
@@ -81,7 +81,7 @@ export class SelectVaultProfileModal extends Modal {
             button.setAttr('aria-label', profileName);
 
             const nameEl = button.createSpan({
-                cls: 'tps-nn-select-profile-item-name',
+                cls: 'nn-select-profile-item-name',
                 text: profileName
             });
             nameEl.setAttr('aria-hidden', 'true');
@@ -90,7 +90,7 @@ export class SelectVaultProfileModal extends Modal {
                 button.classList.add('is-current');
                 button.setAttr('aria-label', `${profileName} (${strings.modals.selectVaultProfile.currentBadge})`);
                 button.createSpan({
-                    cls: 'tps-nn-select-profile-item-badge',
+                    cls: 'nn-select-profile-item-badge',
                     text: strings.modals.selectVaultProfile.currentBadge
                 });
             }

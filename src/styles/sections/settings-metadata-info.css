@@ -5,7 +5,7 @@
    ======================================================================== */
 
 /* Error text styling */
-.tps-nn-metadata-error-text {
+.nn-metadata-error-text {
     color: var(--text-error);
     font-weight: bold;
 }

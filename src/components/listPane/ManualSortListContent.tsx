@@ -170,17 +170,17 @@ function getManualSortRowClassName({
 > & {
     isSorting?: boolean;
 }): string {
-    const classes = ['tps-nn-manual-sort-row', canReorder ? 'tps-nn-manual-sort-row-draggable' : 'tps-nn-manual-sort-row-disabled'];
-    if (isDragBlockMember) classes.push('tps-nn-manual-sort-row-drag-block');
-    if (isSorting) classes.push('tps-nn-manual-sort-row-sorting');
-    if (isLastEntry) classes.push('tps-nn-manual-sort-row-last');
-    if (hideSeparator) classes.push('tps-nn-manual-sort-row-hide-separator');
-    if (hasFilledBackground) classes.push('tps-nn-manual-sort-row-has-filled-background');
-    if (hasPreviousFilledBackground) classes.push('tps-nn-manual-sort-row-has-filled-background-previous');
-    if (hasNextFilledBackground) classes.push('tps-nn-manual-sort-row-has-filled-background-next');
-    if (hasCustomBackground) classes.push('tps-nn-manual-sort-row-has-custom-background');
-    if (hasPreviousCustomBackground) classes.push('tps-nn-manual-sort-row-has-custom-background-previous');
-    if (hasNextCustomBackground) classes.push('tps-nn-manual-sort-row-has-custom-background-next');
+    const classes = ['nn-manual-sort-row', canReorder ? 'nn-manual-sort-row-draggable' : 'nn-manual-sort-row-disabled'];
+    if (isDragBlockMember) classes.push('nn-manual-sort-row-drag-block');
+    if (isSorting) classes.push('nn-manual-sort-row-sorting');
+    if (isLastEntry) classes.push('nn-manual-sort-row-last');
+    if (hideSeparator) classes.push('nn-manual-sort-row-hide-separator');
+    if (hasFilledBackground) classes.push('nn-manual-sort-row-has-filled-background');
+    if (hasPreviousFilledBackground) classes.push('nn-manual-sort-row-has-filled-background-previous');
+    if (hasNextFilledBackground) classes.push('nn-manual-sort-row-has-filled-background-next');
+    if (hasCustomBackground) classes.push('nn-manual-sort-row-has-custom-background');
+    if (hasPreviousCustomBackground) classes.push('nn-manual-sort-row-has-custom-background-previous');
+    if (hasNextCustomBackground) classes.push('nn-manual-sort-row-has-custom-background-next');
     return classes.join(' ');
 }
 
@@ -205,7 +205,7 @@ function ManualSortRowContent({
 }: ManualSortRowProps & { dragHandle?: ReactNode }) {
     return (
         <>
-            <div className="tps-nn-manual-sort-file">
+            <div className="nn-manual-sort-file">
                 <FileItem
                     file={entry.file}
                     paneProps={paneProps}
@@ -261,7 +261,7 @@ function SortableManualSortRow(props: ManualSortRowProps) {
     const dragHandle = (
         <span
             ref={setActivatorNodeRef}
-            className="tps-nn-drag-handle"
+            className="nn-drag-handle"
             role="button"
             tabIndex={-1}
             {...(bindHandleDrag ? attributes : undefined)}
@@ -274,18 +274,18 @@ function SortableManualSortRow(props: ManualSortRowProps) {
     return (
         <div
             ref={setNodeRef}
-            className={`tps-nn-manual-sort-sortable-item${isSorting ? ' tps-nn-manual-sort-sortable-item-sorting' : ''}`}
+            className={`nn-manual-sort-sortable-item${isSorting ? ' nn-manual-sort-sortable-item-sorting' : ''}`}
             style={dragStyle}
         >
             {header ? (
                 hasManualSortGoal ? (
                     <div
-                        className={`tps-nn-manual-sort-group-header-shell tps-nn-manual-sort-custom-header${
-                            suppressHeaderTopSpacing ? '' : ' tps-nn-manual-sort-section-header'
+                        className={`nn-manual-sort-group-header-shell nn-manual-sort-custom-header${
+                            suppressHeaderTopSpacing ? '' : ' nn-manual-sort-section-header'
                         }`}
                         data-manual-sort-header-file-path={headerFilePath}
                     >
-                        <div className="tps-nn-list-group-header tps-nn-list-group-header--manual-sort">
+                        <div className="nn-list-group-header nn-list-group-header--manual-sort">
                             <ManualSortGroupHeaderContent
                                 header={header}
                                 wordCount={headerWordCount ?? 0}
@@ -300,8 +300,8 @@ function SortableManualSortRow(props: ManualSortRowProps) {
                     </div>
                 ) : (
                     <div
-                        className={`tps-nn-list-group-header tps-nn-list-group-header--manual-sort tps-nn-manual-sort-custom-header${
-                            suppressHeaderTopSpacing ? '' : ' tps-nn-manual-sort-section-header'
+                        className={`nn-list-group-header nn-list-group-header--manual-sort nn-manual-sort-custom-header${
+                            suppressHeaderTopSpacing ? '' : ' nn-manual-sort-section-header'
                         }`}
                         data-manual-sort-header-file-path={headerFilePath}
                     >
@@ -539,8 +539,8 @@ function ManualSortGroup({
             {renderRows(rankedRows, true)}
             {unsortedRows.length > 0 ? (
                 <>
-                    <div className="tps-nn-list-group-header tps-nn-manual-sort-section-header">
-                        <span className="tps-nn-list-group-header-text">{strings.listPane.unsortedSection}</span>
+                    <div className="nn-list-group-header nn-manual-sort-section-header">
+                        <span className="nn-list-group-header-text">{strings.listPane.unsortedSection}</span>
                     </div>
                     {renderRows(unsortedRows)}
                 </>
@@ -812,13 +812,13 @@ export function ManualSortListContent({
             }
 
             let filePath: string | undefined;
-            const headerElement = target.closest('.tps-nn-manual-sort-custom-header');
+            const headerElement = target.closest('.nn-manual-sort-custom-header');
             if (headerElement instanceof HTMLElement) {
                 filePath = headerElement.dataset.manualSortHeaderFilePath;
             }
 
             if (!filePath) {
-                const fileElement = target.closest('.tps-nn-file');
+                const fileElement = target.closest('.nn-file');
                 if (!(fileElement instanceof HTMLElement)) {
                     return;
                 }
@@ -843,39 +843,30 @@ export function ManualSortListContent({
     return (
         <div
             ref={scrollContainerRef}
-            className="tps-nn-list-pane-scroller tps-nn-manual-sort-scroller"
+            className="nn-list-pane-scroller nn-manual-sort-scroller"
             role="list"
             tabIndex={-1}
             onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
             onContextMenu={handleContextMenu}
         >
-            <div className="tps-nn-manual-sort-panel">
-                <div className="tps-nn-manual-sort-header">
-                    <div className="tps-nn-manual-sort-header-text">
-                        <span className="tps-nn-manual-sort-title">
-                            {strings.listPane.manualSortTitle.replace('{property}', propertyKey)}
-                        </span>
-                        <span className="tps-nn-manual-sort-hint">
-                            {strings.listPane.manualSortHint.replace('{property}', propertyKey)}
-                        </span>
+            <div className="nn-manual-sort-panel">
+                <div className="nn-manual-sort-header">
+                    <div className="nn-manual-sort-header-text">
+                        <span className="nn-manual-sort-title">{strings.listPane.manualSortTitle.replace('{property}', propertyKey)}</span>
+                        <span className="nn-manual-sort-hint">{strings.listPane.manualSortHint.replace('{property}', propertyKey)}</span>
                         {nonMarkdownCount > 0 ? (
-                            <span className="tps-nn-manual-sort-hint">{strings.listPane.manualSortNonMarkdownHint}</span>
+                            <span className="nn-manual-sort-hint">{strings.listPane.manualSortNonMarkdownHint}</span>
                         ) : null}
                     </div>
-                    <button
-                        type="button"
-                        className="tps-nn-support-button tps-nn-manual-sort-done"
-                        onClick={onDone}
-                        disabled={isDoneDisabled}
-                    >
+                    <button type="button" className="nn-support-button nn-manual-sort-done" onClick={onDone} disabled={isDoneDisabled}>
                         {strings.listPane.manualSortDone}
                     </button>
                 </div>
 
                 {hasNoFiles ? (
-                    <div className="tps-nn-empty-state">
-                        <div className="tps-nn-empty-message">{strings.listPane.emptyStateNoNotes}</div>
+                    <div className="nn-empty-state">
+                        <div className="nn-empty-message">{strings.listPane.emptyStateNoNotes}</div>
                     </div>
                 ) : (
                     <DndContext
@@ -886,7 +877,7 @@ export function ManualSortListContent({
                         onDragCancel={handleDragCancel}
                         onDragEnd={handleDragEnd}
                     >
-                        <div className="tps-nn-manual-sort-list" aria-busy={isSaving ? 'true' : undefined}>
+                        <div className="nn-manual-sort-list" aria-busy={isSaving ? 'true' : undefined}>
                             {entries.length > 0 ? (
                                 <ManualSortGroup
                                     rankedRows={rankedRows}

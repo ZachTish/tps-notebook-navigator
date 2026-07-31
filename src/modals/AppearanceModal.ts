@@ -94,27 +94,27 @@ export class AppearanceModal extends Modal {
     onOpen(): void {
         const { contentEl } = this;
         contentEl.empty();
-        this.modalEl.addClass('tps-nn-appearance-modal');
+        this.modalEl.addClass('nn-appearance-modal');
 
-        const header = contentEl.createDiv('tps-nn-appearance-header');
-        this.previewItem = header.createDiv('tps-nn-appearance-preview-item');
-        this.previewIconEl = this.previewItem.createSpan('tps-nn-appearance-preview-icon');
-        this.previewItem.createSpan({ cls: 'tps-nn-appearance-preview-name', text: this.params.title });
+        const header = contentEl.createDiv('nn-appearance-header');
+        this.previewItem = header.createDiv('nn-appearance-preview-item');
+        this.previewIconEl = this.previewItem.createSpan('nn-appearance-preview-icon');
+        this.previewItem.createSpan({ cls: 'nn-appearance-preview-name', text: this.params.title });
 
         this.clearButton = this.previewItem.createEl('button', {
-            cls: 'tps-nn-recent-remove-button tps-nn-appearance-clear-button',
+            cls: 'nn-recent-remove-button nn-appearance-clear-button',
             attr: {
                 type: 'button',
                 'aria-label': strings.modals.appearance.clear,
                 title: strings.modals.appearance.clear
             }
         });
-        this.clearButton.createSpan({ text: '×', cls: 'tps-nn-recent-remove-glyph', attr: { 'aria-hidden': 'true' } });
+        this.clearButton.createSpan({ text: '×', cls: 'nn-recent-remove-glyph', attr: { 'aria-hidden': 'true' } });
         this.domDisposers.push(addAsyncEventListener(this.clearButton, 'click', () => this.clearAll()));
 
-        const tabBar = contentEl.createDiv('tps-nn-appearance-tabs');
+        const tabBar = contentEl.createDiv('nn-appearance-tabs');
         tabBar.setAttribute('role', 'tablist');
-        const body = contentEl.createDiv('tps-nn-appearance-body');
+        const body = contentEl.createDiv('nn-appearance-body');
 
         if (this.params.icon) {
             this.addIconTab(tabBar, body);
@@ -126,11 +126,11 @@ export class AppearanceModal extends Modal {
             this.addColorTab(tabBar, body, 'background');
         }
 
-        const footer = contentEl.createDiv('tps-nn-appearance-footer');
-        this.resetButton = footer.createEl('button', { cls: 'tps-nn-appearance-reset-button' });
+        const footer = contentEl.createDiv('nn-appearance-footer');
+        this.resetButton = footer.createEl('button', { cls: 'nn-appearance-reset-button' });
         this.domDisposers.push(addAsyncEventListener(this.resetButton, 'click', () => this.resetActiveTab()));
 
-        const footerActions = footer.createDiv('tps-nn-appearance-footer-actions');
+        const footerActions = footer.createDiv('nn-appearance-footer-actions');
         const cancelButton = footerActions.createEl('button', { text: strings.common.cancel });
         this.domDisposers.push(addAsyncEventListener(cancelButton, 'click', () => this.close()));
         const applyButton = footerActions.createEl('button', { text: strings.modals.appearance.apply, cls: 'mod-cta' });
@@ -167,7 +167,7 @@ export class AppearanceModal extends Modal {
         });
         this.domDisposers = [];
         contentEl.empty();
-        this.modalEl.removeClass('tps-nn-appearance-modal');
+        this.modalEl.removeClass('nn-appearance-modal');
     }
 
     private addIconTab(tabBar: HTMLElement, body: HTMLElement): void {
@@ -189,12 +189,12 @@ export class AppearanceModal extends Modal {
         mount: (panel: HTMLElement) => void
     ): AppearanceTab {
         const button = tabBar.createEl('button', {
-            cls: 'tps-nn-appearance-tab',
+            cls: 'nn-appearance-tab',
             attr: { type: 'button', role: 'tab' }
         });
-        const chip = button.createSpan('tps-nn-appearance-tab-chip');
-        button.createSpan({ cls: 'tps-nn-appearance-tab-label', text: label });
-        const panel = body.createDiv('tps-nn-appearance-panel tps-nn-appearance-panel-hidden');
+        const chip = button.createSpan('nn-appearance-tab-chip');
+        button.createSpan({ cls: 'nn-appearance-tab-label', text: label });
+        const panel = body.createDiv('nn-appearance-panel nn-appearance-panel-hidden');
         panel.setAttribute('role', 'tabpanel');
 
         const tab: AppearanceTab = { id, button, chip, panel, mounted: false, mount: () => mount(panel) };
@@ -203,7 +203,7 @@ export class AppearanceModal extends Modal {
     }
 
     private mountIconTab(panel: HTMLElement): void {
-        const host = panel.createDiv('tps-nn-appearance-picker-host');
+        const host = panel.createDiv('nn-appearance-picker-host');
         this.iconSurface = new IconPickerSurface({
             app: this.app,
             rootEl: host,
@@ -223,7 +223,7 @@ export class AppearanceModal extends Modal {
     }
 
     private mountColorTab(panel: HTMLElement, id: 'color' | 'background'): void {
-        const host = panel.createDiv('tps-nn-appearance-picker-host');
+        const host = panel.createDiv('nn-appearance-picker-host');
         const surface = new ColorPickerSurface({
             app: this.app,
             rootEl: host,
@@ -263,9 +263,9 @@ export class AppearanceModal extends Modal {
         this.activeTabId = id;
         this.tabs.forEach(tab => {
             const isActive = tab.id === id;
-            tab.button.toggleClass('tps-nn-active', isActive);
+            tab.button.toggleClass('nn-active', isActive);
             tab.button.setAttribute('aria-selected', isActive ? 'true' : 'false');
-            tab.panel.toggleClass('tps-nn-appearance-panel-hidden', !isActive);
+            tab.panel.toggleClass('nn-appearance-panel-hidden', !isActive);
             if (isActive && !tab.mounted) {
                 tab.mounted = true;
                 tab.mount();
@@ -362,36 +362,36 @@ export class AppearanceModal extends Modal {
         this.previewIconEl.empty();
         if (previewIcon) {
             this.iconService.renderIcon(this.previewIconEl, previewIcon);
-            this.previewIconEl.removeClass('tps-nn-appearance-preview-icon-empty');
+            this.previewIconEl.removeClass('nn-appearance-preview-icon-empty');
         } else {
-            this.previewIconEl.addClass('tps-nn-appearance-preview-icon-empty');
+            this.previewIconEl.addClass('nn-appearance-preview-icon-empty');
         }
 
-        this.previewItem.style.removeProperty('--tps-nn-preview-fg');
+        this.previewItem.style.removeProperty('--nn-preview-fg');
         this.previewIconEl.style.removeProperty('color');
         if (this.stagedColor) {
             if (colorIconOnly) {
                 this.previewIconEl.style.setProperty('color', this.stagedColor);
             } else {
-                this.previewItem.style.setProperty('--tps-nn-preview-fg', this.stagedColor);
+                this.previewItem.style.setProperty('--nn-preview-fg', this.stagedColor);
             }
         }
 
         if (this.stagedBackground) {
-            this.previewItem.style.setProperty('--tps-nn-preview-bg', this.stagedBackground);
+            this.previewItem.style.setProperty('--nn-preview-bg', this.stagedBackground);
         } else {
-            this.previewItem.style.removeProperty('--tps-nn-preview-bg');
+            this.previewItem.style.removeProperty('--nn-preview-bg');
         }
     }
 
     private renderTabChips(): void {
         this.tabs.forEach(tab => {
             tab.chip.empty();
-            tab.chip.removeClass('tps-nn-appearance-tab-chip-empty');
-            tab.chip.removeClass('tps-nn-appearance-tab-color-chip');
-            tab.chip.removeClass('tps-nn-checkerboard');
-            tab.chip.removeClass('tps-nn-color-swatch');
-            tab.chip.style.removeProperty('--tps-nn-color-swatch-color');
+            tab.chip.removeClass('nn-appearance-tab-chip-empty');
+            tab.chip.removeClass('nn-appearance-tab-color-chip');
+            tab.chip.removeClass('nn-checkerboard');
+            tab.chip.removeClass('nn-color-swatch');
+            tab.chip.style.removeProperty('--nn-color-swatch-color');
 
             if (tab.id === 'icon') {
                 this.renderIconChip(tab.chip);
@@ -404,26 +404,26 @@ export class AppearanceModal extends Modal {
     }
 
     private renderIconChip(chip: HTMLElement): void {
-        chip.addClass('tps-nn-appearance-tab-icon-chip');
+        chip.addClass('nn-appearance-tab-icon-chip');
         if (this.stagedIcon) {
             this.iconService.renderIcon(chip, this.stagedIcon);
             return;
         }
 
-        chip.addClass('tps-nn-appearance-tab-chip-empty');
+        chip.addClass('nn-appearance-tab-chip-empty');
         setIcon(chip, 'lucide-image');
     }
 
     private renderColorChip(chip: HTMLElement, color: string | null): void {
-        chip.addClass('tps-nn-appearance-tab-color-chip');
-        chip.addClass('tps-nn-checkerboard');
+        chip.addClass('nn-appearance-tab-color-chip');
+        chip.addClass('nn-checkerboard');
         if (!color) {
-            chip.addClass('tps-nn-appearance-tab-chip-empty');
+            chip.addClass('nn-appearance-tab-chip-empty');
             return;
         }
 
-        chip.addClass('tps-nn-color-swatch');
-        chip.style.setProperty('--tps-nn-color-swatch-color', color);
+        chip.addClass('nn-color-swatch');
+        chip.style.setProperty('--nn-color-swatch-color', color);
     }
 
     private renderResetButton(): void {
@@ -449,7 +449,7 @@ export class AppearanceModal extends Modal {
         }
 
         this.resetButton.setText(label);
-        this.resetButton.toggleClass('tps-nn-appearance-reset-active', active);
+        this.resetButton.toggleClass('nn-appearance-reset-active', active);
     }
 
     private renderClearButton(): void {
@@ -457,7 +457,7 @@ export class AppearanceModal extends Modal {
             return;
         }
         const hasStyle = this.stagedIcon !== null || this.stagedColor !== null || this.stagedBackground !== null;
-        this.clearButton.toggleClass('tps-nn-appearance-clear-hidden', !hasStyle);
+        this.clearButton.toggleClass('nn-appearance-clear-hidden', !hasStyle);
     }
 
     private async applyAll(): Promise<void> {

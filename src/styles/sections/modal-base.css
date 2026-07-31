@@ -5,46 +5,46 @@
    ======================================================================== */
 
 /* Modal input field - used in rename/create dialogs */
-.tps-nn-input {
+.nn-input {
     width: 100%;
     padding: 8px 12px;
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-s);
     background-color: var(--background-primary);
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
     font-size: 14px;
     margin: 16px 0;
 }
 
 /* Modal input focus state */
-.tps-nn-input:focus {
+.nn-input:focus {
     outline: none;
     border-color: var(--interactive-accent);
 }
 
-.tps-nn-input-description {
-    color: var(--tps-nn-theme-foreground-muted);
+.nn-input-description {
+    color: var(--nn-theme-foreground-muted);
     font-size: var(--font-ui-small);
     margin-top: 12px;
 }
 
-.tps-nn-merge-notes-summary {
+.nn-merge-notes-summary {
     margin-bottom: 8px;
 }
 
-.tps-nn-merge-notes-details {
-    color: var(--tps-nn-theme-foreground-muted);
+.nn-merge-notes-details {
+    color: var(--nn-theme-foreground-muted);
     font-size: var(--font-ui-small);
     unicode-bidi: plaintext;
 }
 
-.tps-nn-merge-notes-warning {
+.nn-merge-notes-warning {
     color: var(--text-error);
     font-weight: 700;
     unicode-bidi: plaintext;
 }
 
-.tps-nn-input-checkbox-row {
+.nn-input-checkbox-row {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -53,12 +53,12 @@
     font-size: var(--font-ui-small);
 }
 
-.tps-nn-input-checkbox-row input[type='checkbox'] {
+.nn-input-checkbox-row input[type='checkbox'] {
     margin: 0;
 }
 
 /* Modal button container - right-aligned button group */
-.tps-nn-button-container {
+.nn-button-container {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
@@ -66,20 +66,20 @@
 }
 
 /* YouTube play overlay shared by modal thumbnail links */
-.tps-nn-youtube-play {
+.nn-youtube-play {
     position: absolute;
-    top: var(--tps-nn-youtube-play-y, 50%);
-    left: var(--tps-nn-youtube-play-x, 50%);
+    top: var(--nn-youtube-play-y, 50%);
+    left: var(--nn-youtube-play-x, 50%);
     width: 52px;
     height: 36px;
-    transform: translate(-50%, -50%) scale(var(--tps-nn-youtube-play-scale, 1));
+    transform: translate(-50%, -50%) scale(var(--nn-youtube-play-scale, 1));
     border-radius: 8px;
     background-color: #ff0000;
     opacity: 0.9;
     pointer-events: none;
 }
 
-.tps-nn-youtube-play::before {
+.nn-youtube-play::before {
     content: '';
     position: absolute;
     top: 50%;
@@ -92,29 +92,29 @@
     border-color: transparent transparent transparent #ffffff;
 }
 
-.tps-nn-folder-note-type-modal .modal-content {
+.nn-folder-note-type-modal .modal-content {
     padding-top: 16px;
 }
 
-.tps-nn-folder-note-type-modal .modal-title {
+.nn-folder-note-type-modal .modal-title {
     width: 100%;
     text-align: center;
 }
 
-.tps-nn-folder-note-type-info {
+.nn-folder-note-type-info {
     margin-bottom: 4px;
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     text-align: center;
 }
 
-.tps-nn-folder-note-type-buttons {
+.nn-folder-note-type-buttons {
     display: flex;
     flex-direction: column;
     gap: 8px;
     margin-top: 12px;
 }
 
-.tps-nn-folder-note-type-buttons button {
+.nn-folder-note-type-buttons button {
     width: 100%;
 }
 
@@ -122,7 +122,7 @@
    Search help modal
    ======================================================================== */
 
-.modal.tps-nn-search-help-modal {
+.modal.nn-search-help-modal {
     /* Desktop layout with bounded width while keeping viewport margins */
     width: min(600px, calc(100vw - 80px));
     max-width: min(600px, calc(100vw - 80px));
@@ -130,29 +130,29 @@
     max-height: min(70vh, 640px);
 }
 
-.modal.tps-nn-search-help-modal .modal-content {
+.modal.nn-search-help-modal .modal-content {
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
-.modal.tps-nn-search-help-modal .tps-nn-search-help-scroll {
+.modal.nn-search-help-modal .nn-search-help-scroll {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     padding-right: 8px;
 }
 
-.modal.tps-nn-search-help-modal strong {
+.modal.nn-search-help-modal strong {
     font-size: inherit;
     font-weight: 600;
 }
 
-.is-mobile .modal.tps-nn-search-help-modal {
+.is-mobile .modal.nn-search-help-modal {
     max-height: min(560px, calc(100vh - 24px));
     max-width: calc(100vw - 24px);
 }
 
-.is-mobile .modal.tps-nn-search-help-modal .modal-content {
+.is-mobile .modal.nn-search-help-modal .modal-content {
     padding-right: 12px;
 }

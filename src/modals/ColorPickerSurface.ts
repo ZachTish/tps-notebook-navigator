@@ -155,17 +155,17 @@ export class ColorPickerSurface {
 
     build(): void {
         this.isBuilding = true;
-        const mainContent = this.rootEl.createDiv('tps-nn-color-picker-content');
+        const mainContent = this.rootEl.createDiv('nn-color-picker-content');
 
-        const leftColumn = mainContent.createDiv('tps-nn-color-picker-left');
+        const leftColumn = mainContent.createDiv('nn-color-picker-left');
         if (this.showPreview) {
             this.buildPreview(leftColumn);
         } else {
-            leftColumn.addClass('tps-nn-color-picker-left-no-preview');
+            leftColumn.addClass('nn-color-picker-left-no-preview');
         }
         this.buildPalette(leftColumn);
 
-        const rightColumn = mainContent.createDiv('tps-nn-color-picker-right');
+        const rightColumn = mainContent.createDiv('nn-color-picker-right');
         this.buildVisualPicker(rightColumn);
 
         this.buildRecentColors(this.recentInLeftColumn ? leftColumn : this.rootEl);
@@ -337,16 +337,16 @@ export class ColorPickerSurface {
     }
 
     private buildPreview(leftColumn: HTMLElement): void {
-        const previewSection = leftColumn.createDiv('tps-nn-color-preview-section');
-        const previewContainer = previewSection.createDiv('tps-nn-color-preview-container');
+        const previewSection = leftColumn.createDiv('nn-color-preview-section');
+        const previewContainer = previewSection.createDiv('nn-color-preview-container');
 
-        const currentSection = previewContainer.createDiv('tps-nn-preview-current');
-        currentSection.createSpan({ text: strings.modals.colorPicker.currentColor, cls: 'tps-nn-preview-label' });
-        const previewCurrent = currentSection.createDiv('tps-nn-preview-color');
+        const currentSection = previewContainer.createDiv('nn-preview-current');
+        currentSection.createSpan({ text: strings.modals.colorPicker.currentColor, cls: 'nn-preview-label' });
+        const previewCurrent = currentSection.createDiv('nn-preview-color');
         if (this.currentColor) {
             this.applySwatchColor(previewCurrent, this.currentColor);
         } else {
-            previewCurrent.addClass('tps-nn-no-color');
+            previewCurrent.addClass('nn-no-color');
         }
         this.makeSwatchDraggable(previewCurrent, () => this.currentColor, this.domDisposers);
         this.domDisposers.push(
@@ -368,24 +368,24 @@ export class ColorPickerSurface {
             })
         );
 
-        const arrow = previewContainer.createDiv('tps-nn-preview-arrow');
+        const arrow = previewContainer.createDiv('nn-preview-arrow');
         setIcon(arrow, 'lucide-arrow-right');
 
-        const newSection = previewContainer.createDiv('tps-nn-preview-new');
-        newSection.createSpan({ text: strings.modals.colorPicker.newColor, cls: 'tps-nn-preview-label' });
-        const previewNew = newSection.createDiv('tps-nn-preview-color tps-nn-show-checkerboard');
+        const newSection = previewContainer.createDiv('nn-preview-new');
+        newSection.createSpan({ text: strings.modals.colorPicker.newColor, cls: 'nn-preview-label' });
+        const previewNew = newSection.createDiv('nn-preview-color nn-show-checkerboard');
         this.previewNew = previewNew;
         this.applySwatchColor(previewNew, this.selectedColor);
         this.makeSwatchDraggable(previewNew, () => (this.cleared ? null : this.selectedColor), this.domDisposers);
     }
 
     private buildPalette(leftColumn: HTMLElement): void {
-        const presetSection = leftColumn.createDiv('tps-nn-preset-section');
-        const presetHeader = presetSection.createDiv('tps-nn-preset-header');
-        const paletteToggle = presetHeader.createDiv('tps-nn-preset-toggle');
+        const presetSection = leftColumn.createDiv('nn-preset-section');
+        const presetHeader = presetSection.createDiv('nn-preset-header');
+        const paletteToggle = presetHeader.createDiv('nn-preset-toggle');
         this.paletteToggleDefault = paletteToggle.createSpan({
             text: strings.modals.colorPicker.paletteDefault,
-            cls: 'tps-nn-preset-toggle-label'
+            cls: 'nn-preset-toggle-label'
         });
         this.domDisposers.push(
             addAsyncEventListener(this.paletteToggleDefault, 'click', event => {
@@ -394,11 +394,11 @@ export class ColorPickerSurface {
             })
         );
 
-        paletteToggle.createSpan({ text: '|', cls: 'tps-nn-preset-toggle-separator' });
+        paletteToggle.createSpan({ text: '|', cls: 'nn-preset-toggle-separator' });
 
         this.paletteToggleCustom = paletteToggle.createSpan({
             text: strings.modals.colorPicker.paletteCustom,
-            cls: 'tps-nn-preset-toggle-label'
+            cls: 'nn-preset-toggle-label'
         });
         this.domDisposers.push(
             addAsyncEventListener(this.paletteToggleCustom, 'click', event => {
@@ -407,10 +407,10 @@ export class ColorPickerSurface {
             })
         );
 
-        const presetButtons = presetHeader.createDiv('tps-nn-preset-buttons');
+        const presetButtons = presetHeader.createDiv('nn-preset-buttons');
 
         this.copyColorsButton = presetButtons.createEl('button', {
-            cls: 'tps-nn-preset-action-button',
+            cls: 'nn-preset-action-button',
             attr: {
                 type: 'button',
                 'aria-label': strings.modals.colorPicker.copyColors,
@@ -421,7 +421,7 @@ export class ColorPickerSurface {
         this.domDisposers.push(addAsyncEventListener(this.copyColorsButton, 'click', () => this.copySelectedColor()));
 
         this.pasteColorsButton = presetButtons.createEl('button', {
-            cls: 'tps-nn-preset-action-button',
+            cls: 'nn-preset-action-button',
             attr: {
                 type: 'button',
                 'aria-label': strings.modals.colorPicker.pasteColors,
@@ -432,7 +432,7 @@ export class ColorPickerSurface {
         this.domDisposers.push(addAsyncEventListener(this.pasteColorsButton, 'click', () => this.pasteSelectedColor()));
 
         this.clearCustomColorsButton = presetButtons.createEl('button', {
-            cls: 'tps-nn-clear-recent tps-nn-clear-custom-colors',
+            cls: 'nn-clear-recent nn-clear-custom-colors',
             text: '×',
             attr: {
                 type: 'button',
@@ -442,18 +442,18 @@ export class ColorPickerSurface {
         });
         this.domDisposers.push(addAsyncEventListener(this.clearCustomColorsButton, 'click', () => this.confirmClearCustomColors()));
 
-        this.userColorsContainer = presetSection.createDiv('tps-nn-preset-colors');
+        this.userColorsContainer = presetSection.createDiv('nn-preset-colors');
     }
 
     private buildHexInput(parent: HTMLElement): void {
-        const hexSection = parent.createDiv('tps-nn-hex-section');
-        const header = hexSection.createDiv('tps-nn-hex-header');
-        header.createEl('label', { text: strings.modals.colorPicker.hexLabel, cls: 'tps-nn-hex-title' });
-        const hexContainer = hexSection.createDiv('tps-nn-hex-container');
-        hexContainer.createSpan({ text: '#', cls: 'tps-nn-hex-label' });
+        const hexSection = parent.createDiv('nn-hex-section');
+        const header = hexSection.createDiv('nn-hex-header');
+        header.createEl('label', { text: strings.modals.colorPicker.hexLabel, cls: 'nn-hex-title' });
+        const hexContainer = hexSection.createDiv('nn-hex-container');
+        hexContainer.createSpan({ text: '#', cls: 'nn-hex-label' });
         this.hexInput = hexContainer.createEl('input', {
             type: 'text',
-            cls: 'tps-nn-hex-input',
+            cls: 'nn-hex-input',
             value: this.selectedColor.substring(1),
             attr: {
                 'aria-label': strings.modals.colorPicker.hexInputLabel,
@@ -478,34 +478,34 @@ export class ColorPickerSurface {
     }
 
     private buildVisualPicker(rightColumn: HTMLElement): void {
-        const pickerHeader = rightColumn.createDiv('tps-nn-sv-header');
-        pickerHeader.createSpan({ text: strings.modals.colorPicker.pickerLabel, cls: 'tps-nn-section-label' });
+        const pickerHeader = rightColumn.createDiv('nn-sv-header');
+        pickerHeader.createSpan({ text: strings.modals.colorPicker.pickerLabel, cls: 'nn-section-label' });
 
-        const colorAreaSection = rightColumn.createDiv('tps-nn-color-area-section');
+        const colorAreaSection = rightColumn.createDiv('nn-color-area-section');
 
-        this.svArea = colorAreaSection.createDiv('tps-nn-sv-area');
+        this.svArea = colorAreaSection.createDiv('nn-sv-area');
         this.svArea.setAttribute('aria-label', strings.modals.colorPicker.saturationValueArea);
-        this.svThumb = this.svArea.createDiv('tps-nn-sv-thumb');
+        this.svThumb = this.svArea.createDiv('nn-sv-thumb');
         this.attachPointerArea(this.svArea, (x, y) => {
             this.saturation = x;
             this.value = 1 - y;
             this.commitHsvColor();
         });
 
-        const controls = colorAreaSection.createDiv('tps-nn-color-controls');
+        const controls = colorAreaSection.createDiv('nn-color-controls');
 
-        this.hueSlider = controls.createDiv('tps-nn-color-slider tps-nn-hue-slider');
+        this.hueSlider = controls.createDiv('nn-color-slider nn-hue-slider');
         this.hueSlider.setAttribute('aria-label', strings.modals.colorPicker.hueSlider);
-        this.hueThumb = this.hueSlider.createDiv('tps-nn-slider-thumb');
+        this.hueThumb = this.hueSlider.createDiv('nn-slider-thumb');
         this.attachPointerArea(this.hueSlider, x => {
             this.hue = x * 360;
             this.commitHsvColor();
         });
 
-        this.alphaSlider = controls.createDiv('tps-nn-color-slider tps-nn-alpha-slider tps-nn-checkerboard');
+        this.alphaSlider = controls.createDiv('nn-color-slider nn-alpha-slider nn-checkerboard');
         this.alphaSlider.setAttribute('aria-label', strings.modals.colorPicker.alphaSlider);
-        this.alphaSlider.createDiv('tps-nn-alpha-gradient');
-        this.alphaThumb = this.alphaSlider.createDiv('tps-nn-slider-thumb');
+        this.alphaSlider.createDiv('nn-alpha-gradient');
+        this.alphaThumb = this.alphaSlider.createDiv('nn-slider-thumb');
         this.attachPointerArea(this.alphaSlider, x => {
             this.alpha = Math.round(x * 255);
             this.commitHsvColor();
@@ -515,13 +515,13 @@ export class ColorPickerSurface {
     }
 
     private buildRecentColors(container: HTMLElement): void {
-        const recentSection = container.createDiv('tps-nn-recent-section');
-        const recentHeader = recentSection.createDiv('tps-nn-recent-header');
-        recentHeader.createDiv({ text: strings.modals.colorPicker.recentColors, cls: 'tps-nn-section-label' });
+        const recentSection = container.createDiv('nn-recent-section');
+        const recentHeader = recentSection.createDiv('nn-recent-header');
+        recentHeader.createDiv({ text: strings.modals.colorPicker.recentColors, cls: 'nn-section-label' });
 
         const clearButton = recentHeader.createEl('button', {
             text: '×',
-            cls: 'tps-nn-clear-recent',
+            cls: 'nn-clear-recent',
             title: strings.modals.colorPicker.clearRecentColors
         });
         this.domDisposers.push(
@@ -530,7 +530,7 @@ export class ColorPickerSurface {
             })
         );
 
-        this.recentColorsContainer = recentSection.createDiv('tps-nn-recent-colors');
+        this.recentColorsContainer = recentSection.createDiv('nn-recent-colors');
     }
 
     private attachPointerArea(element: HTMLElement, onMove: (x: number, y: number) => void): void {
@@ -590,7 +590,7 @@ export class ColorPickerSurface {
         this.recentColorsContainer.empty();
 
         recentColors.forEach((color, index) => {
-            const dot = this.recentColorsContainer.createDiv('tps-nn-color-dot tps-nn-recent-color tps-nn-show-checkerboard');
+            const dot = this.recentColorsContainer.createDiv('nn-color-dot nn-recent-color nn-show-checkerboard');
             this.applySwatchColor(dot, color);
             dot.setAttribute('data-color', color);
             this.makeSwatchDraggable(dot, () => color, this.recentColorDisposers);
@@ -606,14 +606,14 @@ export class ColorPickerSurface {
             );
 
             const removeButton = dot.createEl('button', {
-                cls: 'tps-nn-recent-remove-button',
+                cls: 'nn-recent-remove-button',
                 attr: {
                     type: 'button',
                     'aria-label': strings.modals.colorPicker.removeRecentColor,
                     title: strings.modals.colorPicker.removeRecentColor
                 }
             });
-            removeButton.createSpan({ text: '×', cls: 'tps-nn-recent-remove-glyph', attr: { 'aria-hidden': 'true' } });
+            removeButton.createSpan({ text: '×', cls: 'nn-recent-remove-glyph', attr: { 'aria-hidden': 'true' } });
             this.recentColorDisposers.push(
                 addAsyncEventListener(removeButton, 'click', event => {
                     event.stopPropagation();
@@ -624,7 +624,7 @@ export class ColorPickerSurface {
         });
 
         for (let i = recentColors.length; i < MAX_RECENT_COLORS; i++) {
-            this.recentColorsContainer.createDiv('tps-nn-color-dot tps-nn-color-empty');
+            this.recentColorsContainer.createDiv('nn-color-dot nn-color-empty');
         }
     }
 
@@ -658,17 +658,17 @@ export class ColorPickerSurface {
         const activeIndex = this.paletteMode === 'default' ? this.activeDefaultColorIndex : this.activeCustomColorIndex;
 
         colors.forEach((color, index) => {
-            const dot = this.userColorsContainer.createDiv('tps-nn-color-dot');
+            const dot = this.userColorsContainer.createDiv('nn-color-dot');
             this.userColorDots.push(dot);
             dot.setAttribute('title', this.getUserColorSlotLabel(index));
 
             const normalizedColor = this.normalizeHexColor(color) ?? DEFAULT_CUSTOM_COLOR;
-            dot.addClass('tps-nn-show-checkerboard');
+            dot.addClass('nn-show-checkerboard');
             this.applySwatchColor(dot, normalizedColor);
             dot.setAttribute('data-color', normalizedColor);
 
             if (activeIndex === index) {
-                dot.addClass('tps-nn-user-color-selected');
+                dot.addClass('nn-user-color-selected');
             }
 
             this.makeSwatchDraggable(dot, () => colors[index], this.paletteDisposers);
@@ -702,8 +702,8 @@ export class ColorPickerSurface {
     }
 
     private registerCustomDropTarget(element: HTMLElement, index: number): void {
-        const addHover = () => element.addClass('tps-nn-drop-hover');
-        const removeHover = () => element.removeClass('tps-nn-drop-hover');
+        const addHover = () => element.addClass('nn-drop-hover');
+        const removeHover = () => element.removeClass('nn-drop-hover');
 
         this.paletteDisposers.push(
             addAsyncEventListener(element, 'dragover', event => {
@@ -748,7 +748,7 @@ export class ColorPickerSurface {
     private updatePaletteSelection(): void {
         const activeIndex = this.paletteMode === 'custom' ? this.activeCustomColorIndex : this.activeDefaultColorIndex;
         this.userColorDots.forEach((dot, dotIndex) => {
-            dot.toggleClass('tps-nn-user-color-selected', dotIndex === activeIndex);
+            dot.toggleClass('nn-user-color-selected', dotIndex === activeIndex);
         });
         this.updatePresetButtonsVisibility();
     }
@@ -946,7 +946,7 @@ export class ColorPickerSurface {
         const canvas = this.rootEl.win.createEl('canvas');
         canvas.width = size;
         canvas.height = size;
-        canvas.className = 'tps-nn-drag-preview';
+        canvas.className = 'nn-drag-preview';
 
         const context = canvas.getContext('2d');
         if (!context) {
@@ -1030,10 +1030,10 @@ export class ColorPickerSurface {
     private updatePaletteToggleState(): void {
         const isDefault = this.paletteMode === 'default';
         if (this.paletteToggleDefault) {
-            this.paletteToggleDefault.toggleClass('tps-nn-preset-toggle-active', isDefault);
+            this.paletteToggleDefault.toggleClass('nn-preset-toggle-active', isDefault);
         }
         if (this.paletteToggleCustom) {
-            this.paletteToggleCustom.toggleClass('tps-nn-preset-toggle-active', !isDefault);
+            this.paletteToggleCustom.toggleClass('nn-preset-toggle-active', !isDefault);
         }
     }
 
@@ -1045,17 +1045,17 @@ export class ColorPickerSurface {
         const hasActiveCustom = this.activeCustomColorIndex !== null && this.paletteMode === 'custom';
 
         if (this.copyColorsButton) {
-            this.copyColorsButton.removeClass('tps-nn-preset-action-hidden');
+            this.copyColorsButton.removeClass('nn-preset-action-hidden');
             this.copyColorsButton.toggleAttribute('disabled', !hasActiveSelection);
-            this.copyColorsButton.toggleClass('tps-nn-preset-action-disabled', !hasActiveSelection);
+            this.copyColorsButton.toggleClass('nn-preset-action-disabled', !hasActiveSelection);
         }
         if (this.pasteColorsButton) {
-            this.pasteColorsButton.toggleClass('tps-nn-preset-action-hidden', !showCustomActions);
+            this.pasteColorsButton.toggleClass('nn-preset-action-hidden', !showCustomActions);
             this.pasteColorsButton.toggleAttribute('disabled', !hasActiveCustom);
-            this.pasteColorsButton.toggleClass('tps-nn-preset-action-disabled', !hasActiveCustom);
+            this.pasteColorsButton.toggleClass('nn-preset-action-disabled', !hasActiveCustom);
         }
         if (this.clearCustomColorsButton) {
-            this.clearCustomColorsButton.toggleClass('tps-nn-preset-action-hidden', !showCustomActions);
+            this.clearCustomColorsButton.toggleClass('nn-preset-action-hidden', !showCustomActions);
         }
     }
 
@@ -1166,7 +1166,7 @@ export class ColorPickerSurface {
         if (swatch) {
             this.applySwatchColor(swatch, color);
             swatch.setAttribute('data-color', color);
-            swatch.removeClass('tps-nn-color-empty');
+            swatch.removeClass('nn-color-empty');
         }
         this.markCustomColorsDirty();
     }
@@ -1176,16 +1176,16 @@ export class ColorPickerSurface {
     }
 
     private applySwatchColor(element: HTMLElement, color: string): void {
-        element.classList.remove('tps-nn-no-color');
-        const wantsCheckerboard = element.hasClass('tps-nn-show-checkerboard');
+        element.classList.remove('nn-no-color');
+        const wantsCheckerboard = element.hasClass('nn-show-checkerboard');
 
-        element.addClass('tps-nn-color-swatch');
-        element.style.setProperty('--tps-nn-color-swatch-color', color);
+        element.addClass('nn-color-swatch');
+        element.style.setProperty('--nn-color-swatch-color', color);
 
         if (wantsCheckerboard) {
-            element.addClass('tps-nn-checkerboard');
+            element.addClass('nn-checkerboard');
         } else {
-            element.removeClass('tps-nn-checkerboard');
+            element.removeClass('nn-checkerboard');
         }
     }
 
@@ -1195,13 +1195,13 @@ export class ColorPickerSurface {
         }
 
         if (this.cleared) {
-            this.previewNew.addClass('tps-nn-no-color');
-            this.previewNew.removeClass('tps-nn-color-swatch');
-            this.previewNew.style.removeProperty('--tps-nn-color-swatch-color');
+            this.previewNew.addClass('nn-no-color');
+            this.previewNew.removeClass('nn-color-swatch');
+            this.previewNew.style.removeProperty('--nn-color-swatch-color');
             return;
         }
 
-        this.previewNew.removeClass('tps-nn-no-color');
+        this.previewNew.removeClass('nn-no-color');
         this.applySwatchColor(this.previewNew, this.selectedColor);
     }
 
@@ -1268,14 +1268,14 @@ export class ColorPickerSurface {
         const pureHue = this.rgbaToHex({ ...this.hsvToRgb(this.hue, 1, 1), a: 255 });
         const opaque = this.rgbaToHex({ ...this.hsvToRgb(this.hue, this.saturation, this.value), a: 255 });
 
-        this.svArea.style.setProperty('--tps-nn-sv-hue', pureHue);
+        this.svArea.style.setProperty('--nn-sv-hue', pureHue);
         this.svThumb.style.left = this.formatThumbPosition(this.saturation);
         this.svThumb.style.top = this.formatThumbPosition(1 - this.value);
-        this.svThumb.style.setProperty('--tps-nn-thumb-color', opaque);
+        this.svThumb.style.setProperty('--nn-thumb-color', opaque);
 
         this.hueThumb.style.left = this.formatThumbPosition(this.hue / 360);
 
-        this.alphaSlider.style.setProperty('--tps-nn-alpha-color', opaque);
+        this.alphaSlider.style.setProperty('--nn-alpha-color', opaque);
         this.alphaThumb.style.left = this.formatThumbPosition(this.alpha / 255);
     }
 

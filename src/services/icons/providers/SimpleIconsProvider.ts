@@ -44,7 +44,7 @@ export class SimpleIconsProvider extends BaseFontIconProvider {
     }
 
     protected getCssClass(): string {
-        return 'tps-nn-iconfont-simple-icons';
+        return 'nn-iconfont-simple-icons';
     }
 
     /**

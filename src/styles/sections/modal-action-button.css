@@ -4,12 +4,12 @@
    Shared Modal Action Button
    ======================================================================== */
 
-.tps-nn-action-btn {
+.nn-action-btn {
     width: 32px;
     height: 32px;
     padding: 0;
     background-color: transparent;
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-s);
     display: flex;
@@ -19,35 +19,35 @@
     flex-shrink: 0;
 }
 
-.tps-nn-action-btn:hover:not(:disabled):not(.mod-warning) {
+.nn-action-btn:hover:not(:disabled):not(.mod-warning) {
     background: var(--background-modifier-hover);
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
     border-color: var(--background-modifier-border-hover);
 }
 
-.tps-nn-action-btn:disabled {
-    color: var(--tps-nn-theme-foreground);
+.nn-action-btn:disabled {
+    color: var(--nn-theme-foreground);
     opacity: 0.4;
     cursor: not-allowed;
 }
 
-.tps-nn-action-btn.mod-warning:disabled {
+.nn-action-btn.mod-warning:disabled {
     color: var(--text-error);
 }
 
-.tps-nn-action-btn.mod-warning {
+.nn-action-btn.mod-warning {
     background: transparent;
     color: var(--text-error);
     border-color: var(--background-modifier-border);
 }
 
-.tps-nn-action-btn.mod-warning:hover:not(:disabled) {
+.nn-action-btn.mod-warning:hover:not(:disabled) {
     background: var(--background-modifier-error);
     color: var(--text-error);
     border-color: var(--background-modifier-error-hover);
 }
 
-.tps-nn-action-btn svg {
+.nn-action-btn svg {
     width: 16px;
     height: 16px;
 }

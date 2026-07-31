@@ -5,26 +5,26 @@
    ======================================================================== */
 
 /* Single-pane slide animations for RTL */
-.mod-rtl .tps-nn-split-container.tps-nn-single-pane.show-navigation .tps-nn-list-pane {
+.mod-rtl .nn-split-container.nn-single-pane.show-navigation .nn-list-pane {
     transform: translateX(-100%);
 }
 
-.mod-rtl .tps-nn-split-container.tps-nn-single-pane.show-files .tps-nn-navigation-pane {
+.mod-rtl .nn-split-container.nn-single-pane.show-files .nn-navigation-pane {
     transform: translateX(100%);
 }
 
-.mod-rtl .tps-nn-file-name,
-.mod-rtl .tps-nn-file-preview {
+.mod-rtl .nn-file-name,
+.mod-rtl .nn-file-preview {
     text-align: right;
 }
 
 /* Bidi-safe text runs */
-.tps-nn-navitem-name,
-.tps-nn-file-name,
-.tps-nn-file-preview,
-.tps-nn-file-date,
-.tps-nn-parent-folder,
-.tps-nn-list-group-header {
+.nn-navitem-name,
+.nn-file-name,
+.nn-file-preview,
+.nn-file-date,
+.nn-parent-folder,
+.nn-list-group-header {
     unicode-bidi: plaintext;
 }
 

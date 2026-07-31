@@ -5,32 +5,32 @@
    ======================================================================== */
 
 /* Make panes flex containers on mobile to accommodate mobile toolbars. */
-.tps-notebook-navigator-mobile .tps-nn-navigation-pane {
+.notebook-navigator-mobile .nn-navigation-pane {
     display: flex;
     flex-direction: column;
     flex: 1;
     height: 100%;
     border-right: none;
-    background-color: var(--tps-nn-theme-nav-bg);
+    background-color: var(--nn-theme-nav-bg);
 }
 
 /* Horizontal dual pane on tablets sizes the navigation pane from the dragged divider width.
    Without restoring flex: 0 0 auto, the flex: 1 above zeroes the flex basis so both panes
    stay evenly split regardless of the stored width. The divider border returns because the
    resize handle is transparent when idle. */
-.tps-notebook-navigator-mobile .tps-nn-dual-pane.tps-nn-orientation-horizontal .tps-nn-navigation-pane {
+.notebook-navigator-mobile .nn-dual-pane.nn-orientation-horizontal .nn-navigation-pane {
     flex: 0 0 auto;
-    border-right: 1px solid var(--tps-nn-theme-divider-border-color);
+    border-right: 1px solid var(--nn-theme-divider-border-color);
 }
 
-.tps-notebook-navigator-mobile .tps-nn-list-pane {
+.notebook-navigator-mobile .nn-list-pane {
     display: flex;
     flex-direction: column;
     height: 100%;
 }
 
 /* Ensure scrollers take remaining space. */
-.tps-notebook-navigator-mobile .tps-nn-navigation-pane-scroller {
+.notebook-navigator-mobile .nn-navigation-pane-scroller {
     flex: 1;
     min-height: 0; /* Important for proper scrolling */
     -webkit-overflow-scrolling: touch;
@@ -40,12 +40,12 @@
 }
 
 /* Mobile list pane scroller uses the mobile list surface. */
-.tps-notebook-navigator-mobile .tps-nn-list-pane-scroller {
+.notebook-navigator-mobile .nn-list-pane-scroller {
     flex: 1;
     min-height: 0; /* Important for proper scrolling */
     -webkit-overflow-scrolling: touch;
     /* Keep horizontal pane bounce/chaining disabled while allowing native vertical edge feedback. */
     overscroll-behavior-x: none;
     overscroll-behavior-y: contain;
-    background-color: var(--tps-nn-theme-list-bg); /* Opaque background on scroller for GPU scroll layer (see .tps-nn-list-pane-scroller) */
+    background-color: var(--nn-theme-list-bg); /* Opaque background on scroller for GPU scroll layer (see .nn-list-pane-scroller) */
 }

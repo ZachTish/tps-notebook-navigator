@@ -4,8 +4,10 @@ import { builtinModules } from 'node:module';
 import { basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveRuntimeDeployPlugin } from './scripts/runtime-deploy-plugin.mjs';
+import { createTpsRuntimeNamespaceEsbuildPlugin } from './scripts/tps-runtime-namespace.mjs';
 
-const sourceFolder = basename(dirname(fileURLToPath(import.meta.url)));
+const projectRoot = dirname(fileURLToPath(import.meta.url));
+const sourceFolder = basename(projectRoot);
 const runtimeDeployPlugin = await resolveRuntimeDeployPlugin(sourceFolder, import.meta.url);
 
 const banner = `/*
@@ -52,7 +54,7 @@ const context = await esbuild.context({
     treeShaking: true,
     outfile: 'main.js',
     minify: prod,
-    plugins: [runtimeDeployPlugin]
+    plugins: [createTpsRuntimeNamespaceEsbuildPlugin(projectRoot), runtimeDeployPlugin]
 });
 
 if (prod) {

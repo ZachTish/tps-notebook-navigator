@@ -96,7 +96,7 @@ export function renderFilesTab(context: SettingsTabContext, heading?: string): v
             }
         );
     });
-    templateFolderSetting.controlEl.addClass('tps-nn-setting-wide-input');
+    templateFolderSetting.controlEl.addClass('nn-setting-wide-input');
     const templateFolderInputEl = templateFolderSetting.controlEl.querySelector<HTMLInputElement>('input');
     if (templateFolderInputEl) {
         const folderSuggest = new FolderPathInputSuggest(context.app, templateFolderInputEl);
@@ -108,7 +108,7 @@ export function renderFilesTab(context: SettingsTabContext, heading?: string): v
 
 function renderTemplateFolderInfoSetting(setting: Setting, context: SettingsTabContext): void {
     setting.setName('').setDesc('');
-    setting.settingEl.addClass('tps-nn-setting-info-container');
+    setting.settingEl.addClass('nn-setting-info-container');
     setting.descEl.empty();
 
     setting.descEl.createDiv({ text: strings.settings.items.calendarTemplateFolder.usage });

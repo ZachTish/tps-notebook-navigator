@@ -19,6 +19,8 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import prettier from 'prettier';
+import { applyTpsRuntimeNamespace } from './tps-runtime-namespace.mjs';
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -89,7 +91,13 @@ const header = [
 let output = header;
 
 for (const entry of resolvedImports) {
-    output += await fs.readFile(entry.absolutePath, 'utf8');
+    const source = await fs.readFile(entry.absolutePath, 'utf8');
+    const prettierOptions = (await prettier.resolveConfig(entry.absolutePath)) ?? {};
+    output += await prettier.format(applyTpsRuntimeNamespace(source), {
+        ...prettierOptions,
+        filepath: entry.absolutePath,
+        parser: 'css'
+    });
 }
 
 let existing = null;

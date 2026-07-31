@@ -4,21 +4,21 @@
    Select Vault Profile Modal
    ======================================================================== */
 
-.modal.tps-nn-select-profile-modal .modal-content {
+.modal.nn-select-profile-modal .modal-content {
     display: flex;
     flex-direction: column;
     gap: var(--size-2-3);
     padding: var(--size-4-4);
 }
 
-.tps-nn-select-profile-list {
+.nn-select-profile-list {
     display: flex;
     flex-direction: column;
     gap: var(--size-2-2);
     width: 100%;
 }
 
-.tps-nn-select-profile-item {
+.nn-select-profile-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -26,45 +26,45 @@
     padding: var(--size-2-3) var(--size-4-2);
     border-radius: var(--radius-m);
     background-color: transparent;
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
     cursor: pointer;
     transition: background-color 120ms ease;
 }
 
-.tps-nn-select-profile-item:focus {
+.nn-select-profile-item:focus {
     outline: none;
 }
 
-.tps-nn-select-profile-item:focus-visible {
+.nn-select-profile-item:focus-visible {
     box-shadow: 0 0 0 2px var(--interactive-accent);
 }
 
-.tps-nn-select-profile-item:hover {
+.nn-select-profile-item:hover {
     background-color: var(--background-modifier-hover);
 }
 
-.tps-nn-select-profile-item.is-selected {
+.nn-select-profile-item.is-selected {
     background-color: var(--background-modifier-hover);
 }
 
-.tps-nn-select-profile-item.is-current .tps-nn-select-profile-item-name {
+.nn-select-profile-item.is-current .nn-select-profile-item-name {
     color: var(--interactive-accent);
 }
 
-.tps-nn-select-profile-item-name {
+.nn-select-profile-item-name {
     font-size: var(--font-ui-medium);
 }
 
-.tps-nn-select-profile-item-badge {
+.nn-select-profile-item-badge {
     font-size: var(--font-ui-small);
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     font-weight: var(--font-semibold);
 }
 
-.tps-nn-select-profile-empty {
+.nn-select-profile-empty {
     margin: 0;
     padding: var(--size-4-4) 0;
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     font-size: var(--font-ui-small);
     text-align: center;
 }

@@ -5,12 +5,12 @@
    ======================================================================== */
 
 /* Modal size - use natural width */
-.modal.tps-nn-color-picker-modal {
+.modal.nn-color-picker-modal {
     max-height: 80vh;
 }
 
 /* Modal content padding */
-.modal.tps-nn-color-picker-modal .modal-content {
+.modal.nn-color-picker-modal .modal-content {
     padding: 16px;
     width: 100%;
     box-sizing: border-box;
@@ -20,28 +20,28 @@
     overflow: hidden;
 }
 
-.modal.tps-nn-color-picker-modal .modal-close-button {
+.modal.nn-color-picker-modal .modal-close-button {
     z-index: 10;
     pointer-events: auto;
 }
 
 /* Header */
-.tps-nn-color-picker-header,
-.tps-nn-icon-picker-header {
+.nn-color-picker-header,
+.nn-icon-picker-header {
     margin-bottom: 16px;
     text-align: center;
 }
 
-.tps-nn-color-picker-header h3,
-.tps-nn-icon-picker-header h3 {
+.nn-color-picker-header h3,
+.nn-icon-picker-header h3 {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
 }
 
 /* Two column layout */
-.tps-nn-color-picker-content {
+.nn-color-picker-content {
     display: flex;
     gap: 20px;
     flex: 1 1 auto;
@@ -49,35 +49,35 @@
     padding-bottom: 8px;
 }
 
-.tps-nn-color-picker-left,
-.tps-nn-color-picker-right {
+.nn-color-picker-left,
+.nn-color-picker-right {
     display: flex;
     flex-direction: column;
 }
 
-.tps-nn-color-picker-left {
+.nn-color-picker-left {
     flex: 0 1 250px;
     min-width: 180px;
 }
 
-.tps-nn-color-picker-right {
+.nn-color-picker-right {
     flex: 1 1 200px;
     min-width: 0;
 }
 
 /* Preview section */
-.tps-nn-color-preview-section {
+.nn-color-preview-section {
     margin-bottom: auto; /* Push preset colors to bottom */
 }
 
-.tps-nn-color-preview-container {
+.nn-color-preview-container {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
-.tps-nn-preview-current,
-.tps-nn-preview-new {
+.nn-preview-current,
+.nn-preview-new {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -85,36 +85,36 @@
     gap: 6px;
 }
 
-.tps-nn-preview-label,
-.tps-nn-hex-title {
+.nn-preview-label,
+.nn-hex-title {
     font-size: 11px;
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     font-weight: 500;
 }
 
-.tps-nn-preview-color {
+.nn-preview-color {
     width: 100%;
     height: 50px;
     border-radius: var(--radius-m);
     border: 1px solid var(--background-modifier-border);
 }
 
-.tps-nn-color-swatch {
+.nn-color-swatch {
     position: relative;
     overflow: hidden;
 }
 
-.tps-nn-color-swatch::after {
+.nn-color-swatch::after {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: var(--tps-nn-color-swatch-color, transparent);
+    background: var(--nn-color-swatch-color, transparent);
     pointer-events: none;
 }
 
-.tps-nn-checkerboard,
-.tps-nn-preview-color.tps-nn-no-color {
+.nn-checkerboard,
+.nn-preview-color.nn-no-color {
     background-image:
         linear-gradient(45deg, #cccccc 25%, transparent 25%, transparent 75%, #cccccc 75%, #cccccc),
         linear-gradient(45deg, #cccccc 25%, transparent 25%, transparent 75%, #cccccc 75%, #cccccc);
@@ -125,41 +125,41 @@
     background-color: #ffffff;
 }
 
-.theme-dark .tps-nn-checkerboard,
-.theme-dark .tps-nn-preview-color.tps-nn-no-color {
+.theme-dark .nn-checkerboard,
+.theme-dark .nn-preview-color.nn-no-color {
     background-image:
         linear-gradient(45deg, #444444 25%, transparent 25%, transparent 75%, #444444 75%, #444444),
         linear-gradient(45deg, #444444 25%, transparent 25%, transparent 75%, #444444 75%, #444444);
     background-color: #222222;
 }
 
-.tps-nn-preview-arrow {
+.nn-preview-arrow {
     width: 20px;
     height: 20px;
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     flex-shrink: 0;
     margin-top: 18px;
 }
 
-.tps-nn-preview-arrow svg {
+.nn-preview-arrow svg {
     width: 16px;
     height: 16px;
 }
 
 /* Visual color picker section */
-.tps-nn-color-area-section,
-.tps-nn-color-preview-section {
+.nn-color-area-section,
+.nn-color-preview-section {
     padding-bottom: 15px;
 }
 
-.tps-nn-color-area-section {
+.nn-color-area-section {
     display: flex;
     flex-direction: column;
     gap: 14px;
     margin-bottom: auto; /* Push everything below to the bottom */
 }
 
-.tps-nn-color-controls {
+.nn-color-controls {
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -168,38 +168,38 @@
 /* Header above the saturation/value area; matches the preset header height so the picker
    lines up with the swatch grid in the left column. Hidden on mobile where the area sits
    beside the sliders. */
-.tps-nn-sv-header {
+.nn-sv-header {
     display: flex;
     align-items: center;
     min-height: 20px;
     margin-bottom: 8px;
 }
 
-.tps-nn-sv-area {
+.nn-sv-area {
     position: relative;
     width: 100%;
     height: 150px;
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-m);
-    background-color: var(--tps-nn-sv-hue, #ff0000);
+    background-color: var(--nn-sv-hue, #ff0000);
     background-image: linear-gradient(to top, #000000, rgba(0, 0, 0, 0)), linear-gradient(to right, #ffffff, rgba(255, 255, 255, 0));
     cursor: crosshair;
     touch-action: none;
 }
 
-.tps-nn-sv-thumb {
+.nn-sv-thumb {
     position: absolute;
     width: 14px;
     height: 14px;
     border: 2px solid #ffffff;
     border-radius: 50%;
-    background: var(--tps-nn-thumb-color, #ffffff);
+    background: var(--nn-thumb-color, #ffffff);
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
     pointer-events: none;
     transform: translate(-50%, -50%);
 }
 
-.tps-nn-color-slider {
+.nn-color-slider {
     position: relative;
     width: calc(100% - 16px);
     height: 14px;
@@ -209,7 +209,7 @@
     touch-action: none;
 }
 
-.tps-nn-hue-slider {
+.nn-hue-slider {
     background: linear-gradient(
         to right,
         #ff0000 0%,
@@ -222,15 +222,15 @@
     );
 }
 
-.tps-nn-alpha-gradient {
+.nn-alpha-gradient {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: linear-gradient(to right, rgba(0, 0, 0, 0), var(--tps-nn-alpha-color, #000000));
+    background: linear-gradient(to right, rgba(0, 0, 0, 0), var(--nn-alpha-color, #000000));
     pointer-events: none;
 }
 
-.tps-nn-color-slider .tps-nn-slider-thumb {
+.nn-color-slider .nn-slider-thumb {
     position: absolute;
     top: 50%;
     z-index: 1;
@@ -245,11 +245,11 @@
 }
 
 /* Hex input section - sits at the bottom of the picker, below the alpha slider */
-.tps-nn-hex-section {
+.nn-hex-section {
     margin-bottom: 0;
 }
 
-.tps-nn-hex-header {
+.nn-hex-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -257,95 +257,95 @@
     margin-bottom: 6px;
 }
 
-.tps-nn-hex-title {
+.nn-hex-title {
     display: block;
     height: 17px; /* Match the preview label height for alignment */
     margin-bottom: 0;
 }
 
-.tps-nn-hex-container {
+.nn-hex-container {
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.tps-nn-hex-label {
+.nn-hex-label {
     font-size: 14px;
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
     font-weight: 500;
 }
 
-.tps-nn-hex-input {
+.nn-hex-input {
     flex: 1;
     padding: 6px 8px;
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-s);
     background: var(--background-primary);
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
     font-family: var(--font-monospace);
     font-size: 13px;
 }
 
-.tps-nn-hex-input:focus {
+.nn-hex-input:focus {
     outline: none;
     border-color: var(--interactive-accent);
     box-shadow: 0 0 0 2px var(--interactive-accent-hover);
 }
 
 /* Recent colors header */
-.tps-nn-preset-header,
-.tps-nn-recent-header {
+.nn-preset-header,
+.nn-recent-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 8px;
 }
 
-.tps-nn-section-label {
+.nn-section-label {
     font-size: 12px;
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     font-weight: 500;
 }
 
-.tps-nn-preset-buttons {
+.nn-preset-buttons {
     display: flex;
     gap: 4px;
 }
 
-.tps-nn-preset-toggle {
+.nn-preset-toggle {
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.tps-nn-preset-toggle-label {
+.nn-preset-toggle-label {
     background: none;
     border: none;
     padding: 0;
     font-size: 12px;
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     cursor: pointer;
     font-weight: 500;
 }
 
-.tps-nn-preset-toggle-label.tps-nn-preset-toggle-active {
-    color: var(--tps-nn-theme-foreground);
+.nn-preset-toggle-label.nn-preset-toggle-active {
+    color: var(--nn-theme-foreground);
     font-weight: 700;
 }
 
-.tps-nn-preset-toggle-separator {
-    color: var(--tps-nn-theme-foreground-muted);
+.nn-preset-toggle-separator {
+    color: var(--nn-theme-foreground-muted);
     font-size: 12px;
     line-height: 1;
 }
 
-.tps-nn-preset-action-button,
-.tps-nn-clear-recent {
+.nn-preset-action-button,
+.nn-clear-recent {
     width: 20px;
     height: 20px;
     padding: 0;
     background: transparent;
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     border: 1px solid var(--background-modifier-border);
     border-radius: 3px;
     cursor: pointer;
@@ -356,60 +356,60 @@
     line-height: 1;
 }
 
-.tps-nn-preset-action-disabled {
+.nn-preset-action-disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }
 
-.tps-nn-preset-action-hidden {
+.nn-preset-action-hidden {
     display: none;
 }
 
-.tps-nn-preset-action-button:hover,
-.tps-nn-clear-recent:hover {
+.nn-preset-action-button:hover,
+.nn-clear-recent:hover {
     background: var(--background-modifier-hover);
-    color: var(--tps-nn-theme-foreground);
+    color: var(--nn-theme-foreground);
     border-color: var(--background-modifier-border-hover);
 }
 
-.tps-nn-preset-action-button svg {
+.nn-preset-action-button svg {
     width: 14px;
     height: 14px;
 }
 
 /* Preset and Recent colors sections */
-.tps-nn-preset-section {
+.nn-preset-section {
     margin-top: auto; /* Align to bottom */
 }
 
-.tps-nn-recent-section {
+.nn-recent-section {
     margin-top: 0;
 }
 
-.tps-nn-preset-colors,
-.tps-nn-recent-colors {
+.nn-preset-colors,
+.nn-recent-colors {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 6px;
     overflow: hidden;
 }
 
-.tps-nn-recent-colors {
+.nn-recent-colors {
     grid-template-columns: repeat(10, 36px);
 }
 
-.tps-nn-recent-colors .tps-nn-color-dot {
+.nn-recent-colors .nn-color-dot {
     width: 36px;
     height: 36px;
     aspect-ratio: auto;
 }
 
-.tps-nn-preset-colors {
+.nn-preset-colors {
     margin-top: 8px;
 }
 
 /* Color dots */
-.tps-nn-color-dot {
+.nn-color-dot {
     aspect-ratio: 1;
     border-radius: var(--radius-s);
     cursor: pointer;
@@ -418,7 +418,7 @@
     overflow: hidden;
 }
 
-.tps-nn-recent-remove-button {
+.nn-recent-remove-button {
     position: absolute;
     top: 2px;
     right: 2px;
@@ -429,7 +429,7 @@
     border-radius: 999px;
     border: 1px solid var(--background-modifier-border);
     background: var(--background-primary);
-    color: var(--tps-nn-theme-foreground-muted);
+    color: var(--nn-theme-foreground-muted);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -437,32 +437,32 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .tps-nn-recent-remove-button {
+    .nn-recent-remove-button {
         opacity: 0;
         visibility: hidden;
         pointer-events: none;
         transition: opacity 120ms ease;
     }
 
-    .tps-nn-color-dot:hover .tps-nn-recent-remove-button,
-    .tps-nn-color-dot:focus-within .tps-nn-recent-remove-button {
+    .nn-color-dot:hover .nn-recent-remove-button,
+    .nn-color-dot:focus-within .nn-recent-remove-button {
         opacity: 1;
         visibility: visible;
         pointer-events: auto;
     }
 }
 
-.tps-nn-recent-remove-button:hover {
-    color: var(--tps-nn-theme-foreground);
+.nn-recent-remove-button:hover {
+    color: var(--nn-theme-foreground);
     border-color: var(--interactive-accent);
 }
 
-.tps-nn-recent-remove-button:focus-visible {
+.nn-recent-remove-button:focus-visible {
     outline: 2px solid var(--interactive-accent);
     outline-offset: 1px;
 }
 
-.tps-nn-recent-remove-glyph {
+.nn-recent-remove-glyph {
     font-size: 11px;
     line-height: 1;
     transform: translateY(-1px);
@@ -470,7 +470,7 @@
 }
 
 /* Touch target enhancement for mobile */
-.tps-nn-color-dot::before {
+.nn-color-dot::before {
     content: '';
     position: absolute;
     top: -4px;
@@ -479,41 +479,41 @@
     bottom: -4px;
 }
 
-.tps-nn-color-dot:hover::after {
+.nn-color-dot:hover::after {
     outline: 3px solid var(--interactive-accent);
     outline-offset: -3px;
 }
 
-.tps-nn-user-color-selected::after {
+.nn-user-color-selected::after {
     outline: 2px solid var(--interactive-accent);
     outline-offset: -2px;
 }
 
 /* Empty color slot */
-.tps-nn-color-dot.tps-nn-color-empty {
+.nn-color-dot.nn-color-empty {
     background: var(--background-secondary);
     border: 1px dashed var(--background-modifier-border);
     cursor: default;
     opacity: 0.3;
 }
 
-.tps-nn-color-dot.tps-nn-color-empty:hover::after {
+.nn-color-dot.nn-color-empty:hover::after {
     outline: none;
 }
 
-.tps-nn-color-dot.tps-nn-drop-hover {
+.nn-color-dot.nn-drop-hover {
     outline: 3px solid var(--interactive-accent);
     outline-offset: -3px;
 }
 
-.tps-nn-drag-preview {
+.nn-drag-preview {
     width: 36px;
     height: 36px;
     filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
 }
 
 /* Button container */
-.tps-nn-color-button-container {
+.nn-color-button-container {
     display: flex;
     gap: 12px;
     margin-top: 20px;
@@ -523,13 +523,13 @@
 }
 
 /* Dark theme adjustments */
-.theme-dark .tps-nn-preview-color {
+.theme-dark .nn-preview-color {
     border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Mobile responsiveness */
 @media (max-width: 600px) {
-    .tps-nn-color-picker-content {
+    .nn-color-picker-content {
         flex-direction: column;
         gap: 16px;
         padding-bottom: 0;
@@ -538,46 +538,46 @@
         touch-action: none;
     }
 
-    .tps-nn-color-picker-left,
-    .tps-nn-color-picker-right {
+    .nn-color-picker-left,
+    .nn-color-picker-right {
         flex: 1 1 auto;
         width: 100%;
     }
 
-    .tps-nn-preset-colors,
-    .tps-nn-recent-colors {
+    .nn-preset-colors,
+    .nn-recent-colors {
         grid-template-columns: repeat(8, 1fr);
     }
 
-    .tps-nn-sv-header {
+    .nn-sv-header {
         display: none;
     }
 
     /* Saturation/value area on the left, hue + transparency + hex stacked on the right.
        The SV area stretches to match the height of that stack. */
-    .tps-nn-color-area-section {
+    .nn-color-area-section {
         flex-direction: row;
         align-items: stretch;
         gap: 14px;
     }
 
-    .tps-nn-sv-area {
+    .nn-sv-area {
         flex: 1 1 0;
         width: auto;
         height: auto;
     }
 
-    .tps-nn-color-controls {
+    .nn-color-controls {
         flex: 1 1 0;
         min-width: 0;
     }
 
-    .modal.tps-nn-color-picker-modal .modal-content {
+    .modal.nn-color-picker-modal .modal-content {
         padding: 16px 16px 12px;
         gap: 12px;
     }
 
-    .tps-nn-color-button-container {
+    .nn-color-button-container {
         margin-top: 12px;
         padding-top: 12px;
     }

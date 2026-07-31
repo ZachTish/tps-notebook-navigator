@@ -27,14 +27,14 @@ interface SkeletonViewProps {
 }
 
 export const SkeletonView = React.memo(function SkeletonView({ paneSize, singlePane, searchActive, orientation }: SkeletonViewProps) {
-    const listPaneClass = searchActive ? 'tps-nn-skeleton-list-pane tps-nn-search-active' : 'tps-nn-skeleton-list-pane';
+    const listPaneClass = searchActive ? 'nn-skeleton-list-pane nn-search-active' : 'nn-skeleton-list-pane';
 
     if (singlePane) {
         return (
             <div className={listPaneClass}>
-                <div className="tps-nn-skeleton-list-header" />
-                {searchActive && <div className="tps-nn-skeleton-search-bar" />}
-                <div className="tps-nn-skeleton-content" />
+                <div className="nn-skeleton-list-header" />
+                {searchActive && <div className="nn-skeleton-search-bar" />}
+                <div className="nn-skeleton-content" />
             </div>
         );
     }
@@ -43,17 +43,14 @@ export const SkeletonView = React.memo(function SkeletonView({ paneSize, singleP
     if (orientation === 'vertical') {
         return (
             <>
-                <div
-                    className="tps-nn-skeleton-navigation-pane tps-nn-skeleton-navigation-pane-vertical"
-                    style={{ flexBasis: `${paneSize}px` }}
-                >
-                    <div className="tps-nn-skeleton-nav-header" />
-                    <div className="tps-nn-skeleton-content" />
+                <div className="nn-skeleton-navigation-pane nn-skeleton-navigation-pane-vertical" style={{ flexBasis: `${paneSize}px` }}>
+                    <div className="nn-skeleton-nav-header" />
+                    <div className="nn-skeleton-content" />
                 </div>
-                <div className={`${listPaneClass} tps-nn-skeleton-list-pane-vertical`}>
-                    <div className="tps-nn-skeleton-list-header" />
-                    {searchActive && <div className="tps-nn-skeleton-search-bar" />}
-                    <div className="tps-nn-skeleton-content" />
+                <div className={`${listPaneClass} nn-skeleton-list-pane-vertical`}>
+                    <div className="nn-skeleton-list-header" />
+                    {searchActive && <div className="nn-skeleton-search-bar" />}
+                    <div className="nn-skeleton-content" />
                 </div>
             </>
         );
@@ -62,14 +59,14 @@ export const SkeletonView = React.memo(function SkeletonView({ paneSize, singleP
     // Render horizontal split layout
     return (
         <>
-            <div className="tps-nn-skeleton-navigation-pane" style={{ width: `${paneSize}px` }}>
-                <div className="tps-nn-skeleton-nav-header" />
-                <div className="tps-nn-skeleton-content" />
+            <div className="nn-skeleton-navigation-pane" style={{ width: `${paneSize}px` }}>
+                <div className="nn-skeleton-nav-header" />
+                <div className="nn-skeleton-content" />
             </div>
             <div className={listPaneClass}>
-                <div className="tps-nn-skeleton-list-header" />
-                {searchActive && <div className="tps-nn-skeleton-search-bar" />}
-                <div className="tps-nn-skeleton-content" />
+                <div className="nn-skeleton-list-header" />
+                {searchActive && <div className="nn-skeleton-search-bar" />}
+                <div className="nn-skeleton-content" />
             </div>
         </>
     );

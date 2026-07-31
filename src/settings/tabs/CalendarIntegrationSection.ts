@@ -84,7 +84,7 @@ function createSelectedCalendarLocalesResolver(context: SettingsTabContext): (mo
 
 function renderDailyNotesInfoSetting(setting: Setting): void {
     setting.setName('').setDesc('');
-    setting.settingEl.addClass('tps-nn-setting-info-container');
+    setting.settingEl.addClass('nn-setting-info-container');
     setting.descEl.empty();
     setting.descEl.createDiv({ text: strings.settings.items.calendarIntegrationMode.info.dailyNotes });
 }

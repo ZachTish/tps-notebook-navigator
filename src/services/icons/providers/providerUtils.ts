@@ -17,13 +17,13 @@
  */
 
 const ICON_FONT_CLASSES = [
-    'tps-nn-iconfont',
-    'tps-nn-iconfont-fa-solid',
-    'tps-nn-iconfont-rpg-awesome',
-    'tps-nn-iconfont-bootstrap-icons',
-    'tps-nn-iconfont-material-icons',
-    'tps-nn-iconfont-phosphor',
-    'tps-nn-iconfont-simple-icons'
+    'nn-iconfont',
+    'nn-iconfont-fa-solid',
+    'nn-iconfont-rpg-awesome',
+    'nn-iconfont-bootstrap-icons',
+    'nn-iconfont-material-icons',
+    'nn-iconfont-phosphor',
+    'nn-iconfont-simple-icons'
 ];
 
 const ICON_RENDER_TOKENS = new WeakMap<HTMLElement, symbol>();
@@ -47,7 +47,7 @@ export function getIconRenderToken(container: HTMLElement): symbol | undefined {
  */
 export function resetIconContainer(container: HTMLElement): void {
     container.empty();
-    container.removeClass('tps-nn-emoji-icon');
+    container.removeClass('nn-emoji-icon');
     ICON_FONT_CLASSES.forEach(className => {
         container.removeClass(className);
     });

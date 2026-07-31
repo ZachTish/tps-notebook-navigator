@@ -5,68 +5,65 @@
 
    Android WebView scales text via textZoom property. This affects font-size
    and line-height at the rendering level. We detect the scale factor in JS
-   and set --tps-nn-android-font-scale, then CSS compensates by dividing values
+   and set --nn-android-font-scale, then CSS compensates by dividing values
    by that factor so Android scaling produces correct final sizes.
 
    Font-size compensation is handled via inline styles in androidFontScale.ts.
-   Line-height compensation is handled here in CSS because the .tps-nn-mobile class
+   Line-height compensation is handled here in CSS because the .nn-mobile class
    redefines variables and would override inline styles on the outer container.
    ======================================================================== */
 
 /* Override line-height variables with compensated values
    Note: We use a reciprocal variable for division since calc(x / var) can have issues */
-.tps-notebook-navigator-android .tps-nn-mobile {
-    --tps-nn-android-font-scale-reciprocal: calc(1 / var(--tps-nn-android-font-scale, 1));
-    --tps-nn-file-title-line-height: calc(var(--tps-nn-file-title-line-height-mobile) * var(--tps-nn-android-font-scale-reciprocal, 1));
-    --tps-nn-file-single-text-line-height: calc(
-        var(--tps-nn-file-single-text-line-height-mobile) * var(--tps-nn-android-font-scale-reciprocal, 1)
-    );
-    --tps-nn-file-multiline-text-line-height: calc(
-        var(--tps-nn-file-multiline-text-line-height-mobile) * var(--tps-nn-android-font-scale-reciprocal, 1)
+.notebook-navigator-android .nn-mobile {
+    --nn-android-font-scale-reciprocal: calc(1 / var(--nn-android-font-scale, 1));
+    --nn-file-title-line-height: calc(var(--nn-file-title-line-height-mobile) * var(--nn-android-font-scale-reciprocal, 1));
+    --nn-file-single-text-line-height: calc(var(--nn-file-single-text-line-height-mobile) * var(--nn-android-font-scale-reciprocal, 1));
+    --nn-file-multiline-text-line-height: calc(
+        var(--nn-file-multiline-text-line-height-mobile) * var(--nn-android-font-scale-reciprocal, 1)
     );
     /* Note: Do NOT compensate icon size variables - they're used for SVG width/height
        which Android doesn't scale. Only compensate font-size on emoji elements directly. */
 }
 
 /* Note counts in navigation pane */
-.tps-notebook-navigator-android .tps-nn-mobile .tps-nn-navitem-count {
+.notebook-navigator-android .nn-mobile .nn-navitem-count {
     font-size: calc(
-        var(--tps-nn-navitem-count-font-size-mobile, var(--tps-nn-navitem-count-font-size)) * var(--tps-nn-android-font-scale-reciprocal, 1)
+        var(--nn-navitem-count-font-size-mobile, var(--nn-navitem-count-font-size)) * var(--nn-android-font-scale-reciprocal, 1)
     );
 }
 
 /* Root reorder panel text */
-.tps-notebook-navigator-android .tps-nn-mobile .tps-nn-root-reorder-hint {
+.notebook-navigator-android .nn-mobile .nn-root-reorder-hint {
     font-size: calc(
-        var(--tps-nn-root-reorder-hint-font-size-mobile, var(--tps-nn-root-reorder-hint-font-size)) *
-            var(--tps-nn-android-font-scale-reciprocal, 1)
+        var(--nn-root-reorder-hint-font-size-mobile, var(--nn-root-reorder-hint-font-size)) * var(--nn-android-font-scale-reciprocal, 1)
     );
 }
 
 /* Emoji and webfont icons - Android scales font-size but not SVG dimensions.
-   Only apply to .tps-nn-emoji-icon and .tps-nn-iconfont to avoid breaking Lucide SVG icons. */
-.tps-notebook-navigator-android .tps-nn-mobile .tps-nn-emoji-icon,
-.tps-notebook-navigator-android .tps-nn-mobile .tps-nn-iconfont {
-    font-size: calc(var(--tps-nn-file-icon-size-mobile, var(--tps-nn-file-icon-size)) * var(--tps-nn-android-font-scale-reciprocal, 1));
+   Only apply to .nn-emoji-icon and .nn-iconfont to avoid breaking Lucide SVG icons. */
+.notebook-navigator-android .nn-mobile .nn-emoji-icon,
+.notebook-navigator-android .nn-mobile .nn-iconfont {
+    font-size: calc(var(--nn-file-icon-size-mobile, var(--nn-file-icon-size)) * var(--nn-android-font-scale-reciprocal, 1));
 }
 
 /* Clamp height compensation - Android doesn't scale max-height, so match the compensated line-height after textZoom applies. */
-.tps-notebook-navigator-android .tps-nn-file-name {
-    max-height: calc(var(--tps-nn-file-title-line-height) * var(--filename-rows, 1) * var(--tps-nn-android-font-scale, 1));
+.notebook-navigator-android .nn-file-name {
+    max-height: calc(var(--nn-file-title-line-height) * var(--filename-rows, 1) * var(--nn-android-font-scale, 1));
 }
 
-.tps-notebook-navigator-android .tps-nn-file-preview {
-    max-height: calc(var(--tps-nn-file-multiline-text-line-height) * var(--preview-rows, 1) * var(--tps-nn-android-font-scale, 1));
+.notebook-navigator-android .nn-file-preview {
+    max-height: calc(var(--nn-file-multiline-text-line-height) * var(--preview-rows, 1) * var(--nn-android-font-scale, 1));
 }
 
 /* Icon vertical centering - line-height is pre-compensated, icon size is not */
-.tps-notebook-navigator-android .tps-nn-file-icon-slot {
+.notebook-navigator-android .nn-file-icon-slot {
     margin-top: max(
         0px,
         calc(
             (
-                    var(--tps-nn-file-title-line-height) * var(--tps-nn-android-font-scale, 1) -
-                        var(--tps-nn-file-icon-size-mobile, var(--tps-nn-file-icon-size))
+                    var(--nn-file-title-line-height) * var(--nn-android-font-scale, 1) -
+                        var(--nn-file-icon-size-mobile, var(--nn-file-icon-size))
                 ) /
                 2
         )

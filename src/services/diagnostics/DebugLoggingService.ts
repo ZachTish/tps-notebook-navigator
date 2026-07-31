@@ -20,7 +20,7 @@ import { App, Platform } from 'obsidian';
 import { STORAGE_KEYS } from '../../types';
 import { localStorage } from '../../utils/localStorage';
 
-const DEBUG_LOG_FILE_PREFIX = 'tps-nn-debug-';
+const DEBUG_LOG_FILE_PREFIX = 'nn-debug-';
 const DEBUG_LOG_FILE_SUFFIX = '.md';
 const DEBUG_WRITE_DEBOUNCE_MS = 1000;
 const STARTUP_SETTLE_DELAY_MS = 2000;
@@ -28,7 +28,7 @@ const STARTUP_REPORT_TIMEOUT_MS = 30000;
 const HEARTBEAT_INTERVAL_MS = 100;
 const HEARTBEAT_STALL_THRESHOLD_MS = 250;
 const MAX_STALL_SAMPLES = 8;
-const DEBUG_LOG_FILE_PATTERN = /^tps-nn-debug-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.md$/;
+const DEBUG_LOG_FILE_PATTERN = /^nn-debug-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.md$/;
 const TIMELINE_TIME_WIDTH = 7;
 
 type DebugLogPayload = Record<string, unknown>;

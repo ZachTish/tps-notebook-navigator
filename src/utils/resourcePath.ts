@@ -18,7 +18,7 @@
 
 import type { App, TFile } from 'obsidian';
 
-const RESOURCE_VERSION_QUERY_KEY = 'tps-nn-mtime';
+const RESOURCE_VERSION_QUERY_KEY = 'nn-mtime';
 
 export function appendResourcePathVersion(resourcePath: string, version: number | null | undefined): string {
     if (!resourcePath || typeof version !== 'number' || !Number.isFinite(version) || version <= 0) {

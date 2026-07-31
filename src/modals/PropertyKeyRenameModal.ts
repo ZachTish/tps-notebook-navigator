@@ -56,7 +56,7 @@ export class PropertyKeyRenameModal extends Modal {
 
         this.titleEl.setText(strings.modals.propertyOperation.renameTitle.replace('{property}', this.propertyKey));
 
-        const description = this.contentEl.createDiv('tps-nn-tag-rename-description');
+        const description = this.contentEl.createDiv('nn-tag-rename-description');
         description.setText(
             strings.modals.propertyOperation.renameWarning
                 .replace('{property}', this.propertyKey)
@@ -64,25 +64,25 @@ export class PropertyKeyRenameModal extends Modal {
                 .replace('{files}', countLabel)
         );
 
-        const inputContainer = this.contentEl.createDiv('tps-nn-tag-rename-input-container');
+        const inputContainer = this.contentEl.createDiv('nn-tag-rename-input-container');
         const label = inputContainer.createEl('label', { text: strings.modals.propertyOperation.newKeyPrompt });
-        label.htmlFor = 'tps-nn-property-rename-input';
+        label.htmlFor = 'nn-property-rename-input';
 
         this.inputEl = inputContainer.createEl('input', {
             type: 'text',
-            attr: { id: 'tps-nn-property-rename-input' },
+            attr: { id: 'nn-property-rename-input' },
             value: this.initialValue,
             placeholder: strings.modals.propertyOperation.newKeyPlaceholder
         });
-        this.inputEl.addClass('tps-nn-input');
+        this.inputEl.addClass('nn-input');
         this.inputEl.addEventListener('input', () => this.updateSubmitState());
 
         const warning = this.contentEl.createEl('p', { text: strings.modals.tagOperation.modificationWarning });
-        warning.addClass('tps-nn-tag-rename-warning');
+        warning.addClass('nn-tag-rename-warning');
 
         renderAffectedFilesPreview(this.contentEl, { total: this.affectedCount, sample: this.sampleFiles });
 
-        const buttonContainer = this.contentEl.createDiv('tps-nn-button-container');
+        const buttonContainer = this.contentEl.createDiv('nn-button-container');
         const cancelBtn = buttonContainer.createEl('button', { text: strings.common.cancel });
         cancelBtn.addEventListener('click', () => this.close());
 

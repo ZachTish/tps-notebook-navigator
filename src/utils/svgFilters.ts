@@ -103,7 +103,7 @@ export function ensureNotebookNavigatorSvgFilters() {
     svg.setAttribute('id', NOTEBOOK_NAVIGATOR_SVG_FILTERS_ID);
     svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('focusable', 'false');
-    svg.classList.add('tps-nn-svg-filters');
+    svg.classList.add('nn-svg-filters');
 
     ensureFilterDefs(svg);
     activeDocument.body.append(svg);

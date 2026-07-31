@@ -18,10 +18,11 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
+import { applyTpsRuntimeNamespace } from '../../scripts/tps-runtime-namespace.mjs';
 import { getListPaneMeasurements } from '../../src/utils/listPaneMeasurements';
 
 function readTextFile(path: string): string {
-    return readFileSync(path, 'utf8');
+    return applyTpsRuntimeNamespace(readFileSync(path, 'utf8'));
 }
 
 function extractRuleBlock(css: string, selector: string): string {

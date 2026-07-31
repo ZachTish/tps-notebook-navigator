@@ -193,18 +193,18 @@ export const CalendarGrid = React.memo(function CalendarGrid({
         : [];
 
     return (
-        <div className="tps-nn-navigation-calendar-grid" data-weeknumbers={showWeekNumbers ? 'true' : undefined}>
-            <div className="tps-nn-navigation-calendar-weekdays" data-weeknumbers={showWeekNumbers ? 'true' : undefined}>
-                {showWeekNumbers ? <div className="tps-nn-navigation-calendar-weeknumber-spacer" /> : null}
-                {showWeekNumbers ? <div className="tps-nn-navigation-calendar-weeknumber-divider" aria-hidden="true" /> : null}
+        <div className="nn-navigation-calendar-grid" data-weeknumbers={showWeekNumbers ? 'true' : undefined}>
+            <div className="nn-navigation-calendar-weekdays" data-weeknumbers={showWeekNumbers ? 'true' : undefined}>
+                {showWeekNumbers ? <div className="nn-navigation-calendar-weeknumber-spacer" /> : null}
+                {showWeekNumbers ? <div className="nn-navigation-calendar-weeknumber-divider" aria-hidden="true" /> : null}
                 {weekdays.map((day, index) => (
-                    <div key={(weekStartsOn + index) % 7} className="tps-nn-navigation-calendar-weekday">
+                    <div key={(weekStartsOn + index) % 7} className="nn-navigation-calendar-weekday">
                         {day}
                     </div>
                 ))}
             </div>
 
-            <div className="tps-nn-navigation-calendar-weeks" data-weeknumbers={showWeekNumbers ? 'true' : undefined}>
+            <div className="nn-navigation-calendar-weeks" data-weeknumbers={showWeekNumbers ? 'true' : undefined}>
                 {weeks.map((week, weekIndex) => {
                     const weekNoteTarget = weekNoteTargetsByKey.get(week.key) ?? null;
                     const weekNoteFile = weekNoteTarget?.visibleFile ?? null;
@@ -216,7 +216,7 @@ export const CalendarGrid = React.memo(function CalendarGrid({
                     return (
                         <div
                             key={week.key}
-                            className={`tps-nn-navigation-calendar-week${weekIndex < weeks.length - 1 ? ' has-next-week' : ''}`}
+                            className={`nn-navigation-calendar-week${weekIndex < weeks.length - 1 ? ' has-next-week' : ''}`}
                         >
                             {showWeekNumbers ? (
                                 <>
@@ -224,8 +224,8 @@ export const CalendarGrid = React.memo(function CalendarGrid({
                                         <button
                                             type="button"
                                             className={[
-                                                'tps-nn-navigation-calendar-weeknumber',
-                                                'tps-nn-navigation-calendar-weeknumber-button',
+                                                'nn-navigation-calendar-weeknumber',
+                                                'nn-navigation-calendar-weeknumber-button',
                                                 weekNoteFile ? 'has-period-note' : '',
                                                 isActiveEditorWeek ? 'is-active-editor-file' : '',
                                                 weekHasUnfinishedTasks ? 'has-unfinished-tasks' : ''
@@ -236,21 +236,21 @@ export const CalendarGrid = React.memo(function CalendarGrid({
                                             onClick={event => onWeekClick(event, week, weekNoteTarget)}
                                             onContextMenu={event => onWeekContextMenu(event, week, weekNoteTarget)}
                                         >
-                                            <span className="tps-nn-navigation-calendar-active-outline" aria-hidden="true" />
-                                            <span className="tps-nn-navigation-calendar-weeknumber-value">{week.weekNumber}</span>
+                                            <span className="nn-navigation-calendar-active-outline" aria-hidden="true" />
+                                            <span className="nn-navigation-calendar-weeknumber-value">{week.weekNumber}</span>
                                         </button>
                                     ) : (
                                         <button
                                             type="button"
-                                            className="tps-nn-navigation-calendar-weeknumber tps-nn-navigation-calendar-weeknumber-button"
+                                            className="nn-navigation-calendar-weeknumber nn-navigation-calendar-weeknumber-button"
                                             onClick={event => onWeekLabelClick(event, week)}
                                             onContextMenu={event => onWeekContextMenu(event, week, null)}
                                         >
-                                            <span className="tps-nn-navigation-calendar-active-outline" aria-hidden="true" />
-                                            <span className="tps-nn-navigation-calendar-weeknumber-value">{week.weekNumber}</span>
+                                            <span className="nn-navigation-calendar-active-outline" aria-hidden="true" />
+                                            <span className="nn-navigation-calendar-weeknumber-value">{week.weekNumber}</span>
                                         </button>
                                     )}
-                                    <div className="tps-nn-navigation-calendar-weeknumber-divider" aria-hidden="true" />
+                                    <div className="nn-navigation-calendar-weeknumber-divider" aria-hidden="true" />
                                 </>
                             ) : null}
                             {week.days.map((day, dayIndex) => {
@@ -274,7 +274,7 @@ export const CalendarGrid = React.memo(function CalendarGrid({
                                 const roundWeekendBottomLeft = isWeekend && !hasWeekendBelow && !hasWeekendBefore;
                                 const roundWeekendBottomRight = isWeekend && !hasWeekendBelow && !hasWeekendAfter;
                                 const dayCellClassName = [
-                                    'tps-nn-navigation-calendar-day-cell',
+                                    'nn-navigation-calendar-day-cell',
                                     isWeekend ? 'is-weekend' : 'is-weekday',
                                     hasWeekendBefore ? 'has-weekend-before' : '',
                                     hasWeekendAfter ? 'has-weekend-after' : '',
@@ -289,7 +289,7 @@ export const CalendarGrid = React.memo(function CalendarGrid({
                                     .join(' ');
 
                                 const dayButtonClassName = [
-                                    'tps-nn-navigation-calendar-day',
+                                    'nn-navigation-calendar-day',
                                     day.inMonth ? 'is-in-month' : 'is-outside-month',
                                     isToday ? 'is-today' : '',
                                     isActiveEditorDay ? 'is-active-editor-file' : '',
@@ -330,20 +330,17 @@ export const CalendarGrid = React.memo(function CalendarGrid({
                     );
                 })}
                 {Array.from({ length: trailingSpacerWeekCount }).map((_entry, spacerIndex) => (
-                    <div
-                        key={`spacer-week-${spacerIndex}`}
-                        className="tps-nn-navigation-calendar-week tps-nn-navigation-calendar-week-spacer"
-                    >
+                    <div key={`spacer-week-${spacerIndex}`} className="nn-navigation-calendar-week nn-navigation-calendar-week-spacer">
                         {showWeekNumbers ? (
                             <div
-                                className="tps-nn-navigation-calendar-weeknumber tps-nn-navigation-calendar-weeknumber-spacer-row"
+                                className="nn-navigation-calendar-weeknumber nn-navigation-calendar-weeknumber-spacer-row"
                                 aria-hidden="true"
                             />
                         ) : null}
                         {Array.from({ length: 7 }).map((_day, dayIndex) => (
                             <div
                                 key={`spacer-day-${spacerIndex}-${dayIndex}`}
-                                className="tps-nn-navigation-calendar-day-spacer"
+                                className="nn-navigation-calendar-day-spacer"
                                 aria-hidden="true"
                             />
                         ))}

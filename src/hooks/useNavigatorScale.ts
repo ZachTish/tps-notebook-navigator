@@ -44,7 +44,7 @@ export function useNavigatorScale({ isMobile, desktopScale, mobileScale }: Navig
         }
 
         const value = scale.toString();
-        const style: CSSProperties = { '--tps-nn-ui-scale': value } as CSSProperties;
+        const style: CSSProperties = { '--nn-ui-scale': value } as CSSProperties;
 
         return {
             scale,

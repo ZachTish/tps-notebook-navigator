@@ -74,9 +74,11 @@ describe('contained runtime build', () => {
         const config = await readFile(path.join(repoRoot, 'esbuild.config.mjs'), 'utf8');
 
         expect(config).toContain("import { resolveRuntimeDeployPlugin } from './scripts/runtime-deploy-plugin.mjs';");
-        expect(config).toContain('basename(dirname(fileURLToPath(import.meta.url)))');
+        expect(config).toContain("import { createTpsRuntimeNamespaceEsbuildPlugin } from './scripts/tps-runtime-namespace.mjs';");
+        expect(config).toContain('const projectRoot = dirname(fileURLToPath(import.meta.url));');
+        expect(config).toContain('basename(projectRoot)');
         expect(config).toContain('await resolveRuntimeDeployPlugin(sourceFolder, import.meta.url)');
-        expect(config).toContain('plugins: [runtimeDeployPlugin]');
+        expect(config).toContain('plugins: [createTpsRuntimeNamespaceEsbuildPlugin(projectRoot), runtimeDeployPlugin]');
         expect(config).not.toContain("from '../deploy-runtime.mjs'");
         expect(config).not.toContain(`Obsidian Plugin Test Vault/${['.ob', 'sidian'].join('')}/plugins`);
         expect(config).not.toContain('TishOS v0.1');

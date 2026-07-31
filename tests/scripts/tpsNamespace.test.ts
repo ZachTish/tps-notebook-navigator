@@ -1,4 +1,4 @@
-/* TPS Notebook Navigator - repeatable upstream namespace codemod tests. */
+/* TPS Notebook Navigator - merge-friendly source/runtime namespace tests. */
 
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
+import { applyTpsRuntimeNamespace } from '../../scripts/tps-runtime-namespace.mjs';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const scriptPath = path.resolve(dirname, '../../scripts/tps-namespace.mjs');
@@ -23,9 +24,7 @@ async function createFixture(): Promise<{ root: string; sourcePath: string }> {
     const sourcePath = path.join(sourceDirectory, 'Example.tsx');
     await writeFile(
         sourcePath,
-        ["const root = '.notebook-navigator';", "const className = 'nn-file-row';", "const alreadyNamespaced = 'tps-nn-file-row';"].join(
-            '\n'
-        ),
+        ["const root = '.tps-notebook-navigator';", "const className = 'tps-nn-file-row';", "const upstream = 'nn-file-row';"].join('\n'),
         'utf8'
     );
     return { root, sourcePath };
@@ -35,8 +34,8 @@ function runScript(root: string, mode: '--check' | '--write') {
     return spawnSync(process.execPath, [scriptPath, mode, '--project-root', root], { encoding: 'utf8' });
 }
 
-describe('TPS namespace codemod', () => {
-    it('reports upstream namespace tokens without changing files in check mode', async () => {
+describe('TPS runtime namespace boundary', () => {
+    it('reports committed runtime namespace tokens without changing source in check mode', async () => {
         const fixture = await createFixture();
         const before = await readFile(fixture.sourcePath, 'utf8');
 
@@ -47,17 +46,48 @@ describe('TPS namespace codemod', () => {
         expect(await readFile(fixture.sourcePath, 'utf8')).toBe(before);
     });
 
-    it('rewrites only upstream tokens and is idempotent', async () => {
+    it('restores only fork runtime tokens to their merge-friendly source form and is idempotent', async () => {
         const fixture = await createFixture();
 
         expect(runScript(fixture.root, '--write').status).toBe(0);
         const rewritten = await readFile(fixture.sourcePath, 'utf8');
-        expect(rewritten).toContain('.tps-notebook-navigator');
-        expect(rewritten).toContain('tps-nn-file-row');
-        expect(rewritten.match(/tps-nn-file-row/gu)).toHaveLength(2);
+        expect(rewritten).toContain('.notebook-navigator');
+        expect(rewritten).not.toContain('.tps-notebook-navigator');
+        expect(rewritten.match(/(?<!tps-)nn-file-row/gu)).toHaveLength(2);
 
         const secondRun = runScript(fixture.root, '--check');
         expect(secondRun.status).toBe(0);
-        expect(secondRun.stdout).toContain('TPS namespace is current.');
+        expect(secondRun.stdout).toContain('TPS source namespace is merge-friendly.');
+    });
+
+    it('restores every script module extension supported by the runtime transform', async () => {
+        const root = await mkdtemp(path.join(os.tmpdir(), 'tps-navigator-namespace-extensions-'));
+        temporaryRoots.push(root);
+        const sourceDirectory = path.join(root, 'src');
+        await mkdir(sourceDirectory, { recursive: true });
+        const extensions = ['.cjs', '.cts', '.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx'];
+        const sourcePaths = extensions.map(extension => path.join(sourceDirectory, `Example${extension}`));
+
+        await Promise.all(sourcePaths.map(sourcePath => writeFile(sourcePath, "export const row = 'tps-nn-provider-row';\n", 'utf8')));
+
+        expect(runScript(root, '--write').status).toBe(0);
+        const restoredSources = await Promise.all(sourcePaths.map(sourcePath => readFile(sourcePath, 'utf8')));
+        expect(restoredSources).toEqual(extensions.map(() => "export const row = 'nn-provider-row';\n"));
+        expect(runScript(root, '--check').status).toBe(0);
+    });
+
+    it('applies the TPS runtime namespace exactly once', () => {
+        const source = [
+            "const root = '.notebook-navigator';",
+            "const className = 'nn-file-row';",
+            "const alreadyNamespaced = 'tps-nn-provider-row';"
+        ].join('\n');
+
+        const transformed = applyTpsRuntimeNamespace(source);
+
+        expect(transformed).toContain('.tps-notebook-navigator');
+        expect(transformed).toContain('tps-nn-file-row');
+        expect(transformed).toContain('tps-nn-provider-row');
+        expect(applyTpsRuntimeNamespace(transformed)).toBe(transformed);
     });
 });

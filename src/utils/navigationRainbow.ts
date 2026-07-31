@@ -39,9 +39,9 @@ if (!navRainbowDefaultStart || !navRainbowDefaultEnd) {
 export const NAV_RAINBOW_DEFAULT_START: RGBA = navRainbowDefaultStart;
 export const NAV_RAINBOW_DEFAULT_END: RGBA = navRainbowDefaultEnd;
 
-const FOLDER_VIRTUAL_ROOT_RAINBOW_KEY = '__tps-nn-folder-virtual-root__';
-const SHORTCUT_VIRTUAL_ROOT_RAINBOW_KEY = '__tps-nn-shortcuts-virtual-root__';
-const RECENT_VIRTUAL_ROOT_RAINBOW_KEY = '__tps-nn-recent-virtual-root__';
+const FOLDER_VIRTUAL_ROOT_RAINBOW_KEY = '__nn-folder-virtual-root__';
+const SHORTCUT_VIRTUAL_ROOT_RAINBOW_KEY = '__nn-shortcuts-virtual-root__';
+const RECENT_VIRTUAL_ROOT_RAINBOW_KEY = '__nn-recent-virtual-root__';
 
 const NAV_RAINBOW_PALETTE_SIZE = 1024;
 

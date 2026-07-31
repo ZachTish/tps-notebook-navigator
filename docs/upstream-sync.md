@@ -1,6 +1,6 @@
 # Syncing TPS Notebook Navigator with upstream
 
-TPS Notebook Navigator intentionally keeps the original Notebook Navigator as an independent, co-installable plugin. The fork-specific runtime identity is broad enough that upstream merges need a repeatable isolation pass, while optional TPS behavior stays in separate modules under `src/integrations`, `src/services/rows`, and `src/settings/tabs/TpsIntegration*`.
+TPS Notebook Navigator intentionally keeps the original Notebook Navigator as an independent, co-installable plugin. Optional TPS behavior stays in separate modules under `src/integrations`, `src/services/rows`, and `src/settings/tabs/TpsIntegration*`. Inherited source retains upstream CSS/DOM tokens; the TPS namespace is applied only when tests load source, esbuild bundles JavaScript, and the stylesheet builder writes the release artifact. This removes mechanical namespace edits from normal upstream conflict resolution.
 
 ## One-time remote setup
 
@@ -17,18 +17,20 @@ Never point `origin` at upstream. Do not rebase or force-push the shared TPS `ma
 
 1. Start from a clean, current TPS `main` and create a short-lived branch such as `sync/upstream-3.4.0`.
 2. Fetch both remotes and merge the desired upstream tag or commit with `--no-commit`. Record that exact upstream ref in the eventual commit and release notes.
-3. Resolve behavioral conflicts before adding new TPS behavior. Keep the TPS manifest ID, view IDs, storage/IndexedDB namespaces, events, drag types, API lookup, DOM/CSS namespace, settings-transfer ID, and update URL.
-4. Run `npm run tps:namespace`. This idempotent codemod applies the mechanical CSS/DOM prefix changes to new upstream source and tests. Review its diff; it does not change plugin IDs, storage keys, URLs, or fork-specific behavior.
-5. Run `npm run tps:namespace:check` and the focused identity, import, and row-provider tests. Then run the full test, type, lint, formatting, style, contained build, deployment, and side-by-side UI gates.
-6. Verify both `notebook-navigator` and `tps-notebook-navigator` remain enabled together, use separate settings/storage, and can open their own views. Never automatically import or mutate upstream settings.
+3. Resolve behavioral conflicts before adding new TPS behavior. Keep the TPS manifest ID, view IDs, storage/IndexedDB namespaces, events, drag types, API lookup, settings-transfer ID, and update URL. Keep inherited `nn-` and `.notebook-navigator` CSS/DOM tokens in source; do not hand-prefix them during conflict resolution.
+4. Run `npm run tps:namespace:check`. If it reports a mechanically prefixed source file, run `npm run tps:namespace` to restore the upstream token form and review that narrow repair.
+5. Regenerate `styles.css` rather than hand-merging that generated artifact. The stylesheet builder and esbuild both use `scripts/tps-runtime-namespace.mjs`, and Vitest applies that same transform to imported source.
+6. Run the focused identity, transform, import, and row-provider tests. Then run the full test, type, lint, formatting, style, contained build, deployment, and artifact-identity gates.
+7. Verify both `notebook-navigator` and `tps-notebook-navigator` remain enabled together, use separate settings/storage, and can open their own views. Never automatically import or mutate upstream settings.
 
 ## Conflict map
 
 - `src/constants/tpsIdentity.ts` is the source of truth for host-global fork identifiers.
 - `tests/constants/tpsIdentity.test.ts` detects namespace and storage regressions.
-- `scripts/tps-namespace.mjs` handles only mechanical CSS/DOM changes introduced by upstream.
+- `scripts/tps-runtime-namespace.mjs` owns the one-way source-to-runtime CSS/DOM transform shared by esbuild, Vitest, and generated styles.
+- `scripts/tps-namespace.mjs` restores accidentally committed runtime prefixes to merge-friendly upstream source tokens.
 - `src/services/settings/UpstreamSettingsImport.ts` remains explicit, confirmed, read-only toward upstream, and one-way into TPS settings.
 - `src/services/rows` owns generic transient row composition; `src/integrations/gcm` is an optional adapter with no hard dependency.
-- `esbuild.config.mjs` uses the test-vault-owned deployment helper only in the contained development workspace. Standalone source checks deliberately do not deploy.
+- `esbuild.config.mjs` applies the runtime namespace before bundling and uses the test-vault-owned deployment helper only in the contained development workspace. Standalone source checks deliberately do not deploy.
 
 If an upstream release changes any of these surfaces, update the central constant or adapter and its focused regression test instead of scattering a second fork-specific path through upstream code.

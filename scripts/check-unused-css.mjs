@@ -20,7 +20,9 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import prettier from 'prettier';
 import * as ts from 'typescript';
+import { applyTpsRuntimeNamespace } from './tps-runtime-namespace.mjs';
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -28,6 +30,15 @@ const dirname = path.dirname(filename);
 const DEFAULT_PROJECT_ROOT = path.resolve(dirname, '..');
 const MAX_EVALUATED_STRINGS = 500;
 const KEEP_COMMENT_REGEX = /unused-css\s+keep\s+([^\n*]+)/g;
+// Preserve the released 4.0.0 stylesheet byte-for-byte during the merge-maintenance
+// refactor. These inherited upstream selectors currently have no source consumer;
+// remove this narrow allowlist when the selectors are deliberately removed upstream
+// or in a runtime-changing TPS release.
+const INHERITED_RELEASE_CLASS_ALLOWLIST = new Set([
+    'tps-nn-toolbar-visibility-group',
+    'tps-nn-toolbar-visibility-group-label',
+    'tps-nn-toolbar-visibility-sections'
+]);
 
 function printUsage() {
     console.log(`Usage: node scripts/check-unused-css.mjs [--check | --fix] [--project-root <path>]
@@ -41,7 +52,7 @@ Options:
   -h, --help              Show this help message.
 
 Allowlist:
-  Add a comment containing "unused-css keep tps-nn-class --tps-nn-variable" to keep intentional dynamic usage.`);
+  Add a comment containing "unused-css keep nn-class --nn-variable" to keep intentional dynamic usage.`);
 }
 
 function parseArgs(argv) {
@@ -163,7 +174,13 @@ async function buildStylesFromSources(projectRoot, stylesEntryPath) {
 
     let cssText = header;
     for (const entry of resolvedImports) {
-        cssText += await fs.readFile(entry.absolutePath, 'utf8');
+        const source = await fs.readFile(entry.absolutePath, 'utf8');
+        const prettierOptions = (await prettier.resolveConfig(entry.absolutePath)) ?? {};
+        cssText += await prettier.format(applyTpsRuntimeNamespace(source), {
+            ...prettierOptions,
+            filepath: entry.absolutePath,
+            parser: 'css'
+        });
     }
 
     return { cssText, importCount: importPaths.length };
@@ -457,21 +474,26 @@ async function analyzeUnusedCss(options) {
     const codeVarTokens = new Set();
     const codeFiles = await collectFilesRecursive(srcDir, filePath => {
         const ext = path.extname(filePath).toLowerCase();
-        return ext === '.ts' || ext === '.tsx' || ext === '.js' || ext === '.jsx';
+        return ['.cjs', '.cts', '.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx'].includes(ext);
     });
 
     for (const filePath of codeFiles) {
         const text = await fs.readFile(filePath, 'utf8');
-        mergeKeepTokens(keepTokens, parseKeepCommentTokens(text));
+        const runtimeText = applyTpsRuntimeNamespace(text);
+        mergeKeepTokens(keepTokens, parseKeepCommentTokens(runtimeText));
 
         const scriptKind = getScriptKindForPath(filePath);
-        const sourceFile = ts.createSourceFile(filePath, text, ts.ScriptTarget.Latest, false, scriptKind);
+        const sourceFile = ts.createSourceFile(filePath, runtimeText, ts.ScriptTarget.Latest, false, scriptKind);
         analyzeSourceFile(sourceFile, codeTokens, codeVarTokens);
     }
 
     const pluginClassesDefined = [...definedClasses].filter(name => isPluginClassName(name)).sort((a, b) => a.localeCompare(b));
     const pluginVarsDefined = [...definedVars].filter(name => name.startsWith('--tps-nn-')).sort((a, b) => a.localeCompare(b));
     const usedPluginClasses = new Set(pluginClassesDefined.filter(name => codeTokens.has(name)));
+
+    for (const className of INHERITED_RELEASE_CLASS_ALLOWLIST) {
+        usedPluginClasses.add(className);
+    }
 
     for (const className of keepTokens.classes) {
         usedPluginClasses.add(className);

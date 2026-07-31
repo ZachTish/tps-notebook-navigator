@@ -5,59 +5,59 @@
    ======================================================================== */
 
 /* Mobile toolbar container */
-.tps-nn-mobile-toolbar {
+.nn-mobile-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: var(--tps-nn-theme-list-bg);
+    background-color: var(--nn-theme-list-bg);
     flex-shrink: 0;
     padding: 0 8px;
 
     /* Use platform-specific safe area variable */
-    padding-bottom: var(--tps-nn-mobile-safe-area-bottom);
+    padding-bottom: var(--nn-mobile-safe-area-bottom);
 
     /* Adjust height to include safe area padding */
-    height: calc(49px + var(--tps-nn-mobile-safe-area-bottom));
-    min-height: calc(49px + var(--tps-nn-mobile-safe-area-bottom));
+    height: calc(49px + var(--nn-mobile-safe-area-bottom));
+    min-height: calc(49px + var(--nn-mobile-safe-area-bottom));
 }
 
 /* Mobile toolbars: distribute buttons evenly; iOS floating toolbars override this via platform stylesheet. */
-.tps-notebook-navigator-mobile .tps-nn-mobile-toolbar {
+.notebook-navigator-mobile .nn-mobile-toolbar {
     justify-content: space-evenly;
 }
 
-.tps-nn-pane-bottom-toolbar {
+.nn-pane-bottom-toolbar {
     flex-shrink: 0;
 }
 
 /* Mobile toolbar grouping containers */
-.tps-nn-mobile-toolbar-left {
+.nn-mobile-toolbar-left {
     display: flex;
     flex: 1;
     min-width: 0;
 }
 
-.tps-nn-mobile-toolbar-right {
+.nn-mobile-toolbar-right {
     display: flex;
     flex: 0 0 auto;
 }
 
 /* Mobile toolbar button grouping container */
-.tps-nn-mobile-toolbar-pill {
+.nn-mobile-toolbar-pill {
     display: flex;
     width: 100%;
     justify-content: space-around;
     align-items: center;
 }
 
-.tps-nn-mobile-toolbar-circle {
+.nn-mobile-toolbar-circle {
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 /* Mobile toolbar buttons */
-button.tps-nn-mobile-toolbar-button {
+button.nn-mobile-toolbar-button {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -68,7 +68,7 @@ button.tps-nn-mobile-toolbar-button {
     background: transparent;
     border: none;
     border-radius: var(--radius-m);
-    color: var(--tps-nn-theme-mobile-toolbar-button-icon-color);
+    color: var(--nn-theme-mobile-toolbar-button-icon-color);
     transition:
         background-color 0.15s ease,
         color 0.15s ease;
@@ -77,39 +77,39 @@ button.tps-nn-mobile-toolbar-button {
     box-shadow: none;
 }
 
-.tps-nn-mobile-toolbar-button-circle {
+.nn-mobile-toolbar-button-circle {
     border-radius: 999px;
 }
 
 /* Mobile toolbar button icons */
-.tps-nn-mobile-toolbar-button svg {
+.nn-mobile-toolbar-button svg {
     width: 24px;
     height: 24px;
 }
 
-.tps-nn-mobile-toolbar-button svg:not(.tps-nn-vault-icon-svg) {
+.nn-mobile-toolbar-button svg:not(.nn-vault-icon-svg) {
     stroke-width: 1.5;
-    stroke: var(--tps-nn-theme-mobile-toolbar-button-icon-color);
+    stroke: var(--nn-theme-mobile-toolbar-button-icon-color);
 }
 
 /* Mobile toolbar button tap feedback */
-.tps-nn-mobile-toolbar-button:active {
+.nn-mobile-toolbar-button:active {
     opacity: 0.7;
 }
 
 /* Active mobile toolbar button state - toggled on */
-.tps-notebook-navigator-mobile button.tps-nn-mobile-toolbar-button.tps-nn-mobile-toolbar-button-active {
-    color: var(--tps-nn-theme-mobile-toolbar-button-active-icon-color);
-    background-color: var(--tps-nn-theme-mobile-toolbar-button-active-bg);
+.notebook-navigator-mobile button.nn-mobile-toolbar-button.nn-mobile-toolbar-button-active {
+    color: var(--nn-theme-mobile-toolbar-button-active-icon-color);
+    background-color: var(--nn-theme-mobile-toolbar-button-active-bg);
 }
 
-.tps-notebook-navigator-mobile button.tps-nn-mobile-toolbar-button.tps-nn-mobile-toolbar-button-active svg:not(.tps-nn-vault-icon-svg) {
-    stroke: var(--tps-nn-theme-mobile-toolbar-button-active-icon-color);
+.notebook-navigator-mobile button.nn-mobile-toolbar-button.nn-mobile-toolbar-button-active svg:not(.nn-vault-icon-svg) {
+    stroke: var(--nn-theme-mobile-toolbar-button-active-icon-color);
     stroke-width: 2;
 }
 
 /* Disabled mobile toolbar button */
-.tps-nn-mobile-toolbar-button:disabled {
+.nn-mobile-toolbar-button:disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }

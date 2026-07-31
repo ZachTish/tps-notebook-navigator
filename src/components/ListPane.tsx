@@ -155,7 +155,7 @@ export interface ListPaneHandle {
 
 interface ListPaneProps {
     /**
-     * Reference to the root navigator container (.tps-nn-split-container).
+     * Reference to the root navigator container (.nn-split-container).
      * This is passed from NotebookNavigatorComponent to ensure keyboard events
      * are captured at the navigator level, not globally. This allows proper
      * keyboard navigation between panes while preventing interference with
@@ -370,15 +370,15 @@ export const ListPane = React.memo(
                 return undefined;
             }
             return {
-                '--tps-nn-file-icon-slot-width': '0px',
-                '--tps-nn-file-icon-slot-width-mobile': '0px',
-                '--tps-nn-file-icon-slot-gap': '0px'
+                '--nn-file-icon-slot-width': '0px',
+                '--nn-file-icon-slot-width-mobile': '0px',
+                '--nn-file-icon-slot-gap': '0px'
             } as React.CSSProperties;
         }, [settings.showFileIcons]);
         const listPaneStyle = useMemo<CSSPropertiesWithVars>(() => {
             return {
                 ...(iconColumnStyle ?? {}),
-                '--tps-nn-calendar-week-count': calendarWeekCount
+                '--nn-calendar-week-count': calendarWeekCount
             };
         }, [calendarWeekCount, iconColumnStyle]);
 
@@ -419,7 +419,7 @@ export const ListPane = React.memo(
                 return 0;
             }
 
-            // Keep in sync with `--tps-nn-ios-pane-bottom-overlay-height` in `src/styles/sections/platform-ios.css`.
+            // Keep in sync with `--nn-ios-pane-bottom-overlay-height` in `src/styles/sections/platform-ios.css`.
             // The calendar overlay is outside the scroller, so it is intentionally not included here.
             return IOS_FLOATING_TOOLBAR_HEIGHT_PX;
         }, [shouldUseFloatingToolbars]);
@@ -1773,12 +1773,12 @@ export const ListPane = React.memo(
         return (
             <div
                 ref={listPaneRef}
-                className={`tps-nn-list-pane ${isSearchActive ? 'tps-nn-search-active' : ''}`}
+                className={`nn-list-pane ${isSearchActive ? 'nn-search-active' : ''}`}
                 style={listPaneStyle}
                 data-calendar={shouldRenderCalendarOverlay ? 'true' : undefined}
             >
-                {props.resizeHandleProps && <div className="tps-nn-resize-handle" {...props.resizeHandleProps} />}
-                <div className="tps-nn-list-pane-chrome">
+                {props.resizeHandleProps && <div className="nn-resize-handle" {...props.resizeHandleProps} />}
+                <div className="nn-list-pane-chrome">
                     <ListPaneTitleChrome
                         onHeaderClick={handleScrollToTop}
                         isSearchActive={isSearchActive}
@@ -1794,7 +1794,7 @@ export const ListPane = React.memo(
                         {/* Android - toolbar at top */}
                         {useMobileChrome && isAndroid && !manualSortEditState ? listToolbar : null}
                         {/* Search bar - collapsible */}
-                        <div className={`tps-nn-search-bar-container ${isSearchActive ? 'tps-nn-search-bar-visible' : ''}`}>
+                        <div className={`nn-search-bar-container ${isSearchActive ? 'nn-search-bar-visible' : ''}`}>
                             {isSearchActive && (
                                 <SearchInput
                                     searchQuery={searchQuery}
@@ -1819,7 +1819,7 @@ export const ListPane = React.memo(
                         </div>
                     </ListPaneTitleChrome>
                 </div>
-                <div className="tps-nn-list-pane-panel">
+                <div className="nn-list-pane-panel">
                     {manualSortEditState ? (
                         <ManualSortListContent
                             files={manualSortEditFiles}
@@ -1909,16 +1909,16 @@ export const ListPane = React.memo(
                     )}
                     {/* iOS: keep the floating toolbar inside the panel */}
                     {shouldRenderBottomToolbarInsidePanel && !manualSortEditState ? (
-                        <div className="tps-nn-pane-bottom-toolbar">{listToolbar}</div>
+                        <div className="nn-pane-bottom-toolbar">{listToolbar}</div>
                     ) : null}
                 </div>
                 {shouldRenderCalendarOverlay ? (
-                    <div className="tps-nn-navigation-calendar-overlay">
+                    <div className="nn-navigation-calendar-overlay">
                         <Calendar onWeekCountChange={setCalendarWeekCount} onAddDateFilter={modifySearchWithDateTokenWithDefaultScope} />
                     </div>
                 ) : null}
                 {shouldRenderBottomToolbarOutsidePanel && !manualSortEditState ? (
-                    <div className="tps-nn-pane-bottom-toolbar">{listToolbar}</div>
+                    <div className="nn-pane-bottom-toolbar">{listToolbar}</div>
                 ) : null}
             </div>
         );

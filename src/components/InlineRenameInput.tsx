@@ -141,7 +141,7 @@ export function InlineRenameInput({
     return (
         <input
             ref={inputRef}
-            className={className ? `tps-nn-inline-rename-input ${className}` : 'tps-nn-inline-rename-input'}
+            className={className ? `nn-inline-rename-input ${className}` : 'nn-inline-rename-input'}
             value={value}
             aria-label={ariaLabel}
             disabled={isCommitting}

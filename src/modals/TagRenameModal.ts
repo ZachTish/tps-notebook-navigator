@@ -61,7 +61,7 @@ export class TagRenameModal extends Modal {
 
         this.titleEl.setText(strings.modals.tagOperation.renameTitle.replace('{tag}', tagLabel));
 
-        const description = this.contentEl.createDiv('tps-nn-tag-rename-description');
+        const description = this.contentEl.createDiv('nn-tag-rename-description');
         description.setText(
             strings.modals.tagOperation.renameWarning
                 .replace('{oldTag}', tagLabel)
@@ -69,27 +69,27 @@ export class TagRenameModal extends Modal {
                 .replace('{files}', countLabel)
         );
 
-        const inputContainer = this.contentEl.createDiv('tps-nn-tag-rename-input-container');
+        const inputContainer = this.contentEl.createDiv('nn-tag-rename-input-container');
         const label = inputContainer.createEl('label', { text: strings.modals.tagOperation.newTagPrompt });
-        label.htmlFor = 'tps-nn-tag-rename-input';
+        label.htmlFor = 'nn-tag-rename-input';
 
         this.inputEl = inputContainer.createEl('input', {
             type: 'text',
-            attr: { id: 'tps-nn-tag-rename-input' },
+            attr: { id: 'nn-tag-rename-input' },
             value: this.initialValue,
             placeholder: strings.modals.tagOperation.newTagPlaceholder
         });
-        this.inputEl.addClass('tps-nn-input');
+        this.inputEl.addClass('nn-input');
         this.inputEl.addEventListener('input', () => this.updateSubmitState());
 
         const warning = this.contentEl.createEl('p', {
             text: strings.modals.tagOperation.modificationWarning
         });
-        warning.addClass('tps-nn-tag-rename-warning');
+        warning.addClass('nn-tag-rename-warning');
 
         renderAffectedFilesPreview(this.contentEl, { total: this.affectedCount, sample: this.sampleFiles });
 
-        const buttonContainer = this.contentEl.createDiv('tps-nn-button-container');
+        const buttonContainer = this.contentEl.createDiv('nn-button-container');
         const cancelBtn = buttonContainer.createEl('button', { text: strings.common.cancel });
         cancelBtn.addEventListener('click', () => this.close());
 

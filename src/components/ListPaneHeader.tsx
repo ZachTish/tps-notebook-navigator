@@ -228,7 +228,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
             // Desktop header title becomes clickable when a folder note exists.
             return (
                 <span
-                    className="tps-nn-pane-header-folder-note"
+                    className="nn-pane-header-folder-note"
                     onClick={handleSelectedFolderNoteClick}
                     onMouseDown={handleSelectedFolderNoteMouseDown}
                 >
@@ -247,7 +247,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                 parts.push(
                     <span
                         key={key}
-                        className={`tps-nn-path-current${isCurrentFolderNoteSegment ? ' tps-nn-pane-header-folder-note' : ''}`}
+                        className={`nn-path-current${isCurrentFolderNoteSegment ? ' nn-pane-header-folder-note' : ''}`}
                         onClick={isCurrentFolderNoteSegment ? handleSelectedFolderNoteClick : undefined}
                         onMouseDown={isCurrentFolderNoteSegment ? handleSelectedFolderNoteMouseDown : undefined}
                     >
@@ -271,7 +271,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                 };
 
                 parts.push(
-                    <span key={key} className="tps-nn-path-segment" onClick={handleClick}>
+                    <span key={key} className="nn-path-segment" onClick={handleClick}>
                         {segment.label}
                     </span>
                 );
@@ -279,7 +279,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
 
             if (!segment.isLast) {
                 parts.push(
-                    <span key={`${key}-separator`} className="tps-nn-path-separator">
+                    <span key={`${key}-separator`} className="nn-path-separator">
                         {' / '}
                     </span>
                 );
@@ -348,10 +348,10 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         // Phones are always single pane, so the back button always has a navigation view to
         // return to.
         return (
-            <div className="tps-nn-pane-header tps-nn-pane-header-simple" onClick={onHeaderClick}>
-                <div className="tps-nn-mobile-header tps-nn-mobile-header-no-icon">
+            <div className="nn-pane-header nn-pane-header-simple" onClick={onHeaderClick}>
+                <div className="nn-mobile-header nn-mobile-header-no-icon">
                     <button
-                        className="tps-nn-icon-button tps-nn-back-button"
+                        className="nn-icon-button nn-back-button"
                         aria-label={strings.paneHeader.mobileBackToNavigation}
                         data-pane-toggle="navigation"
                         onClick={e => {
@@ -362,9 +362,9 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                     >
                         <ServiceIcon iconId={backIconId} aria-hidden={true} />
                     </button>
-                    {showFade && <div className="tps-nn-breadcrumb-fade" />}
-                    <div ref={scrollContainerRef} className="tps-nn-breadcrumb-scroll" onScroll={handleScroll}>
-                        <span className="tps-nn-mobile-title">{breadcrumbContent}</span>
+                    {showFade && <div className="nn-breadcrumb-fade" />}
+                    <div ref={scrollContainerRef} className="nn-breadcrumb-scroll" onScroll={handleScroll}>
+                        <span className="nn-mobile-title">{breadcrumbContent}</span>
                     </div>
                 </div>
             </div>
@@ -376,11 +376,11 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     }
 
     return (
-        <div className="tps-nn-pane-header">
-            <div className="tps-nn-header-actions tps-nn-header-actions--space-between">
+        <div className="nn-pane-header">
+            <div className="nn-header-actions nn-header-actions--space-between">
                 {showBackButton ? (
                     <button
-                        className="tps-nn-icon-button"
+                        className="nn-icon-button"
                         data-pane-toggle="navigation"
                         onClick={() => {
                             uiDispatch({ type: 'ACTIVATE_PANE', target: 'navigation' });
@@ -391,14 +391,14 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                         <ServiceIcon iconId={backIconId} aria-hidden={true} />
                     </button>
                 ) : null}
-                <span className="tps-nn-pane-header-title">
-                    {shouldShowHeaderIcon && <span ref={iconRef} className="tps-nn-pane-header-icon" />}
-                    {shouldShowHeaderTitle && <span className="tps-nn-pane-header-text">{breadcrumbContent}</span>}
+                <span className="nn-pane-header-title">
+                    {shouldShowHeaderIcon && <span ref={iconRef} className="nn-pane-header-icon" />}
+                    {shouldShowHeaderTitle && <span className="nn-pane-header-text">{breadcrumbContent}</span>}
                 </span>
-                <div className="tps-nn-header-actions">
+                <div className="nn-header-actions">
                     {showSearchButton ? (
                         <button
-                            className={`tps-nn-icon-button ${isSearchActive ? 'tps-nn-icon-button-active' : ''}`}
+                            className={`nn-icon-button ${isSearchActive ? 'nn-icon-button-active' : ''}`}
                             aria-label={strings.paneHeader.search}
                             onClick={onSearchToggle}
                             disabled={actionsDisabled || !hasNavigationSelection}
@@ -409,7 +409,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                     ) : null}
                     {showRevealButton ? (
                         <button
-                            className="tps-nn-icon-button"
+                            className="nn-icon-button"
                             aria-label={strings.commands.revealFile}
                             onClick={() => {
                                 runAsyncAction(() => handleRevealFile());
@@ -422,7 +422,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                     ) : null}
                     {showDescendantsButton ? (
                         <button
-                            className={`tps-nn-icon-button ${includeDescendantNotes ? 'tps-nn-icon-button-active' : ''}`}
+                            className={`nn-icon-button ${includeDescendantNotes ? 'nn-icon-button-active' : ''}`}
                             aria-label={descendantsTooltip}
                             onClick={handleToggleDescendants}
                             disabled={actionsDisabled || !hasNavigationSelection}
@@ -433,7 +433,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                     ) : null}
                     {showGroupExpansionButton ? (
                         <button
-                            className="tps-nn-icon-button"
+                            className="nn-icon-button"
                             aria-label={
                                 shouldCollapseGroups ? strings.paneHeader.collapseAllListGroups : strings.paneHeader.expandAllListGroups
                             }
@@ -453,7 +453,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                     ) : null}
                     {showSortButton ? (
                         <button
-                            className={`tps-nn-icon-button ${hasCustomSortOrGroup ? 'tps-nn-icon-button-active' : ''}`}
+                            className={`nn-icon-button ${hasCustomSortOrGroup ? 'nn-icon-button-active' : ''}`}
                             aria-label={strings.paneHeader.changeSortAndGroup}
                             onClick={handleSortMenu}
                             disabled={actionsDisabled || !hasAppearanceOrSortSelection}
@@ -464,7 +464,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                     ) : null}
                     {showAppearanceButton ? (
                         <button
-                            className={`tps-nn-icon-button ${hasCustomAppearance ? 'tps-nn-icon-button-active' : ''}`}
+                            className={`nn-icon-button ${hasCustomAppearance ? 'nn-icon-button-active' : ''}`}
                             aria-label={strings.paneHeader.changeAppearance}
                             onClick={handleAppearanceMenu}
                             disabled={actionsDisabled || !hasAppearanceOrSortSelection}
@@ -475,7 +475,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                     ) : null}
                     {showNewNoteButton ? (
                         <button
-                            className="tps-nn-icon-button"
+                            className="nn-icon-button"
                             aria-label={strings.paneHeader.newNote}
                             onClick={() => {
                                 runAsyncAction(() => handleNewFile());

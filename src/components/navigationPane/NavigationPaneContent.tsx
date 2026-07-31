@@ -980,7 +980,7 @@ export const NavigationPane = React.memo(
         const navigationPaneStyle = useMemo<CSSPropertiesWithVars>(() => {
             return {
                 ...(props.style ?? {}),
-                '--tps-nn-calendar-week-count': calendarWeekCount
+                '--nn-calendar-week-count': calendarWeekCount
             };
         }, [calendarWeekCount, props.style]);
 
@@ -1264,7 +1264,7 @@ export const NavigationPane = React.memo(
                         shouldRenderBottomToolbarOutsidePanel={useMobileChrome && !isAndroid && !shouldUseFloatingToolbars}
                         calendarOverlay={
                             shouldRenderCalendarOverlay ? (
-                                <div className="tps-nn-navigation-calendar-overlay">
+                                <div className="nn-navigation-calendar-overlay">
                                     <Calendar onWeekCountChange={setCalendarWeekCount} onAddDateFilter={onModifySearchWithDateFilter} />
                                 </div>
                             ) : null

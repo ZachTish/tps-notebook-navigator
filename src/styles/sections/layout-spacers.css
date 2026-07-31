@@ -5,54 +5,54 @@
    ======================================================================== */
 
 /* Navigation pane spacers - provide visual breathing room in the list */
-.tps-nn-nav-top-spacer {
+.nn-nav-top-spacer {
     height: 8px;
     flex-shrink: 0;
     position: relative;
 }
 
-.tps-nn-nav-bottom-spacer {
+.nn-nav-bottom-spacer {
     height: 20px;
     flex-shrink: 0;
 }
 
-.tps-nn-nav-list-spacer {
+.nn-nav-list-spacer {
     height: 8px;
     flex-shrink: 0;
     position: relative;
 }
 
-.tps-nn-nav-root-spacer {
-    height: var(--tps-nn-nav-root-spacing, 0px);
+.nn-nav-root-spacer {
+    height: var(--nn-nav-root-spacing, 0px);
     flex-shrink: 0;
     pointer-events: none;
 }
 
-.tps-nn-nav-spacer--with-separator::after {
+.nn-nav-spacer--with-separator::after {
     content: '';
     position: absolute;
-    left: calc(-1 * var(--tps-nn-scroller-padding));
-    right: calc(-1 * var(--tps-nn-scroller-padding));
-    top: calc(50% - (var(--tps-nn-theme-nav-separator-height, 1px) / 2));
-    height: var(--tps-nn-theme-nav-separator-height, 1px);
+    left: calc(-1 * var(--nn-scroller-padding));
+    right: calc(-1 * var(--nn-scroller-padding));
+    top: calc(50% - (var(--nn-theme-nav-separator-height, 1px) / 2));
+    height: var(--nn-theme-nav-separator-height, 1px);
     background: var(
-        --tps-nn-theme-nav-separator-background,
+        --nn-theme-nav-separator-background,
         linear-gradient(
             90deg,
             transparent 0%,
-            var(--tps-nn-theme-nav-separator-color) 15%,
-            var(--tps-nn-theme-nav-separator-color) 85%,
+            var(--nn-theme-nav-separator-color) 15%,
+            var(--nn-theme-nav-separator-color) 85%,
             transparent 100%
         )
     );
-    opacity: var(--tps-nn-theme-nav-separator-opacity, 0.3);
+    opacity: var(--nn-theme-nav-separator-opacity, 0.3);
 }
 
 /* List pane spacers - match navigation pane for consistency */
-.tps-nn-list-top-spacer {
+.nn-list-top-spacer {
     height: 8px;
 }
 
-.tps-nn-list-bottom-spacer {
+.nn-list-bottom-spacer {
     height: 20px;
 }

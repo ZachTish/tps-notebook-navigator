@@ -87,9 +87,9 @@ export function ListToolbar({
         showAppearanceButton
     ].filter(Boolean).length;
     const totalButtonCount = leftButtonCount + (showNewNoteButton ? 1 : 0);
-    const leftGroupClassName = leftButtonCount === 1 ? 'tps-nn-mobile-toolbar-circle' : 'tps-nn-mobile-toolbar-pill';
+    const leftGroupClassName = leftButtonCount === 1 ? 'nn-mobile-toolbar-circle' : 'nn-mobile-toolbar-pill';
     const leftButtonBaseClassName =
-        leftButtonCount === 1 ? 'tps-nn-mobile-toolbar-button tps-nn-mobile-toolbar-button-circle' : 'tps-nn-mobile-toolbar-button';
+        leftButtonCount === 1 ? 'nn-mobile-toolbar-button nn-mobile-toolbar-button-circle' : 'nn-mobile-toolbar-button';
 
     if (totalButtonCount === 0) {
         return null;
@@ -99,7 +99,7 @@ export function ListToolbar({
         showSearchButton ? (
             <button
                 key="search"
-                className={`${leftButtonBaseClassName}${isSearchActive ? ' tps-nn-mobile-toolbar-button-active' : ''}`}
+                className={`${leftButtonBaseClassName}${isSearchActive ? ' nn-mobile-toolbar-button-active' : ''}`}
                 aria-label={strings.paneHeader.search}
                 onClick={onSearchToggle}
                 disabled={!hasNavigationSelection}
@@ -125,7 +125,7 @@ export function ListToolbar({
         showDescendantsButton ? (
             <button
                 key="descendants"
-                className={`${leftButtonBaseClassName}${includeDescendantNotes ? ' tps-nn-mobile-toolbar-button-active' : ''}`}
+                className={`${leftButtonBaseClassName}${includeDescendantNotes ? ' nn-mobile-toolbar-button-active' : ''}`}
                 aria-label={descendantsTooltip}
                 onClick={handleToggleDescendants}
                 disabled={!hasNavigationSelection}
@@ -153,7 +153,7 @@ export function ListToolbar({
         showSortButton ? (
             <button
                 key="sort"
-                className={`${leftButtonBaseClassName}${hasCustomSortOrGroup ? ' tps-nn-mobile-toolbar-button-active' : ''}`}
+                className={`${leftButtonBaseClassName}${hasCustomSortOrGroup ? ' nn-mobile-toolbar-button-active' : ''}`}
                 aria-label={strings.paneHeader.changeSortAndGroup}
                 onClick={handleSortMenu}
                 disabled={!hasAppearanceOrSortSelection}
@@ -165,7 +165,7 @@ export function ListToolbar({
         showAppearanceButton ? (
             <button
                 key="appearance"
-                className={`${leftButtonBaseClassName}${hasCustomAppearance ? ' tps-nn-mobile-toolbar-button-active' : ''}`}
+                className={`${leftButtonBaseClassName}${hasCustomAppearance ? ' nn-mobile-toolbar-button-active' : ''}`}
                 aria-label={strings.paneHeader.changeAppearance}
                 onClick={handleAppearanceMenu}
                 disabled={!hasAppearanceOrSortSelection}
@@ -178,7 +178,7 @@ export function ListToolbar({
     const newNoteButton = showNewNoteButton ? (
         <button
             key="new-note"
-            className="tps-nn-mobile-toolbar-button tps-nn-mobile-toolbar-button-circle"
+            className="nn-mobile-toolbar-button nn-mobile-toolbar-button-circle"
             aria-label={strings.paneHeader.newNote}
             onClick={() => {
                 runAsyncAction(() => handleNewFile());
@@ -192,7 +192,7 @@ export function ListToolbar({
 
     if (!useFloatingLayout) {
         return (
-            <div className="tps-nn-mobile-toolbar">
+            <div className="nn-mobile-toolbar">
                 {leftButtons}
                 {newNoteButton}
             </div>
@@ -200,14 +200,14 @@ export function ListToolbar({
     }
 
     return (
-        <div className="tps-nn-mobile-toolbar">
-            <div className="tps-nn-mobile-toolbar-left">
+        <div className="nn-mobile-toolbar">
+            <div className="nn-mobile-toolbar-left">
                 {leftButtonCount > 0 ? <div className={leftGroupClassName}>{leftButtons}</div> : null}
             </div>
 
             {showNewNoteButton ? (
-                <div className="tps-nn-mobile-toolbar-right">
-                    <div className="tps-nn-mobile-toolbar-circle">{newNoteButton}</div>
+                <div className="nn-mobile-toolbar-right">
+                    <div className="nn-mobile-toolbar-circle">{newNoteButton}</div>
                 </div>
             ) : null}
         </div>

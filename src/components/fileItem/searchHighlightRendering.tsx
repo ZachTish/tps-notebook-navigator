@@ -31,7 +31,7 @@ export function renderTextWithHighlightRanges(text: string, ranges: readonly Num
             parts.push(text.slice(cursor, range.start));
         }
         parts.push(
-            <mark key={`h-${index}`} className="tps-nn-search-highlight">
+            <mark key={`h-${index}`} className="nn-search-highlight">
                 {text.slice(range.start, range.end)}
             </mark>
         );
