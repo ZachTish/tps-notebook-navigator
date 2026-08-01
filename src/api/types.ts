@@ -68,6 +68,8 @@ export type TagCollectionId = '__tagged__' | '__untagged__';
 export interface TpsNotebookNavigatorApiChangedPayload {
     readonly source: 'tps-notebook-navigator';
     readonly sourcePluginId: 'tps-notebook-navigator';
+    /** Opaque identity shared by every payload from one loaded host instance. */
+    readonly hostInstanceId: string;
     readonly timestamp: number;
     readonly available: boolean;
     readonly pluginVersion: string;
@@ -257,6 +259,147 @@ export interface NavigatorRowProvider {
     subscribe?(context: NavigatorRowProviderContext, options: NavigatorRowProviderOptions, invalidate: () => void): (() => void) | void;
 }
 
+/**
+ * Exact source-backed identity used to focus one currently rendered provider row.
+ * Optional guards are checked when supplied; this reference never causes a scope change.
+ */
+export interface NavigatorRowFocusTarget {
+    readonly providerId: string;
+    readonly rowId: string;
+    readonly sourcePath: string;
+    readonly sourceLineNumber?: number;
+    /** Opaque selected Type id, or null for a row attached beneath a note. */
+    readonly typeId?: string | null;
+    /** Optional presentation-kind guard for callers retaining a prior selection snapshot. */
+    readonly kind?: string;
+}
+
+/** Immutable identity for the one transient or Type-backed row selected in the list pane. */
+export interface NavigatorRowSelection {
+    readonly providerId: string;
+    readonly rowId: string;
+    readonly kind: string;
+    readonly label: string;
+    readonly file: TFile;
+    readonly sourcePath: string;
+    readonly sourceLineNumber?: number;
+    /** Opaque selected Type id, or null when the row is attached beneath a note. */
+    readonly typeId: string | null;
+}
+
+// ============================================================================
+// CURRENT LIST VIEW (TPS FORK)
+// ============================================================================
+
+export type NavigatorListSearchProvider = 'internal' | 'omnisearch';
+
+export type NavigatorListSortOption =
+    | 'modified-desc'
+    | 'modified-asc'
+    | 'created-desc'
+    | 'created-asc'
+    | 'title-asc'
+    | 'title-desc'
+    | 'filename-asc'
+    | 'filename-desc'
+    | 'property-asc'
+    | 'property-desc';
+
+export interface NavigatorListSortSpec {
+    readonly option: NavigatorListSortOption;
+    /** Required for property sorting and omitted for every other sort. */
+    readonly propertyKey?: string;
+}
+
+export type NavigatorListGrouping = 'custom' | 'date' | 'folder' | `property:${string}` | `property-desc:${string}`;
+export type NavigatorListDisplayMode = 'standard' | 'compact';
+
+/** Guarded update for the search owned by the primary mounted TPS Navigator view. */
+export interface NavigatorListSearchUpdate {
+    readonly active?: boolean;
+    readonly query?: string;
+    readonly provider?: NavigatorListSearchProvider;
+    /** Focus the search input after applying the update. Defaults to false. */
+    readonly focus?: boolean;
+}
+
+/** Atomic, per-scope list presentation update. Null resets one field to its inherited default. */
+export interface NavigatorListPresentationUpdate {
+    readonly sort?: NavigatorListSortSpec | null;
+    readonly groupBy?: NavigatorListGrouping | null;
+    readonly displayMode?: NavigatorListDisplayMode | null;
+}
+
+export interface NavigatorListSearchState {
+    readonly active: boolean;
+    /** Current search-input value. */
+    readonly query: string;
+    /** Debounced query that produced the current row snapshot. */
+    readonly appliedQuery: string;
+    readonly requestedProvider: NavigatorListSearchProvider;
+    readonly effectiveProvider: NavigatorListSearchProvider;
+}
+
+export interface NavigatorListSortState {
+    readonly option: NavigatorListSortOption;
+    readonly propertyKey: string | null;
+    readonly source: 'default' | 'scope';
+}
+
+export interface NavigatorListGroupingState {
+    /** Saved/default grouping before compatibility coercion by the active sort. */
+    readonly configured: NavigatorListGrouping;
+    /** Grouping that produced the current row snapshot. */
+    readonly effective: NavigatorListGrouping;
+    readonly source: 'default' | 'scope';
+}
+
+export interface NavigatorListDisplayModeState {
+    readonly value: NavigatorListDisplayMode;
+    readonly source: 'default' | 'scope';
+}
+
+export interface NavigatorListPresentationState {
+    readonly sort: NavigatorListSortState;
+    readonly grouping: NavigatorListGroupingState;
+    readonly displayMode: NavigatorListDisplayModeState;
+}
+
+export interface NavigatorVisibleFileRow {
+    readonly type: 'file';
+    readonly file: TFile;
+    readonly path: string;
+    readonly pinned: boolean;
+}
+
+/** Callback-free provider row in its current composed list position. */
+export interface NavigatorVisibleProviderRow {
+    readonly type: 'provider';
+    readonly providerId: string;
+    readonly rowId: string;
+    readonly kind: string;
+    readonly label: string;
+    readonly secondaryLabel?: string;
+    readonly sourcePath: string;
+    readonly sourceLineNumber?: number;
+    /** Opaque selected Type id, or null for a row attached beneath a note. */
+    readonly typeId: string | null;
+    /** Null for a non-source-backed loading or error placeholder. */
+    readonly file: TFile | null;
+}
+
+export type NavigatorVisibleListRow = NavigatorVisibleFileRow | NavigatorVisibleProviderRow;
+
+/** Pull-based immutable snapshot of the primary mounted TPS Navigator list. */
+export interface NavigatorListSnapshot {
+    readonly navItem: NavItem;
+    readonly search: NavigatorListSearchState;
+    /** Type collections own their row order, so file-list presentation is null in Type scope. */
+    readonly presentation: NavigatorListPresentationState | null;
+    /** Renderable file/provider order after scope, search, and collapsed-group filtering. */
+    readonly rows: readonly NavigatorVisibleListRow[];
+}
+
 // ============================================================================
 // METADATA TYPES
 // ============================================================================
@@ -376,6 +519,11 @@ export interface NotebookNavigatorEvents {
     /** Fired when selection changes in the list pane */
     'selection-changed': {
         state: SelectionState;
+    };
+
+    /** Fired when the selected transient or Type-backed row changes. */
+    'row-selection-changed': {
+        readonly row: NavigatorRowSelection | null;
     };
 
     /** Fired when pinned files change */

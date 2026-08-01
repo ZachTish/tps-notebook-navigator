@@ -492,7 +492,7 @@ describe('public API declaration file', () => {
     it('matches nested public NotebookNavigatorAPI namespace member names', () => {
         const sourceFile = readSourceFile('src/api/NotebookNavigatorAPI.ts');
         const publicFile = readSourceFile('src/api/public/notebook-navigator.d.ts');
-        const namespaceNames = ['navigation', 'metadata', 'selection', 'menus', 'tagCollections', 'propertyNodes', 'rows', 'types'];
+        const namespaceNames = ['navigation', 'metadata', 'selection', 'menus', 'tagCollections', 'propertyNodes', 'rows', 'types', 'list'];
 
         for (const namespaceName of namespaceNames) {
             const sourceMembers = getNestedMemberNamesFromTypeNode(
@@ -518,6 +518,8 @@ describe('public API declaration file', () => {
         'NavigatorRowProviderContext',
         'NavigatorRowProviderQueryContext',
         'NavigatorRowProvider',
+        'NavigatorRowFocusTarget',
+        'NavigatorRowSelection',
         'NavigatorTypeDescriptor',
         'NavigatorTypeCollectionDefinition',
         'NavigatorTypeProviderContext',
@@ -543,6 +545,8 @@ describe('public API declaration file', () => {
         'NavigatorRowProviderContext',
         'NavigatorRowProviderQueryContext',
         'NavigatorRowProvider',
+        'NavigatorRowFocusTarget',
+        'NavigatorRowSelection',
         'NavigatorTypeDescriptor',
         'NavigatorTypeCollectionDefinition',
         'NavigatorTypeProviderContext',
@@ -609,6 +613,7 @@ describe('public API declaration file', () => {
         const propertyNodesFile = readSourceFile('src/api/modules/PropertyNodesAPI.ts');
         const rowsFile = readSourceFile('src/api/modules/RowsAPI.ts');
         const typesFile = readSourceFile('src/api/modules/TypesAPI.ts');
+        const listFile = readSourceFile('src/api/modules/ListAPI.ts');
 
         const checks = [
             {
@@ -647,10 +652,22 @@ describe('public API declaration file', () => {
                 sourceClass: 'NavigationAPI',
                 methodName: 'navigateToType'
             },
+            {
+                namespace: 'navigation',
+                sourceFile: navigationFile,
+                sourceClass: 'NavigationAPI',
+                methodName: 'focusRow'
+            },
             ...['buildKind', 'parseKind', 'isType', 'registerProvider', 'getSnapshot', 'subscribe', 'whenReady'].map(methodName => ({
                 namespace: 'types',
                 sourceFile: typesFile,
                 sourceClass: 'TypesAPI',
+                methodName
+            })),
+            ...['getSnapshot', 'setSearch', 'setPresentation'].map(methodName => ({
+                namespace: 'list',
+                sourceFile: listFile,
+                sourceClass: 'ListAPI',
                 methodName
             })),
             {
@@ -700,6 +717,12 @@ describe('public API declaration file', () => {
                 sourceFile: selectionFile,
                 sourceClass: 'SelectionAPI',
                 methodName: 'getCurrent'
+            },
+            {
+                namespace: 'selection',
+                sourceFile: selectionFile,
+                sourceClass: 'SelectionAPI',
+                methodName: 'getCurrentRow'
             },
             {
                 namespace: 'propertyNodes',

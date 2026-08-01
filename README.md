@@ -38,7 +38,7 @@ The first-class **Types** section is enabled by default. It uses TPS Global Cont
 - Hydrated task entities—both in **Checkboxes** and inside any dynamic Kind—show their live checkbox state. Mutable rows use GCM's canonical completion path with optimistic rollback, and right-click, mobile long-press, or **More actions** opens the full GCM task menu. A task that cannot be matched exactly remains open-only rather than inventing state.
 - Task hydration batches cold reads across source files, then reuses a bounded per-path cache keyed by file metadata. Exact GCM and vault update paths invalidate that cache, including failed initial hydration, so unchanged vaults avoid repeated scans without leaving edited checkboxes stale.
 - Counts and rows respect the active Navigator profile, hidden-folder/file/property/tag rules, file visibility, and the hidden-items override. Fenced examples that GCM excludes never become Navigator rows.
-- Type rows are deliberately excluded from file selection, pinning, drag, rename, sort/group editing, and note creation. The Types list keeps its own text search and hides irrelevant file actions on desktop and mobile.
+- Type rows have one transient row cursor and remain deliberately excluded from `TFile` selection, multi-select, pinning, drag, rename, sort/group editing, and note creation. The Types list keeps its own text search and hides irrelevant file actions on desktop and mobile.
 - Missing, disabled, incompatible, or incomplete GCM indexing fails closed with a visible status row. TPS Global Context Menu 1.15.0 is the tested Entity Index v3 and canonical task-completion baseline. Older GCM builds may populate Types when they expose Entity Index v3, but mutation capabilities are detected independently and fail closed.
 
 The selected type and Types/Kinds expansion state use TPS-namespaced local storage, participate in back/forward history and keyboard navigation, and do not alter upstream Notebook Navigator state. Dynamic Kind collections disappear only after a complete index snapshot confirms that the Kind no longer exists; transient GCM startup does not erase a restored selection.
@@ -77,6 +77,21 @@ obsolete scan cannot clear dirty paths, seed negative cache entries, or schedule
 providers that ignore the additive signal remain compatible, although checking it before expensive work and after awaited
 batches avoids wasted work.
 
+API 2.12.0 makes attached and Type-backed provider rows first-class single-selection targets without pretending that they
+are files. Pointer selection and Arrow/Home/End/Page navigation share one cursor with native files; Enter invokes a selected
+row's optional activation exactly once. `selection.getCurrentRow()` and `row-selection-changed` expose an immutable,
+callback-free source identity, while `navigation.focusRow(...)` focuses only an exact row already rendered in the current
+scope and never changes scope or activates it. File and row selection are exclusive, row state is never persisted, and a
+filtered, unregistered, deleted, renamed, or otherwise stale row is cleared or rejected.
+
+API 2.13.0 adds a bounded, provider-neutral `list` namespace for integrations that need the list the user is actually
+looking at. `list.getSnapshot()` pulls the first mounted TPS view's current navigation scope, immediate/applied search,
+requested/effective provider, effective per-scope presentation, and composed file/provider row order without continuously
+cloning large Type collections or exposing provider callbacks. `setSearch(...)` and atomic `setPresentation(...)` never
+open a view and fail closed for stale views, malformed input, Type scopes, manual sorting, unavailable property keys, or
+incompatible grouping. Null presentation fields reset only that field to its inherited default; no new persisted schema or
+migration is introduced.
+
 Clicks, back/forward history, and public calls share one validator, ancestor-expansion, focus, and scroll path. Catalog DTOs
 are immutable and intentionally omit GCM records, source paths, task payloads, and counts whose meaning would differ before
 and after Navigator visibility filtering. Readiness and removal authority are tracked per source: a failed provider cannot
@@ -96,7 +111,7 @@ The Types toggle and all three task-row values persist in the TPS plugin's own `
 
 ### Provider behavior and limits
 
-- Rows are transient UI records, never fake `TFile` objects. They do not participate in file selection, multi-select, drag, rename, or file indexes.
+- Rows are transient UI records, never fake `TFile` objects. They have one independent row cursor but do not participate in `TFile` selection, multi-select, drag, rename, persistence, or file indexes.
 - Providers are queried only for exact paths already present in the current list. Independent providers stream in as they settle, in configured order, without exceeding one global 1,000-row ceiling. During a same-scope refresh, each provider's prior rows remain visible until that provider itself settles, including empty or failed results. Large GCM lists load progressively in bounded 64-note passes, retain completed pass state for the active scope, and cache tasks per path with independent per-note limits and GCM/vault lifecycle invalidation.
 - A provider exception is isolated and logged without replacing or blocking the file list.
 - A mutable GCM checkbox updates optimistically, rolls back with a visible warning on failure, and refreshes from GCM's file event. Working, holding, and other custom markers render verbatim with an accessible state label. Older compatible GCM APIs retain a labeled display-only checkbox.
@@ -117,7 +132,8 @@ The Types toggle and all three task-row values persist in the TPS plugin's own `
   valid descriptors, async results are ignored after replacement/unload, and provider callbacks/options remain runtime-only.
 - API lifecycle events announce each available and unavailable host instance. Long-lived owners can subscribe once and send
   a point-to-point lifecycle request, then automatically replace their registration handles after a TPS-only hot reload
-  without polling, rebroadcasting a request response, or retaining provider state in Navigator.
+  without polling, rebroadcasting a request response, or retaining provider state in Navigator. Each loaded host has one
+  opaque identity, so a consumer can match teardown to the exact instance instead of ordering hosts by a wall-clock timestamp.
 - TPS settings import is a copy, not synchronization. Later upstream setting changes are not mirrored unless the import is explicitly run again.
 - Built-in GCM-backed Types rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. External Type-provider rows retain the public provider safety ceiling. Plain-text search matches built-in entity labels and source paths; external owners receive the same query before their row ceiling. File-only advanced search operators and Omnisearch ranking do not apply in a Types collection.
 
@@ -133,6 +149,29 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 4.11.0 — controllable, selectable TPS rows
+
+- Makes attached and Type-backed entity rows first-class transient selections, with pointer and keyboard navigation,
+  Enter activation, immutable selection events, exact-row focus, and accessible current-row semantics without turning
+  rows into fake files or persisted selection state.
+- Adds the pull-based public `list` API for inspecting the current composed row order and safely controlling search plus
+  per-scope sort, grouping, and display choices. Snapshots distinguish requested, effective, and actually applied search
+  state; presentation writes validate atomically and roll back if persistence fails.
+- Keeps **Types** enabled by default with Notes, Checkboxes, Bullets, Headings, and dynamic Kinds. Structural line rows
+  open their exact current source line, note entities open their note, and current rows expose the same guarded menu path
+  on desktop and mobile.
+- Adds an operational-identity CI gate so documentation and maintenance commands cannot accidentally target upstream
+  Notebook Navigator's runtime while both plugins remain installed side by side.
+- Adds an opaque per-host lifecycle identity so integrations distinguish the current host's unload from a retiring host's
+  late event, including same-millisecond transitions and wall-clock rollback.
+- Backward-compatible minor release with no settings or note-data migration. Public API advances to 2.13.0 and minimum
+  supported Obsidian remains 1.11.0.
+- Validated with 215 Vitest files and 2,308 tests plus TypeScript, ESLint, Prettier, stylesheet, CSS namespace,
+  operational-identity, and artifact-identity gates. The separate final build deployed byte-matching artifacts to the
+  isolated test vault; Obsidian 1.12.7 was reloaded and verified for side-by-side upstream/TPS installation, every Type
+  collection, exact-line activation, GCM note and task menus, and ordinary folder navigation. Runtime `data.json` stayed
+  in place, with only the plugin-owned `lastShownVersion` marker advancing during reload. Production was untouched.
 
 ### 4.10.0 — cancellation-safe provider rows
 

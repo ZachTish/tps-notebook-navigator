@@ -49,7 +49,13 @@ import { getFilesForNavigationSelection, getVisibleVaultMarkdownFiles } from '..
 import { getListSortOverrideForSelection, isManualSortPropertyKey, resolveListSort } from '../utils/sortUtils';
 import { applyManualSortMarkdownOrder, getManualSortGroupHeaderPropertyKey } from '../utils/manualSort';
 import { getPropertyFieldsFromPropertyKeys } from '../utils/vaultProfiles';
-import { buildHiddenFileState, filterListPaneFiles, useOmnisearchListResult, useSearchableNames } from './listPaneData/searchPipeline';
+import {
+    buildHiddenFileState,
+    filterListPaneFiles,
+    resolveAppliedListSearchState,
+    useOmnisearchListResult,
+    useSearchableNames
+} from './listPaneData/searchPipeline';
 import {
     buildFileIndexMap,
     buildFilePathToIndexMap,
@@ -134,6 +140,10 @@ interface UseListPaneDataResult {
     hiddenFileState: ReadonlyMap<string, boolean>;
     /** Search metadata keyed by file path (populated when using Omnisearch) */
     searchMeta: Map<string, SearchResultMeta>;
+    /** Query that actually produced the current rendered rows. */
+    appliedSearchQuery: string;
+    /** Provider that actually produced the current rendered rows. */
+    effectiveSearchProvider: SearchProvider;
     /** Local day key in YYYY-MM-DD format */
     localDayKey: string;
 }
@@ -362,6 +372,11 @@ export function useListPaneData({
         omnisearchService,
         trimmedQuery,
         useOmnisearch
+    });
+    const appliedSearchState = resolveAppliedListSearchState({
+        trimmedQuery,
+        useOmnisearch,
+        omnisearchResult
     });
     const searchableNames = useSearchableNames({ app, baseFiles, getFileDisplayName });
     const filterSettings = useMemo(() => ({ alphabeticalDateMode: settings.alphabeticalDateMode }), [settings.alphabeticalDateMode]);
@@ -722,6 +737,8 @@ export function useListPaneData({
         files,
         hiddenFileState,
         searchMeta: searchMetaMap,
+        appliedSearchQuery: appliedSearchState.query,
+        effectiveSearchProvider: appliedSearchState.provider,
         localDayKey: dayKey
     };
 }

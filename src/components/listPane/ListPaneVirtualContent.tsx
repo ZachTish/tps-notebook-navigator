@@ -51,6 +51,7 @@ import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { createNavigatorRowMenuTarget } from '../../utils/contextMenu/providerRowContextMenu';
 import { NavigatorProviderRow, type NavigatorProviderRowMenuHost } from '../providerRows/NavigatorProviderRow';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
+import { getNavigatorRowSelectionKey } from '../../services/rows/rowSelection';
 
 export interface PointerClientPosition {
     clientX: number;
@@ -139,6 +140,8 @@ interface ListPaneVirtualContentProps {
     suppressRowHover: boolean;
     onHoveredFilePathChange: (path: string | null, pointerClientPosition: PointerClientPosition | null) => void;
     onFileClick: (file: TFile, fileIndex: number | undefined, event: React.MouseEvent) => void;
+    selectedProviderRowKey: string | null;
+    onProviderRowSelect: (row: NavigatorProvidedRow) => boolean;
     onProviderRowActivationRequested?: () => void;
     onModifySearchWithTag: (tag: string, operator: InclusionOperator) => void;
     onModifySearchWithProperty: (key: string, value: string | null, operator: InclusionOperator) => void;
@@ -475,6 +478,7 @@ interface ListPaneRowProps {
     onFolderGroupHeaderMouseDown: (event: React.MouseEvent<HTMLSpanElement>, target: FolderGroupHeaderTarget) => void;
     onGroupHeaderContextMenu: (event: React.MouseEvent<HTMLDivElement>, header: HeaderRenderModel) => void;
     onProviderRowActivationRequested?: () => void;
+    onProviderRowSelect: (row: NavigatorProvidedRow) => boolean;
     rowMenuHost?: NavigatorProviderRowMenuHost;
 }
 
@@ -516,6 +520,7 @@ const ListPaneRow = React.memo(function ListPaneRow({
     onFolderGroupHeaderMouseDown,
     onGroupHeaderContextMenu,
     onProviderRowActivationRequested,
+    onProviderRowSelect,
     rowMenuHost
 }: ListPaneRowProps) {
     const virtualItemStyle: VirtualRowStyle = {
@@ -602,6 +607,8 @@ const ListPaneRow = React.memo(function ListPaneRow({
             ) : item.type === ListPaneItemType.PROVIDER_ROW && typeof item.data === 'object' ? (
                 <NavigatorProviderRow
                     row={item.data as NavigatorProvidedRow}
+                    isSelected={isSelected}
+                    onSelectionRequested={() => onProviderRowSelect(item.data as NavigatorProvidedRow)}
                     onActivationRequested={onProviderRowActivationRequested}
                     rowMenuHost={rowMenuHost}
                 />
@@ -670,6 +677,8 @@ export function ListPaneVirtualContent({
     suppressRowHover,
     onHoveredFilePathChange,
     onFileClick,
+    selectedProviderRowKey,
+    onProviderRowSelect,
     onProviderRowActivationRequested,
     onModifySearchWithTag,
     onModifySearchWithProperty,
@@ -1174,7 +1183,16 @@ export function ListPaneVirtualContent({
                             const nextItem = getItemAt(listItems, virtualItem.index + 1);
                             const previousItem = getItemAt(listItems, virtualItem.index - 1);
                             const isFileRow = isFileListItem(item);
-                            const isSelected = isFileRow && isFileVisuallySelected(item.data);
+                            const providerRowKey =
+                                item.type === ListPaneItemType.PROVIDER_ROW && typeof item.data === 'object'
+                                    ? getNavigatorRowSelectionKey({
+                                          providerId: (item.data as NavigatorProvidedRow).providerId,
+                                          rowId: (item.data as NavigatorProvidedRow).id
+                                      })
+                                    : null;
+                            const isSelected =
+                                (isFileRow && isFileVisuallySelected(item.data)) ||
+                                (providerRowKey !== null && providerRowKey === selectedProviderRowKey);
                             const isPreviousFileSelected = isFileListItem(previousItem) && isFileVisuallySelected(previousItem.data);
                             const isNextFileSelected = isFileListItem(nextItem) && isFileVisuallySelected(nextItem.data);
                             const hasCustomBackground = hasFileCustomBackground(item);
@@ -1259,6 +1277,7 @@ export function ListPaneVirtualContent({
                                     onFolderGroupHeaderMouseDown={handleFolderGroupHeaderMouseDown}
                                     onGroupHeaderContextMenu={handleGroupHeaderContextMenu}
                                     onProviderRowActivationRequested={onProviderRowActivationRequested}
+                                    onProviderRowSelect={onProviderRowSelect}
                                     rowMenuHost={rowMenuHost}
                                 />
                             );

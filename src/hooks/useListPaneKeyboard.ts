@@ -49,13 +49,48 @@ import { openFileInContext } from '../utils/openFileInContext';
 import { isEnterKey, resolveKeyboardEnterAction } from '../utils/keyboardOpenContext';
 import { supportsKeyboardInteractions } from '../utils/paneLayout';
 import type { Align } from '../types/scroll';
+import type { NavigatorProvidedRow } from '../services/rows/types';
+import { getNavigatorRowSelectionKey } from '../services/rows/rowSelection';
 
 /**
- * Check if a list item is selectable (file, not header or spacer)
+ * Check if a list item is selectable (file or provider row, not header or spacer)
  */
-const isSelectableListItem = (item: ListPaneItem): boolean => {
-    return item.type === ListPaneItemType.FILE;
+export const isSelectableListItem = (item: ListPaneItem): boolean => {
+    return item.type === ListPaneItemType.FILE || item.type === ListPaneItemType.PROVIDER_ROW;
 };
+
+/** Resolve the one keyboard cursor across native files and provider rows. */
+export function getListPaneKeyboardSelectionIndex(
+    items: readonly ListPaneItem[],
+    pathToIndex: ReadonlyMap<string, number>,
+    selectedFilePath: string | null,
+    selectedProviderRowKey: string | null
+): number {
+    if (selectedProviderRowKey) {
+        return items.findIndex(item => {
+            return (
+                item.type === ListPaneItemType.PROVIDER_ROW &&
+                typeof item.data === 'object' &&
+                getNavigatorRowSelectionKey({
+                    providerId: (item.data as NavigatorProvidedRow).providerId,
+                    rowId: (item.data as NavigatorProvidedRow).id
+                }) === selectedProviderRowKey
+            );
+        });
+    }
+
+    return selectedFilePath ? (pathToIndex.get(selectedFilePath) ?? -1) : -1;
+}
+
+/** Activate a selected provider row exactly once when Enter owns the keyboard action. */
+export function requestProviderRowKeyboardActivation(row: NavigatorProvidedRow, onError: (error: unknown) => void): boolean {
+    if (!row.activate) {
+        return false;
+    }
+
+    runAsyncAction(row.activate, { onError });
+    return true;
+}
 
 interface UseListPaneKeyboardProps {
     /** Whether list pane keyboard handling is active */
@@ -82,10 +117,13 @@ interface UseListPaneKeyboardProps {
     onScheduleKeyboardOpenForFile?: (file: TFile) => void;
     /** Commit selection by opening the currently selected file */
     onCommitKeyboardOpen?: () => void;
+    onCancelKeyboardOpen?: () => void;
     /** Reorder the selected property-sorted file block */
     onReorderPropertySort?: (direction: 'up' | 'down') => boolean;
     /** Starts inline rename for the current file when available */
     onStartRename?: () => boolean;
+    selectedProviderRowKey: string | null;
+    onSelectProviderRow: (row: NavigatorProvidedRow) => boolean;
 }
 
 /**
@@ -105,8 +143,11 @@ export function useListPaneKeyboard({
     onScheduleKeyboardOpen,
     onScheduleKeyboardOpenForFile,
     onCommitKeyboardOpen,
+    onCancelKeyboardOpen,
     onReorderPropertySort,
-    onStartRename
+    onStartRename,
+    selectedProviderRowKey,
+    onSelectProviderRow
 }: UseListPaneKeyboardProps) {
     const { app, commandQueue, tagTreeService, propertyTreeService } = useServices();
     const openFileInWorkspace = useFileOpener();
@@ -129,12 +170,13 @@ export function useListPaneKeyboard({
      * Get current selection index
      */
     const getCurrentIndex = useCallback(() => {
-        const selectedFile = fileSelectionRef.current.selectedFile;
-        if (selectedFile?.path) {
-            return pathToIndex.get(selectedFile.path) ?? -1;
-        }
-        return -1;
-    }, [pathToIndex]);
+        return getListPaneKeyboardSelectionIndex(
+            items,
+            pathToIndex,
+            fileSelectionRef.current.selectedFile?.path ?? null,
+            selectedProviderRowKey
+        );
+    }, [items, pathToIndex, selectedProviderRowKey]);
 
     /**
      * Select item at given index
@@ -150,9 +192,15 @@ export function useListPaneKeyboard({
                     suppressOpen: options?.suppressOpen,
                     debounceOpen: options?.debounceOpen
                 });
+                return;
+            }
+
+            if (item.type === ListPaneItemType.PROVIDER_ROW && typeof item.data === 'object') {
+                onCancelKeyboardOpen?.();
+                onSelectProviderRow(item.data as NavigatorProvidedRow);
             }
         },
-        [onSelectFile]
+        [onCancelKeyboardOpen, onSelectFile, onSelectProviderRow]
     );
 
     /**
@@ -230,6 +278,24 @@ export function useListPaneKeyboard({
              * to move down), `e.key` is not an Arrow/Page key and we do not debounce.
              */
             let shouldDebounceOpen = false;
+
+            if (isEnterKey(e) && selectedProviderRowKey) {
+                const selectedItem = helpers.getItemAt(currentIndex);
+                if (selectedItem?.type !== ListPaneItemType.PROVIDER_ROW || typeof selectedItem.data !== 'object') {
+                    return;
+                }
+
+                e.preventDefault();
+                const row = selectedItem.data as NavigatorProvidedRow;
+                requestProviderRowKeyboardActivation(row, error => {
+                    console.warn('[TPS Notebook Navigator] Provider row keyboard activation failed', {
+                        providerId: row.providerId,
+                        rowId: row.id,
+                        error
+                    });
+                });
+                return;
+            }
 
             // Returns the index of the first selectable item in the list
             const getFirstSelectableIndex = () => helpers.findNextIndex(-1);
@@ -591,6 +657,7 @@ export function useListPaneKeyboard({
             onScheduleKeyboardOpenForFile,
             onReorderPropertySort,
             onStartRename,
+            selectedProviderRowKey,
             scrollToIndexSafely
         ]
     );

@@ -88,6 +88,14 @@ npm run tps:namespace:check  # Report committed runtime-prefix drift without cha
 
 The transform is idempotent and intentionally does not change manifest IDs, storage keys, URLs, or integration behavior. At the bundle boundary, the shared runtime helper also gives `@dnd-kit/core` described-by and live-region elements TPS-only ID prefixes so a co-installed upstream instance cannot own the same accessibility DOM IDs. The artifact check enforces both prefixes, the TPS-only Style Settings block ID in source and generated CSS, and the absence of the real upstream shortcut drag MIME. Follow [the upstream sync guide](../docs/upstream-sync.md) and review every generated diff.
 
+## check-tps-operational-identity.mjs
+
+Rejects committed documentation, workflow, or script guidance that writes or deploys to the co-installed upstream Notebook Navigator runtime or settings path. The explicit, confirmed, read-only upstream settings import documented in the main README is the sole allowed upstream runtime-path reference.
+
+```bash
+npm run tps:operational-identity:check
+```
+
 ## upstream-merge-audit.mjs
 
 Builds a read-only worklist before an upstream merge:
@@ -157,8 +165,8 @@ Custom local deployment script (ignored by git and not committed to the reposito
 
 ```bash
 #!/bin/bash
-# Copy built files to Obsidian vault
-cp main.js manifest.json styles.css ~/Documents/ObsidianVault/.obsidian/plugins/notebook-navigator/
+# Copy only release artifacts to a development vault; preserve its data.json.
+cp main.js manifest.json styles.css ~/Documents/ObsidianVault/.obsidian/plugins/tps-notebook-navigator/
 ```
 
 ## check-unused-strings.mjs

@@ -43,7 +43,10 @@ export type NavigationSelectionState = Pick<
     SelectionState,
     'selectionType' | 'selectedFolder' | 'selectedTag' | 'selectedProperty' | 'selectedType'
 >;
-export type FileSelectionState = Pick<SelectionState, 'selectedFiles' | 'selectedFile' | 'anchorIndex' | 'lastMovementDirection'>;
+export type FileSelectionState = Pick<
+    SelectionState,
+    'selectedFiles' | 'selectedFile' | 'selectedRow' | 'anchorIndex' | 'lastMovementDirection'
+>;
 export type SelectionFlagsState = Pick<
     SelectionState,
     'isRevealOperation' | 'isFolderChangeWithAutoSelect' | 'isKeyboardNavigation' | 'isFolderNavigation' | 'revealSource'
@@ -153,10 +156,11 @@ export function SelectionProvider({
         () => ({
             selectedFiles: state.selectedFiles,
             selectedFile: state.selectedFile,
+            selectedRow: state.selectedRow,
             anchorIndex: state.anchorIndex,
             lastMovementDirection: state.lastMovementDirection
         }),
-        [state.anchorIndex, state.lastMovementDirection, state.selectedFile, state.selectedFiles]
+        [state.anchorIndex, state.lastMovementDirection, state.selectedFile, state.selectedFiles, state.selectedRow]
     );
     const selectionFlags = useMemo<SelectionFlagsState>(
         () => ({

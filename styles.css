@@ -4324,6 +4324,12 @@ button.tps-nn-navigation-calendar-day {
     user-select: none;
 }
 
+.tps-nn-provider-row.is-selected {
+    background-color: var(--tps-nn-selected-file-bg-color);
+    border-radius: var(--tps-nn-file-item-border-radius);
+    box-shadow: inset 0 0 0 var(--tps-nn-theme-file-border-width) var(--tps-nn-selected-file-border-color);
+}
+
 .tps-nn-provider-row-checkbox {
     width: 28px;
     height: 28px;
@@ -4418,10 +4424,6 @@ button.tps-nn-navigation-calendar-day {
 .tps-nn-provider-row-open:focus-visible {
     outline: 2px solid var(--interactive-accent);
     outline-offset: 2px;
-}
-
-.tps-nn-provider-row-open:disabled {
-    cursor: default;
 }
 
 .tps-notebook-navigator-mobile .tps-nn-provider-row-open {

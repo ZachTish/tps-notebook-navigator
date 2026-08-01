@@ -227,6 +227,7 @@ export function loadInitialSelectionState({ app, settings }: LoadInitialSelectio
         selectedType,
         selectedFiles,
         selectedFile,
+        selectedRow: null,
         anchorIndex: null,
         lastMovementDirection: null,
         isRevealOperation: false,
@@ -639,6 +640,10 @@ export function useSelectionPersistence({ api, app, state }: UseSelectionPersist
 
         api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].selection.updateFileState(state.selectedFiles, state.selectedFile);
     }, [api, state.selectedFile, state.selectedFiles]);
+
+    useEffect(() => {
+        api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].selection.updateRowState(state.selectedRow);
+    }, [api, state.selectedRow]);
 
     useEffect(() => {
         api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].selection.updateNavigationState(

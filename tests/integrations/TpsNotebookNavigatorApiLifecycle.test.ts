@@ -53,9 +53,33 @@ function request(bus: WorkspaceBus, respond: TpsNotebookNavigatorApiRequestPaylo
 }
 
 describe('TpsNotebookNavigatorApiLifecycle', () => {
+    it('generates one opaque identity per loaded lifecycle instance', () => {
+        const firstBus = new WorkspaceBus();
+        const secondBus = new WorkspaceBus();
+        const first = new TpsNotebookNavigatorApiLifecycle(firstBus as never, '4.11.0');
+        const second = new TpsNotebookNavigatorApiLifecycle(secondBus as never, '4.11.0');
+        let firstPayload: TpsNotebookNavigatorApiChangedPayload | null = null;
+        let secondPayload: TpsNotebookNavigatorApiChangedPayload | null = null;
+
+        first.start();
+        second.start();
+        request(firstBus, payload => {
+            firstPayload = payload;
+        });
+        request(secondBus, payload => {
+            secondPayload = payload;
+        });
+
+        expect(firstPayload?.hostInstanceId).toMatch(/^[0-9a-f]{32}$/);
+        expect(secondPayload?.hostInstanceId).toMatch(/^[0-9a-f]{32}$/);
+        expect(firstPayload?.hostInstanceId).not.toBe(secondPayload?.hostInstanceId);
+        first.stop();
+        second.stop();
+    });
+
     it('answers late consumers point-to-point without rebroadcasting and starts/stops idempotently', () => {
         const bus = new WorkspaceBus();
-        const lifecycle = new TpsNotebookNavigatorApiLifecycle(bus as never, '4.6.0');
+        const lifecycle = new TpsNotebookNavigatorApiLifecycle(bus as never, '4.6.0', 'host-a');
         const changed = vi.fn();
         bus.on(TPS_NOTEBOOK_NAVIGATOR_API_CHANGED_EVENT, changed);
 
@@ -71,6 +95,7 @@ describe('TpsNotebookNavigatorApiLifecycle', () => {
         expect(response).toMatchObject({
             source: 'tps-notebook-navigator',
             sourcePluginId: 'tps-notebook-navigator',
+            hostInstanceId: 'host-a',
             available: false,
             pluginVersion: '4.6.0',
             apiVersion: null,
@@ -90,7 +115,7 @@ describe('TpsNotebookNavigatorApiLifecycle', () => {
 
     it('publishes each available API and one unavailable state before stopping', () => {
         const bus = new WorkspaceBus();
-        const lifecycle = new TpsNotebookNavigatorApiLifecycle(bus as never, '4.6.0');
+        const lifecycle = new TpsNotebookNavigatorApiLifecycle(bus as never, '4.6.0', 'host-a');
         const payloads: TpsNotebookNavigatorApiChangedPayload[] = [];
         bus.on(TPS_NOTEBOOK_NAVIGATOR_API_CHANGED_EVENT, payload => {
             payloads.push(payload as TpsNotebookNavigatorApiChangedPayload);
@@ -109,13 +134,14 @@ describe('TpsNotebookNavigatorApiLifecycle', () => {
         expect(payloads[0]).toMatchObject({ available: true, api: firstApi, apiVersion: '2.8.0', pluginVersion: '4.6.0' });
         expect(payloads[1]).toMatchObject({ available: true, api: secondApi, apiVersion: '2.8.1' });
         expect(payloads[2]).toMatchObject({ available: false, api: null, apiVersion: null });
+        expect(payloads.every(payload => payload.hostInstanceId === 'host-a')).toBe(true);
         expect(payloads.every(Object.isFrozen)).toBe(true);
     });
 
     it('supports teardown and automatic provider reacquisition across a host-only reload', () => {
         const bus = new WorkspaceBus();
-        const firstLifecycle = new TpsNotebookNavigatorApiLifecycle(bus as never, '4.6.0');
-        const secondLifecycle = new TpsNotebookNavigatorApiLifecycle(bus as never, '4.6.1');
+        const firstLifecycle = new TpsNotebookNavigatorApiLifecycle(bus as never, '4.6.0', 'host-a');
+        const secondLifecycle = new TpsNotebookNavigatorApiLifecycle(bus as never, '4.6.1', 'host-b');
         const firstUnregister = vi.fn();
         const secondUnregister = vi.fn();
         const firstRegister = vi.fn(() => ({ unregister: firstUnregister }));
@@ -163,7 +189,7 @@ describe('TpsNotebookNavigatorApiLifecycle', () => {
 
     it('ignores malformed requests and isolates throwing, rejected, and change callbacks', async () => {
         const bus = new WorkspaceBus();
-        const lifecycle = new TpsNotebookNavigatorApiLifecycle(bus as never, '4.6.0');
+        const lifecycle = new TpsNotebookNavigatorApiLifecycle(bus as never, '4.6.0', 'host-a');
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         lifecycle.start();
 

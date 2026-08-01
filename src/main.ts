@@ -1409,6 +1409,7 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
         this.initiateShutdown();
         this.apiLifecycle?.stop();
         this.apiLifecycle = null;
+        this.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].selection.dispose();
         this.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].types.dispose();
         this.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].rows.dispose();
         this.api = null;

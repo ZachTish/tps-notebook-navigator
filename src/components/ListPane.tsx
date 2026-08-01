@@ -50,7 +50,7 @@ import { Virtualizer } from '@tanstack/react-virtual';
 import { useSelectionState, useSelectionDispatch } from '../context/SelectionContext';
 import { useServices } from '../context/ServicesContext';
 import { useSettingsState, useActiveProfile, useSettingsDerived } from '../context/SettingsContext';
-import { useUIState } from '../context/UIStateContext';
+import { useUIDispatch, useUIState } from '../context/UIStateContext';
 import { useExpansionDispatch, useExpansionState } from '../context/ExpansionContext';
 import { useFileCache } from '../context/StorageContext';
 import { useShortcuts } from '../context/ShortcutsContext';
@@ -65,7 +65,13 @@ import { useListPaneSelectionCoordinator } from '../hooks/useListPaneSelectionCo
 import type { EnsureSelectionOptions, EnsureSelectionResult, SelectFileOptions } from '../hooks/useListPaneSelectionCoordinator';
 import { useContextMenu } from '../hooks/useContextMenu';
 import { IOS_FLOATING_TOOLBAR_HEIGHT_PX, ItemType, ListPaneItemType, type CSSPropertiesWithVars } from '../types';
-import { getEffectiveListSort, getSortField, isManualSortPropertyKey, sortFiles } from '../utils/sortUtils';
+import {
+    getEffectiveListSort,
+    getListSortOverrideForSelection,
+    getSortField,
+    isManualSortPropertyKey,
+    sortFiles
+} from '../utils/sortUtils';
 import { ListPaneHeader } from './ListPaneHeader';
 import { ListToolbar } from './ListToolbar';
 import { Calendar } from './calendar';
@@ -116,12 +122,29 @@ import { showNotice } from '../utils/noticeUtils';
 import { getErrorMessage } from '../utils/errorUtils';
 import { strings } from '../i18n';
 import { ConfirmModal } from '../modals/ConfirmModal';
-import { resolveEffectiveListGroupingForSort } from '../utils/listGrouping';
+import { resolveEffectiveListGroupingForSort, resolveListGroupingOverride } from '../utils/listGrouping';
 import { focusElementPreventScroll } from '../utils/domUtils';
 import { createBuiltInRowProviderSelection } from '../integrations/rowProviderIntegrations';
 import { useExternalRowProviderSelection } from '../hooks/useProviderRows';
 import { mergeNavigatorRowProviderSelections } from '../services/rows/providerSelections';
 import { shouldCollapseMobileDrawerForTypeProviderActivation, supportsCalendarInteractionsForSelection } from './listPane/typeModeRuntime';
+import type {
+    NavItem,
+    NavigatorListPresentationState,
+    NavigatorListPresentationUpdate,
+    NavigatorListSearchUpdate,
+    NavigatorListSnapshot,
+    NavigatorRowFocusTarget
+} from '../api/types';
+import type { NavigatorProvidedRow } from '../services/rows/types';
+import {
+    areSelectedNavigatorRowsEqual,
+    createSelectedNavigatorRow,
+    getNavigatorRowSelectionKey,
+    matchesNavigatorRowFocusTarget
+} from '../services/rows/rowSelection';
+import { buildNavigatorListSnapshot } from '../services/listViewState/publicListState';
+import { persistNavigatorListPresentationUpdate, resolveNavigatorListPresentationTarget } from '../services/listViewState/listPresentation';
 
 const EMPTY_COLLAPSED_LIST_GROUPS = new Set<string>();
 
@@ -145,6 +168,10 @@ export interface ListPaneHandle {
     getOrderedFiles: () => TFile[];
     selectFile: (file: TFile, options?: SelectFileOptions) => void;
     selectAdjacentFile: (direction: 'next' | 'previous') => boolean;
+    focusRow: (target: NavigatorRowFocusTarget) => boolean;
+    getListSnapshot: () => NavigatorListSnapshot;
+    setListSearch: (update: NavigatorListSearchUpdate | null) => Promise<boolean>;
+    setListPresentation: (update: NavigatorListPresentationUpdate) => Promise<boolean>;
     modifySearchWithTag: (tag: string, operator: InclusionOperator, options?: SearchQueryUpdateOptions) => void;
     modifySearchWithProperty: (key: string, value: string | null, operator: InclusionOperator, options?: SearchQueryUpdateOptions) => void;
     modifySearchWithDateToken: (dateToken: string, options?: SearchQueryUpdateOptions) => void;
@@ -328,6 +355,7 @@ export const ListPane = React.memo(
         const { getFileDisplayName, getDB, getFileTimestamps, hasPreview, regenerateFeatureImageForFile } = useFileCache();
         const { noteShortcutKeysByPath, addNoteShortcut, removeShortcut } = useShortcuts();
         const uiState = useUIState();
+        const uiDispatch = useUIDispatch();
         const isVerticalDualPane = !uiState.singlePane && uiState.effectiveDualPaneOrientation === 'vertical';
         const calendarPlacement = settings.calendarPlacement;
         const shouldRenderCalendarOverlay =
@@ -451,7 +479,8 @@ export const ListPane = React.memo(
             modifySearchWithProperty,
             modifySearchWithDateToken,
             toggleSearch,
-            executeSearchShortcut
+            executeSearchShortcut,
+            setPublicSearch
         } = useListPaneSearch({
             rootContainerRef: props.rootContainerRef,
             onSearchTokensChange: props.onSearchTokensChange,
@@ -750,7 +779,17 @@ export const ListPane = React.memo(
         );
 
         // Use the new data hook
-        const { listItems, orderedFiles, orderedFileIndexMap, filePathToIndex, files, hiddenFileState, localDayKey } = useListPaneData({
+        const {
+            listItems,
+            orderedFiles,
+            orderedFileIndexMap,
+            filePathToIndex,
+            files,
+            hiddenFileState,
+            appliedSearchQuery,
+            effectiveSearchProvider,
+            localDayKey
+        } = useListPaneData({
             selectionType,
             selectedFolder,
             selectedTag,
@@ -769,6 +808,159 @@ export const ListPane = React.memo(
             propertySortOrderOverride,
             rowProviderSelection
         });
+        const selectedAppearance =
+            selectionType === ItemType.FOLDER && selectedFolder
+                ? settings.folderAppearances?.[selectedFolder.path]
+                : selectionType === ItemType.TAG && selectedTag
+                  ? settings.tagAppearances?.[selectedTag]
+                  : selectionType === ItemType.PROPERTY && selectedProperty
+                    ? settings.propertyAppearances?.[selectedProperty]
+                    : undefined;
+        const selectedSortOverride = getListSortOverrideForSelection(
+            settings,
+            selectionType,
+            selectedFolder,
+            selectedTag,
+            selectedProperty
+        );
+        const groupingResolution = resolveListGroupingOverride({
+            noteGrouping: settings.noteGrouping,
+            selectionType,
+            groupBy: selectedAppearance?.groupBy
+        });
+        const listPresentation = useMemo<NavigatorListPresentationState | null>(() => {
+            if (
+                selectionType === ItemType.TYPE ||
+                !resolveNavigatorListPresentationTarget({
+                    selectionType,
+                    selectedFolder,
+                    selectedTag,
+                    selectedProperty
+                })
+            ) {
+                return null;
+            }
+
+            return {
+                sort: {
+                    option: effectiveSortOption,
+                    propertyKey: isPropertySortActive ? effectivePropertySortKey : null,
+                    source: selectedSortOverride === undefined ? 'default' : 'scope'
+                },
+                grouping: {
+                    configured: groupingResolution.effectiveGrouping,
+                    effective: effectiveGroupBy,
+                    source: groupingResolution.hasCustomOverride ? 'scope' : 'default'
+                },
+                displayMode: {
+                    value: appearanceSettings.mode,
+                    source: selectedAppearance?.mode === 'standard' || selectedAppearance?.mode === 'compact' ? 'scope' : 'default'
+                }
+            };
+        }, [
+            appearanceSettings.mode,
+            effectiveGroupBy,
+            effectivePropertySortKey,
+            effectiveSortOption,
+            groupingResolution.effectiveGrouping,
+            groupingResolution.hasCustomOverride,
+            isPropertySortActive,
+            selectedAppearance?.mode,
+            selectedFolder,
+            selectedProperty,
+            selectedSortOverride,
+            selectedTag,
+            selectionType
+        ]);
+        const currentNavItem = useMemo<NavItem>(() => {
+            if (selectionType === ItemType.FOLDER && selectedFolder) {
+                return { type: 'folder', folder: selectedFolder, tag: null, property: null };
+            }
+            if (selectionType === ItemType.TAG && selectedTag) {
+                return { type: 'tag', folder: null, tag: selectedTag, property: null };
+            }
+            if (selectionType === ItemType.PROPERTY && selectedProperty) {
+                return { type: 'property', folder: null, tag: null, property: selectedProperty };
+            }
+            if (selectionType === ItemType.TYPE && selectedType) {
+                return { type: 'type', folder: null, tag: null, property: null, navigatorType: selectedType };
+            }
+            return { type: 'none', folder: null, tag: null, property: null };
+        }, [selectedFolder, selectedProperty, selectedTag, selectedType, selectionType]);
+        const getListSnapshot = React.useCallback(
+            (): NavigatorListSnapshot =>
+                buildNavigatorListSnapshot({
+                    navItem: currentNavItem,
+                    search: {
+                        active: isSearchActive,
+                        query: isSearchActive ? searchQuery : '',
+                        appliedQuery: isSearchActive ? appliedSearchQuery : '',
+                        requestedProvider: searchProvider,
+                        effectiveProvider: isSearchActive ? effectiveSearchProvider : 'internal'
+                    },
+                    presentation: listPresentation,
+                    listItems,
+                    selectedType: selectionType === ItemType.TYPE ? selectedType : null,
+                    resolveFile: path => app.vault.getFileByPath(path)
+                }),
+            [
+                app.vault,
+                appliedSearchQuery,
+                currentNavItem,
+                effectiveSearchProvider,
+                isSearchActive,
+                listItems,
+                listPresentation,
+                searchProvider,
+                searchQuery,
+                selectedType,
+                selectionType
+            ]
+        );
+        const waitForListRender = React.useCallback(
+            () =>
+                new Promise<void>(resolve => {
+                    window.requestAnimationFrame(() => resolve());
+                }),
+            []
+        );
+        const setListSearch = React.useCallback(
+            async (update: NavigatorListSearchUpdate | null): Promise<boolean> => {
+                if (!setPublicSearch(update)) {
+                    return false;
+                }
+                await waitForListRender();
+                return true;
+            },
+            [setPublicSearch, waitForListRender]
+        );
+        const setListPresentation = React.useCallback(
+            async (update: NavigatorListPresentationUpdate): Promise<boolean> => {
+                const target = resolveNavigatorListPresentationTarget({
+                    selectionType,
+                    selectedFolder,
+                    selectedTag,
+                    selectedProperty
+                });
+                if (!target) {
+                    return false;
+                }
+                const applied = await persistNavigatorListPresentationUpdate({
+                    settings: plugin.settings,
+                    target,
+                    update,
+                    persist: () => plugin.saveSettingsAndUpdate(),
+                    onRollback: () => plugin.notifySettingsUpdate()
+                });
+                if (!applied) {
+                    return false;
+                }
+                app.workspace.requestSaveLayout();
+                await waitForListRender();
+                return true;
+            },
+            [app.workspace, plugin, selectedFolder, selectedProperty, selectedTag, selectionType, waitForListRender]
+        );
         const listGroupCollapseKeyPrefix = useMemo(
             () =>
                 buildListGroupCollapseKeyPrefix({
@@ -1016,6 +1208,83 @@ export const ListPane = React.memo(
             window.setTimeout(restore, 0);
         }, [props.rootContainerRef, scrollContainerRef]);
 
+        const currentProviderRowTypeId = selectionType === ItemType.TYPE ? selectedType : null;
+        const selectedProviderRowKey = selectionState.selectedRow ? getNavigatorRowSelectionKey(selectionState.selectedRow) : null;
+        const selectProviderRow = React.useCallback(
+            (row: NavigatorProvidedRow): boolean => {
+                if (!app.vault.getFileByPath(row.sourcePath)) {
+                    return false;
+                }
+
+                selectionDispatch({
+                    type: 'SET_SELECTED_ROW',
+                    row: createSelectedNavigatorRow(row, currentProviderRowTypeId)
+                });
+                uiDispatch({ type: 'ACTIVATE_PANE', target: 'files' });
+                return true;
+            },
+            [app.vault, currentProviderRowTypeId, selectionDispatch, uiDispatch]
+        );
+
+        const focusProviderRow = React.useCallback(
+            (target: NavigatorRowFocusTarget): boolean => {
+                const itemIndex = listItems.findIndex(item => {
+                    return (
+                        item.type === ListPaneItemType.PROVIDER_ROW &&
+                        typeof item.data === 'object' &&
+                        matchesNavigatorRowFocusTarget(item.data as NavigatorProvidedRow, currentProviderRowTypeId, target)
+                    );
+                });
+                if (itemIndex < 0) {
+                    return false;
+                }
+
+                const item = listItems[itemIndex];
+                if (item.type !== ListPaneItemType.PROVIDER_ROW || typeof item.data !== 'object') {
+                    return false;
+                }
+                if (!selectProviderRow(item.data as NavigatorProvidedRow)) {
+                    return false;
+                }
+
+                scrollToIndexSafely(itemIndex, 'auto');
+                restoreListPaneFocus();
+                return true;
+            },
+            [currentProviderRowTypeId, listItems, restoreListPaneFocus, scrollToIndexSafely, selectProviderRow]
+        );
+
+        useEffect(() => {
+            const selectedRow = selectionState.selectedRow;
+            if (!selectedRow) {
+                return;
+            }
+
+            if (isManualSortEditActive) {
+                selectionDispatch({ type: 'CLEAR_ROW_SELECTION' });
+                return;
+            }
+
+            const matchingItem = listItems.find(item => {
+                if (item.type !== ListPaneItemType.PROVIDER_ROW || typeof item.data !== 'object') {
+                    return false;
+                }
+                const row = item.data as NavigatorProvidedRow;
+                return (
+                    row.providerId === selectedRow.providerId && row.id === selectedRow.rowId && row.sourcePath === selectedRow.sourcePath
+                );
+            });
+            if (!matchingItem || !app.vault.getFileByPath(selectedRow.sourcePath)) {
+                selectionDispatch({ type: 'CLEAR_ROW_SELECTION' });
+                return;
+            }
+
+            const currentRow = createSelectedNavigatorRow(matchingItem.data as NavigatorProvidedRow, currentProviderRowTypeId);
+            if (!areSelectedNavigatorRowsEqual(selectedRow, currentRow)) {
+                selectionDispatch({ type: 'SET_SELECTED_ROW', row: currentRow });
+            }
+        }, [app.vault, currentProviderRowTypeId, isManualSortEditActive, listItems, selectionDispatch, selectionState.selectedRow]);
+
         const handleStartFileInlineRenameForFile = React.useCallback(
             (file: TFile): boolean => {
                 const index = filePathToIndex.get(file.path);
@@ -1143,7 +1412,8 @@ export const ListPane = React.memo(
             isFileSelected,
             scheduleKeyboardSelectionOpen,
             scheduleKeyboardSelectionOpenForFile,
-            commitPendingKeyboardSelectionOpen
+            commitPendingKeyboardSelectionOpen,
+            clearPendingKeyboardOpen
         } = useListPaneSelectionCoordinator({
             rootContainerRef: props.rootContainerRef,
             orderedFiles,
@@ -1720,6 +1990,10 @@ export const ListPane = React.memo(
                 selectFile: selectFileFromList,
                 // Provide imperative adjacent navigation for command handlers
                 selectAdjacentFile,
+                focusRow: focusProviderRow,
+                getListSnapshot,
+                setListSearch,
+                setListPresentation,
                 // Toggle or modify search query to include/exclude a tag with AND/OR operator
                 modifySearchWithTag: modifySearchWithTagWithDefaultScope,
                 // Toggle or modify search query to include/exclude a property with AND/OR operator
@@ -1743,6 +2017,10 @@ export const ListPane = React.memo(
                 executeSearchShortcutWithDefaultScope,
                 selectFileFromList,
                 selectAdjacentFile,
+                focusProviderRow,
+                getListSnapshot,
+                setListSearch,
+                setListPresentation,
                 modifySearchWithTagWithDefaultScope,
                 modifySearchWithPropertyWithDefaultScope,
                 modifySearchWithDateTokenWithDefaultScope,
@@ -1773,8 +2051,11 @@ export const ListPane = React.memo(
             onScheduleKeyboardOpen: scheduleKeyboardSelectionOpen,
             onScheduleKeyboardOpenForFile: scheduleKeyboardSelectionOpenForFile,
             onCommitKeyboardOpen: commitPendingKeyboardSelectionOpen,
+            onCancelKeyboardOpen: clearPendingKeyboardOpen,
             onReorderPropertySort: handlePropertyKeyboardReorder,
-            onStartRename: handleStartFileInlineRename
+            onStartRename: handleStartFileInlineRename,
+            selectedProviderRowKey,
+            onSelectProviderRow: selectProviderRow
         });
 
         // Determine if we're showing empty state
@@ -1901,6 +2182,8 @@ export const ListPane = React.memo(
                             suppressRowHover={isListScrolling}
                             onHoveredFilePathChange={handleHoveredFilePathChange}
                             onFileClick={handleFileItemClick}
+                            selectedProviderRowKey={selectedProviderRowKey}
+                            onProviderRowSelect={selectProviderRow}
                             onModifySearchWithTag={modifySearchWithTagWithDefaultScope}
                             onModifySearchWithProperty={modifySearchWithPropertyWithDefaultScope}
                             localDayReference={localDayReference}

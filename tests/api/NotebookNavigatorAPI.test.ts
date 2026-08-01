@@ -182,7 +182,13 @@ describe('NotebookNavigatorAPI', () => {
         expect(typeof api.menus.registerTypeMenu).toBe('function');
         expect(typeof api.menus.registerRowMenu).toBe('function');
         expect(typeof api.rows.registerProvider).toBe('function');
+        expect(typeof api.navigation.focusRow).toBe('function');
+        expect(typeof api.selection.getCurrentRow).toBe('function');
         expect(Object.isFrozen(api.types)).toBe(true);
+        expect(Object.isFrozen(api.list)).toBe(true);
+        expect(typeof api.list.getSnapshot).toBe('function');
+        expect(typeof api.list.setSearch).toBe('function');
+        expect(typeof api.list.setPresentation).toBe('function');
         expect(api.types.notesId).toBe('entity:note');
         expect(api.types.checkboxesId).toBe('structural:task');
         expect(api.types.bulletsId).toBe('structural:bullet');
@@ -195,6 +201,8 @@ describe('NotebookNavigatorAPI', () => {
         expect(typeof api.types.whenReady).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].metadata.updateFromSettings).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].selection.updateNavigationState).toBe('function');
+        expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].selection.updateRowState).toBe('function');
+        expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].selection.dispose).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].menus.applyFileMenuExtensions).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].menus.applyTypeMenuExtensions).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].menus.applyRowMenuExtensions).toBe('function');
@@ -208,6 +216,8 @@ describe('NotebookNavigatorAPI', () => {
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].types.dispose).toBe('function');
         expect('updateEnabled' in api.types).toBe(false);
         expect('dispose' in api.types).toBe(false);
+        expect('updateRowState' in api.selection).toBe(false);
+        expect('dispose' in api.selection).toBe(false);
     });
 
     it('keeps public storage readiness monotonic after the initial ready signal', () => {

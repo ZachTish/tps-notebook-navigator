@@ -21,6 +21,12 @@ interface WorkspaceEventHost {
     trigger(name: string, ...data: unknown[]): void;
 }
 
+function createHostInstanceId(): string {
+    const bytes = new Uint32Array(4);
+    window.crypto.getRandomValues(bytes);
+    return Array.from(bytes, value => value.toString(16).padStart(8, '0')).join('');
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
 }
@@ -50,7 +56,8 @@ export class TpsNotebookNavigatorApiLifecycle {
 
     constructor(
         workspace: Workspace,
-        private readonly pluginVersion: string
+        private readonly pluginVersion: string,
+        private readonly hostInstanceId: string = createHostInstanceId()
     ) {
         // Obsidian types Workspace events as a closed overload set even though
         // the runtime event bus supports plugin-owned names.
@@ -127,6 +134,7 @@ export class TpsNotebookNavigatorApiLifecycle {
         return Object.freeze({
             source: TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID,
             sourcePluginId: TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID,
+            hostInstanceId: this.hostInstanceId,
             timestamp: Date.now(),
             available: api !== null,
             pluginVersion: this.pluginVersion,

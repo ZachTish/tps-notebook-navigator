@@ -45,7 +45,7 @@ import {
 } from '../../utils/fileFilters';
 import { createHiddenTagVisibility, normalizeTagPathValue } from '../../utils/tagPrefixMatcher';
 import { runAsyncAction } from '../../utils/async';
-import type { AliasSearchMatch, PropertySearchMatch, SearchResultMeta } from '../../types/search';
+import type { AliasSearchMatch, PropertySearchMatch, SearchProvider, SearchResultMeta } from '../../types/search';
 import type { OmnisearchService } from '../../services/OmnisearchService';
 import type { IndexedDBStorage, FileData } from '../../storage/IndexedDBStorage';
 import { shouldHideDrawingCompanionImageFile } from '../../utils/drawingFeatureImages';
@@ -56,8 +56,15 @@ const EMPTY_MATCHED_ALIASES = new Map<string, readonly AliasSearchMatch[]>();
 const EMPTY_MATCHED_PROPERTIES = new Map<string, readonly PropertySearchMatch[]>();
 
 export interface OmnisearchListResult {
+    /** Exact query whose response produced these files. */
+    query: string;
     files: TFile[];
     meta: Map<string, SearchResultMeta>;
+}
+
+export interface AppliedListSearchState {
+    query: string;
+    provider: SearchProvider;
 }
 
 interface UseOmnisearchListResultArgs {
@@ -66,6 +73,33 @@ interface UseOmnisearchListResultArgs {
     omnisearchService: OmnisearchService | null;
     trimmedQuery: string;
     useOmnisearch: boolean;
+}
+
+/**
+ * Reports the search state that actually produced the rows currently being rendered.
+ * Omnisearch intentionally retains its prior result while the next request is pending,
+ * so its producing query must travel with the result rather than following the input.
+ */
+export function resolveAppliedListSearchState({
+    trimmedQuery,
+    useOmnisearch,
+    omnisearchResult
+}: {
+    trimmedQuery: string;
+    useOmnisearch: boolean;
+    omnisearchResult: OmnisearchListResult | null;
+}): AppliedListSearchState {
+    if (!trimmedQuery) {
+        return { query: '', provider: 'internal' };
+    }
+    if (!useOmnisearch) {
+        return { query: trimmedQuery, provider: 'internal' };
+    }
+    if (!omnisearchResult) {
+        // The first Omnisearch request leaves the unfiltered internal list visible.
+        return { query: '', provider: 'internal' };
+    }
+    return { query: omnisearchResult.query, provider: 'omnisearch' };
 }
 
 interface UseSearchableNamesArgs {
@@ -265,10 +299,10 @@ export function useOmnisearchListResult({
                     });
                 });
 
-                setOmnisearchResult({ files, meta });
+                setOmnisearchResult({ query: trimmedQuery, files, meta });
             } catch {
                 if (searchTokenRef.current === token) {
-                    setOmnisearchResult({ files: [], meta: new Map() });
+                    setOmnisearchResult({ query: trimmedQuery, files: [], meta: new Map() });
                 }
             }
         });

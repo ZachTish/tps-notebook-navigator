@@ -96,6 +96,12 @@ import { isTpsNavigatorTypeId } from '../types/navigatorTypes';
 import { resolveTypeSelectionHistoryEntry } from '../utils/navigationTypeHistory';
 import { useNavigatorTypes } from '../hooks/useNavigatorTypes';
 import { navigateToType as navigateToTypeInternal, type NavigateToTypeOptions } from '../utils/typeNavigation';
+import type {
+    NavigatorListPresentationUpdate,
+    NavigatorListSearchUpdate,
+    NavigatorListSnapshot,
+    NavigatorRowFocusTarget
+} from '../api/types';
 
 // Checks if two string arrays have identical content in the same order
 const arraysEqual = (a: string[], b: string[]): boolean => {
@@ -166,6 +172,10 @@ export interface NotebookNavigatorHandle {
     navigateToTag: (tagPath: string, options?: NavigateToTagOptions) => string | null;
     navigateToProperty: (propertyNodeId: string, options?: NavigateToPropertyOptions) => string | null;
     navigateToType: (typeId: string, options?: NavigateToTypeOptions) => string | null;
+    focusRow: (target: NavigatorRowFocusTarget) => boolean;
+    getListSnapshot: () => NavigatorListSnapshot | null;
+    setListSearch: (update: NavigatorListSearchUpdate | null) => Promise<boolean>;
+    setListPresentation: (update: NavigatorListPresentationUpdate) => Promise<boolean>;
     addDateFilterToSearch: (dateToken: string) => void;
     navigateToFolderWithModal: () => void;
     navigateToTagWithModal: () => void;
@@ -1209,6 +1219,18 @@ export const NotebookNavigatorComponent = React.memo(
                 navigateToTag,
                 navigateToProperty,
                 navigateToType,
+                focusRow: (target: NavigatorRowFocusTarget) => {
+                    const focused = listPaneRef.current?.focusRow(target) ?? false;
+                    if (focused) {
+                        focusPane('files');
+                    }
+                    return focused;
+                },
+                getListSnapshot: () => listPaneRef.current?.getListSnapshot() ?? null,
+                setListSearch: (update: NavigatorListSearchUpdate | null) =>
+                    listPaneRef.current?.setListSearch(update) ?? Promise.resolve(false),
+                setListPresentation: (update: NavigatorListPresentationUpdate) =>
+                    listPaneRef.current?.setListPresentation(update) ?? Promise.resolve(false),
                 addDateFilterToSearch: handleModifySearchWithDateFilter,
                 navigateToFolderWithModal: () => {
                     // Show the folder selection modal for navigation

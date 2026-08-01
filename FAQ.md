@@ -72,14 +72,14 @@ and folder notes run with full Templater support. Without Templater, only built-
 
 It is a sync toggle that switches a setting between synced and local storage:
 
-- **Sync enabled** (default) - The value is saved in `.obsidian/plugins/notebook-navigator/data.json` inside the vault.
-  This file is synchronized across devices by Obsidian Sync or whichever sync service the vault uses, not by Notebook
-  Navigator
+- **Sync enabled** (default) - The value is saved in `.obsidian/plugins/tps-notebook-navigator/data.json` inside the
+  vault. This file is synchronized across devices by Obsidian Sync or whichever sync service the vault uses, not by
+  Notebook Navigator
 - **Sync disabled** - The value is saved in Obsidian's local storage on the current device and removed from `data.json`,
   so each device keeps its own independent value
 
 Without a sync service the toggle has no practical effect, since `data.json` stays on one device. See
-[README section 6](https://github.com/johansan/notebook-navigator#6-synced-and-local-settings) for details.
+[README section 6](README.md#6-synced-and-local-settings) for details.
 
 ### What does "(vault profile)" mean on a setting?
 

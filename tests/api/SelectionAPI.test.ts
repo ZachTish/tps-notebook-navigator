@@ -21,20 +21,29 @@ import { TFolder } from 'obsidian';
 import { SelectionAPI } from '../../src/api/modules/SelectionAPI';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import { buildPropertyValueNodeId, normalizePropertyTreeValuePath } from '../../src/utils/propertyTree';
+import { createTestTFile } from '../utils/createTestTFile';
 
-function createSelectionAPI(): SelectionAPI {
-    return new SelectionAPI({
+function createSelectionHarness(filePaths: readonly string[] = []) {
+    const files = new Map(filePaths.map(path => [path, createTestTFile(path)]));
+    const trigger = vi.fn<(event: string, payload?: object) => void>();
+    const selectionAPI = new SelectionAPI({
         app: {
             vault: {
                 getFolderByPath: () => null,
-                getFileByPath: () => null
+                getFileByPath: (path: string) => files.get(path) ?? null
             }
         },
         getPlugin: () => ({
             settings: structuredClone(DEFAULT_SETTINGS)
         }),
-        trigger: vi.fn()
+        trigger
     } as never);
+
+    return { files, selectionAPI, trigger };
+}
+
+function createSelectionAPI(): SelectionAPI {
+    return createSelectionHarness().selectionAPI;
 }
 
 describe('SelectionAPI', () => {
@@ -108,5 +117,121 @@ describe('SelectionAPI', () => {
             tag: 'réunion/notes',
             property: null
         });
+    });
+
+    it('publishes one immutable row selection and makes native file selection exclusive', () => {
+        const path = 'Inbox/Tasks.md';
+        const { files, selectionAPI, trigger } = createSelectionHarness([path]);
+        const row = {
+            providerId: 'tps/tasks',
+            rowId: 'task-12',
+            kind: 'tps/task',
+            label: 'Review provider contract',
+            sourcePath: path,
+            sourceLineNumber: 11,
+            typeId: 'structural:task'
+        };
+
+        selectionAPI.updateRowState(row);
+        const current = selectionAPI.getCurrentRow();
+
+        expect(current).toMatchObject(row);
+        expect(current?.file).toBe(files.get(path));
+        expect(Object.isFrozen(current)).toBe(true);
+        expect(trigger).toHaveBeenCalledWith('row-selection-changed', { row: current });
+        const eventPayload = trigger.mock.calls.find(([event]) => event === 'row-selection-changed')?.[1];
+        expect(Object.isFrozen(eventPayload)).toBe(true);
+
+        selectionAPI.updateRowState(row);
+        expect(trigger.mock.calls.filter(([event]) => event === 'row-selection-changed')).toHaveLength(1);
+
+        selectionAPI.updateFileState(new Set([path]), files.get(path) ?? null);
+        expect(selectionAPI.getCurrentRow()).toBeNull();
+        expect(trigger.mock.calls.filter(([event]) => event === 'row-selection-changed')).toHaveLength(2);
+        expect(trigger).toHaveBeenCalledWith('row-selection-changed', { row: null });
+    });
+
+    it('keeps one row-event listener from replacing the payload seen by the next listener', () => {
+        const path = 'Inbox/Tasks.md';
+        const file = createTestTFile(path);
+        const observed: unknown[] = [];
+        const listeners = [
+            (payload: { row: unknown }) => {
+                expect(() => {
+                    payload.row = null;
+                }).toThrow(TypeError);
+            },
+            (payload: { row: unknown }) => observed.push(payload.row)
+        ];
+        const selectionAPI = new SelectionAPI({
+            app: {
+                vault: {
+                    getFolderByPath: () => null,
+                    getFileByPath: (candidate: string) => (candidate === path ? file : null)
+                }
+            },
+            getPlugin: () => ({ settings: structuredClone(DEFAULT_SETTINGS) }),
+            trigger: (event: string, payload: { row: unknown }) => {
+                if (event === 'row-selection-changed') {
+                    listeners.forEach(listener => listener(payload));
+                }
+            }
+        } as never);
+
+        selectionAPI.updateRowState({
+            providerId: 'tps/tasks',
+            rowId: 'task-12',
+            kind: 'tps/task',
+            label: 'Review provider contract',
+            sourcePath: path,
+            typeId: null
+        });
+
+        expect(observed).toHaveLength(1);
+        expect(observed[0]).toMatchObject({ providerId: 'tps/tasks', rowId: 'task-12' });
+    });
+
+    it('clears the row event when navigation scope changes and ignores a stale source', () => {
+        const path = 'Inbox/Tasks.md';
+        const { files, selectionAPI, trigger } = createSelectionHarness([path]);
+        const row = {
+            providerId: 'tps/tasks',
+            rowId: 'task-12',
+            kind: 'tps/task',
+            label: 'Review provider contract',
+            sourcePath: path,
+            typeId: null
+        };
+
+        selectionAPI.updateRowState(row);
+        selectionAPI.updateNavigationState(null, null, null, 'structural:task');
+        expect(selectionAPI.getCurrentRow()).toBeNull();
+        expect(trigger).toHaveBeenCalledWith('row-selection-changed', { row: null });
+
+        files.delete(path);
+        trigger.mockClear();
+        selectionAPI.updateRowState(row);
+        expect(selectionAPI.getCurrentRow()).toBeNull();
+        expect(trigger).not.toHaveBeenCalled();
+    });
+
+    it('clears transient row state on disposal', () => {
+        const path = 'Inbox/Tasks.md';
+        const { selectionAPI, trigger } = createSelectionHarness([path]);
+        selectionAPI.updateRowState({
+            providerId: 'tps/tasks',
+            rowId: 'task-12',
+            kind: 'tps/task',
+            label: 'Review provider contract',
+            sourcePath: path,
+            typeId: null
+        });
+
+        trigger.mockClear();
+        selectionAPI.dispose();
+
+        expect(selectionAPI.getCurrentRow()).toBeNull();
+        expect(trigger).toHaveBeenCalledOnce();
+        expect(trigger).toHaveBeenCalledWith('row-selection-changed', { row: null });
     });
 });

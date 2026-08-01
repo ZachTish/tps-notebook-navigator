@@ -106,6 +106,21 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.11.0',
+        date: '2026-08-01',
+        showOnUpdate: true,
+        info: 'TPS entity rows are now selectable, keyboard navigable, and available through a bounded public list-control API.',
+        new: [
+            'Public API `2.12.0` adds transient row selection, immutable row-selection events, and exact rendered-row focus without treating entity rows as files.',
+            'Public API `2.13.0` adds pull-based list snapshots plus guarded search, sort, grouping, and display controls for the first mounted TPS Navigator view.'
+        ],
+        improved: [
+            'Types continues to expose Notes, Checkboxes, Bullets, Headings, and dynamic Kinds; notes open their file and structural entities open their exact current source line.',
+            'Search snapshots report the exact query and provider that produced visible rows, and failed presentation saves restore live settings without clobbering newer writes.',
+            'Lifecycle payloads use an opaque per-host identity, so integrations handle same-millisecond reloads and wall-clock changes without retaining a dead registration.'
+        ]
+    },
+    {
         version: '4.10.0',
         date: '2026-08-01',
         showOnUpdate: true,

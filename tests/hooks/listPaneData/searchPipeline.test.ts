@@ -19,7 +19,11 @@
 import { describe, expect, it } from 'vitest';
 import { App } from 'obsidian';
 import type { FrontMatterCache } from 'obsidian';
-import { buildSearchableNameData, filterListPaneFiles } from '../../../src/hooks/listPaneData/searchPipeline';
+import {
+    buildSearchableNameData,
+    filterListPaneFiles,
+    resolveAppliedListSearchState
+} from '../../../src/hooks/listPaneData/searchPipeline';
 import type { IndexedDBStorage } from '../../../src/storage/IndexedDBStorage';
 import { parseFilterSearchTokens } from '../../../src/utils/filterSearch';
 import { createTestTFile } from '../../utils/createTestTFile';
@@ -87,7 +91,7 @@ describe('filterListPaneFiles omnisearch pending states', () => {
             baseFiles: [matching, other],
             getDB: () => db,
             getFileTimestamps: () => ({ created: 0, modified: 0 }),
-            omnisearchResult: { files: [matching], meta: new Map() },
+            omnisearchResult: { query: 'meeting', files: [matching], meta: new Map() },
             searchableNames: new Map(),
             settings: { alphabeticalDateMode: 'modified' },
             sortOption: 'alphabetical-asc',
@@ -96,6 +100,32 @@ describe('filterListPaneFiles omnisearch pending states', () => {
         });
 
         expect(result.files).toEqual([matching]);
+    });
+
+    it('reports the exact query and provider that produced retained rows', () => {
+        expect(
+            resolveAppliedListSearchState({
+                trimmedQuery: 'meeting notes',
+                useOmnisearch: true,
+                omnisearchResult: { query: 'meeting', files: [], meta: new Map() }
+            })
+        ).toEqual({ query: 'meeting', provider: 'omnisearch' });
+
+        expect(
+            resolveAppliedListSearchState({
+                trimmedQuery: 'meeting',
+                useOmnisearch: true,
+                omnisearchResult: null
+            })
+        ).toEqual({ query: '', provider: 'internal' });
+
+        expect(
+            resolveAppliedListSearchState({
+                trimmedQuery: 'meeting',
+                useOmnisearch: false,
+                omnisearchResult: null
+            })
+        ).toEqual({ query: 'meeting', provider: 'internal' });
     });
 });
 

@@ -23,6 +23,7 @@ function createTypeSelectionState(app: App): SelectionState {
         selectedProperty: null,
         selectedType: 'kind:Removed',
         selectedFiles: new Set<string>(),
+        selectedRow: null,
         selectedFile: null,
         anchorIndex: null,
         lastMovementDirection: null,

@@ -55,5 +55,8 @@ jobs:
       - name: Check TPS release artifact identity
         run: npm run tps:artifacts:check
 
+      - name: Check TPS operational identity
+        run: npm run tps:operational-identity:check
+
       - name: Check generated files
         run: git diff --exit-code

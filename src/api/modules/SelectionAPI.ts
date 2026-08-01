@@ -18,7 +18,7 @@
 
 import { TFolder, TFile } from 'obsidian';
 import type NotebookNavigatorPlugin from '../../main';
-import type { SelectionState, NavItem, NotebookNavigatorEventType, NotebookNavigatorEvents } from '../types';
+import type { SelectionState, NavItem, NavigatorRowSelection, NotebookNavigatorEventType, NotebookNavigatorEvents } from '../types';
 import { STORAGE_KEYS } from '../../types';
 import { localStorage } from '../../utils/localStorage';
 import {
@@ -58,6 +58,7 @@ export class SelectionAPI {
         navigationTag: string | null;
         navigationProperty: PropertySelectionNodeId | null;
         navigationType: TpsNavigatorTypeId | null;
+        selectedRow: NavigatorRowSelection | null;
     } = {
         // File selection state
         files: new Set<string>(),
@@ -66,12 +67,14 @@ export class SelectionAPI {
         navigationFolder: null,
         navigationTag: null,
         navigationProperty: null,
-        navigationType: null
+        navigationType: null,
+        selectedRow: null
     };
 
     // Snapshot signature of last-emitted selection to ensure events fire when
     // selection content changes (even if the count stays the same)
     private lastSelectionSignature = '';
+    private lastRowSelectionSignature = '';
     private navigationStateInitialized = false;
 
     constructor(private api: SelectionAPIHost) {}
@@ -200,6 +203,15 @@ export class SelectionAPI {
         this.navigationStateInitialized = true;
         const normalizedProperty = property === null ? null : (normalizePropertyNodeId(property) ?? property);
         const normalizedTag = tag === null ? null : normalizeTagPath(tag);
+        const navigationChanged =
+            this.selectionState.navigationFolder?.path !== folder?.path ||
+            this.selectionState.navigationTag !== normalizedTag ||
+            this.selectionState.navigationProperty !== normalizedProperty ||
+            this.selectionState.navigationType !== navigatorType;
+
+        if (navigationChanged) {
+            this.updateRowState(null);
+        }
 
         if (navigatorType) {
             this.selectionState.navigationFolder = null;
@@ -238,6 +250,9 @@ export class SelectionAPI {
      * @internal
      */
     updateFileState(selectedFiles: Set<string>, primaryFile: TFile | null): void {
+        if (selectedFiles.size > 0 || primaryFile !== null) {
+            this.updateRowState(null);
+        }
         // Compute a stable signature for selected paths + primary file
         const sortedPaths = Array.from(selectedFiles).sort();
         const primaryPath = primaryFile ? primaryFile.path : '';
@@ -283,5 +298,51 @@ export class SelectionAPI {
             files,
             focused: this.selectionState.primaryFile
         };
+    }
+
+    /** @internal Mirror the callback-free row identity selected by the active list pane. */
+    updateRowState(row: Omit<NavigatorRowSelection, 'file'> | null): void {
+        let nextRow: NavigatorRowSelection | null = null;
+        if (row) {
+            const file = this.api.app.vault.getFileByPath(row.sourcePath);
+            if (file) {
+                nextRow = Object.freeze({ ...row, file });
+            }
+        }
+
+        const nextSignature = nextRow
+            ? [
+                  nextRow.providerId,
+                  nextRow.rowId,
+                  nextRow.kind,
+                  nextRow.label,
+                  nextRow.sourcePath,
+                  nextRow.sourceLineNumber ?? '',
+                  nextRow.typeId ?? ''
+              ].join('\u0000')
+            : '';
+        this.selectionState.selectedRow = nextRow;
+        if (nextSignature === this.lastRowSelectionSignature) {
+            return;
+        }
+
+        this.lastRowSelectionSignature = nextSignature;
+        this.api.trigger('row-selection-changed', Object.freeze({ row: nextRow }));
+    }
+
+    /** Return the current immutable row identity, or null when file selection owns the list cursor. */
+    getCurrentRow(): NavigatorRowSelection | null {
+        const row = this.selectionState.selectedRow;
+        if (!row) {
+            return null;
+        }
+
+        const file = this.api.app.vault.getFileByPath(row.sourcePath);
+        return file ? Object.freeze({ ...row, file }) : null;
+    }
+
+    /** @internal Clear the transient row cursor before plugin unload. */
+    dispose(): void {
+        this.updateRowState(null);
     }
 }

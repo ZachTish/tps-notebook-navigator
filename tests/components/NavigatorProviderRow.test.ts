@@ -7,10 +7,13 @@ import {
     NavigatorProviderRow,
     type NavigatorProviderRowMenuHost,
     applyProviderCheckboxChange,
+    applySelectedProviderCheckboxChange,
     consumeProviderRowMenuEvent,
     getProviderCheckboxPresentation,
     getProviderRowMenuCheckboxState,
     requestProviderRowActivation,
+    requestSelectedProviderRowActivation,
+    routeProviderRowKeyboardPropagation,
     stopProviderRowKeyboardPropagation
 } from '../../src/components/providerRows/NavigatorProviderRow';
 import type { NavigatorRowMenuTarget } from '../../src/api/types';
@@ -77,6 +80,45 @@ describe('NavigatorProviderRow', () => {
         onActivationRequested.mockClear();
         expect(requestProviderRowActivation(row(), onActivationRequested, onError)).toBe(false);
         expect(onActivationRequested).not.toHaveBeenCalled();
+    });
+
+    it('refuses activation and checkbox mutation when stale-row selection is rejected', async () => {
+        const activate = vi.fn();
+        const onChange = vi.fn();
+        const onActivationRequested = vi.fn();
+        const onError = vi.fn();
+        const onSelectionRequested = vi.fn(() => false);
+
+        expect(requestSelectedProviderRowActivation({ ...row(), activate }, onSelectionRequested, onActivationRequested, onError)).toBe(
+            false
+        );
+        expect(activate).not.toHaveBeenCalled();
+        expect(onActivationRequested).not.toHaveBeenCalled();
+
+        await expect(
+            applySelectedProviderCheckboxChange({
+                onSelectionRequested,
+                previousChecked: false,
+                nextChecked: true,
+                onChange,
+                setDisplayedChecked: vi.fn(),
+                setBusy: vi.fn(),
+                onError
+            })
+        ).resolves.toBe(false);
+        expect(onChange).not.toHaveBeenCalled();
+        expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('lets the primary control bubble list-navigation keys while isolating auxiliary controls', () => {
+        const stopPropagation = vi.fn();
+
+        routeProviderRowKeyboardPropagation('primary', { stopPropagation });
+        expect(stopPropagation).not.toHaveBeenCalled();
+
+        routeProviderRowKeyboardPropagation('checkbox', { stopPropagation });
+        routeProviderRowKeyboardPropagation('menu', { stopPropagation });
+        expect(stopPropagation).toHaveBeenCalledTimes(2);
     });
 
     it('commits a successful optimistic checkbox mutation in busy-state order', async () => {
@@ -207,6 +249,25 @@ describe('NavigatorProviderRow', () => {
         expect(markup).toContain('aria-readonly="true"');
         expect(markup).toContain('title="Task state is display-only"');
         expect(markup).not.toContain('is-interactive');
+    });
+
+    it('renders the single-row cursor with an accessible selected state', () => {
+        const selected = renderToStaticMarkup(React.createElement(NavigatorProviderRow, { row: row(), isSelected: true }));
+        const unselected = renderToStaticMarkup(React.createElement(NavigatorProviderRow, { row: row() }));
+
+        expect(selected).toContain('class="tps-nn-provider-row is-selected"');
+        expect(selected).toContain('role="listitem"');
+        expect(selected).toContain('aria-current="true"');
+        expect(selected).toContain('Current selection');
+        expect(unselected).not.toContain('aria-current');
+        expect(unselected).not.toContain('tps-nn-provider-row is-selected');
+    });
+
+    it('keeps a display-only row selectable even when it has no activation callback', () => {
+        const markup = renderToStaticMarkup(React.createElement(NavigatorProviderRow, { row: row() }));
+
+        expect(markup).toContain('aria-label="Select Review navigator in Inbox/Tasks.md"');
+        expect(markup).not.toContain('class="tps-nn-provider-row-open" disabled=""');
     });
 
     it('renders an accessible More actions button only when the provider supplies actions', () => {

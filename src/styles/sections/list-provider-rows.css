@@ -17,6 +17,12 @@
     user-select: none;
 }
 
+.nn-provider-row.is-selected {
+    background-color: var(--nn-selected-file-bg-color);
+    border-radius: var(--nn-file-item-border-radius);
+    box-shadow: inset 0 0 0 var(--nn-theme-file-border-width) var(--nn-selected-file-border-color);
+}
+
 .nn-provider-row-checkbox {
     width: 28px;
     height: 28px;
@@ -111,10 +117,6 @@
 .nn-provider-row-open:focus-visible {
     outline: 2px solid var(--interactive-accent);
     outline-offset: 2px;
-}
-
-.nn-provider-row-open:disabled {
-    cursor: default;
 }
 
 .notebook-navigator-mobile .nn-provider-row-open {

@@ -4,7 +4,7 @@ Updated: August 1, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 2.11.0
+**Current API Version:** 2.13.0
 
 ## Table of Contents
 
@@ -19,6 +19,7 @@ TPS Notebook Navigator exposes a public API for other plugins and scripts to int
 - [Tag Collections API](#tag-collections-api)
 - [Property Nodes API](#property-nodes-api)
 - [Rows API](#rows-api)
+- [List API](#list-api)
 - [Selection API](#selection-api)
 - [Menus API](#menus-api)
 - [Events](#events)
@@ -65,7 +66,7 @@ if (nn) {
 
 ## API Overview
 
-The API provides eight main namespaces:
+The API provides nine main namespaces:
 
 - **`metadata`** - Folder, tag, and property node colors/icons, and pinned files
 - **`navigation`** - Navigate to files in the navigator
@@ -73,6 +74,7 @@ The API provides eight main namespaces:
 - **`tagCollections`** - Work with aggregate tag rows such as "Tags" and "Untagged"
 - **`propertyNodes`** - Build and parse property node ids
 - **`rows`** - Register transient rows and actions beneath owning note files
+- **`list`** - Pull or control the current composed list in the primary mounted TPS view
 - **`selection`** - Query current selection state
 - **`menus`** - Add items to Notebook Navigator context menus
 
@@ -101,8 +103,10 @@ publishes two TPS-namespaced workspace events so an owner can tear down the old 
 instance without polling private plugin state:
 
 - `tps:notebook-navigator-api-changed` announces a fully initialized API and announces unavailability before its Rows and
-  Types registries are disposed. The immutable payload contains `source`, `sourcePluginId`, `timestamp`, `available`,
-  `pluginVersion`, `apiVersion`, and `api`; unavailable payloads always use `api: null` and `apiVersion: null`.
+  Types registries are disposed. The immutable payload contains `source`, `sourcePluginId`, `hostInstanceId`, `timestamp`,
+  `available`, `pluginVersion`, `apiVersion`, and `api`; unavailable payloads always use `api: null` and `apiVersion: null`.
+  `hostInstanceId` is opaque and remains stable for one loaded host, so consumers can ignore a retiring host's late
+  unavailable event after a replacement is already active without relying on wall-clock ordering.
 - `tps:notebook-navigator-api-request` accepts a `TpsNotebookNavigatorApiRequestPayload`. The host invokes its guarded
   `respond` callback synchronously with the current state, so a late-loading owner receives only its own response rather than
   causing a global change rebroadcast.
@@ -122,20 +126,31 @@ import type {
 const API_CHANGED = 'tps:notebook-navigator-api-changed';
 const API_REQUEST = 'tps:notebook-navigator-api-request';
 let currentApi: NotebookNavigatorAPI | null = null;
+let currentHostInstanceId: string | null = null;
 let typeRegistration: NavigatorTypeProviderRegistration | null = null;
 
 const provider: NavigatorTypeProvider = createMyTypeProvider();
 const acceptApi = (state: TpsNotebookNavigatorApiChangedPayload): void => {
-  if (state.sourcePluginId !== 'tps-notebook-navigator' || state.api === currentApi) {
+  if (state.sourcePluginId !== 'tps-notebook-navigator') {
     return;
   }
 
+  if (!state.available) {
+    if (state.hostInstanceId !== currentHostInstanceId) return;
+    typeRegistration?.unregister();
+    typeRegistration = null;
+    currentApi = null;
+    currentHostInstanceId = null;
+    return;
+  }
+  if (!state.api || !state.apiVersion?.startsWith('2.')) return;
+  if (state.hostInstanceId === currentHostInstanceId && state.api === currentApi) return;
+
   typeRegistration?.unregister();
   typeRegistration = null;
-  currentApi = state.available && state.apiVersion?.startsWith('2.') ? state.api : null;
-  if (currentApi) {
-    typeRegistration = currentApi.types.registerProvider(provider);
-  }
+  currentApi = state.api;
+  currentHostInstanceId = state.hostInstanceId;
+  typeRegistration = currentApi.types.registerProvider(provider);
 };
 
 this.registerEvent(app.workspace.on(API_CHANGED, payload => {
@@ -150,6 +165,7 @@ this.register(() => {
   typeRegistration?.unregister();
   typeRegistration = null;
   currentApi = null;
+  currentHostInstanceId = null;
 });
 ```
 
@@ -296,6 +312,7 @@ for (const [path, context] of pinned) {
 | `navigateToTag(tag)`       | Select a tag in the navigation pane    | `Promise<boolean>` |
 | `navigateToProperty(nodeId)` | Select a property node in navigation | `Promise<boolean>` |
 | `navigateToType(typeId)` | Select a discovered Type collection | `Promise<boolean>` |
+| `focusRow(target)` | Focus one exact row already rendered in the current scope | `Promise<boolean>` |
 
 ### Reveal Behavior
 
@@ -385,6 +402,28 @@ if (catalog.availability === 'ready') {
   if (projects) {
     await nn.navigation.navigateToType(projects.id);
   }
+}
+```
+
+### Provider Row Focus Behavior
+
+`focusRow(target)` accepts a source-backed `NavigatorRowFocusTarget` with required `providerId`, `rowId`, and `sourcePath`.
+Optional `sourceLineNumber`, `typeId`, and `kind` values act as stale-reference guards. The method opens and waits for the
+TPS Navigator view, but it does not select a folder, tag, property, or Type and does not invoke the row's `activate`
+callback. It returns `false` when the target is malformed, its source no longer exists, its provider or row is absent, its
+optional guards no longer match, or filtering means the exact row is not currently rendered.
+
+```typescript
+const row = nn.selection.getCurrentRow();
+if (row) {
+  await nn.navigation.focusRow({
+    providerId: row.providerId,
+    rowId: row.rowId,
+    sourcePath: row.sourcePath,
+    sourceLineNumber: row.sourceLineNumber,
+    typeId: row.typeId,
+    kind: row.kind
+  });
 }
 ```
 
@@ -560,7 +599,8 @@ Provider requirements and safeguards:
 
 - `provider.id` uses `vendor/name` form and must be unique.
 - `sourcePath` must exactly match a Markdown path in `context.scope.visibleFilePaths`; orphan rows are discarded.
-- Row IDs are provider-local. Rows are transient and never enter file selection, drag, rename, persistence, or file indexes.
+- Row IDs are provider-local. Rows have one transient cursor but never enter `TFile` selection, multi-select, drag, rename,
+  persistence, or file indexes.
 - `activate` may open or focus the provider-owned record.
 - A checkbox `indicator.onChange(checked)` is optional. Without it, the checkbox is explicitly display-only.
 - `indicator.marker` preserves the provider's source marker verbatim. Non-binary states such as `/` or `>` remain visible and are included in the checkbox's accessible state label; omitting it uses the normal blank/check fallback.
@@ -624,12 +664,56 @@ const registration = nn.rows.registerProvider(provider, { limit: 5 });
 this.register(() => registration.unregister());
 ```
 
+## List API
+
+The `list` namespace is a bounded, pull-based view contract. It always targets the first currently mounted TPS Notebook
+Navigator leaf. It never opens a view; all three methods return `null` or `false` when no compatible view is mounted, while
+the view is not ready, or when that primary leaf changes during the readiness wait.
+
+```typescript
+const snapshot = await nn.list.getSnapshot();
+if (snapshot) {
+  for (const row of snapshot.rows) {
+    console.log(row.type === 'file' ? row.path : `${row.providerId}:${row.rowId}`);
+  }
+}
+
+await nn.list.setSearch({ query: 'status:working', provider: 'internal' });
+await nn.list.setPresentation({
+  sort: { option: 'property-asc', propertyKey: 'priority' },
+  groupBy: 'property:status',
+  displayMode: 'compact'
+});
+```
+
+`getSnapshot()` returns the current navigation item, immediate and applied search strings, requested and effective search
+providers, effective sort/group/display state, and the renderable file/provider row order after scope, search, and
+collapsed-group filtering. Headers and spacers are omitted. Type collections return `presentation: null` because their
+provider owns row order. The snapshot, nested DTOs, and row array are frozen; referenced `TFile`/`TFolder` instances are
+native Obsidian objects and can become stale. Re-resolve `sourcePath` immediately before a mutation. Provider rows expose
+identity and presentation only—activation, checkbox mutation, context-menu builders, tooltips, and provider records are
+never returned. A provider loading/error placeholder can have `file: null`.
+
+`setSearch(update)` applies the query immediately rather than waiting for keyboard debounce. `query` or `focus: true`
+activates search; `null` or `{ active: false }` clears and closes it. Contradictory input such as an inactive non-empty query
+fails closed. Omnisearch can be requested, while the next snapshot's `effectiveProvider` reports whether it actually
+produced the current rows.
+
+`setPresentation(update)` validates every supplied field before one settings transaction. It works only for folder, tag,
+and property scopes and rejects Type/none scopes, current or requested manual sorting, unconfigured property sort/group
+keys, folder grouping outside a folder, and an explicitly requested date grouping with a non-date sort. Each `null` field
+removes only that per-scope override and inherits the current default. Values equal to inherited defaults are normalized
+away, unrelated appearance fields are preserved, and any invalid field rejects the whole request without a partial write.
+There is no list subscription: integrations pull snapshots when they need them so large provider collections are not cloned
+continuously.
+
 ## Selection API
 
 Query the current selection state in the navigator.
 
-`getNavItem()` and `getCurrent()` return the navigator's most recently known state. Selection updates while the navigator
-view is active, and navigation selection is restored from localStorage on startup.
+`getNavItem()`, `getCurrent()`, and `getCurrentRow()` return the navigator's most recently known state. Navigation and file
+selection are restored from localStorage on startup; row selection is deliberately transient and starts as `null` after a
+reload.
 
 When `navItem.type === 'tag'`, `navItem.tag` can be either a canonical tag path or an aggregate tag collection id
 (`'__tagged__'` or `'__untagged__'`).
@@ -638,10 +722,11 @@ When `navItem.type === 'type'`, `navItem.navigatorType` is a stable structural i
 `structural:task`, or an encoded dynamic Kind id beginning with `kind:`. Existing NavItem variants do not gain extra
 fields.
 
-| Method         | Description                  | Returns          |
-| -------------- | ---------------------------- | ---------------- |
-| `getNavItem()` | Get selected folder, tag, property, or TPS type | `NavItem`        |
-| `getCurrent()` | Get current file selection state | `SelectionState` |
+| Method            | Description                                                | Returns                         |
+| ----------------- | ---------------------------------------------------------- | ------------------------------- |
+| `getNavItem()`    | Get selected folder, tag, property, or TPS type             | `NavItem`                       |
+| `getCurrent()`    | Get current native file selection state                     | `SelectionState`                |
+| `getCurrentRow()` | Get the immutable selected row, or `null` when none exists  | `NavigatorRowSelection \| null` |
 
 ```typescript
 // Check what's selected
@@ -660,6 +745,9 @@ if (navItem.type === 'folder') {
 
 // Get selected files
 const { files, focused } = nn.selection.getCurrent();
+
+// Row and native file selection are mutually exclusive.
+const row = nn.selection.getCurrentRow();
 ```
 
 ## Menus API
@@ -871,6 +959,7 @@ aggregate tag collection ids (`'__tagged__'` or `'__untagged__'`). Property node
 | `storage-ready`        | `void`                                          | Storage system is ready      |
 | `nav-item-changed`     | `{ item: NavItem }`                             | Navigation selection changed |
 | `selection-changed`    | `{ state: SelectionState }`                     | Selection changed            |
+| `row-selection-changed` | `{ row: NavigatorRowSelection \| null }`       | Transient row cursor changed |
 | `pinned-files-changed` | `{ files: Readonly<Pinned> }`                   | Pinned files changed         |
 | `folder-changed`       | `{ folder: TFolder, metadata: FolderMetadata \| null }` | Folder metadata changed |
 | `tag-changed`          | `{ tag: string, metadata: TagMetadata \| null }`        | Tag metadata changed    |
@@ -997,6 +1086,21 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 2.13.0 (2026-08-01)
+
+- Added pull-based `list.getSnapshot()` for the primary mounted view's navigation, search, presentation, and composed rows
+- Added guarded `list.setSearch(...)` with immediate applied-query state and requested/effective provider reporting
+- Added atomic per-scope `list.setPresentation(...)` with field resets, default normalization, and Type/manual-sort rejection
+- Kept snapshots immutable and callback-free, omitted virtual headers/spacers, and avoided continuous cloning or subscriptions
+
+### Version 2.12.0 (2026-08-01)
+
+- Added single selection for attached and Type-backed provider rows with selected CSS and ARIA state
+- Included provider rows in Arrow, Home, End, and Page navigation; Enter invokes an optional row activation exactly once
+- Added immutable `selection.getCurrentRow()` snapshots and `row-selection-changed` events without exposing provider callbacks
+- Added guarded `navigation.focusRow(...)` for an exact row already rendered in the current scope, without navigation or activation side effects
+- Kept row and file selection exclusive and cleared transient row state on scope, provider, filter, source, manual-sort, and unload changes
 
 ### Version 2.11.0 (2026-08-01)
 

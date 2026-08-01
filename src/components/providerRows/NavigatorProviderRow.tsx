@@ -16,6 +16,9 @@ import { ObsidianIcon } from '../ObsidianIcon';
 
 interface NavigatorProviderRowProps {
     row: NavigatorProvidedRow;
+    isSelected?: boolean;
+    /** Returns false when the source-backed row is no longer selectable. */
+    onSelectionRequested?: () => boolean;
     /** Internal first-party hook; omitted for ordinary external provider rows. */
     onActivationRequested?: () => void;
     /** Current host bridge for public actions supplied by plugins other than the row owner. */
@@ -37,6 +40,10 @@ interface ApplyProviderCheckboxChangeOptions {
     setDisplayedChecked: (checked: boolean) => void;
     setBusy: (busy: boolean) => void;
     onError: (error: unknown) => void;
+}
+
+interface ApplySelectedProviderCheckboxChangeOptions extends ApplyProviderCheckboxChangeOptions {
+    onSelectionRequested?: () => boolean;
 }
 
 interface ProviderCheckboxPresentation {
@@ -90,8 +97,37 @@ export async function applyProviderCheckboxChange({
     }
 }
 
+/** Refuse a stale row before optimistic state or provider mutation begins. */
+export async function applySelectedProviderCheckboxChange({
+    onSelectionRequested,
+    ...options
+}: ApplySelectedProviderCheckboxChangeOptions): Promise<boolean> {
+    if (!requestProviderRowSelection(onSelectionRequested)) {
+        return false;
+    }
+    await applyProviderCheckboxChange(options);
+    return true;
+}
+
 export function stopProviderRowKeyboardPropagation(event: Pick<React.KeyboardEvent, 'stopPropagation'>): void {
     event.stopPropagation();
+}
+
+export type ProviderRowKeyboardControl = 'primary' | 'checkbox' | 'menu';
+
+/** Keep auxiliary controls isolated while the primary row control participates in list traversal. */
+export function routeProviderRowKeyboardPropagation(
+    control: ProviderRowKeyboardControl,
+    event: Pick<React.KeyboardEvent, 'stopPropagation'>
+): void {
+    if (control !== 'primary') {
+        stopProviderRowKeyboardPropagation(event);
+    }
+}
+
+/** A missing callback means the standalone row is selectable; an explicit false rejects a stale source. */
+export function requestProviderRowSelection(onSelectionRequested?: () => boolean): boolean {
+    return onSelectionRequested?.() ?? true;
 }
 
 /** Consumes a pointer/keyboard event only after a non-empty menu was shown. */
@@ -132,8 +168,20 @@ export function requestProviderRowActivation(
     return true;
 }
 
+/** Select first so a stale source cannot activate after reconciliation rejects it. */
+export function requestSelectedProviderRowActivation(
+    row: NavigatorProvidedRow,
+    onSelectionRequested: (() => boolean) | undefined,
+    onActivationRequested: (() => void) | undefined,
+    onError: (error: unknown) => void
+): boolean {
+    return requestProviderRowSelection(onSelectionRequested) && requestProviderRowActivation(row, onActivationRequested, onError);
+}
+
 export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
     row,
+    isSelected = false,
+    onSelectionRequested,
     onActivationRequested,
     rowMenuHost
 }: NavigatorProviderRowProps) {
@@ -148,14 +196,14 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
     }, [row.id, row.providerId, sourceChecked]);
 
     const handleActivate = useCallback(() => {
-        requestProviderRowActivation(row, onActivationRequested, error => {
+        requestSelectedProviderRowActivation(row, onSelectionRequested, onActivationRequested, error => {
             console.warn('[TPS Notebook Navigator] Provider row activation failed', {
                 providerId: row.providerId,
                 rowId: row.id,
                 error
             });
         });
-    }, [onActivationRequested, row]);
+    }, [onActivationRequested, onSelectionRequested, row]);
     const handleCheckboxChange = useCallback(() => {
         const onChange = row.indicator?.onChange;
         if (!onChange || checkboxBusy) {
@@ -165,7 +213,8 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
         const previousChecked = displayedChecked;
         const nextChecked = !previousChecked;
         runAsyncAction(() =>
-            applyProviderCheckboxChange({
+            applySelectedProviderCheckboxChange({
+                onSelectionRequested,
                 previousChecked,
                 nextChecked,
                 onChange,
@@ -181,7 +230,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                 }
             })
         );
-    }, [checkboxBusy, displayedChecked, row]);
+    }, [checkboxBusy, displayedChecked, onSelectionRequested, row]);
     const createExtensionTarget = useCallback(
         () => rowMenuHost?.createTarget(row, getProviderRowMenuCheckboxState(row, displayedChecked)) ?? null,
         [displayedChecked, row, rowMenuHost]
@@ -212,12 +261,15 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                 return;
             }
 
-            consumeProviderRowMenuEvent(
+            const shown = consumeProviderRowMenuEvent(
                 () => showProviderRowContextMenuAtMouseEvent(new Menu(), row, event.nativeEvent, extensionAppender),
                 event
             );
+            if (shown) {
+                onSelectionRequested?.();
+            }
         },
-        [createExtensionTarget, resolveExtensionAppender, row, rowMenuHost]
+        [createExtensionTarget, onSelectionRequested, resolveExtensionAppender, row, rowMenuHost]
     );
     const handleMoreActions = useCallback(
         (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -229,7 +281,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                 return;
             }
             const rect = event.currentTarget.getBoundingClientRect();
-            consumeProviderRowMenuEvent(
+            const shown = consumeProviderRowMenuEvent(
                 () =>
                     showProviderRowContextMenuAtPosition(
                         new Menu(),
@@ -242,29 +294,34 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                     ),
                 event
             );
+            if (shown) {
+                onSelectionRequested?.();
+            }
         },
-        [createExtensionTarget, resolveExtensionAppender, row, rowMenuHost]
+        [createExtensionTarget, onSelectionRequested, resolveExtensionAppender, row, rowMenuHost]
     );
     const lineDescription = row.sourceLineNumber === undefined ? '' : `, line ${row.sourceLineNumber + 1}`;
     const checkboxLabel = displayedChecked ? 'Mark task incomplete' : 'Mark task complete';
     const markerForCurrentState = displayedChecked === sourceChecked ? sourceMarker : undefined;
     const checkboxPresentation = getProviderCheckboxPresentation(displayedChecked, markerForCurrentState);
     const interactiveCheckboxLabel = `${checkboxPresentation.stateLabel}. ${checkboxLabel}`;
+    const primaryActionLabel = `${row.activate ? 'Open' : 'Select'} ${row.label} in ${row.sourcePath}${lineDescription}${
+        isSelected ? '. Current selection' : ''
+    }`;
     const checkboxClassName = `nn-provider-row-checkbox${displayedChecked ? ' is-checked' : ''}${
         checkboxPresentation.hasVisibleMarker ? ' has-marker' : ''
     }`;
 
     return (
         <div
-            className="nn-provider-row"
+            className={`nn-provider-row${isSelected ? ' is-selected' : ''}`}
             role="listitem"
+            aria-current={isSelected ? 'true' : undefined}
             data-provider-id={row.providerId}
             data-provider-kind={row.kind}
             data-source-path={row.sourcePath}
             data-provider-context-menu={hasContextMenu ? 'true' : undefined}
             onContextMenu={handleContextMenu}
-            onKeyDown={stopProviderRowKeyboardPropagation}
-            onKeyUp={stopProviderRowKeyboardPropagation}
         >
             {row.indicator?.type === 'checkbox' ? (
                 row.indicator.onChange ? (
@@ -279,6 +336,8 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                         title={checkboxBusy ? 'Updating task…' : interactiveCheckboxLabel}
                         disabled={checkboxBusy}
                         onClick={handleCheckboxChange}
+                        onKeyDown={event => routeProviderRowKeyboardPropagation('checkbox', event)}
+                        onKeyUp={event => routeProviderRowKeyboardPropagation('checkbox', event)}
                     >
                         <span aria-hidden="true">{checkboxPresentation.marker}</span>
                     </button>
@@ -300,9 +359,10 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                 type="button"
                 className="nn-provider-row-open"
                 title={row.tooltip}
-                aria-label={`Open ${row.label} in ${row.sourcePath}${lineDescription}`}
+                aria-label={primaryActionLabel}
                 onClick={handleActivate}
-                disabled={!row.activate}
+                onKeyDown={event => routeProviderRowKeyboardPropagation('primary', event)}
+                onKeyUp={event => routeProviderRowKeyboardPropagation('primary', event)}
             >
                 <span className="nn-provider-row-label">{row.label}</span>
                 {row.secondaryLabel ? <span className="nn-provider-row-secondary">{row.secondaryLabel}</span> : null}
@@ -315,6 +375,8 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                     aria-haspopup="menu"
                     title="More actions"
                     onClick={handleMoreActions}
+                    onKeyDown={event => routeProviderRowKeyboardPropagation('menu', event)}
+                    onKeyUp={event => routeProviderRowKeyboardPropagation('menu', event)}
                 >
                     <ObsidianIcon name="lucide-ellipsis-vertical" aria-hidden={true} />
                 </button>

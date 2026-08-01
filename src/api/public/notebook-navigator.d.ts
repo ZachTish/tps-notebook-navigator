@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 2.11.0
+ * Version: 2.13.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -74,6 +74,8 @@ export type TagCollectionId = '__tagged__' | '__untagged__';
 export interface TpsNotebookNavigatorApiChangedPayload {
     readonly source: 'tps-notebook-navigator';
     readonly sourcePluginId: 'tps-notebook-navigator';
+    /** Opaque identity shared by every payload from one loaded host instance. */
+    readonly hostInstanceId: string;
     readonly timestamp: number;
     readonly available: boolean;
     readonly pluginVersion: string;
@@ -234,6 +236,111 @@ export interface NavigatorRowProviderRegistration {
     readonly id: string;
     updateOptions(options: NavigatorRowProviderOptions): void;
     unregister(): void;
+}
+
+/** Exact source-backed identity used to focus one currently rendered provider row. */
+export interface NavigatorRowFocusTarget {
+    readonly providerId: string;
+    readonly rowId: string;
+    readonly sourcePath: string;
+    readonly sourceLineNumber?: number;
+    /** Opaque selected Type id, or null for a row attached beneath a note. */
+    readonly typeId?: string | null;
+    /** Optional presentation-kind guard. */
+    readonly kind?: string;
+}
+
+/** Immutable identity for the one transient or Type-backed row selected in the list pane. */
+export interface NavigatorRowSelection {
+    readonly providerId: string;
+    readonly rowId: string;
+    readonly kind: string;
+    readonly label: string;
+    readonly file: TFile;
+    readonly sourcePath: string;
+    readonly sourceLineNumber?: number;
+    readonly typeId: string | null;
+}
+
+export type NavigatorListSearchProvider = 'internal' | 'omnisearch';
+export type NavigatorListSortOption =
+    | 'modified-desc'
+    | 'modified-asc'
+    | 'created-desc'
+    | 'created-asc'
+    | 'title-asc'
+    | 'title-desc'
+    | 'filename-asc'
+    | 'filename-desc'
+    | 'property-asc'
+    | 'property-desc';
+export interface NavigatorListSortSpec {
+    readonly option: NavigatorListSortOption;
+    readonly propertyKey?: string;
+}
+export type NavigatorListGrouping = 'custom' | 'date' | 'folder' | `property:${string}` | `property-desc:${string}`;
+export type NavigatorListDisplayMode = 'standard' | 'compact';
+export interface NavigatorListSearchUpdate {
+    readonly active?: boolean;
+    readonly query?: string;
+    readonly provider?: NavigatorListSearchProvider;
+    readonly focus?: boolean;
+}
+export interface NavigatorListPresentationUpdate {
+    readonly sort?: NavigatorListSortSpec | null;
+    readonly groupBy?: NavigatorListGrouping | null;
+    readonly displayMode?: NavigatorListDisplayMode | null;
+}
+export interface NavigatorListSearchState {
+    readonly active: boolean;
+    readonly query: string;
+    readonly appliedQuery: string;
+    readonly requestedProvider: NavigatorListSearchProvider;
+    readonly effectiveProvider: NavigatorListSearchProvider;
+}
+export interface NavigatorListSortState {
+    readonly option: NavigatorListSortOption;
+    readonly propertyKey: string | null;
+    readonly source: 'default' | 'scope';
+}
+export interface NavigatorListGroupingState {
+    readonly configured: NavigatorListGrouping;
+    readonly effective: NavigatorListGrouping;
+    readonly source: 'default' | 'scope';
+}
+export interface NavigatorListDisplayModeState {
+    readonly value: NavigatorListDisplayMode;
+    readonly source: 'default' | 'scope';
+}
+export interface NavigatorListPresentationState {
+    readonly sort: NavigatorListSortState;
+    readonly grouping: NavigatorListGroupingState;
+    readonly displayMode: NavigatorListDisplayModeState;
+}
+export interface NavigatorVisibleFileRow {
+    readonly type: 'file';
+    readonly file: TFile;
+    readonly path: string;
+    readonly pinned: boolean;
+}
+export interface NavigatorVisibleProviderRow {
+    readonly type: 'provider';
+    readonly providerId: string;
+    readonly rowId: string;
+    readonly kind: string;
+    readonly label: string;
+    readonly secondaryLabel?: string;
+    readonly sourcePath: string;
+    readonly sourceLineNumber?: number;
+    readonly typeId: string | null;
+    readonly file: TFile | null;
+}
+export type NavigatorVisibleListRow = NavigatorVisibleFileRow | NavigatorVisibleProviderRow;
+export interface NavigatorListSnapshot {
+    readonly navItem: NavItem;
+    readonly search: NavigatorListSearchState;
+    readonly presentation: NavigatorListPresentationState | null;
+    readonly rows: readonly NavigatorVisibleListRow[];
 }
 
 /**
@@ -480,6 +587,11 @@ export interface NotebookNavigatorEvents {
         state: SelectionState;
     };
 
+    /** Fired when the selected transient or Type-backed row changes. */
+    'row-selection-changed': {
+        readonly row: NavigatorRowSelection | null;
+    };
+
     /** Fired when pinned files change */
     'pinned-files-changed': {
         /** All currently pinned files with their context information as a Map */
@@ -507,7 +619,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 2.11.0
+ * @version 2.13.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */
@@ -561,6 +673,8 @@ export interface NotebookNavigatorAPI {
         navigateToProperty(nodeId: string): Promise<boolean>;
         /** Select any built-in, dynamic Kind, or registered-provider collection discovered through `types`. */
         navigateToType(typeId: string): Promise<boolean>;
+        /** Focus an exact currently rendered row without changing scope or activating it. */
+        focusRow(target: NavigatorRowFocusTarget): Promise<boolean>;
     };
 
     /** Discover and address built-in, dynamic Kind, and registered-provider Type collections. */
@@ -585,12 +699,21 @@ export interface NotebookNavigatorAPI {
         whenReady(): Promise<NavigatorTypesSnapshot>;
     };
 
+    /** Pull and control the primary mounted list without opening a Navigator view. */
+    list: {
+        getSnapshot(): Promise<NavigatorListSnapshot | null>;
+        setSearch(update: NavigatorListSearchUpdate | null): Promise<boolean>;
+        setPresentation(update: NavigatorListPresentationUpdate): Promise<boolean>;
+    };
+
     /** Query current selection state */
     selection: {
         /** Get the currently selected folder, tag, property, or none in navigation pane */
         getNavItem(): NavItem;
         /** Get current file selection state */
         getCurrent(): SelectionState;
+        /** Get the current immutable provider-row selection, or null when file selection owns the cursor. */
+        getCurrentRow(): NavigatorRowSelection | null;
     };
 
     /** Helpers for aggregate tag rows used by tag menus and navigation */

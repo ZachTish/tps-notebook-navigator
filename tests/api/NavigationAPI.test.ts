@@ -29,6 +29,7 @@ function createView() {
             () => 'key:status=done'
         ),
         navigateToType: vi.fn<(typeId: string, options?: { preserveNavigationFocus?: boolean }) => string | null>(() => 'structural:task'),
+        focusRow: vi.fn(() => true),
         whenReady: vi.fn(async () => true)
     };
 }
@@ -404,5 +405,51 @@ describe('NavigationAPI', () => {
 
         expect(view.navigateToFile).not.toHaveBeenCalled();
         expect(view.navigateToFolder).not.toHaveBeenCalled();
+    });
+
+    it('forwards an exact provider-row identity without changing navigation scope', async () => {
+        const view = createView();
+        const api: ConstructorParameters<typeof NavigationAPI>[0] = {
+            app: {
+                vault: { getFileByPath: () => null, getFolderByPath: () => null },
+                workspace: { getLeavesOfType: () => [{ view }] }
+            },
+            getPlugin: () => ({ activateView: vi.fn(async () => null) })
+        };
+        const target = {
+            providerId: 'tps/tasks',
+            rowId: 'task-12',
+            sourcePath: 'Inbox/Tasks.md',
+            sourceLineNumber: 11,
+            typeId: 'structural:task',
+            kind: 'tps/task'
+        } as const;
+
+        await expect(new NavigationAPI(api).focusRow(target)).resolves.toBe(true);
+        expect(view.focusRow).toHaveBeenCalledOnce();
+        expect(view.focusRow).toHaveBeenCalledWith(target);
+        expect(view.navigateToType).not.toHaveBeenCalled();
+    });
+
+    it('fails closed for invalid identities and views without row focus support', async () => {
+        const view = createView();
+        const activateView = vi.fn(async () => null);
+        const api: ConstructorParameters<typeof NavigationAPI>[0] = {
+            app: {
+                vault: { getFileByPath: () => null, getFolderByPath: () => null },
+                workspace: { getLeavesOfType: () => [{ view }] }
+            },
+            getPlugin: () => ({ activateView })
+        };
+        const navigationAPI = new NavigationAPI(api);
+
+        await expect(navigationAPI.focusRow({ providerId: '', rowId: 'task-12', sourcePath: 'Inbox/Tasks.md' })).resolves.toBe(false);
+        expect(view.focusRow).not.toHaveBeenCalled();
+        expect(activateView).not.toHaveBeenCalled();
+
+        delete (view as Partial<typeof view>).focusRow;
+        await expect(navigationAPI.focusRow({ providerId: 'tps/tasks', rowId: 'task-12', sourcePath: 'Inbox/Tasks.md' })).resolves.toBe(
+            false
+        );
     });
 });

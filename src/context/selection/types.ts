@@ -21,6 +21,10 @@ import type { TFile, TFolder } from 'obsidian';
 import type { NavigationItemType } from '../../types';
 import type { PropertySelectionNodeId } from '../../utils/propertyTree';
 import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
+import type { NavigatorRowSelection } from '../../api/types';
+
+/** Internal callback-free row identity. It is deliberately never persisted. */
+export type SelectedNavigatorRow = Omit<NavigatorRowSelection, 'file'>;
 
 export type SelectionRevealSource = 'auto' | 'manual' | 'shortcut' | 'startup';
 export type SelectionHistoryBehavior = 'record' | 'replace' | 'skip';
@@ -37,6 +41,7 @@ export interface SelectionState {
     selectedProperty: PropertySelectionNodeId | null;
     selectedType: TpsNavigatorTypeId | null;
     selectedFiles: Set<string>;
+    selectedRow: SelectedNavigatorRow | null;
     anchorIndex: number | null;
     lastMovementDirection: 'up' | 'down' | null;
     isRevealOperation: boolean;
@@ -82,6 +87,8 @@ export type SelectionAction =
           historyIndex?: number;
       }
     | { type: 'SET_SELECTED_FILE'; file: TFile | null }
+    | { type: 'SET_SELECTED_ROW'; row: SelectedNavigatorRow }
+    | { type: 'CLEAR_ROW_SELECTION' }
     | { type: 'SET_SELECTION_TYPE'; selectionType: NavigationItemType }
     | { type: 'CLEAR_SELECTION' }
     | {

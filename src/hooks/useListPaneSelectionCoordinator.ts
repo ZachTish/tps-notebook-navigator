@@ -69,6 +69,7 @@ interface UseListPaneSelectionCoordinatorResult {
     scheduleKeyboardSelectionOpen: () => void;
     scheduleKeyboardSelectionOpenForFile: (file: TFile) => void;
     commitPendingKeyboardSelectionOpen: () => void;
+    clearPendingKeyboardOpen: () => void;
 }
 
 export function useListPaneSelectionCoordinator({
@@ -551,6 +552,7 @@ export function useListPaneSelectionCoordinator({
         isFileSelected,
         scheduleKeyboardSelectionOpen,
         scheduleKeyboardSelectionOpenForFile,
-        commitPendingKeyboardSelectionOpen
+        commitPendingKeyboardSelectionOpen,
+        clearPendingKeyboardOpen
     };
 }

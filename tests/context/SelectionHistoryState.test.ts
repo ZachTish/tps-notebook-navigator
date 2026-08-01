@@ -52,6 +52,7 @@ function createSelectionState(rootFolder: TFolder): SelectionState {
         selectedProperty: null,
         selectedType: null,
         selectedFiles: new Set<string>(),
+        selectedRow: null,
         anchorIndex: null,
         lastMovementDirection: null,
         isRevealOperation: false,

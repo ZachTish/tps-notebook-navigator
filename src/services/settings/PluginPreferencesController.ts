@@ -424,7 +424,10 @@ export class PluginPreferencesController {
 
     public setSearchProvider(provider: 'internal' | 'omnisearch'): void {
         const settings = this.options.getSettings();
-        const normalized = provider === 'omnisearch' && this.options.isOmnisearchAvailable() ? 'omnisearch' : 'internal';
+        // Preserve the user's requested provider even while it is unavailable. The list
+        // pipeline independently reports and uses the effective internal fallback, and can
+        // resume Omnisearch without losing intent if the provider becomes available later.
+        const normalized = provider === 'omnisearch' ? 'omnisearch' : 'internal';
         if (settings.searchProvider === normalized) {
             return;
         }

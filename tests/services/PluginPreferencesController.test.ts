@@ -56,6 +56,7 @@ describe('PluginPreferencesController', () => {
     let settings: typeof DEFAULT_SETTINGS;
     let isShuttingDown = false;
     let isLocal = false;
+    let isOmnisearchAvailable = true;
     let persistSyncModeSettingUpdate: ReturnType<typeof vi.fn>;
     let notifySettingsUpdate: ReturnType<typeof vi.fn>;
     let saveSettings: ReturnType<typeof vi.fn>;
@@ -66,6 +67,7 @@ describe('PluginPreferencesController', () => {
         vi.clearAllMocks();
         isShuttingDown = false;
         isLocal = false;
+        isOmnisearchAvailable = true;
         settings = {
             ...DEFAULT_SETTINGS,
             syncModes: { ...DEFAULT_SETTINGS.syncModes }
@@ -83,7 +85,7 @@ describe('PluginPreferencesController', () => {
             isLocal: vi.fn(() => isLocal),
             persistSyncModeSettingUpdate,
             persistSyncModeSettingUpdateAsync: vi.fn(async () => undefined),
-            isOmnisearchAvailable: vi.fn(() => true),
+            isOmnisearchAvailable: vi.fn(() => isOmnisearchAvailable),
             refreshMatcherCachesIfNeeded: vi.fn()
         });
 
@@ -93,6 +95,16 @@ describe('PluginPreferencesController', () => {
     afterEach(() => {
         controller.dispose();
         vi.useRealTimers();
+    });
+
+    it('retains an unavailable Omnisearch provider as the requested preference', () => {
+        isOmnisearchAvailable = false;
+
+        controller.setSearchProvider('omnisearch');
+
+        expect(settings.searchProvider).toBe('omnisearch');
+        expect(localStorageSet).toHaveBeenCalledWith(STORAGE_KEYS.searchProviderKey, 'omnisearch');
+        expect(notifySettingsUpdate).toHaveBeenCalledOnce();
     });
 
     it('skips recent-data listeners while shutdown is in progress', () => {

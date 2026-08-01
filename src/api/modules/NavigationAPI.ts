@@ -18,6 +18,8 @@
 
 import { TFile, TFolder } from 'obsidian';
 import { NOTEBOOK_NAVIGATOR_VIEW } from '../../types';
+import type { NavigatorRowFocusTarget } from '../types';
+import { isValidNavigatorRowFocusTarget } from '../../services/rows/rowSelection';
 
 type NavigatorView = {
     navigateToFile: (file: TFile) => boolean;
@@ -25,6 +27,7 @@ type NavigatorView = {
     navigateToTag: (tag: string, options?: { preserveNavigationFocus?: boolean }) => string | null;
     navigateToProperty: (propertyNodeId: string, options?: { preserveNavigationFocus?: boolean }) => string | null;
     navigateToType: (typeId: string, options?: { preserveNavigationFocus?: boolean }) => string | null;
+    focusRow?: (target: NavigatorRowFocusTarget) => boolean;
     whenReady?: () => Promise<boolean>;
 };
 
@@ -120,6 +123,19 @@ export class NavigationAPI {
         }
 
         return view.navigateToType(typeId, { preserveNavigationFocus: true }) !== null;
+    }
+
+    /** Focus one exact currently rendered provider row without changing navigation scope or activating it. */
+    async focusRow(target: NavigatorRowFocusTarget): Promise<boolean> {
+        if (!isValidNavigatorRowFocusTarget(target)) {
+            return false;
+        }
+        const view = await this.ensureViewOpen();
+        if (!view || typeof view.focusRow !== 'function') {
+            return false;
+        }
+
+        return view.focusRow(target);
     }
 
     private resolveFile(file: TFile | string): TFile | null {

@@ -250,6 +250,7 @@ function withSingleSelection(
         selectedType: params.selectedType ?? null,
         selectedFiles: createSelectedFilesSet(params.selectedFile),
         selectedFile: params.selectedFile,
+        selectedRow: null,
         anchorIndex: null,
         lastMovementDirection: null,
         isRevealOperation: params.isRevealOperation,
@@ -356,6 +357,7 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
                 ...state,
                 selectedFiles: createSelectedFilesSet(action.file),
                 selectedFile: action.file,
+                selectedRow: null,
                 anchorIndex: null,
                 lastMovementDirection: null,
                 isRevealOperation: false,
@@ -365,10 +367,34 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
                 revealSource: null
             };
 
+        case 'SET_SELECTED_ROW':
+            return {
+                ...state,
+                selectedFiles: new Set<string>(),
+                selectedFile: null,
+                selectedRow: Object.freeze({ ...action.row }),
+                anchorIndex: null,
+                lastMovementDirection: null,
+                isRevealOperation: false,
+                isFolderChangeWithAutoSelect: false,
+                isKeyboardNavigation: false,
+                isFolderNavigation: false,
+                revealSource: null
+            };
+
+        case 'CLEAR_ROW_SELECTION':
+            return state.selectedRow === null
+                ? state
+                : {
+                      ...state,
+                      selectedRow: null
+                  };
+
         case 'SET_SELECTION_TYPE':
             return {
                 ...state,
                 selectionType: action.selectionType,
+                selectedRow: null,
                 isRevealOperation: false,
                 isFolderChangeWithAutoSelect: false,
                 isKeyboardNavigation: false,
@@ -384,6 +410,7 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
                 selectedType: null,
                 selectedFiles: new Set<string>(),
                 selectedFile: null,
+                selectedRow: null,
                 anchorIndex: null,
                 lastMovementDirection: null,
                 isRevealOperation: false,
@@ -559,6 +586,7 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
                 selectedFolder: null,
                 selectedFiles: new Set<string>(),
                 selectedFile: null,
+                selectedRow: null,
                 anchorIndex: null,
                 lastMovementDirection: null,
                 isFolderChangeWithAutoSelect: false,
@@ -568,7 +596,8 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
 
         case 'CLEANUP_DELETED_FILE': {
             const deletedFileWasSelected = state.selectedFiles.has(action.deletedPath) || state.selectedFile?.path === action.deletedPath;
-            if (!deletedFileWasSelected && !action.nextFileToSelect) {
+            const deletedFileOwnedSelectedRow = state.selectedRow?.sourcePath === action.deletedPath;
+            if (!deletedFileWasSelected && !deletedFileOwnedSelectedRow && !action.nextFileToSelect) {
                 return state;
             }
 
@@ -588,6 +617,7 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
                 ...state,
                 selectedFiles,
                 selectedFile: action.nextFileToSelect ?? (app ? getFirstSelectedFile(selectedFiles, app) : null),
+                selectedRow: deletedFileOwnedSelectedRow || action.nextFileToSelect ? null : state.selectedRow,
                 anchorIndex,
                 isFolderChangeWithAutoSelect: false,
                 isKeyboardNavigation: false,
@@ -607,6 +637,7 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
                 ...state,
                 selectedFiles,
                 selectedFile: state.selectedFile,
+                selectedRow: null,
                 anchorIndex: action.anchorIndex !== undefined ? action.anchorIndex : state.anchorIndex,
                 lastMovementDirection: null
             };
@@ -631,6 +662,7 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
                 ...state,
                 selectedFiles,
                 selectedFile: allFiles[toIndex] ?? null,
+                selectedRow: null,
                 lastMovementDirection: null
             };
         }
@@ -654,6 +686,7 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
                 ...state,
                 selectedFiles,
                 selectedFile: action.selectedFile,
+                selectedRow: null,
                 anchorIndex: null,
                 lastMovementDirection: null
             };
@@ -664,6 +697,7 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
                 ...state,
                 selectedFiles: new Set(action.selectedFiles),
                 selectedFile: action.selectedFile,
+                selectedRow: null,
                 anchorIndex: action.anchorIndex !== undefined ? action.anchorIndex : state.anchorIndex,
                 lastMovementDirection: action.lastMovementDirection !== undefined ? action.lastMovementDirection : null
             };
@@ -683,7 +717,8 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
         case 'UPDATE_CURRENT_FILE':
             return {
                 ...state,
-                selectedFile: action.file
+                selectedFile: action.file,
+                selectedRow: null
             };
 
         case 'TOGGLE_WITH_CURSOR': {
@@ -698,6 +733,7 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
                 ...state,
                 selectedFiles,
                 selectedFile: action.file,
+                selectedRow: null,
                 anchorIndex: action.anchorIndex !== undefined ? action.anchorIndex : state.anchorIndex,
                 lastMovementDirection: null
             };
@@ -736,7 +772,8 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
             return {
                 ...state,
                 selectedFiles,
-                selectedFile
+                selectedFile,
+                selectedRow: state.selectedRow?.sourcePath === action.oldPath ? null : state.selectedRow
             };
         }
 

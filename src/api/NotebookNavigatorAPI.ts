@@ -28,6 +28,7 @@ import { MenusAPI } from './modules/MenusAPI';
 import { PropertyNodesAPI } from './modules/PropertyNodesAPI';
 import { RowsAPI } from './modules/RowsAPI';
 import { TypesAPI } from './modules/TypesAPI';
+import { ListAPI } from './modules/ListAPI';
 import { getVirtualTagCollection, isVirtualTagCollectionId, VIRTUAL_TAG_COLLECTION_IDS } from '../utils/virtualTagCollections';
 import { getNavigatorTypesStore } from '../integrations/gcm/useGcmEntityTypes';
 import { NavigatorTypeProviderRegistry } from '../services/types/NavigatorTypeProviderRegistry';
@@ -40,7 +41,7 @@ export const INTERNAL_NOTEBOOK_NAVIGATOR_API = Symbol('NotebookNavigatorInternal
 
 export interface NotebookNavigatorInternalAPI {
     readonly metadata: Pick<MetadataAPI, 'updateFromSettings' | 'emitFolderChangedForPath'>;
-    readonly selection: Pick<SelectionAPI, 'updateNavigationState' | 'updateFileState'>;
+    readonly selection: Pick<SelectionAPI, 'updateNavigationState' | 'updateFileState' | 'updateRowState' | 'dispose'>;
     readonly menus: Pick<
         MenusAPI,
         | 'applyFileMenuExtensions'
@@ -82,11 +83,12 @@ export class NotebookNavigatorAPI {
     private readonly propertyNodesController: PropertyNodesAPI;
     private readonly rowsController: RowsAPI;
     private readonly typesController: TypesAPI;
+    private readonly listController: ListAPI;
 
     // Sub-APIs
     public readonly navigation: Pick<
         NavigationAPI,
-        'reveal' | 'navigateToFolder' | 'navigateToTag' | 'navigateToProperty' | 'navigateToType'
+        'reveal' | 'navigateToFolder' | 'navigateToTag' | 'navigateToProperty' | 'navigateToType' | 'focusRow'
     >;
     public readonly metadata: Pick<
         MetadataAPI,
@@ -101,7 +103,7 @@ export class NotebookNavigatorAPI {
         | 'pin'
         | 'unpin'
     >;
-    public readonly selection: Pick<SelectionAPI, 'getNavItem' | 'getCurrent'>;
+    public readonly selection: Pick<SelectionAPI, 'getNavItem' | 'getCurrent' | 'getCurrentRow'>;
     public readonly menus: Pick<
         MenusAPI,
         'registerFileMenu' | 'registerFolderMenu' | 'registerTagMenu' | 'registerPropertyMenu' | 'registerTypeMenu' | 'registerRowMenu'
@@ -130,6 +132,8 @@ export class NotebookNavigatorAPI {
         | 'subscribe'
         | 'whenReady'
     >;
+    /** Pull and control the primary mounted list without opening a Navigator view. */
+    public readonly list: Pick<ListAPI, 'getSnapshot' | 'setSearch' | 'setPresentation'>;
     readonly [INTERNAL_NOTEBOOK_NAVIGATOR_API]: NotebookNavigatorInternalAPI;
 
     constructor(plugin: NotebookNavigatorPlugin, app: App) {
@@ -164,13 +168,15 @@ export class NotebookNavigatorAPI {
             this.plugin.settings.tpsTypesNavigationEnabled !== false,
             new NavigatorTypeProviderRegistry(this.app)
         );
+        this.listController = new ListAPI({ app: this.app });
 
         this.navigation = Object.freeze({
             reveal: file => this.navigationController.reveal(file),
             navigateToFolder: folder => this.navigationController.navigateToFolder(folder),
             navigateToTag: tag => this.navigationController.navigateToTag(tag),
             navigateToProperty: nodeId => this.navigationController.navigateToProperty(nodeId),
-            navigateToType: typeId => this.navigationController.navigateToType(typeId)
+            navigateToType: typeId => this.navigationController.navigateToType(typeId),
+            focusRow: target => this.navigationController.focusRow(target)
         });
         this.metadata = Object.freeze({
             getFolderMeta: folder => this.metadataController.getFolderMeta(folder),
@@ -186,7 +192,8 @@ export class NotebookNavigatorAPI {
         });
         this.selection = Object.freeze({
             getNavItem: () => this.selectionController.getNavItem(),
-            getCurrent: () => this.selectionController.getCurrent()
+            getCurrent: () => this.selectionController.getCurrent(),
+            getCurrentRow: () => this.selectionController.getCurrentRow()
         });
         this.menus = Object.freeze({
             registerFileMenu: callback => this.menusController.registerFileMenu(callback),
@@ -231,6 +238,11 @@ export class NotebookNavigatorAPI {
             getSnapshot: () => this.typesController.getSnapshot(),
             subscribe: listener => this.typesController.subscribe(listener),
             whenReady: () => this.typesController.whenReady()
+        });
+        this.list = Object.freeze({
+            getSnapshot: () => this.listController.getSnapshot(),
+            setSearch: update => this.listController.setSearch(update),
+            setPresentation: update => this.listController.setPresentation(update)
         });
         this[INTERNAL_NOTEBOOK_NAVIGATOR_API] = Object.freeze({
             metadata: this.metadataController,

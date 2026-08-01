@@ -55,6 +55,7 @@ import { normalizeTagPath } from '../utils/tagUtils';
 import type { FilterSearchTokens } from '../utils/filterSearch';
 import type { NavigateToFolderOptions, RevealPropertyOptions, RevealTagOptions } from './useNavigatorReveal';
 import type { EnsureSelectionOptions, EnsureSelectionResult } from './useListPaneSelectionCoordinator';
+import type { NavigatorListSearchUpdate } from '../api/types';
 
 interface ExecuteSearchShortcutParams {
     searchShortcut: SearchShortcut;
@@ -96,6 +97,7 @@ export interface UseListPaneSearchResult {
     modifySearchWithDateToken: (dateToken: string, options?: SearchQueryUpdateOptions) => void;
     toggleSearch: () => void;
     executeSearchShortcut: (params: ExecuteSearchShortcutParams) => Promise<void>;
+    setPublicSearch: (update: NavigatorListSearchUpdate | null) => boolean;
 }
 
 function formatSearchShortcutFolderLabel(folderPath: string): string {
@@ -323,6 +325,40 @@ export function useListPaneSearch({
         setSearchActive(false);
         uiDispatch({ type: 'ACTIVATE_PANE', target: 'files' });
     }, [setSearchActive, uiDispatch]);
+
+    const setPublicSearch = useCallback(
+        (update: NavigatorListSearchUpdate | null): boolean => {
+            if (update === null || update.active === false) {
+                setShouldFocusSearch(false);
+                setSearchQuery('');
+                setDebouncedSearchQuery('');
+                if (isSearchActive) {
+                    setSearchActive(false);
+                }
+                uiDispatch({ type: 'ACTIVATE_PANE', target: 'files' });
+                return true;
+            }
+
+            if (update.provider !== undefined && update.provider !== searchProvider) {
+                plugin.setSearchProvider(update.provider);
+            }
+
+            if (update.query !== undefined) {
+                // Public writes are applied immediately so the next pulled snapshot reflects
+                // the requested rows without waiting for the keyboard debounce interval.
+                setSearchQuery(update.query);
+                setDebouncedSearchQuery(update.query);
+            }
+
+            const shouldActivate = update.active === true || update.query !== undefined || update.focus === true;
+            if (shouldActivate) {
+                activateSearch(update.focus === true ? 'search' : null);
+            }
+            setShouldFocusSearch(update.focus === true);
+            return true;
+        },
+        [activateSearch, isSearchActive, plugin, searchProvider, setSearchActive, uiDispatch]
+    );
 
     const handleSearchToggle = useCallback(() => {
         if (!isSearchActive) {
@@ -615,6 +651,7 @@ export function useListPaneSearch({
         modifySearchWithProperty,
         modifySearchWithDateToken,
         toggleSearch,
-        executeSearchShortcut
+        executeSearchShortcut,
+        setPublicSearch
     };
 }

@@ -25,6 +25,12 @@ import type { RevealFileOptions, NavigateToFolderOptions } from '../hooks/useNav
 import type { NavigateToPropertyOptions } from '../utils/propertyNavigation';
 import type { NavigateToTagOptions } from '../utils/tagNavigation';
 import type { NavigateToTypeOptions } from '../utils/typeNavigation';
+import type {
+    NavigatorListPresentationUpdate,
+    NavigatorListSearchUpdate,
+    NavigatorListSnapshot,
+    NavigatorRowFocusTarget
+} from '../api/types';
 import { ExpansionProvider } from '../context/ExpansionContext';
 import { SelectionProvider } from '../context/SelectionContext';
 import { ServicesProvider } from '../context/ServicesContext';
@@ -376,6 +382,26 @@ export class NotebookNavigatorView extends ItemView {
      */
     navigateToType(typeId: string, options?: NavigateToTypeOptions) {
         return this.componentHandle?.navigateToType(typeId, options) ?? null;
+    }
+
+    /** Focuses one exact row only when it is currently rendered in this view. */
+    focusRow(target: NavigatorRowFocusTarget): boolean {
+        return this.componentHandle?.focusRow(target) ?? false;
+    }
+
+    /** Returns a pull-based immutable snapshot of this view's composed list. */
+    getListSnapshot(): NavigatorListSnapshot | null {
+        return this.componentHandle?.getListSnapshot() ?? null;
+    }
+
+    /** Applies a guarded search update without changing navigation scope. */
+    async setListSearch(update: NavigatorListSearchUpdate | null): Promise<boolean> {
+        return (await this.componentHandle?.setListSearch(update)) ?? false;
+    }
+
+    /** Applies one atomic per-scope presentation update. */
+    async setListPresentation(update: NavigatorListPresentationUpdate): Promise<boolean> {
+        return (await this.componentHandle?.setListPresentation(update)) ?? false;
     }
 
     /**
