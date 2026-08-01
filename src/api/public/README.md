@@ -32,8 +32,9 @@ Complete TypeScript type definitions for the Notebook Navigator API.
    and reacquires the new API after a TPS-only reload.
 6. Use `nn.menus.registerTypeMenu(...)` to add synchronous actions to built-in, dynamic Kind, and provider-owned Type
    collection menus. The frozen context contains the opaque current Type id and its immutable current descriptor. Add items
-   synchronously and perform asynchronous work inside each item's `onClick` handler; stale or empty menus fail closed, while
-   thrown failures and rejected Promises are isolated.
+   synchronously and perform asynchronous work inside each item's `onClick` handler. Initializers receive the real native
+   item immediately; stale and empty menus fail closed, while any partially built invalid Type menu is suppressed instead of
+   being shown. Rejected Promises are observed and delayed additions are ignored.
 7. Use `nn.menus.registerRowMenu(...)` to add actions to matching attached, structural, Kind, task, and provider-owned result
    rows. Its optional synchronous `supports(target)` filter controls which rows show the accessible action affordance. The
    frozen target contains current file identity, Type scope, optional zero-based line, and checkbox presentation; re-resolve

@@ -97,15 +97,24 @@ type MenuExtensionContextBase = {
     addItem: (cb: (item: MenuItem) => void) => void;
 };
 
+interface MenuExtensionApplyResult {
+    addedItems: number;
+    valid: boolean;
+}
+
+interface MenuExtensionRegistration<TCallback> {
+    readonly callback: TCallback;
+}
+
 /**
  * Menu extension API - Allow other plugins to add items to Notebook Navigator context menus.
  */
 export class MenusAPI {
-    private fileMenuExtensions = new Set<FileMenuExtension>();
-    private folderMenuExtensions = new Set<FolderMenuExtension>();
-    private tagMenuExtensions = new Set<TagMenuExtension>();
-    private propertyMenuExtensions = new Set<PropertyMenuExtension>();
-    private typeMenuExtensions = new Set<TypeMenuExtension>();
+    private fileMenuExtensions = new Set<MenuExtensionRegistration<FileMenuExtension>>();
+    private folderMenuExtensions = new Set<MenuExtensionRegistration<FolderMenuExtension>>();
+    private tagMenuExtensions = new Set<MenuExtensionRegistration<TagMenuExtension>>();
+    private propertyMenuExtensions = new Set<MenuExtensionRegistration<PropertyMenuExtension>>();
+    private typeMenuExtensions = new Set<MenuExtensionRegistration<TypeMenuExtension>>();
     private rowMenuExtensions = new Set<RowMenuExtensionRegistration>();
     private rowMenuListeners = new Set<() => void>();
     private rowMenuRevision = 0;
@@ -160,25 +169,32 @@ export class MenusAPI {
         };
     }
 
-    private registerExtension<T>(extensions: Set<T>, callback: T): MenuExtensionDispose {
-        extensions.add(callback);
+    private registerExtension<T>(extensions: Set<MenuExtensionRegistration<T>>, callback: T): MenuExtensionDispose {
+        const registration = Object.freeze({ callback });
+        extensions.add(registration);
+        let active = true;
         return () => {
-            extensions.delete(callback);
+            if (!active) {
+                return;
+            }
+            active = false;
+            extensions.delete(registration);
         };
     }
 
     private applyExtensions<TContext extends MenuExtensionContextBase>(
-        extensions: ReadonlySet<(context: TContext) => void>,
+        extensions: ReadonlySet<MenuExtensionRegistration<(context: TContext) => void>>,
         menu: Menu,
         errorPrefix: string,
         buildContext: (addItem: (cb: (item: MenuItem) => void) => void) => TContext
-    ): number {
+    ): MenuExtensionApplyResult {
         if (extensions.size === 0) {
-            return 0;
+            return { addedItems: 0, valid: true };
         }
 
         let addedItems = 0;
         let isBuildingMenu = true;
+        let menuValid = true;
 
         const addItem = (cb: (item: MenuItem) => void) => {
             if (!isBuildingMenu) {
@@ -187,29 +203,55 @@ export class MenusAPI {
                 );
                 return;
             }
+            if (typeof cb !== 'function') {
+                menuValid = false;
+                console.error(`Notebook Navigator ${errorPrefix} menu extension supplied an invalid item callback.`);
+                return;
+            }
+
+            let configured = false;
+            let initializerFailed = false;
             try {
-                let configured = false;
                 menu.addItem(item => {
                     try {
-                        cb(item);
+                        const result: unknown = cb(item);
                         configured = true;
+                        if (isPromiseLike(result)) {
+                            menuValid = false;
+                            console.error(
+                                `Notebook Navigator ${errorPrefix} menu extension item returned a Promise. Item initializers must be synchronous; do async work in onClick handlers.`
+                            );
+                            void Promise.resolve(result).catch(error => {
+                                console.error(`Notebook Navigator ${errorPrefix} asynchronous menu extension item failed`, error);
+                            });
+                        }
                     } catch (error) {
+                        initializerFailed = true;
+                        menuValid = false;
                         console.error(`Notebook Navigator ${errorPrefix} menu extension item failed`, error);
                     }
                 });
-                if (configured) {
-                    addedItems += 1;
-                }
             } catch (error) {
+                menuValid = false;
                 console.error(`Notebook Navigator ${errorPrefix} menu extension addItem failed`, error);
+                return;
+            }
+
+            if (configured) {
+                addedItems += 1;
+            } else if (!initializerFailed) {
+                menuValid = false;
+                console.error(`Notebook Navigator ${errorPrefix} menu extension host did not initialize the requested item.`);
             }
         };
 
         const extensionContext = buildContext(addItem);
-        for (const extension of Array.from(extensions)) {
+        for (const { callback: extension } of Array.from(extensions)) {
+            const addedBeforeExtension = addedItems;
             try {
                 const result: unknown = extension(extensionContext);
                 if (isPromiseLike(result)) {
+                    menuValid = false;
                     console.error(
                         `Notebook Navigator ${errorPrefix} menu extension returned a Promise. Add menu items synchronously and do async work in onClick handlers.`
                     );
@@ -218,12 +260,15 @@ export class MenusAPI {
                     });
                 }
             } catch (error) {
+                if (addedItems > addedBeforeExtension) {
+                    menuValid = false;
+                }
                 console.error(`Notebook Navigator ${errorPrefix} menu extension failed`, error);
             }
         }
 
         isBuildingMenu = false;
-        return addedItems;
+        return { addedItems, valid: menuValid };
     }
 
     /**
@@ -241,7 +286,7 @@ export class MenusAPI {
             addItem,
             file,
             selection: frozenSelection
-        }));
+        })).addedItems;
     }
 
     /**
@@ -253,7 +298,7 @@ export class MenusAPI {
         return this.applyExtensions<FolderMenuExtensionContext>(this.folderMenuExtensions, menu, 'folder', addItem => ({
             addItem,
             folder
-        }));
+        })).addedItems;
     }
 
     /**
@@ -265,7 +310,7 @@ export class MenusAPI {
         return this.applyExtensions<TagMenuExtensionContext>(this.tagMenuExtensions, menu, 'tag', addItem => ({
             addItem,
             tag
-        }));
+        })).addedItems;
     }
 
     /**
@@ -277,7 +322,7 @@ export class MenusAPI {
         return this.applyExtensions<PropertyMenuExtensionContext>(this.propertyMenuExtensions, menu, 'property', addItem => ({
             addItem,
             nodeId
-        }));
+        })).addedItems;
     }
 
     /**
@@ -287,13 +332,14 @@ export class MenusAPI {
     applyTypeMenuExtensions(context: TypeMenuExtensionApplyContext): number {
         const { menu, typeId, descriptor } = context;
         const frozenDescriptor = Object.freeze({ ...descriptor });
-        return this.applyExtensions<TypeMenuExtensionContext>(this.typeMenuExtensions, menu, 'type', addItem =>
+        const result = this.applyExtensions<TypeMenuExtensionContext>(this.typeMenuExtensions, menu, 'type', addItem =>
             Object.freeze({
                 addItem,
                 typeId,
                 descriptor: frozenDescriptor
             })
         );
+        return result.valid ? result.addedItems : 0;
     }
 
     /** @internal Monotonic snapshot used to refresh row action affordances. */

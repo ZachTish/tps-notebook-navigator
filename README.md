@@ -53,8 +53,11 @@ search, activation, checkbox changes, and context-menu actions. Provider definit
 API 2.9.0 adds `menus.registerTypeMenu(...)` for selectable built-in, dynamic Kind, and provider-owned collection rows. Each
 callback receives the opaque Type id and its current immutable catalog descriptor. Menu items must be added synchronously;
 asynchronous work belongs in the item's `onClick` handler. A removed or otherwise stale collection, or a set of builders that
-adds no synchronous item, leaves the menu closed instead of opening a blank or outdated surface; thrown failures and rejected
-Promises are isolated. Registrations are runtime-only and add no settings, persisted state, or migration.
+adds no synchronous item, leaves the menu closed instead of opening a blank or outdated surface. A Promise-returning builder,
+partial builder failure, or invalid item initializer suppresses the complete Type-only menu attempt; rejected Promises are
+observed and delayed additions are ignored. Real Obsidian `MenuItem` initializers still run immediately and exactly once, and
+duplicate callback registrations retain independent idempotent disposers. Registrations are runtime-only and add no settings,
+persisted state, or migration.
 
 API 2.10.0 adds `menus.registerRowMenu(...)` so an integration can attach actions to the actual source-backed rows rendered
 beneath notes or inside Notes, Checkboxes, Bullets, Headings, dynamic Kinds, and provider-owned collections. The optional
@@ -121,6 +124,22 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 4.9.1 — fail-closed Type menu construction
+
+- Prevents a Promise-returning Type action builder from opening a partial menu when it synchronously added an item before
+  returning its Promise.
+- Suppresses the complete Type-only menu attempt when a builder fails after committing an item or when an item initializer
+  throws or returns a Promise; rejected Promises are observed and delayed additions remain ignored.
+- Preserves immediate, exact native `MenuItem` initializer timing for every public menu hook. Composed file, folder, tag, and
+  property menus keep already-committed synchronous actions and accurate separator counts instead of dropping host actions.
+- Gives duplicate file, folder, tag, property, and Type callback registrations independent, idempotent disposal lifetimes.
+- Requires no API-version, settings, persistence, or note-data migration and keeps the minimum supported Obsidian version at
+  1.11.0.
+- Validated with 208 Vitest files and 2,240 tests plus formatting, ESLint, TypeScript, stylesheet, source-namespace,
+  artifact-identity, and production-build gates. Live Obsidian 1.12.7 QA confirmed an invalid async Type builder suppresses
+  a healthy sibling action without consuming the event, logs the contract violation, and restores the healthy menu
+  immediately after only the invalid registration is disposed.
 
 ### 4.9.0 — integration-owned result row actions
 

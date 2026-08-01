@@ -4,9 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { getLatestReleaseNotes, getReleaseNotesBetweenVersions } from '../src/releaseNotes';
 
 describe('TPS release notes', () => {
-    it('keeps the current plugin release first and available in the 4.1 to 4.9 update range', () => {
-        expect(getLatestReleaseNotes(1).map(note => note.version)).toEqual(['4.9.0']);
-        expect(getReleaseNotesBetweenVersions('4.1.0', '4.9.0').map(note => note.version)).toEqual([
+    it('keeps the current plugin release first and available in the 4.1 to current update range', () => {
+        expect(getLatestReleaseNotes(1).map(note => note.version)).toEqual(['4.9.1']);
+        expect(getReleaseNotesBetweenVersions('4.1.0', '4.9.1').map(note => note.version)).toEqual([
+            '4.9.1',
             '4.9.0',
             '4.8.0',
             '4.7.1',

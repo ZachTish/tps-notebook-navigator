@@ -670,7 +670,17 @@ version 2.10.0.
 | `registerTypeMenu(callback)`     | Add items to a Type collection context menu  | `() => void` |
 | `registerRowMenu(callback, options?)` | Add actions to matching result rows     | `() => void` |
 
-Callbacks run synchronously during menu construction. Add menu items synchronously and do async work in `onClick` handlers.
+Callbacks run synchronously during menu construction. Each `addItem(...)` initializer runs immediately, exactly once, with
+the real Obsidian `MenuItem` before `addItem(...)` returns; this preserves native submenu and object-identity behavior. Add
+menu items synchronously and do async work in `onClick` handlers. Registering the same callback more than once creates
+independent registrations, and each returned disposer removes only its own registration.
+
+File, folder, tag, and property actions are composed into a menu that also contains Navigator-owned actions. If a builder
+returns a Promise after synchronously adding an item, that already-committed native item remains in the composed menu and is
+included in separator placement; the contract violation is logged, rejection is observed, and later additions are ignored.
+Obsidian exposes no supported removal API for a committed `MenuItem`, so integrations must keep both the builder and item
+initializer synchronous. This differs from the extension-only Type menu policy below, where TPS can suppress the complete
+attempt.
 
 ### File context menu
 
@@ -775,9 +785,12 @@ const dispose = nn?.menus?.registerTypeMenu(({ addItem, typeId, descriptor }) =>
 The registration callback and `addItem(...)` calls must remain synchronous. Returning a Promise is treated as an invalid
 builder; place asynchronous work inside `onClick` instead. TPS resolves the descriptor from the latest catalog snapshot when
 the menu is requested. If the collection has already disappeared, no callback runs. If the registered builders add no
-synchronous item, TPS does not consume the context-menu event or open a blank menu. Thrown failures and rejected Promises are
-isolated. The descriptor is a menu-build snapshot, so an action that depends on continued existence should revalidate
-`typeId` when clicked.
+synchronous item, TPS does not consume the context-menu event or open a blank menu. Because this menu contains only extension
+actions, a Promise-returning builder, a builder that throws after committing a partial item, or a failed/Promise-returning
+item initializer invalidates the complete attempted menu: the event remains unconsumed and no partial surface is shown. A
+builder that throws before adding anything is isolated so other healthy actions can still open. Rejected Promises are always
+observed, and additions attempted after synchronous construction are ignored. The descriptor is a menu-build snapshot, so an
+action that depends on continued existence should revalidate `typeId` when clicked.
 
 Type menu registrations are runtime-only. They do not add a setting, write `data.json`, persist callback state, or require a
 settings migration.

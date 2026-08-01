@@ -106,6 +106,17 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.9.1',
+        date: '2026-08-01',
+        showOnUpdate: true,
+        info: 'Type collection actions now reject invalid asynchronous construction without exposing a partial menu.',
+        fixed: [
+            'Promise-returning Type builders, partial builder failures, and failed or Promise-returning item initializers now suppress the complete Type-only menu attempt.',
+            'Public menu item initializers still receive the exact native item immediately, and duplicate callback registrations now have independent idempotent disposers.',
+            'Composed file, folder, tag, and property menus preserve already-committed synchronous actions while observing rejected Promises and ignoring delayed additions.'
+        ]
+    },
+    {
         version: '4.9.0',
         date: '2026-08-01',
         showOnUpdate: true,

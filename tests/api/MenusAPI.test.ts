@@ -28,10 +28,16 @@ type MenuStub = {
     addSeparator: () => void;
 };
 
-function createMenuStub(): { menu: MenuStub; addItem: ReturnType<typeof vi.fn>; addSeparator: ReturnType<typeof vi.fn> } {
-    const addItem = vi.fn((cb: (item: MenuItem) => void) => cb({} as MenuItem));
+function createMenuStub(): {
+    menu: MenuStub;
+    item: MenuItem;
+    addItem: ReturnType<typeof vi.fn>;
+    addSeparator: ReturnType<typeof vi.fn>;
+} {
+    const item = {} as MenuItem;
+    const addItem = vi.fn((cb: (item: MenuItem) => void) => cb(item));
     const addSeparator = vi.fn(() => undefined);
-    return { menu: { addItem, addSeparator }, addItem, addSeparator };
+    return { menu: { addItem, addSeparator }, item, addItem, addSeparator };
 }
 
 function createRowMenuTarget(overrides: Partial<NavigatorRowMenuTarget> = {}): NavigatorRowMenuTarget {
@@ -83,6 +89,52 @@ describe('MenusAPI', () => {
         });
 
         expect(addedAfterDispose).toBe(0);
+    });
+
+    it('runs a public menu item initializer immediately with the exact native item', () => {
+        const menusAPI = new MenusAPI();
+        const file = createTestTFile('Note.md');
+        const { menu, item } = createMenuStub();
+        let capturedItem: MenuItem | undefined;
+
+        menusAPI.registerFileMenu(({ addItem }) => {
+            addItem(candidate => {
+                capturedItem = candidate;
+            });
+            expect(capturedItem).toBe(item);
+        });
+
+        expect(
+            menusAPI.applyFileMenuExtensions({
+                menu: menu as unknown as Menu,
+                file,
+                selection: { mode: 'single', files: [file] }
+            })
+        ).toBe(1);
+        expect(capturedItem).toBe(item);
+    });
+
+    it('keeps duplicate callback registrations independently disposable', () => {
+        const menusAPI = new MenusAPI();
+        const file = createTestTFile('Note.md');
+        const { menu, addItem } = createMenuStub();
+        const extension: FileMenuExtension = ({ addItem: addMenuItem }) => addMenuItem(() => undefined);
+        const disposeFirst = menusAPI.registerFileMenu(extension);
+        const disposeSecond = menusAPI.registerFileMenu(extension);
+        const apply = () =>
+            menusAPI.applyFileMenuExtensions({
+                menu: menu as unknown as Menu,
+                file,
+                selection: { mode: 'single', files: [file] }
+            });
+
+        expect(apply()).toBe(2);
+        disposeFirst();
+        disposeFirst();
+        expect(apply()).toBe(1);
+        disposeSecond();
+        expect(apply()).toBe(0);
+        expect(addItem).toHaveBeenCalledTimes(3);
     });
 
     it('isolates file menu extension failures', () => {
@@ -214,7 +266,7 @@ describe('MenusAPI', () => {
         ).toBe(0);
     });
 
-    it('isolates throwing and Promise-returning Type menu extensions', () => {
+    it('fails a Type menu closed when a builder throws after committing a partial item', () => {
         const menusAPI = new MenusAPI();
         const { menu, addItem } = createMenuStub();
         const descriptor = {
@@ -225,29 +277,86 @@ describe('MenusAPI', () => {
         } satisfies NavigatorTypeDescriptor;
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-        menusAPI.registerTypeMenu(() => {
+        menusAPI.registerTypeMenu(({ addItem: addMenuItem }) => {
+            addMenuItem(() => undefined);
             throw new Error('Type menu failed');
         });
-        const promiseReturningExtension = (() => Promise.resolve()) as unknown as TypeMenuExtension;
-        menusAPI.registerTypeMenu(promiseReturningExtension);
         menusAPI.registerTypeMenu(({ addItem: addMenuItem }) => addMenuItem(() => undefined));
 
-        expect(() => {
-            expect(
-                menusAPI.applyTypeMenuExtensions({
-                    menu: menu as unknown as Menu,
-                    typeId: descriptor.id,
-                    descriptor
-                })
-            ).toBe(1);
-        }).not.toThrow();
-        expect(addItem).toHaveBeenCalledOnce();
-        expect(consoleSpy).toHaveBeenCalledTimes(2);
+        expect(
+            menusAPI.applyTypeMenuExtensions({
+                menu: menu as unknown as Menu,
+                typeId: descriptor.id,
+                descriptor
+            })
+        ).toBe(0);
+        expect(addItem).toHaveBeenCalledTimes(2);
+        expect(consoleSpy).toHaveBeenCalledOnce();
 
         consoleSpy.mockRestore();
     });
 
-    it('does not count a Type menu item whose initializer fails', () => {
+    it('isolates a Type builder that throws before adding anything', () => {
+        const menusAPI = new MenusAPI();
+        const { menu, addItem } = createMenuStub();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        menusAPI.registerTypeMenu(() => {
+            throw new Error('Type menu failed before adding an item');
+        });
+        menusAPI.registerTypeMenu(({ addItem: addMenuItem }) => addMenuItem(() => undefined));
+
+        expect(
+            menusAPI.applyTypeMenuExtensions({
+                menu: menu as unknown as Menu,
+                typeId: 'kind:Project',
+                descriptor: {
+                    id: 'kind:Project',
+                    label: 'Project',
+                    icon: 'lucide-shapes',
+                    category: 'kind'
+                }
+            })
+        ).toBe(1);
+        expect(addItem).toHaveBeenCalledOnce();
+        expect(consoleSpy).toHaveBeenCalledOnce();
+
+        consoleSpy.mockRestore();
+    });
+
+    it('fails a Type menu closed when a builder returns a Promise after committing an item', () => {
+        const menusAPI = new MenusAPI();
+        const { menu, addItem } = createMenuStub();
+        const descriptor = {
+            id: 'kind:Project',
+            label: 'Project',
+            icon: 'lucide-shapes',
+            category: 'kind'
+        } satisfies NavigatorTypeDescriptor;
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises -- exercises the runtime guard for JavaScript consumers.
+        const promiseReturningExtension: TypeMenuExtension = ({ addItem: addMenuItem }) => {
+            addMenuItem(() => undefined);
+            return Promise.resolve();
+        };
+        menusAPI.registerTypeMenu(promiseReturningExtension);
+        menusAPI.registerTypeMenu(({ addItem: addMenuItem }) => addMenuItem(() => undefined));
+
+        expect(
+            menusAPI.applyTypeMenuExtensions({
+                menu: menu as unknown as Menu,
+                typeId: descriptor.id,
+                descriptor
+            })
+        ).toBe(0);
+        expect(addItem).toHaveBeenCalledTimes(2);
+        expect(consoleSpy).toHaveBeenCalledOnce();
+
+        consoleSpy.mockRestore();
+    });
+
+    it('fails a mixed Type menu closed when any item initializer throws', () => {
         const menusAPI = new MenusAPI();
         const { menu, addItem } = createMenuStub();
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -256,6 +365,7 @@ describe('MenusAPI', () => {
             addMenuItem(() => {
                 throw new Error('item failed');
             });
+            addMenuItem(() => undefined);
         });
 
         expect(
@@ -270,8 +380,43 @@ describe('MenusAPI', () => {
                 }
             })
         ).toBe(0);
-        expect(addItem).toHaveBeenCalledOnce();
+        expect(addItem).toHaveBeenCalledTimes(2);
         expect(consoleSpy).toHaveBeenCalledOnce();
+
+        consoleSpy.mockRestore();
+    });
+
+    it('fails a mixed Type menu closed and observes a rejected asynchronous item initializer', async () => {
+        const menusAPI = new MenusAPI();
+        const { menu, addItem } = createMenuStub();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const rejection = new Error('async item failed');
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises -- exercises the runtime guard for JavaScript consumers.
+        const asyncInitializer: (item: MenuItem) => void = () => Promise.reject(rejection);
+
+        menusAPI.registerTypeMenu(({ addItem: addMenuItem }) => {
+            addMenuItem(asyncInitializer);
+            addMenuItem(() => undefined);
+        });
+
+        expect(
+            menusAPI.applyTypeMenuExtensions({
+                menu: menu as unknown as Menu,
+                typeId: 'kind:Project',
+                descriptor: {
+                    id: 'kind:Project',
+                    label: 'Project',
+                    icon: 'lucide-shapes',
+                    category: 'kind'
+                }
+            })
+        ).toBe(0);
+        expect(addItem).toHaveBeenCalledTimes(2);
+        await Promise.resolve();
+        expect(consoleSpy).toHaveBeenCalledWith(
+            'Notebook Navigator type menu extension item returned a Promise. Item initializers must be synchronous; do async work in onClick handlers.'
+        );
+        expect(consoleSpy).toHaveBeenCalledWith('Notebook Navigator type asynchronous menu extension item failed', rejection);
 
         consoleSpy.mockRestore();
     });
@@ -421,15 +566,21 @@ describe('MenusAPI', () => {
         consoleSpy.mockRestore();
     });
 
-    it('warns when a menu extension returns a promise', () => {
+    it('preserves already-committed native-menu items while observing a rejected builder', async () => {
         const menusAPI = new MenusAPI();
         const file = createTestTFile('Note.md');
-        const { menu } = createMenuStub();
+        const { menu, addItem } = createMenuStub();
 
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const rejection = new Error('async builder failed');
 
-        const promiseReturningExtension = (() => Promise.resolve()) as unknown as FileMenuExtension;
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises -- exercises the runtime guard for JavaScript consumers.
+        const promiseReturningExtension: FileMenuExtension = ({ addItem: addMenuItem }) => {
+            addMenuItem(() => undefined);
+            return Promise.reject(rejection);
+        };
         menusAPI.registerFileMenu(promiseReturningExtension);
+        menusAPI.registerFileMenu(({ addItem: addMenuItem }) => addMenuItem(() => undefined));
 
         const added = menusAPI.applyFileMenuExtensions({
             menu: menu as unknown as Menu,
@@ -437,8 +588,68 @@ describe('MenusAPI', () => {
             selection: { mode: 'single', files: [file] }
         });
 
-        expect(added).toBe(0);
-        expect(consoleSpy).toHaveBeenCalled();
+        expect(added).toBe(2);
+        expect(addItem).toHaveBeenCalledTimes(2);
+        await Promise.resolve();
+        expect(consoleSpy).toHaveBeenCalledWith(
+            'Notebook Navigator file menu extension returned a Promise. Add menu items synchronously and do async work in onClick handlers.'
+        );
+        expect(consoleSpy).toHaveBeenCalledWith('Notebook Navigator file menu extension failed', rejection);
+        consoleSpy.mockRestore();
+    });
+
+    it('counts an already-committed asynchronous native-menu item while observing its rejection', async () => {
+        const menusAPI = new MenusAPI();
+        const file = createTestTFile('Note.md');
+        const { menu, addItem } = createMenuStub();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const rejection = new Error('async item failed');
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises -- exercises the runtime guard for JavaScript consumers.
+        const asyncInitializer: (item: MenuItem) => void = () => Promise.reject(rejection);
+
+        menusAPI.registerFileMenu(({ addItem: addMenuItem }) => addMenuItem(asyncInitializer));
+
+        expect(
+            menusAPI.applyFileMenuExtensions({
+                menu: menu as unknown as Menu,
+                file,
+                selection: { mode: 'single', files: [file] }
+            })
+        ).toBe(1);
+        expect(addItem).toHaveBeenCalledOnce();
+        await Promise.resolve();
+        expect(consoleSpy).toHaveBeenCalledWith(
+            'Notebook Navigator file menu extension item returned a Promise. Item initializers must be synchronous; do async work in onClick handlers.'
+        );
+        expect(consoleSpy).toHaveBeenCalledWith('Notebook Navigator file asynchronous menu extension item failed', rejection);
+
+        consoleSpy.mockRestore();
+    });
+
+    it('ignores menu items added after synchronous construction has ended', () => {
+        const menusAPI = new MenusAPI();
+        const file = createTestTFile('Note.md');
+        const { menu, addItem } = createMenuStub();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        let delayedAddItem: ((cb: (item: MenuItem) => void) => void) | undefined;
+
+        menusAPI.registerFileMenu(context => {
+            delayedAddItem = context.addItem;
+        });
+        expect(
+            menusAPI.applyFileMenuExtensions({
+                menu: menu as unknown as Menu,
+                file,
+                selection: { mode: 'single', files: [file] }
+            })
+        ).toBe(0);
+
+        delayedAddItem?.(() => undefined);
+        expect(addItem).not.toHaveBeenCalled();
+        expect(consoleSpy).toHaveBeenCalledWith(
+            'Notebook Navigator file menu extension attempted to add menu items asynchronously. Add menu items synchronously and do async work in onClick handlers.'
+        );
+
         consoleSpy.mockRestore();
     });
 });
