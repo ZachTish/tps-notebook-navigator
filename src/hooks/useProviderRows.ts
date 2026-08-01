@@ -106,6 +106,7 @@ export function createProviderRowsRefreshResolver(
 export function useProviderRows({ app, registry, scope, selection }: UseProviderRowsParams): NavigatorProvidedRow[] {
     const [result, setResult] = useState<ProviderRowsResult>({ scope: null, selection: null, revision: -1, rows: [] });
     const resultRef = useRef(result);
+    const activeQueryAbortControllerRef = useRef<AbortController | null>(null);
     const [revision, setRevision] = useState(0);
 
     useEffect(() => {
@@ -121,6 +122,7 @@ export function useProviderRows({ app, registry, scope, selection }: UseProvider
             try {
                 const cleanup = provider.subscribe?.(context, selection.optionsByProviderId?.[provider.id] ?? {}, () => {
                     if (active) {
+                        activeQueryAbortControllerRef.current?.abort();
                         setRevision(current => current + 1);
                     }
                 });
@@ -149,13 +151,15 @@ export function useProviderRows({ app, registry, scope, selection }: UseProvider
     useEffect(() => {
         let cancelled = false;
         let hasPublishedSnapshot = false;
+        const abortController = new AbortController();
+        activeQueryAbortControllerRef.current = abortController;
         const context: NavigatorRowProviderContext = { app, scope };
         const baselineResult = resultRef.current;
         const resolveSnapshot = createProviderRowsRefreshResolver(
             baselineResult.scope === scope && baselineResult.selection === selection ? baselineResult.rows : []
         );
         const publishRows = (nextRows: NavigatorProvidedRow[]) => {
-            if (cancelled) {
+            if (cancelled || abortController.signal.aborted) {
                 return;
             }
             const nextResult = { scope, selection, revision, rows: nextRows };
@@ -176,9 +180,10 @@ export function useProviderRows({ app, registry, scope, selection }: UseProvider
         void composeProviderRows({
             registry,
             context,
+            signal: abortController.signal,
             selection,
             onFailure: ({ providerId }) => {
-                if (!cancelled) {
+                if (!cancelled && !abortController.signal.aborted) {
                     console.warn('[TPS Notebook Navigator] Row provider query failed', { providerId });
                 }
             },
@@ -193,7 +198,7 @@ export function useProviderRows({ app, registry, scope, selection }: UseProvider
                 }
             })
             .catch(() => {
-                if (!cancelled) {
+                if (!cancelled && !abortController.signal.aborted) {
                     console.warn('[TPS Notebook Navigator] Row provider composition failed');
                     const emptyResult = { scope, selection, revision, rows: [] };
                     resultRef.current = emptyResult;
@@ -203,6 +208,10 @@ export function useProviderRows({ app, registry, scope, selection }: UseProvider
 
         return () => {
             cancelled = true;
+            abortController.abort();
+            if (activeQueryAbortControllerRef.current === abortController) {
+                activeQueryAbortControllerRef.current = null;
+            }
         };
     }, [app, registry, revision, scope, selection]);
 

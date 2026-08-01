@@ -40,6 +40,9 @@ Complete TypeScript type definitions for the Notebook Navigator API.
    frozen target contains current file identity, Type scope, optional zero-based line, and checkbox presentation; re-resolve
    mutable line content before writing. Builders and item initializers must be synchronous; a Promise-returning builder
    invalidates that attempted menu, so perform asynchronous work only inside an item's `onClick` handler.
+8. Row providers receive a query-only `AbortSignal` in `getRows`. Check it before costly work and after awaited batches;
+   TPS aborts obsolete queries on supersession, options changes, unregister, timeout, and unload. Keep `subscribe` tied to
+   its returned cleanup instead—the subscription context intentionally has no query signal.
 
 ## Public Surface
 
@@ -50,7 +53,8 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 - Namespaces: `metadata`, `navigation`, `selection`, `menus`, `tagCollections`, `propertyNodes`, `rows`, `types`
 - Exported types: metadata records and updates, navigation and selection state, pin contexts, tag collections, property
   nodes, Type-catalog snapshots and providers, file/folder/tag/property/Type menu extension contexts, transient row
-  providers, row context-menu actions, event names, lifecycle request/change payloads, and event payloads
+  providers, query cancellation contexts, row context-menu actions, event names, lifecycle request/change payloads, and
+  event payloads
 
 Type and row menu registrations are runtime-only. They add no settings, persisted callback state, or migration. The complete
 target shapes and fail-closed behavior are documented in the [Menus API](../../../docs/api-reference.md#menus-api).
@@ -64,7 +68,7 @@ target shapes and fail-closed behavior are documented in the [Menus API](../../.
 
 ## Version
 
-Current API Version: **2.10.0**
+Current API Version: **2.11.0**
 
 ## Documentation
 

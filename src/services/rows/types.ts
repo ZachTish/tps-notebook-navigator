@@ -14,6 +14,7 @@ export type {
     NavigatorRowDefinition,
     NavigatorRowProvider,
     NavigatorRowProviderContext,
+    NavigatorRowProviderQueryContext,
     NavigatorRowProviderOptions,
     NavigatorRowScope
 } from '../../api/types';

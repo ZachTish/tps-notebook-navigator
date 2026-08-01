@@ -197,6 +197,11 @@ export interface NavigatorRowProviderContext {
     readonly scope: NavigatorRowScope;
 }
 
+export interface NavigatorRowProviderQueryContext extends NavigatorRowProviderContext {
+    /** Aborted when a query is superseded, times out, unregisters, or unloads. */
+    readonly signal: AbortSignal;
+}
+
 export interface NavigatorRowCheckboxIndicator {
     readonly type: 'checkbox';
     readonly checked: boolean;
@@ -246,7 +251,7 @@ export interface NavigatorRowProvider {
      */
     readonly supportsTypeScope?: boolean;
     getRows(
-        context: NavigatorRowProviderContext,
+        context: NavigatorRowProviderQueryContext,
         options: NavigatorRowProviderOptions
     ): Promise<readonly NavigatorRowDefinition[]> | readonly NavigatorRowDefinition[];
     subscribe?(context: NavigatorRowProviderContext, options: NavigatorRowProviderOptions, invalidate: () => void): (() => void) | void;

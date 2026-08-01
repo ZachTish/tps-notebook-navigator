@@ -68,6 +68,15 @@ long-press, and **More actions** use the same guarded builder. Stale files and e
 Promise-returning builders invalidate the whole attempted menu, even if they add an item before their first `await`;
 asynchronous work belongs inside an item's `onClick` handler.
 
+API 2.11.0 gives every ordinary `rows` provider query its own `AbortSignal`. Superseded folder, Type, search-path,
+selection, revision, and options queries stop promptly; unregister and plugin unload cancel every active invocation owned
+by that provider. Each provider signal is independent, so a five-second timeout aborts only the failing provider while
+healthy rows continue streaming. Lifecycle cancellation is silent and late results are ignored. The built-in GCM task
+provider cooperates between its eight-path batches and commits task/scope caches only after the complete active pass, so an
+obsolete scan cannot clear dirty paths, seed negative cache entries, or schedule another progressive pass. Existing
+providers that ignore the additive signal remain compatible, although checking it before expensive work and after awaited
+batches avoids wasted work.
+
 Clicks, back/forward history, and public calls share one validator, ancestor-expansion, focus, and scroll path. Catalog DTOs
 are immutable and intentionally omit GCM records, source paths, task payloads, and counts whose meaning would differ before
 and after Navigator visibility filtering. Readiness and removal authority are tracked per source: a failed provider cannot
@@ -124,6 +133,24 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 4.10.0 — cancellation-safe provider rows
+
+- Adds query-only `NavigatorRowProviderQueryContext.signal` in public API 2.11.0 while keeping the longer-lived
+  subscription context and existing provider implementations compatible.
+- Cancels obsolete ordinary-row work on scope, Type, search-derived path, selection, revision, options, unregister, view
+  teardown, timeout, and plugin-unload transitions. Every provider invocation owns an independent signal; supersession is
+  silent, while a timeout remains an isolated provider failure.
+- Makes GCM task scans transactional across the complete bounded pass. Aborted work launches no later batch, publishes no
+  snapshot, writes no task or scope cache, clears no dirty path, and schedules no progressive refresh.
+- Captures a provider's validated ID for its complete registration lifetime and validates replacement options before
+  cancelling current work, so externally mutated objects or rejected updates cannot leak or disrupt a valid registration.
+- Preserves the default-on Types hierarchy—Notes, Checkboxes, Bullets, Headings, and dynamic Kinds—and its direct note or
+  exact-source-line activation behavior.
+- Adds no setting, persisted state, note-data migration, or minimum-version change; Obsidian 1.11.0 remains supported.
+- Validated with 208 Vitest files and 2,263 tests plus formatting, ESLint, TypeScript, stylesheet, source-namespace,
+  artifact-identity, and production-build gates. Live Obsidian 1.12.7 QA confirmed the reloaded Types hierarchy,
+  standalone Checkbox and Bullet collections, exact-source activation for both, and an unaffected ordinary folder list.
 
 ### 4.9.1 — fail-closed Type menu construction
 

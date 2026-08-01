@@ -8,6 +8,7 @@ import type {
     NavigatorProvidedRowCandidate,
     NavigatorRowProvider,
     NavigatorRowProviderContext,
+    NavigatorRowProviderQueryContext,
     NavigatorRowProviderOptions,
     NavigatorRowProviderSelection
 } from '../../services/rows/types';
@@ -32,6 +33,7 @@ export const GCM_TASK_ROW_PROVIDER_ID = 'tps/gcm-tasks';
 export const GCM_TASK_ROW_KIND = 'tps/gcm-task';
 
 const GCM_QUERY_CONCURRENCY = 8;
+const CANCELLED_GCM_QUERY = Symbol('cancelled-gcm-query');
 export const GCM_TASK_ROW_QUERY_PATHS_PER_PASS = 64;
 export const GCM_TASK_ROW_CACHE_MAX_PATHS = 512;
 export const GCM_TASK_ROW_METADATA_MAX_PATHS = 2_048;
@@ -51,6 +53,25 @@ interface GcmTaskRowScopeState {
     epoch: number;
     scannedPaths: Set<string>;
     tasksByPath: Map<string, readonly GcmTaskRecordLike[]>;
+}
+
+async function awaitGcmBatch<T>(pending: Promise<T>, signal: AbortSignal): Promise<T | typeof CANCELLED_GCM_QUERY> {
+    if (signal.aborted) {
+        return CANCELLED_GCM_QUERY;
+    }
+    let resolveCancellation: (() => void) | null = null;
+    const cancellation = new Promise<typeof CANCELLED_GCM_QUERY>(resolve => {
+        resolveCancellation = () => resolve(CANCELLED_GCM_QUERY);
+    });
+    const cancel = () => resolveCancellation?.();
+    signal.addEventListener('abort', cancel, { once: true });
+    try {
+        const result = await Promise.race([pending, cancellation]);
+        return signal.aborted ? CANCELLED_GCM_QUERY : result;
+    } finally {
+        signal.removeEventListener('abort', cancel);
+        resolveCancellation = null;
+    }
 }
 
 function normalizeVisiblePaths(paths: readonly string[]): string[] {
@@ -139,72 +160,100 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
     private cacheEpoch = 0;
 
     async getRows(
-        context: NavigatorRowProviderContext,
+        context: NavigatorRowProviderQueryContext,
         rawOptions: NavigatorRowProviderOptions
     ): Promise<readonly NavigatorProvidedRowCandidate[]> {
+        const { signal } = context;
+        if (signal.aborted) {
+            return [];
+        }
+
         const options = readOptions(rawOptions);
         if (!options.enabled) {
             return [];
         }
 
         const paths = normalizeVisiblePaths(context.scope.visibleFilePaths).filter(isMarkdownPath);
-        if (paths.length === 0) {
+        if (paths.length === 0 || signal.aborted) {
             return [];
         }
 
         const api = resolveGcmTaskApi(context.app);
+        if (signal.aborted) {
+            return [];
+        }
         if (!api) {
             this.clearCache();
             return [];
         }
         if (this.apiIdentity !== api) {
+            if (signal.aborted) {
+                return [];
+            }
             this.clearCache();
             this.apiIdentity = api;
         }
 
         const cacheOptionsKey = `${options.includeCompleted}:${options.maxRowsPerFile}`;
         if (this.cacheOptionsKey !== cacheOptionsKey) {
+            if (signal.aborted) {
+                return [];
+            }
             this.resetTaskCache();
             this.cacheOptionsKey = cacheOptionsKey;
         }
 
         const requestEpoch = this.cacheEpoch;
-        const scopeState = this.getScopeState(context.scope);
+        const currentScopeState = this.scopeStates.get(context.scope);
+        const scopeState = currentScopeState?.epoch === requestEpoch ? currentScopeState : null;
         const tasksForRequest = new Map<string, readonly GcmTaskRecordLike[]>();
+        const stagedTasksByPath = new Map<string, readonly GcmTaskRecordLike[]>();
+        const cachedPathsToTouch = new Set<string>();
+        const requestGenerations = new Map<string, number>();
         const allPathsToRead: { path: string; generation: number }[] = [];
         for (const path of paths) {
-            if (!this.dirtyPaths.has(path) && scopeState.scannedPaths.has(path)) {
+            const generation = this.pathGenerations.get(path) ?? 0;
+            requestGenerations.set(path, generation);
+            if (!this.dirtyPaths.has(path) && scopeState?.scannedPaths.has(path)) {
                 tasksForRequest.set(path, scopeState.tasksByPath.get(path) ?? []);
                 continue;
             }
-            const cached = this.dirtyPaths.has(path) ? undefined : this.readCachedTasks(path);
+            const cached = this.dirtyPaths.has(path) ? undefined : this.tasksByPath.get(path);
             if (cached) {
                 tasksForRequest.set(path, cached);
-                scopeState.scannedPaths.add(path);
-                scopeState.tasksByPath.set(path, cached);
+                cachedPathsToTouch.add(path);
                 continue;
             }
-            allPathsToRead.push({ path, generation: this.pathGenerations.get(path) ?? 0 });
+            allPathsToRead.push({ path, generation });
         }
         const pathsToRead = allPathsToRead.slice(0, GCM_TASK_ROW_QUERY_PATHS_PER_PASS);
+        let failedPathCount = 0;
 
         if (pathsToRead.length > 0) {
             let firstFailure: unknown = null;
-            let failedPathCount = 0;
             let successfulPathCount = 0;
             const failedRequests: { path: string; generation: number }[] = [];
             for (let offset = 0; offset < pathsToRead.length; offset += GCM_QUERY_CONCURRENCY) {
+                if (signal.aborted) {
+                    return [];
+                }
                 const batchPaths = pathsToRead.slice(offset, offset + GCM_QUERY_CONCURRENCY);
-                const settled = await Promise.allSettled(
-                    batchPaths.map(async request => ({
-                        ...request,
-                        records: await api.list({
-                            paths: [request.path],
-                            includeCompleted: options.includeCompleted,
-                            maxResults: options.maxRowsPerFile
-                        })
-                    }))
+                const settled = await awaitGcmBatch(
+                    Promise.allSettled(
+                        batchPaths.map(async request => ({
+                            ...request,
+                            records: await api.list({
+                                paths: [request.path],
+                                includeCompleted: options.includeCompleted,
+                                maxResults: options.maxRowsPerFile
+                            })
+                        }))
+                    ),
+                    signal
                 );
+                if (settled === CANCELLED_GCM_QUERY || signal.aborted) {
+                    return [];
+                }
 
                 settled.forEach((result, resultIndex) => {
                     if (result.status === 'rejected') {
@@ -217,12 +266,6 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
                         return;
                     }
                     successfulPathCount += 1;
-                    if (
-                        this.cacheEpoch !== requestEpoch ||
-                        (this.pathGenerations.get(result.value.path) ?? 0) !== result.value.generation
-                    ) {
-                        return;
-                    }
                     const tasks = (Array.isArray(result.value.records) ? result.value.records : [])
                         .filter(isGcmTaskRecord)
                         .filter(record => normalizePath(record.path) === result.value.path)
@@ -231,32 +274,63 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
                         .sort(compareTasks)
                         .slice(0, options.maxRowsPerFile);
                     tasksForRequest.set(result.value.path, tasks);
-                    scopeState.scannedPaths.add(result.value.path);
-                    scopeState.tasksByPath.set(result.value.path, tasks);
-                    this.cacheTasks(result.value.path, tasks);
-                    this.dirtyPaths.delete(result.value.path);
+                    stagedTasksByPath.set(result.value.path, tasks);
                 });
             }
 
+            if (signal.aborted) {
+                return [];
+            }
             if (firstFailure !== null && successfulPathCount === 0 && tasksForRequest.size === 0) {
                 throw firstFailure instanceof Error ? firstFailure : new Error('GCM task query failed');
             }
             failedRequests.forEach(failedRequest => {
-                if (this.cacheEpoch !== requestEpoch || (this.pathGenerations.get(failedRequest.path) ?? 0) !== failedRequest.generation) {
-                    return;
-                }
                 tasksForRequest.set(failedRequest.path, []);
-                scopeState.scannedPaths.add(failedRequest.path);
-                scopeState.tasksByPath.set(failedRequest.path, []);
-                this.cacheTasks(failedRequest.path, []);
-                this.dirtyPaths.delete(failedRequest.path);
+                stagedTasksByPath.set(failedRequest.path, []);
             });
-            if (failedPathCount > 0) {
-                console.warn('[TPS Notebook Navigator] Some GCM task paths could not be queried', {
-                    failedPathCount,
-                    requestedPathCount: pathsToRead.length
-                });
+        }
+
+        if (signal.aborted || this.cacheEpoch !== requestEpoch) {
+            return [];
+        }
+
+        const activeTasksForRequest = new Map<string, readonly GcmTaskRecordLike[]>();
+        const committedScopeState = this.getScopeState(context.scope);
+        for (const path of paths) {
+            const tasks = tasksForRequest.get(path);
+            const requestGeneration = requestGenerations.get(path);
+            if (
+                !tasks ||
+                requestGeneration === undefined ||
+                (this.pathGenerations.get(path) ?? 0) !== requestGeneration ||
+                (this.dirtyPaths.has(path) && !stagedTasksByPath.has(path))
+            ) {
+                continue;
             }
+
+            if (cachedPathsToTouch.has(path)) {
+                if (this.tasksByPath.get(path) !== tasks) {
+                    continue;
+                }
+                this.cacheTasks(path, tasks);
+            }
+            if (stagedTasksByPath.has(path)) {
+                this.cacheTasks(path, tasks);
+                this.dirtyPaths.delete(path);
+            }
+            committedScopeState.scannedPaths.add(path);
+            committedScopeState.tasksByPath.set(path, tasks);
+            activeTasksForRequest.set(path, tasks);
+        }
+
+        if (signal.aborted) {
+            return [];
+        }
+        if (failedPathCount > 0) {
+            console.warn('[TPS Notebook Navigator] Some GCM task paths could not be queried', {
+                failedPathCount,
+                requestedPathCount: pathsToRead.length
+            });
         }
 
         const rows: NavigatorProvidedRowCandidate[] = [];
@@ -267,7 +341,7 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
         // global provider ceiling and making later notes disappear entirely.
         for (let taskIndex = 0; taskIndex < options.maxRowsPerFile && rows.length < NAVIGATOR_ROW_PROVIDER_MAX_ROWS; taskIndex += 1) {
             for (const path of paths) {
-                const task = tasksForRequest.get(path)?.[taskIndex];
+                const task = activeTasksForRequest.get(path)?.[taskIndex];
                 if (!task) {
                     continue;
                 }
@@ -278,11 +352,11 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
             }
         }
 
-        if (rows.length < NAVIGATOR_ROW_PROVIDER_MAX_ROWS && allPathsToRead.length > pathsToRead.length) {
+        if (!signal.aborted && rows.length < NAVIGATOR_ROW_PROVIDER_MAX_ROWS && allPathsToRead.length > pathsToRead.length) {
             this.scheduleProgressiveRefresh();
         }
 
-        return rows;
+        return signal.aborted ? [] : rows;
     }
 
     subscribe(
@@ -587,16 +661,6 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
         }
         this.dirtyPaths.add(path);
         this.pathGenerations.set(path, (this.pathGenerations.get(path) ?? 0) + 1);
-    }
-
-    private readCachedTasks(path: string): readonly GcmTaskRecordLike[] | undefined {
-        const tasks = this.tasksByPath.get(path);
-        if (!tasks) {
-            return undefined;
-        }
-        this.tasksByPath.delete(path);
-        this.tasksByPath.set(path, tasks);
-        return tasks;
     }
 
     private cacheTasks(path: string, tasks: readonly GcmTaskRecordLike[]): void {

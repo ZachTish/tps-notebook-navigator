@@ -59,6 +59,56 @@ describe('RowsAPI', () => {
         expect(listener).toHaveBeenCalledTimes(3);
     });
 
+    it('immediately aborts active provider queries on options, unregister, and unload transitions', () => {
+        const registry = new NavigatorRowProviderRegistry();
+        const rows = new RowsAPI(registry);
+        const provider = createProvider('example/tasks');
+        const registration = rows.registerProvider(provider);
+
+        const optionsQuery = new AbortController();
+        registry.trackQuery(provider, optionsQuery);
+        registration.updateOptions({ mode: 'next' });
+        expect(optionsQuery.signal.aborted).toBe(true);
+
+        const unregisterQuery = new AbortController();
+        registry.trackQuery(provider, unregisterQuery);
+        registration.unregister();
+        expect(unregisterQuery.signal.aborted).toBe(true);
+
+        const builtInProvider = createProvider('tps/built-in');
+        registry.register(builtInProvider);
+        const unloadQuery = new AbortController();
+        registry.trackQuery(builtInProvider, unloadQuery);
+        rows.dispose();
+        expect(unloadQuery.signal.aborted).toBe(true);
+    });
+
+    it('captures provider identity even if external code mutates the provider object', () => {
+        const registry = new NavigatorRowProviderRegistry();
+        const rows = new RowsAPI(registry);
+        const provider = createProvider('example/tasks');
+        const registration = rows.registerProvider(provider, { mode: 'first' });
+        const query = new AbortController();
+        registry.trackQuery(provider, query);
+        (provider as { id: string }).id = 'mutated/identity';
+
+        registration.updateOptions({ mode: 'second' });
+        expect(query.signal.aborted).toBe(true);
+        expect(registration.id).toBe('example/tasks');
+        expect(registry.get('example/tasks')).toBe(provider);
+        expect(rows.getSelection()).toEqual({
+            enabledProviderIds: ['example/tasks'],
+            optionsByProviderId: { 'example/tasks': { mode: 'second' } }
+        });
+
+        const unregisterQuery = new AbortController();
+        registry.trackQuery(provider, unregisterQuery);
+        registration.unregister();
+        expect(unregisterQuery.signal.aborted).toBe(true);
+        expect(registry.get('example/tasks')).toBeNull();
+        expect(rows.getSelection().enabledProviderIds).toEqual([]);
+    });
+
     it('rejects invalid options atomically and isolates activation listeners', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         const registry = new NavigatorRowProviderRegistry();
@@ -74,12 +124,22 @@ describe('RowsAPI', () => {
         expect(registry.get(provider.id)).toBeNull();
         expect(rows.getSelection().enabledProviderIds).toEqual([]);
 
-        expect(() => rows.registerProvider(provider)).not.toThrow();
+        const registration = rows.registerProvider(provider, { mode: 'valid' });
         expect(healthyListener).toHaveBeenCalledOnce();
         expect(warn).toHaveBeenCalledOnce();
         expect(warn.mock.calls[0]?.[0]).toBe('[TPS Notebook Navigator] Row provider activation listener failed');
         const warningContext = warn.mock.calls[0]?.[1] as { error?: unknown } | undefined;
         expect(warningContext?.error).toBeInstanceOf(Error);
+
+        const query = new AbortController();
+        registry.trackQuery(provider, query);
+        expect(() => registration.updateOptions(null as never)).toThrow(/options/u);
+        expect(query.signal.aborted).toBe(false);
+        expect(rows.getSelection()).toEqual({
+            enabledProviderIds: ['example/tasks'],
+            optionsByProviderId: { 'example/tasks': { mode: 'valid' } }
+        });
+        expect(healthyListener).toHaveBeenCalledOnce();
         warn.mockRestore();
     });
 });

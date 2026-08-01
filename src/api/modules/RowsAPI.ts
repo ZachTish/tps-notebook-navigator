@@ -16,7 +16,7 @@ export interface NavigatorRowProviderRegistration {
 }
 
 interface ActiveProviderRegistration {
-    provider: NavigatorRowProvider;
+    providerId: string;
     options: NavigatorRowProviderOptions;
     unregisterFromRegistry: () => void;
 }
@@ -53,22 +53,29 @@ export class RowsAPI {
 
         const initialOptions = cloneOptions(options === undefined ? {} : options);
         const unregisterFromRegistry = this.registry.register(provider);
+        const providerId = this.registry.getRegisteredId(provider);
+        if (providerId === null) {
+            unregisterFromRegistry();
+            throw new Error('Navigator row provider registration did not retain its identity.');
+        }
         const registration: ActiveProviderRegistration = {
-            provider,
+            providerId,
             options: initialOptions,
             unregisterFromRegistry
         };
-        this.activeProviders.set(provider.id, registration);
+        this.activeProviders.set(providerId, registration);
         this.refreshSelection();
 
         let active = true;
         return Object.freeze({
-            id: provider.id,
+            id: providerId,
             updateOptions: (nextOptions: NavigatorRowProviderOptions) => {
-                if (!active || this.disposed || this.activeProviders.get(provider.id) !== registration) {
+                if (!active || this.disposed || this.activeProviders.get(providerId) !== registration) {
                     return;
                 }
-                registration.options = cloneOptions(nextOptions);
+                const clonedOptions = cloneOptions(nextOptions);
+                this.registry.cancelProviderQueries(providerId);
+                registration.options = clonedOptions;
                 this.refreshSelection();
             },
             unregister: () => {
@@ -77,8 +84,8 @@ export class RowsAPI {
                 }
                 active = false;
                 registration.unregisterFromRegistry();
-                if (this.activeProviders.get(provider.id) === registration) {
-                    this.activeProviders.delete(provider.id);
+                if (this.activeProviders.get(providerId) === registration) {
+                    this.activeProviders.delete(providerId);
                     this.refreshSelection();
                 }
             }
@@ -105,6 +112,7 @@ export class RowsAPI {
             return;
         }
         this.disposed = true;
+        this.registry.cancelAllQueries();
         this.activeProviders.forEach(registration => registration.unregisterFromRegistry());
         this.activeProviders.clear();
         this.selectionSnapshot = EMPTY_SELECTION;
@@ -115,9 +123,9 @@ export class RowsAPI {
     private refreshSelection(): void {
         const enabledProviderIds: string[] = [];
         const optionsByProviderId: Record<string, NavigatorRowProviderOptions> = {};
-        this.activeProviders.forEach(({ provider, options }) => {
-            enabledProviderIds.push(provider.id);
-            optionsByProviderId[provider.id] = options;
+        this.activeProviders.forEach(({ providerId, options }) => {
+            enabledProviderIds.push(providerId);
+            optionsByProviderId[providerId] = options;
         });
         this.selectionSnapshot = Object.freeze({
             enabledProviderIds: Object.freeze(enabledProviderIds),

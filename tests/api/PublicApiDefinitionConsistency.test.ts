@@ -515,6 +515,8 @@ describe('public API declaration file', () => {
 
     it.each([
         'NavigatorRowScope',
+        'NavigatorRowProviderContext',
+        'NavigatorRowProviderQueryContext',
         'NavigatorRowProvider',
         'NavigatorTypeDescriptor',
         'NavigatorTypeCollectionDefinition',
@@ -538,6 +540,9 @@ describe('public API declaration file', () => {
     });
 
     it.each([
+        'NavigatorRowProviderContext',
+        'NavigatorRowProviderQueryContext',
+        'NavigatorRowProvider',
         'NavigatorTypeDescriptor',
         'NavigatorTypeCollectionDefinition',
         'NavigatorTypeProviderContext',
@@ -562,6 +567,8 @@ describe('public API declaration file', () => {
     });
 
     it.each([
+        ['NavigatorRowProvider', 'getRows'],
+        ['NavigatorRowProvider', 'subscribe'],
         ['NavigatorTypeProvider', 'getCollections'],
         ['NavigatorTypeProvider', 'getRows'],
         ['NavigatorTypeProvider', 'subscribe'],
@@ -575,6 +582,22 @@ describe('public API declaration file', () => {
         expect(getInterfaceMethodSignature(publicFile, interfaceName, methodName)).toEqual(
             getInterfaceMethodSignature(sourceFile, interfaceName, methodName)
         );
+    });
+
+    it('keeps row cancellation query-only in both public contracts', () => {
+        for (const sourceFile of [readSourceFile('src/api/types.ts'), readSourceFile('src/api/public/notebook-navigator.d.ts')]) {
+            expect(getInterfaceMethodSignature(sourceFile, 'NavigatorRowProvider', 'getRows')?.parameters[0]?.type).toBe(
+                'NavigatorRowProviderQueryContext'
+            );
+            expect(getInterfaceMethodSignature(sourceFile, 'NavigatorRowProvider', 'subscribe')?.parameters[0]?.type).toBe(
+                'NavigatorRowProviderContext'
+            );
+            expect(getInterfacePropertySignature(sourceFile, 'NavigatorRowProviderQueryContext', 'signal')).toEqual({
+                isOptional: false,
+                isReadonly: true,
+                type: 'AbortSignal'
+            });
+        }
     });
 
     it('matches critical nested public method signatures', () => {

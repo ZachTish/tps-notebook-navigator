@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 2.10.0
+ * Version: 2.11.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -178,6 +178,11 @@ export interface NavigatorRowProviderContext {
     readonly scope: NavigatorRowScope;
 }
 
+export interface NavigatorRowProviderQueryContext extends NavigatorRowProviderContext {
+    /** Aborted when a query is superseded, times out, unregisters, or unloads. */
+    readonly signal: AbortSignal;
+}
+
 export interface NavigatorRowCheckboxIndicator {
     readonly type: 'checkbox';
     readonly checked: boolean;
@@ -219,7 +224,7 @@ export interface NavigatorRowProvider {
     /** Opt in to standalone rows when a Type collection is selected. */
     readonly supportsTypeScope?: boolean;
     getRows(
-        context: NavigatorRowProviderContext,
+        context: NavigatorRowProviderQueryContext,
         options: NavigatorRowProviderOptions
     ): Promise<readonly NavigatorRowDefinition[]> | readonly NavigatorRowDefinition[];
     subscribe?(context: NavigatorRowProviderContext, options: NavigatorRowProviderOptions, invalidate: () => void): (() => void) | void;
@@ -502,7 +507,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 2.10.0
+ * @version 2.11.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */

@@ -152,9 +152,10 @@ function menuContext(
     };
 }
 
-function context(app: App, visibleFilePaths: string[]) {
+function context(app: App, visibleFilePaths: string[], signal = new AbortController().signal) {
     return {
         app,
+        signal,
         scope: {
             visibleFilePaths,
             selectionType: null,
@@ -440,6 +441,165 @@ describe('GcmTaskRowProvider', () => {
         await expect(provider.getRows(providerContext, { enabled: true })).resolves.toMatchObject([{ label: 'Fresh' }]);
         expect(list).toHaveBeenCalledTimes(2);
         unsubscribe?.();
+    });
+
+    it('does no work or cache compatibility mutation for a pre-aborted query', async () => {
+        const list = vi.fn(async ({ paths }: { paths: string[] }) => [task(paths[0] ?? '', 1, 'Cached')]);
+        const api = { version: 1, list, focus: vi.fn(async () => true) } satisfies GcmTaskApiLike;
+        const { app } = createApp(api);
+        const provider = new GcmTaskRowProvider();
+        const options = { enabled: true };
+
+        await provider.getRows(context(app, ['Notes/one.md']), options);
+        const cache = Reflect.get(provider, 'tasksByPath') as Map<string, readonly GcmTaskRecordLike[]>;
+        expect(cache.size).toBe(1);
+
+        const controller = new AbortController();
+        controller.abort();
+        await expect(
+            provider.getRows(context(app, ['Notes/one.md'], controller.signal), { ...options, includeCompleted: true })
+        ).resolves.toEqual([]);
+        expect(list).toHaveBeenCalledOnce();
+        expect(cache.size).toBe(1);
+    });
+
+    it('stops after an aborted first batch and ignores every late result without scheduling a progressive pass', async () => {
+        const paths = Array.from({ length: GCM_TASK_ROW_QUERY_PATHS_PER_PASS + 1 }, (_, index) => `Notes/${index}.md`);
+        let resolveReads: (() => void) | null = null;
+        const reads = new Promise<void>(resolve => {
+            resolveReads = resolve;
+        });
+        const list = vi.fn(async ({ paths: requestedPaths }: { paths: string[] }) => {
+            await reads;
+            return [task(requestedPaths[0] ?? '', 0, 'Late')];
+        });
+        const api = { version: 1, list, focus: vi.fn(async () => true) } satisfies GcmTaskApiLike;
+        const { app } = createApp(api);
+        const provider = new GcmTaskRowProvider();
+        const controller = new AbortController();
+
+        const pendingRows = provider.getRows(context(app, paths, controller.signal), { enabled: true });
+        await vi.waitFor(() => expect(list).toHaveBeenCalledTimes(8));
+        controller.abort();
+        await expect(pendingRows).resolves.toEqual([]);
+        expect((Reflect.get(provider, 'tasksByPath') as Map<string, unknown>).size).toBe(0);
+        expect(Reflect.get(provider, 'progressiveRefreshTimer')).toBeNull();
+
+        resolveReads?.();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(list).toHaveBeenCalledTimes(8);
+        expect((Reflect.get(provider, 'tasksByPath') as Map<string, unknown>).size).toBe(0);
+
+        await expect(provider.getRows(context(app, [paths[0] ?? '']), { enabled: true })).resolves.toMatchObject([{ label: 'Late' }]);
+        expect(list).toHaveBeenCalledTimes(9);
+    });
+
+    it('keeps an earlier successful batch transactional when a later batch is aborted', async () => {
+        const paths = Array.from({ length: 16 }, (_, index) => `Notes/${index}.md`);
+        let resolveSecondBatch: (() => void) | null = null;
+        const secondBatch = new Promise<void>(resolve => {
+            resolveSecondBatch = resolve;
+        });
+        const list = vi.fn(async ({ paths: requestedPaths }: { paths: string[] }) => {
+            if (list.mock.calls.length > 8) {
+                await secondBatch;
+            }
+            return [task(requestedPaths[0] ?? '', 0, requestedPaths[0] ?? '')];
+        });
+        const api = { version: 1, list, focus: vi.fn(async () => true) } satisfies GcmTaskApiLike;
+        const { app } = createApp(api);
+        const provider = new GcmTaskRowProvider();
+        const controller = new AbortController();
+
+        const pendingRows = provider.getRows(context(app, paths, controller.signal), { enabled: true });
+        await vi.waitFor(() => expect(list).toHaveBeenCalledTimes(16));
+        controller.abort();
+        await expect(pendingRows).resolves.toEqual([]);
+        expect((Reflect.get(provider, 'tasksByPath') as Map<string, unknown>).size).toBe(0);
+
+        resolveSecondBatch?.();
+        await Promise.resolve();
+        await expect(provider.getRows(context(app, [paths[0] ?? '']), { enabled: true })).resolves.toMatchObject([
+            { sourcePath: paths[0] }
+        ]);
+        expect(list).toHaveBeenCalledTimes(17);
+    });
+
+    it('preserves a dirty path after its cancelled refresh so the next query rereads it', async () => {
+        let resolveRefresh: (() => void) | null = null;
+        const refresh = new Promise<void>(resolve => {
+            resolveRefresh = resolve;
+        });
+        const list = vi
+            .fn<(filter: { paths: string[] }) => Promise<GcmTaskRecordLike[]>>()
+            .mockResolvedValueOnce([task('Notes/one.md', 1, 'Cached')])
+            .mockImplementationOnce(async () => {
+                await refresh;
+                return [task('Notes/one.md', 1, 'Cancelled')];
+            })
+            .mockResolvedValueOnce([task('Notes/one.md', 1, 'Fresh')]);
+        const api = { version: 1, list, focus: vi.fn(async () => true) } satisfies GcmTaskApiLike;
+        const { app, workspace } = createApp(api);
+        const provider = new GcmTaskRowProvider();
+        const providerContext = context(app, ['Notes/one.md']);
+        const unsubscribe = provider.subscribe(providerContext, { enabled: true }, vi.fn());
+
+        await provider.getRows(providerContext, { enabled: true });
+        workspace.trigger(TPS_FILES_UPDATED_EVENT, { paths: ['Notes/one.md'] });
+        const controller = new AbortController();
+        const cancelledRows = provider.getRows(context(app, ['Notes/one.md'], controller.signal), { enabled: true });
+        await vi.waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+        controller.abort();
+        await expect(cancelledRows).resolves.toEqual([]);
+        expect((Reflect.get(provider, 'dirtyPaths') as Set<string>).has('Notes/one.md')).toBe(true);
+
+        resolveRefresh?.();
+        await Promise.resolve();
+        await expect(provider.getRows(context(app, ['Notes/one.md']), { enabled: true })).resolves.toMatchObject([{ label: 'Fresh' }]);
+        expect(list).toHaveBeenCalledTimes(3);
+        unsubscribe?.();
+    });
+
+    it('preserves partial-path isolation and its existing negative-cache behavior for an active pass', async () => {
+        const list = vi.fn(async ({ paths }: { paths: string[] }) => {
+            if (paths[0] === 'Notes/failing.md') {
+                throw new Error('path failed');
+            }
+            return [task(paths[0] ?? '', 1, 'Healthy')];
+        });
+        const api = { version: 1, list, focus: vi.fn(async () => true) } satisfies GcmTaskApiLike;
+        const { app } = createApp(api);
+        const provider = new GcmTaskRowProvider();
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const providerContext = context(app, ['Notes/failing.md', 'Notes/healthy.md']);
+
+        await expect(provider.getRows(providerContext, { enabled: true })).resolves.toMatchObject([{ label: 'Healthy' }]);
+        expect(list).toHaveBeenCalledTimes(2);
+        expect(warn).toHaveBeenCalledWith('[TPS Notebook Navigator] Some GCM task paths could not be queried', {
+            failedPathCount: 1,
+            requestedPathCount: 2
+        });
+
+        await expect(provider.getRows(providerContext, { enabled: true })).resolves.toMatchObject([{ label: 'Healthy' }]);
+        expect(list).toHaveBeenCalledTimes(2);
+        warn.mockRestore();
+    });
+
+    it('keeps an all-path failure uncached so a later active pass can retry', async () => {
+        const list = vi
+            .fn<() => Promise<GcmTaskRecordLike[]>>()
+            .mockRejectedValueOnce(new Error('offline'))
+            .mockResolvedValueOnce([task('Notes/one.md', 1, 'Recovered')]);
+        const api = { version: 1, list, focus: vi.fn(async () => true) } satisfies GcmTaskApiLike;
+        const { app } = createApp(api);
+        const provider = new GcmTaskRowProvider();
+        const providerContext = context(app, ['Notes/one.md']);
+
+        await expect(provider.getRows(providerContext, { enabled: true })).rejects.toThrow('offline');
+        expect((Reflect.get(provider, 'tasksByPath') as Map<string, unknown>).size).toBe(0);
+        await expect(provider.getRows(providerContext, { enabled: true })).resolves.toMatchObject([{ label: 'Recovered' }]);
+        expect(list).toHaveBeenCalledTimes(2);
     });
 
     it('queries markdown paths only and bounds its cross-view path cache', async () => {

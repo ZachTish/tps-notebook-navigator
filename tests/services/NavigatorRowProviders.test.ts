@@ -11,7 +11,8 @@ import type {
     NavigatorProvidedRow,
     NavigatorRowDefinition,
     NavigatorRowProvider,
-    NavigatorRowProviderContext
+    NavigatorRowProviderContext,
+    NavigatorRowProviderQueryContext
 } from '../../src/services/rows/types';
 
 const context = {
@@ -60,9 +61,158 @@ describe('NavigatorRowProviderRegistry', () => {
         unregisterOne();
         expect(registry.resolve(['tps/one', 'tps/two'])).toEqual([two]);
     });
+
+    it('cancels only the exact unregistered provider and keeps stale disposers away from a replacement', () => {
+        const registry = new NavigatorRowProviderRegistry();
+        const first = provider('tps/one', []);
+        const sibling = provider('tps/two', []);
+        const unregisterFirst = registry.register(first);
+        registry.register(sibling);
+        const firstQuery = new AbortController();
+        const siblingQuery = new AbortController();
+        registry.trackQuery(first, firstQuery);
+        registry.trackQuery(sibling, siblingQuery);
+
+        unregisterFirst();
+        expect(firstQuery.signal.aborted).toBe(true);
+        expect(siblingQuery.signal.aborted).toBe(false);
+
+        const replacement = provider('tps/one', []);
+        registry.register(replacement);
+        const replacementQuery = new AbortController();
+        registry.trackQuery(replacement, replacementQuery);
+        unregisterFirst();
+        expect(replacementQuery.signal.aborted).toBe(false);
+    });
+
+    it('captures provider identity for query tracking and unregister even if the provider object mutates', () => {
+        const registry = new NavigatorRowProviderRegistry();
+        const mutableProvider = provider('tps/one', []);
+        const unregister = registry.register(mutableProvider);
+        (mutableProvider as { id: string }).id = 'mutated/identity';
+        const query = new AbortController();
+
+        registry.trackQuery(mutableProvider, query);
+        expect(query.signal.aborted).toBe(false);
+        expect(registry.getRegisteredId(mutableProvider)).toBe('tps/one');
+        unregister();
+
+        expect(query.signal.aborted).toBe(true);
+        expect(registry.get('tps/one')).toBeNull();
+        expect(registry.getRegisteredId(mutableProvider)).toBeNull();
+    });
 });
 
 describe('composeProviderRows', () => {
+    it('passes one frozen, independent cancellation signal to each provider', async () => {
+        const registry = new NavigatorRowProviderRegistry();
+        const seenContexts: NavigatorRowProviderQueryContext[] = [];
+        for (const id of ['tps/one', 'tps/two']) {
+            registry.register({
+                id,
+                getRows: queryContext => {
+                    seenContexts.push(queryContext);
+                    return [];
+                }
+            });
+        }
+
+        await composeProviderRows({
+            registry,
+            context,
+            signal: new AbortController().signal,
+            selection: { enabledProviderIds: ['tps/one', 'tps/two'] }
+        });
+
+        expect(seenContexts).toHaveLength(2);
+        expect(seenContexts.every(queryContext => Object.isFrozen(queryContext))).toBe(true);
+        expect(seenContexts.every(queryContext => queryContext.app === context.app && queryContext.scope === context.scope)).toBe(true);
+        expect(seenContexts[0]?.signal).not.toBe(seenContexts[1]?.signal);
+        expect(seenContexts.every(queryContext => !queryContext.signal.aborted)).toBe(true);
+    });
+
+    it('uses the captured provider identity for options, snapshots, failures, and row stamps', async () => {
+        const registry = new NavigatorRowProviderRegistry();
+        const getRows = vi.fn(async () => [{ id: 'one', kind: 'tps/example', label: 'One', sourcePath: 'Notes/one.md' }]);
+        const mutableProvider: NavigatorRowProvider = { id: 'tps/one', getRows };
+        registry.register(mutableProvider);
+        (mutableProvider as { id: string }).id = 'mutated/identity';
+        const onSnapshot = vi.fn();
+
+        const rows = await composeProviderRows({
+            registry,
+            context,
+            selection: { enabledProviderIds: ['tps/one'], optionsByProviderId: { 'tps/one': { mode: 'stable' } } },
+            onSnapshot
+        });
+
+        expect(getRows).toHaveBeenCalledWith(expect.any(Object), { mode: 'stable' });
+        expect(rows).toEqual([expect.objectContaining({ providerId: 'tps/one', id: 'one' })]);
+        expect(onSnapshot).toHaveBeenLastCalledWith(expect.objectContaining({ providerIds: ['tps/one'], settledProviderIds: ['tps/one'] }));
+    });
+
+    it('does not invoke or publish providers for a pre-aborted composition', async () => {
+        const registry = new NavigatorRowProviderRegistry();
+        const getRows = vi.fn(async () => []);
+        registry.register({ id: 'tps/one', getRows });
+        const controller = new AbortController();
+        controller.abort();
+        const onFailure = vi.fn();
+        const onSnapshot = vi.fn();
+
+        await expect(
+            composeProviderRows({
+                registry,
+                context,
+                signal: controller.signal,
+                selection: { enabledProviderIds: ['tps/one'] },
+                onFailure,
+                onSnapshot
+            })
+        ).resolves.toEqual([]);
+        expect(getRows).not.toHaveBeenCalled();
+        expect(onFailure).not.toHaveBeenCalled();
+        expect(onSnapshot).not.toHaveBeenCalled();
+    });
+
+    it('aborts every hanging provider and settles silently when the composition is superseded', async () => {
+        const registry = new NavigatorRowProviderRegistry();
+        const seenContexts: NavigatorRowProviderQueryContext[] = [];
+        const resolvers: ((rows: readonly NavigatorRowDefinition[]) => void)[] = [];
+        for (const id of ['tps/one', 'tps/two']) {
+            registry.register({
+                id,
+                getRows: queryContext => {
+                    seenContexts.push(queryContext);
+                    return new Promise(resolve => resolvers.push(resolve));
+                }
+            });
+        }
+        const controller = new AbortController();
+        const onFailure = vi.fn();
+        const onSnapshot = vi.fn();
+        const result = composeProviderRows({
+            registry,
+            context,
+            signal: controller.signal,
+            selection: { enabledProviderIds: ['tps/one', 'tps/two'] },
+            onFailure,
+            onSnapshot
+        });
+
+        await vi.waitFor(() => expect(seenContexts).toHaveLength(2));
+        controller.abort();
+        await expect(result).resolves.toEqual([]);
+        expect(seenContexts.every(queryContext => queryContext.signal.aborted)).toBe(true);
+        expect(onFailure).not.toHaveBeenCalled();
+        expect(onSnapshot).not.toHaveBeenCalled();
+
+        resolvers.forEach(resolve => resolve([{ id: 'late', kind: 'tps/example', label: 'Late', sourcePath: 'Notes/one.md' }]));
+        await Promise.resolve();
+        expect(onFailure).not.toHaveBeenCalled();
+        expect(onSnapshot).not.toHaveBeenCalled();
+    });
+
     it('isolates provider failures, preserves provider order, and removes duplicate provider-local IDs', async () => {
         const registry = new NavigatorRowProviderRegistry();
         registry.register(
@@ -139,7 +289,10 @@ describe('composeProviderRows', () => {
 
         expect(legacyGetRows).not.toHaveBeenCalled();
         expect(typeGetRows).toHaveBeenCalledOnce();
-        expect(typeGetRows).toHaveBeenCalledWith(typeContext, { mode: 'related' });
+        const receivedContext = typeGetRows.mock.calls[0]?.[0] as NavigatorRowProviderQueryContext | undefined;
+        expect(receivedContext).toMatchObject({ app: typeContext.app, scope: typeContext.scope });
+        expect(receivedContext?.signal).toBeInstanceOf(AbortSignal);
+        expect(typeGetRows.mock.calls[0]?.[1]).toEqual({ mode: 'related' });
         expect(rows).toMatchObject([{ providerId: 'example/type-rows', id: 'related', sourcePath: 'Notes/one.md' }]);
     });
 
@@ -247,6 +400,45 @@ describe('composeProviderRows', () => {
         await vi.advanceTimersByTimeAsync(NAVIGATOR_ROW_PROVIDER_QUERY_TIMEOUT_MS);
 
         await expect(resultPromise).resolves.toMatchObject([{ providerId: 'tps/healthy', id: 'ok' }]);
+        expect(failures).toHaveBeenCalledWith(expect.objectContaining({ providerId: 'tps/hanging' }));
+    });
+
+    it('aborts only the timed-out provider signal and keeps a healthy peer active', async () => {
+        vi.useFakeTimers();
+        const registry = new NavigatorRowProviderRegistry();
+        const seenContexts: NavigatorRowProviderQueryContext[] = [];
+        registry.register({
+            id: 'tps/hanging',
+            getRows: queryContext => {
+                seenContexts.push(queryContext);
+                return new Promise(() => undefined);
+            }
+        });
+        registry.register({
+            id: 'tps/healthy',
+            getRows: queryContext => {
+                seenContexts.push(queryContext);
+                return [{ id: 'ok', kind: 'tps/example', label: 'OK', sourcePath: 'Notes/one.md' }];
+            }
+        });
+        const failures = vi.fn();
+        const result = composeProviderRows({
+            registry,
+            context,
+            signal: new AbortController().signal,
+            selection: { enabledProviderIds: ['tps/hanging', 'tps/healthy'] },
+            onFailure: failures
+        });
+
+        await vi.advanceTimersByTimeAsync(0);
+        expect(seenContexts[0]?.signal.aborted).toBe(false);
+        expect(seenContexts[1]?.signal.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(NAVIGATOR_ROW_PROVIDER_QUERY_TIMEOUT_MS);
+
+        await expect(result).resolves.toMatchObject([{ providerId: 'tps/healthy', id: 'ok' }]);
+        expect(seenContexts[0]?.signal.aborted).toBe(true);
+        expect(seenContexts[1]?.signal.aborted).toBe(false);
+        expect(failures).toHaveBeenCalledOnce();
         expect(failures).toHaveBeenCalledWith(expect.objectContaining({ providerId: 'tps/hanging' }));
     });
 

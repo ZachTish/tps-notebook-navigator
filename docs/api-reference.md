@@ -4,7 +4,7 @@ Updated: August 1, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 2.10.0
+**Current API Version:** 2.11.0
 
 ## Table of Contents
 
@@ -567,8 +567,15 @@ Provider requirements and safeguards:
 - `contextMenu(context)` may synchronously add row actions and separators. It receives an immutable provider/row identity plus guarded `addItem(...)` and `addSeparator()` functions, never the host `Menu` object.
 - Row actions open from right-click, the native mobile long-press `contextmenu` event, or the accessible **More actions** button. Empty, throwing, and Promise-returning builders do not open a menu.
 - A provider can subscribe to its own data source and call `invalidate()` when rows need to be queried again.
+- Every `getRows` invocation receives its own `signal`. Check it before expensive work and after each awaited batch. TPS
+  aborts it when the scope, search-derived paths, selection, provider revision, or options are superseded; when the provider
+  unregisters; at the five-second timeout; and when the view or plugin unloads. Supersession is silent and late results are
+  ignored, while a timeout remains an isolated provider failure.
+- `subscribe` deliberately receives the signal-free `NavigatorRowProviderContext`; its returned cleanup owns that longer
+  lifecycle. Calling `invalidate()` aborts the current query before the replacement revision begins.
 - Set `supportsTypeScope: true` to opt in when a standalone Type collection is selected. The scope then reports `selectionType: 'type'`, its opaque `selectedType`, and the deduplicated visible source paths represented by the searched native Type rows. Providers without the flag are never subscribed or queried in Type scope.
-- Provider failures, malformed results, timeouts, and oversized result sets are isolated from the ordinary file list.
+- Provider failures, malformed results, timeouts, and oversized result sets are isolated from the ordinary file list. Each
+  provider receives an independent signal, so one timeout never aborts a healthy sibling.
 
 ```typescript
 import type { NotebookNavigatorAPI, NavigatorRowProvider } from './notebook-navigator';
@@ -581,7 +588,10 @@ if (!nn) {
 const provider: NavigatorRowProvider = {
   id: 'example/tasks',
   supportsTypeScope: true,
-  async getRows({ scope }) {
+  async getRows({ scope, signal }) {
+    if (signal.aborted) {
+      return [];
+    }
     return scope.visibleFilePaths.map(path => ({
       id: `${path}:review`,
       kind: 'example/task',
@@ -987,6 +997,15 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 2.11.0 (2026-08-01)
+
+- Added query-only `NavigatorRowProviderQueryContext.signal` without changing the longer-lived subscription context
+- Abort superseded ordinary-row work on scope, selection, search-derived paths, revision, options, unregister, timeout,
+  view teardown, and plugin unload
+- Give every provider invocation an independent signal; timeouts remain isolated failures while lifecycle cancellation is silent
+- Prevent late provider results and GCM task scans from publishing snapshots, populating caches, clearing dirty paths, or
+  scheduling progressive work after cancellation
 
 ### Version 2.10.0 (2026-08-01)
 

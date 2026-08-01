@@ -13,7 +13,7 @@ import { NavigatorRowProviderRegistry } from '../../src/services/rows/NavigatorR
 import { composeProviderRows } from '../../src/services/rows/composeProviderRows';
 import { buildStandaloneProviderListItems, mergeProviderRowsIntoList } from '../../src/services/rows/providerListItems';
 import { mergeNavigatorRowProviderSelections } from '../../src/services/rows/providerSelections';
-import type { NavigatorRowContextMenuContext } from '../../src/services/rows/types';
+import type { NavigatorRowContextMenuContext, NavigatorRowProviderQueryContext } from '../../src/services/rows/types';
 import { ListPaneItemType } from '../../src/types';
 import type { ListPaneItem } from '../../src/types/virtualization';
 import { createTestTFile } from '../utils/createTestTFile';
@@ -223,7 +223,10 @@ describe('built-in and external row provider composition', () => {
         const listItems = buildStandaloneProviderListItems([nativeTypeRow], contributedRows);
 
         expect(list).not.toHaveBeenCalled();
-        expect(externalGetRows).toHaveBeenCalledWith(typeContext, {});
+        const receivedContext = externalGetRows.mock.calls[0]?.[0] as NavigatorRowProviderQueryContext | undefined;
+        expect(receivedContext).toMatchObject({ app: typeContext.app, scope: typeContext.scope });
+        expect(receivedContext?.signal).toBeInstanceOf(AbortSignal);
+        expect(externalGetRows.mock.calls[0]?.[1]).toEqual({});
         expect(listItems.map(item => item.key)).toEqual([
             'top-spacer',
             'provider:tps/entity-types:structural:task:block:one',

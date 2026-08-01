@@ -10,6 +10,7 @@ import {
     type NavigatorProvidedRowCandidate,
     type NavigatorRowProvider,
     type NavigatorRowProviderContext,
+    type NavigatorRowProviderQueryContext,
     type NavigatorRowProviderFailure,
     type NavigatorRowProviderOptions,
     type NavigatorRowProviderSelection
@@ -31,11 +32,15 @@ export interface NavigatorProviderRowsSnapshot {
 interface ComposeProviderRowsOptions {
     registry: NavigatorRowProviderRegistry;
     context: NavigatorRowProviderContext;
+    /** Owns this composition revision and aborts every still-running provider when it is superseded. */
+    signal?: AbortSignal;
     selection: NavigatorRowProviderSelection;
     onFailure?: (failure: NavigatorRowProviderFailure) => void;
     /** Receives deterministic partial results whenever another provider settles. */
     onSnapshot?: (snapshot: NavigatorProviderRowsSnapshot) => void;
 }
+
+const CANCELLED_PROVIDER_QUERY = Symbol('cancelled-provider-query');
 
 function isOptionalString(value: unknown): value is string | undefined {
     return value === undefined || typeof value === 'string';
@@ -81,18 +86,68 @@ function isUsableCandidate(candidate: unknown): candidate is NavigatorProvidedRo
 }
 
 async function queryProviderWithTimeout(
+    registry: NavigatorRowProviderRegistry,
     provider: NavigatorRowProvider,
     context: NavigatorRowProviderContext,
-    options: NavigatorRowProviderOptions
+    options: NavigatorRowProviderOptions,
+    parentSignal: AbortSignal
 ): Promise<unknown> {
+    if (parentSignal.aborted) {
+        return CANCELLED_PROVIDER_QUERY;
+    }
+
+    const abortController = new AbortController();
+    const queryContext: NavigatorRowProviderQueryContext = Object.freeze({
+        app: context.app,
+        scope: context.scope,
+        signal: abortController.signal
+    });
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let timedOut = false;
+    let resolveCancellation: (() => void) | null = null;
+    const cancellation = new Promise<typeof CANCELLED_PROVIDER_QUERY>(resolve => {
+        resolveCancellation = () => resolve(CANCELLED_PROVIDER_QUERY);
+    });
+    const cancelFromParent = () => {
+        abortController.abort();
+        resolveCancellation?.();
+    };
+    const cancelFromLifecycle = () => {
+        if (!timedOut) {
+            resolveCancellation?.();
+        }
+    };
+    parentSignal.addEventListener('abort', cancelFromParent, { once: true });
+    abortController.signal.addEventListener('abort', cancelFromLifecycle, { once: true });
+    const releaseQuery = registry.trackQuery(provider, abortController);
     const timeout = new Promise<never>((_resolve, reject) => {
-        timeoutId = window.setTimeout(() => reject(new Error('Row provider query timed out.')), NAVIGATOR_ROW_PROVIDER_QUERY_TIMEOUT_MS);
+        timeoutId = window.setTimeout(() => {
+            timedOut = true;
+            abortController.abort();
+            reject(new Error('Row provider query timed out.'));
+        }, NAVIGATOR_ROW_PROVIDER_QUERY_TIMEOUT_MS);
     });
 
     try {
-        return await Promise.race([Promise.resolve().then(() => provider.getRows(context, options ?? {})), timeout]);
+        const query = Promise.resolve().then(() =>
+            parentSignal.aborted || abortController.signal.aborted
+                ? CANCELLED_PROVIDER_QUERY
+                : provider.getRows(queryContext, options ?? {})
+        );
+        try {
+            const result = await Promise.race([query, timeout, cancellation]);
+            return parentSignal.aborted || (abortController.signal.aborted && !timedOut) ? CANCELLED_PROVIDER_QUERY : result;
+        } catch (error) {
+            if (parentSignal.aborted || (abortController.signal.aborted && !timedOut)) {
+                return CANCELLED_PROVIDER_QUERY;
+            }
+            throw error;
+        }
     } finally {
+        releaseQuery();
+        parentSignal.removeEventListener('abort', cancelFromParent);
+        abortController.signal.removeEventListener('abort', cancelFromLifecycle);
+        resolveCancellation = null;
         if (timeoutId !== null) {
             window.clearTimeout(timeoutId);
         }
@@ -139,10 +194,14 @@ function composeSettledProviderRows(providerRows: readonly (readonly NavigatorPr
 export async function composeProviderRows({
     registry,
     context,
+    signal = new AbortController().signal,
     selection,
     onFailure,
     onSnapshot
 }: ComposeProviderRowsOptions): Promise<NavigatorProvidedRow[]> {
+    if (signal.aborted) {
+        return [];
+    }
     const providers = resolveNavigatorRowProvidersForScope(registry, selection.enabledProviderIds, context.scope);
     if (providers.length === 0 || context.scope.visibleFilePaths.length === 0) {
         return [];
@@ -150,48 +209,72 @@ export async function composeProviderRows({
 
     const visibleFilePaths = new Set(context.scope.visibleFilePaths);
     const settledRows: (NavigatorProvidedRow[] | null)[] = providers.map(() => null);
-    const providerIds = providers.map(provider => provider.id);
+    const providerIds = providers.map(provider => registry.getRegisteredId(provider));
+    if (providerIds.some(providerId => providerId === null)) {
+        return [];
+    }
+    const stableProviderIds = providerIds as string[];
     let latestRows: NavigatorProvidedRow[] = [];
     const publishSnapshot = () => {
+        if (signal.aborted) {
+            return;
+        }
         const nextRows = composeSettledProviderRows(settledRows);
         latestRows = nextRows;
         onSnapshot?.({
-            providerIds,
-            settledProviderIds: providerIds.filter((_providerId, index) => settledRows[index] !== null),
+            providerIds: stableProviderIds,
+            settledProviderIds: stableProviderIds.filter((_providerId, index) => settledRows[index] !== null),
             rows: nextRows
         });
     };
 
     await Promise.all(
         providers.map(async (provider, providerIndex) => {
+            const providerId = stableProviderIds[providerIndex];
+            if (providerId === undefined) {
+                return;
+            }
             let result: unknown;
             try {
-                result = await queryProviderWithTimeout(provider, context, selection.optionsByProviderId?.[provider.id] ?? {});
+                result = await queryProviderWithTimeout(
+                    registry,
+                    provider,
+                    context,
+                    selection.optionsByProviderId?.[providerId] ?? {},
+                    signal
+                );
             } catch (error) {
+                if (signal.aborted) {
+                    return;
+                }
                 settledRows[providerIndex] = [];
-                onFailure?.({ providerId: provider.id, error });
+                onFailure?.({ providerId, error });
                 publishSnapshot();
+                return;
+            }
+
+            if (result === CANCELLED_PROVIDER_QUERY || signal.aborted) {
                 return;
             }
 
             if (!Array.isArray(result)) {
                 settledRows[providerIndex] = [];
-                onFailure?.({ providerId: provider.id, error: new Error('Row provider returned a non-array result.') });
+                onFailure?.({ providerId, error: new Error('Row provider returned a non-array result.') });
                 publishSnapshot();
                 return;
             }
 
             if (result.length > NAVIGATOR_ROW_PROVIDER_MAX_ROWS) {
                 settledRows[providerIndex] = [];
-                onFailure?.({ providerId: provider.id, error: new Error('Row provider exceeded the row limit.') });
+                onFailure?.({ providerId, error: new Error('Row provider exceeded the row limit.') });
                 publishSnapshot();
                 return;
             }
 
-            settledRows[providerIndex] = normalizeNavigatorProviderRows(provider.id, result, visibleFilePaths);
+            settledRows[providerIndex] = normalizeNavigatorProviderRows(providerId, result, visibleFilePaths);
             publishSnapshot();
         })
     );
 
-    return latestRows;
+    return signal.aborted ? [] : latestRows;
 }

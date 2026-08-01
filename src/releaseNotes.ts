@@ -106,6 +106,19 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.10.0',
+        date: '2026-08-01',
+        showOnUpdate: true,
+        info: 'Provider rows now stop obsolete work instead of scanning or caching after the visible list changes.',
+        new: [
+            'Public API `2.11.0` gives every ordinary row-provider query its own cancellation signal while preserving existing providers and signal-free subscriptions.'
+        ],
+        improved: [
+            'Scope, Type, search-path, revision, options, unregister, timeout, view teardown, and plugin unload transitions now cancel the exact active provider invocations.',
+            'GCM task scans commit their bounded pass atomically, so cancelled work cannot populate caches, clear dirty paths, or schedule another progressive refresh.'
+        ]
+    },
+    {
         version: '4.9.1',
         date: '2026-08-01',
         showOnUpdate: true,
