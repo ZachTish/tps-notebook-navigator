@@ -16,7 +16,7 @@ Never point `origin` at upstream. Do not rebase or force-push the shared TPS `ma
 ## Update workflow
 
 1. Start from a clean, current TPS `main` and create a short-lived branch such as `sync/upstream-3.4.0`.
-2. Fetch both remotes, then run `npm run upstream:audit -- <upstream-ref>`. The audit is read-only: it resolves the merge base, reports fork/upstream/overlap file counts, simulates `git merge-tree`, and classifies the exact generated, documentation, source, test, and other conflicts. It does not fetch, merge, write refs, or change the worktree.
+2. Fetch both remotes, then run `npm run upstream:audit -- <upstream-ref>`. The audit is read-only: it resolves the merge base, reports fork/upstream/overlap file counts, lists every overlapping path in deterministic order, simulates `git merge-tree`, and classifies exact generated, documentation, source, test, and other overlaps and conflicts. Treat `conflict=false` overlaps as semantic-review work even though the simulated merge found no syntactic or structural conflict. The audit does not fetch, merge, write refs, or change the worktree.
 3. Merge the audited upstream tag or commit with `--no-commit`. Record that exact upstream ref in the eventual commit and release notes.
 4. Resolve behavioral conflicts before adding new TPS behavior. Keep the TPS manifest ID, view IDs, storage/IndexedDB namespaces, events, drag types, API lookup, settings-transfer ID, and update URL. Keep inherited `nn-` and `.notebook-navigator` CSS/DOM tokens in source; do not hand-prefix them during conflict resolution.
 5. Run `npm run tps:namespace:check`. If it reports a mechanically prefixed source file, run `npm run tps:namespace` to restore the upstream token form and review that narrow repair.

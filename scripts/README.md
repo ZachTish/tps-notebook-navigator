@@ -97,7 +97,7 @@ npm run upstream:audit -- upstream/main
 npm run upstream:audit -- 3.4.0
 ```
 
-The command resolves the merge base, compares changed files on both sides, reports overlap, simulates `git merge-tree`, and classifies conflicting files and marker blocks as generated, documentation, source, test, or other work. It never fetches, checks out, merges, updates refs, or writes the worktree; fetch the intended ref separately before auditing it.
+The command resolves the merge base, compares changed files on both sides, lists every overlapping path in deterministic path order, simulates `git merge-tree`, and classifies overlaps and conflicting files as generated, documentation, source, test, or other work. Each overlap reports whether the simulated merge found a syntactic or structural conflict. `conflict=false` still requires semantic review; it does not mean the two changes are behaviorally compatible. The audit also reports conflict marker blocks. It never fetches, checks out, merges, updates refs, or writes the worktree; fetch the intended ref separately before auditing it.
 
 ## gitdump.sh
 

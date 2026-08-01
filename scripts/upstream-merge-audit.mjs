@@ -208,6 +208,7 @@ function audit(targetRef) {
     const overlap = [...forkFiles].filter(filePath => upstreamFiles.has(filePath)).sort(compareText);
     const mergeTree = runGit(['-c', 'merge.conflictStyle=merge', '-c', 'core.quotePath=false', 'merge-tree', mergeBase, head, target]);
     const conflicts = parseMergeTreeConflicts(mergeTree);
+    const conflictPaths = new Set(conflicts.map(conflict => conflict.path));
     const categoryCounts = Object.fromEntries(CATEGORY_ORDER.map(category => [category, 0]));
     conflicts.forEach(conflict => {
         categoryCounts[conflict.category] += 1;
@@ -220,6 +221,11 @@ function audit(targetRef) {
     console.log(
         `[upstream-merge-audit] conflicts files=${conflicts.length} markers=${markerBlocks} generated=${categoryCounts.generated} docs=${categoryCounts.docs} source=${categoryCounts.source} test=${categoryCounts.test} other=${categoryCounts.other}`
     );
+    overlap.forEach(filePath => {
+        console.log(
+            `[upstream-merge-audit] overlap category=${classifyPath(filePath)} conflict=${conflictPaths.has(filePath)} path=${JSON.stringify(filePath)}`
+        );
+    });
     conflicts.forEach(conflict => {
         console.log(
             `[upstream-merge-audit] conflict category=${conflict.category} markers=${conflict.markerBlocks} reasons=${conflict.reasons.join(',')} path=${JSON.stringify(conflict.path)}`
