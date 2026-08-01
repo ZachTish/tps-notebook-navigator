@@ -13,6 +13,7 @@ import {
 interface MenuHarness {
     menu: Menu;
     addItem: ReturnType<typeof vi.fn>;
+    addSeparator: ReturnType<typeof vi.fn>;
     showAtMouseEvent: ReturnType<typeof vi.fn>;
     showAtPosition: ReturnType<typeof vi.fn>;
     item: MenuItem;
@@ -28,10 +29,11 @@ function createMenuHarness(options: { failAddItem?: boolean } = {}): MenuHarness
         configure(item);
         return menu;
     });
+    const addSeparator = vi.fn(() => menu);
     const showAtMouseEvent = vi.fn(() => menu);
     const showAtPosition = vi.fn(() => menu);
-    Object.assign(menu, { addItem, showAtMouseEvent, showAtPosition });
-    return { menu, addItem, showAtMouseEvent, showAtPosition, item };
+    Object.assign(menu, { addItem, addSeparator, showAtMouseEvent, showAtPosition });
+    return { menu, addItem, addSeparator, showAtMouseEvent, showAtPosition, item };
 }
 
 function row(overrides: Partial<NavigatorProvidedRow> = {}): NavigatorProvidedRow {
@@ -74,10 +76,56 @@ describe('provider row context menus', () => {
         });
         expect(captured?.addItem).toBeTypeOf('function');
         expect(Object.keys(captured ?? {}).sort()).toEqual(
-            ['addItem', 'kind', 'providerId', 'rowId', 'sourceLineNumber', 'sourcePath'].sort()
+            ['addItem', 'addSeparator', 'kind', 'providerId', 'rowId', 'sourceLineNumber', 'sourcePath'].sort()
         );
         expect(configure).toHaveBeenCalledOnce();
         expect(configure).toHaveBeenCalledWith(harness.item);
+    });
+
+    it('preserves item and separator order without exposing the host Menu', () => {
+        const calls: string[] = [];
+        const harness = createMenuHarness();
+        harness.addItem.mockImplementation((configure: (menuItem: MenuItem) => void) => {
+            calls.push('item');
+            configure(harness.item);
+            return harness.menu;
+        });
+        harness.addSeparator.mockImplementation(() => {
+            calls.push('separator');
+            return harness.menu;
+        });
+        const providedRow = row({
+            contextMenu: context => {
+                context.addItem(() => undefined);
+                context.addSeparator();
+                context.addItem(() => undefined);
+            }
+        });
+
+        expect(buildProviderRowContextMenu(harness.menu, providedRow)).toBe(2);
+        expect(calls).toEqual(['item', 'separator', 'item']);
+    });
+
+    it('drops separator-only, leading, trailing, and duplicate separator entries', () => {
+        const harness = createMenuHarness();
+        const separatorOnly = row({ contextMenu: context => context.addSeparator() });
+        expect(showProviderRowContextMenuAtPosition(harness.menu, separatorOnly, { x: 1, y: 2 })).toBe(false);
+        expect(harness.addSeparator).not.toHaveBeenCalled();
+        expect(harness.showAtPosition).not.toHaveBeenCalled();
+
+        const normalized = row({
+            contextMenu: context => {
+                context.addSeparator();
+                context.addItem(() => undefined);
+                context.addSeparator();
+                context.addSeparator();
+                context.addItem(() => undefined);
+                context.addSeparator();
+            }
+        });
+        expect(buildProviderRowContextMenu(harness.menu, normalized)).toBe(2);
+        expect(harness.addItem).toHaveBeenCalledTimes(2);
+        expect(harness.addSeparator).toHaveBeenCalledOnce();
     });
 
     it('omits the optional source line instead of inventing one', () => {

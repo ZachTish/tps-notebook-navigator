@@ -21,7 +21,8 @@ const context = {
         selectionType: null,
         selectedFolderPath: null,
         selectedTag: null,
-        selectedProperty: null
+        selectedProperty: null,
+        selectedType: null
     }
 } satisfies NavigatorRowProviderContext;
 
@@ -104,6 +105,42 @@ describe('composeProviderRows', () => {
 
         expect(rows).toEqual([]);
         expect(getRows).not.toHaveBeenCalled();
+    });
+
+    it('passes an exact Type scope only to opted-in providers and still drops orphan rows', async () => {
+        const registry = new NavigatorRowProviderRegistry();
+        const legacyGetRows = vi.fn(async () => [{ id: 'duplicate', kind: 'tps/task', label: 'Legacy task', sourcePath: 'Notes/one.md' }]);
+        const typeGetRows = vi.fn(async () => [
+            { id: 'related', kind: 'example/related', label: 'Related', sourcePath: 'Notes/one.md' },
+            { id: 'orphan', kind: 'example/related', label: 'Orphan', sourcePath: 'Notes/outside.md' }
+        ]);
+        registry.register({ id: 'tps/legacy-tasks', getRows: legacyGetRows });
+        registry.register({ id: 'example/type-rows', supportsTypeScope: true, getRows: typeGetRows });
+        const typeContext = {
+            ...context,
+            scope: {
+                visibleFilePaths: ['Notes/one.md'],
+                selectionType: 'type',
+                selectedFolderPath: null,
+                selectedTag: null,
+                selectedProperty: null,
+                selectedType: 'structural:task'
+            }
+        } satisfies NavigatorRowProviderContext;
+
+        const rows = await composeProviderRows({
+            registry,
+            context: typeContext,
+            selection: {
+                enabledProviderIds: ['tps/legacy-tasks', 'example/type-rows'],
+                optionsByProviderId: { 'example/type-rows': { mode: 'related' } }
+            }
+        });
+
+        expect(legacyGetRows).not.toHaveBeenCalled();
+        expect(typeGetRows).toHaveBeenCalledOnce();
+        expect(typeGetRows).toHaveBeenCalledWith(typeContext, { mode: 'related' });
+        expect(rows).toMatchObject([{ providerId: 'example/type-rows', id: 'related', sourcePath: 'Notes/one.md' }]);
     });
 
     it('preserves callable context-menu builders and rejects malformed ones', async () => {

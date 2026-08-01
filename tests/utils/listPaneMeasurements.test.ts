@@ -38,6 +38,11 @@ import { createTestTFile } from './createTestTFile';
 describe('listPaneMeasurements layout helpers', () => {
     const desktopHeights = getListPaneMeasurements(false);
 
+    it('reserves exact provider-row heights for two-line desktop rows and mobile touch targets', () => {
+        expect(desktopHeights.providerRowHeight).toBe(54);
+        expect(getListPaneMeasurements(true).providerRowHeight).toBe(57);
+    });
+
     it('uses explicit compact mode instead of inferring it from hidden date, preview, and image sections', () => {
         expect(
             getFileItemLayoutState({

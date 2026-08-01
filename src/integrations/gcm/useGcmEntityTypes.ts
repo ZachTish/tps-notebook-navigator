@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import type { App, EventRef } from 'obsidian';
+import { normalizePath, type App, type EventRef } from 'obsidian';
 import {
     TPS_NAVIGATOR_STRUCTURAL_TYPES,
     type TpsNavigatorTypeId,
@@ -14,7 +14,14 @@ import {
     type TpsNavigatorTypesSnapshot
 } from '../../types/navigatorTypes';
 import { GcmEntityTypeIndexAdapter, type GcmEntityActivationResult } from './GcmEntityTypeIndex';
-import { TPS_GCM_API_CHANGED_EVENT, TPS_GCM_API_REQUEST_EVENT, TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID } from '../../constants/tpsIdentity';
+import type { GcmTaskMenuLike } from './gcmTaskApi';
+import type { GcmEntityTaskMutationResult } from './GcmEntityTypeIndex';
+import {
+    TPS_FILES_UPDATED_EVENT,
+    TPS_GCM_API_CHANGED_EVENT,
+    TPS_GCM_API_REQUEST_EVENT,
+    TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID
+} from '../../constants/tpsIdentity';
 
 const EMPTY_RECORDS_BY_TYPE = new Map<TpsNavigatorTypeId, readonly TpsNavigatorTypeRecord[]>();
 const LOADING_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
@@ -50,12 +57,35 @@ function withStructuralFallback(snapshot: TpsNavigatorTypesSnapshot): TpsNavigat
 
 type SnapshotListener = () => void;
 
+function getUpdatedPaths(payload: unknown): string[] {
+    const rawPaths = Array.isArray(payload)
+        ? payload
+        : payload && typeof payload === 'object' && Array.isArray((payload as { paths?: unknown }).paths)
+          ? (payload as { paths: unknown[] }).paths
+          : [];
+    return [...new Set(rawPaths.map(path => normalizePath(String(path ?? '').trim())).filter(Boolean))];
+}
+
+function getMarkdownPath(value: unknown): string | null {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+    const file = value as { path?: unknown; extension?: unknown };
+    if (typeof file.path !== 'string' || !file.path.trim()) {
+        return null;
+    }
+    const path = normalizePath(file.path);
+    const extension = typeof file.extension === 'string' ? file.extension.toLocaleLowerCase() : '';
+    return extension === 'md' || path.toLocaleLowerCase().endsWith('.md') ? path : null;
+}
+
 export class GcmEntityTypesStore {
     private readonly adapter: GcmEntityTypeIndexAdapter;
     private snapshot: TpsNavigatorTypesSnapshot = LOADING_SNAPSHOT;
     private readonly listeners = new Set<SnapshotListener>();
     private stopRevision: (() => void) | null = null;
     private stopWorkspaceEvents: (() => void) | null = null;
+    private stopVaultEvents: (() => void) | null = null;
     private loadGeneration = 0;
     private reloadPending = false;
     private reloadInFlight: { generation: number; task: Promise<void> } | null = null;
@@ -83,6 +113,19 @@ export class GcmEntityTypesStore {
         return this.adapter.activate(record);
     }
 
+    async setTaskCheckbox(record: TpsNavigatorTypeRecord, checked: boolean): Promise<GcmEntityTaskMutationResult> {
+        const result = await this.adapter.setTaskCheckbox(record, checked);
+        // Reconcile optimistic UI after both success and guarded failure. A
+        // foreign API can report an unexpected effective state after writing.
+        this.adapter.invalidateTaskPaths([record.sourcePath]);
+        this.requestReload();
+        return result;
+    }
+
+    addTaskContextMenuItems(menu: GcmTaskMenuLike, record: TpsNavigatorTypeRecord): boolean {
+        return this.adapter.addTaskContextMenuItems(menu, record);
+    }
+
     private start(): void {
         this.stopRevision = this.adapter.subscribe(() => {
             this.requestReload();
@@ -102,12 +145,52 @@ export class GcmEntityTypesStore {
                 receivedApiPayload = true;
                 this.requestReload({ supersede: true });
             });
-            this.stopWorkspaceEvents = () => eventSource.offref(eventRef);
+            const filesUpdatedRef = eventSource.on(TPS_FILES_UPDATED_EVENT, payload => {
+                this.handleTaskPathUpdates(getUpdatedPaths(payload), { invalidateAllWhenEmpty: true });
+            });
+            this.stopWorkspaceEvents = () => {
+                eventSource.offref(eventRef);
+                eventSource.offref(filesUpdatedRef);
+            };
             eventSource.trigger(TPS_GCM_API_REQUEST_EVENT, {
                 sourcePluginId: TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID,
                 requester: TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID,
                 timestamp: Date.now()
             });
+        }
+        const vault = this.app.vault as unknown as {
+            on(name: string, callback: (...args: unknown[]) => void): EventRef;
+            offref(ref: EventRef): void;
+        };
+        if (vault && typeof vault.on === 'function' && typeof vault.offref === 'function') {
+            const refs: EventRef[] = [];
+            const subscribe = (name: string, callback: (...args: unknown[]) => void) => {
+                refs.push(vault.on(name, callback));
+            };
+            subscribe('modify', file => {
+                const path = getMarkdownPath(file);
+                if (path) {
+                    this.handleTaskPathUpdates([path]);
+                }
+            });
+            subscribe('create', file => {
+                const path = getMarkdownPath(file);
+                if (path) {
+                    this.handleTaskPathUpdates([path]);
+                }
+            });
+            subscribe('delete', file => {
+                const path = getMarkdownPath(file);
+                if (path) {
+                    this.handleTaskPathUpdates([path]);
+                }
+            });
+            subscribe('rename', (file, oldPath) => {
+                const nextPath = getMarkdownPath(file);
+                const previousPath = typeof oldPath === 'string' ? normalizePath(oldPath.trim()) : '';
+                this.handleTaskPathUpdates([previousPath, nextPath ?? ''].filter(Boolean));
+            });
+            this.stopVaultEvents = () => refs.forEach(ref => vault.offref(ref));
         }
         if (!receivedApiPayload) {
             this.requestReload({ supersede: true });
@@ -120,8 +203,10 @@ export class GcmEntityTypesStore {
         this.reloadInFlight = null;
         this.stopRevision?.();
         this.stopWorkspaceEvents?.();
+        this.stopVaultEvents?.();
         this.stopRevision = null;
         this.stopWorkspaceEvents = null;
+        this.stopVaultEvents = null;
         this.adapter.dispose();
         this.snapshot = LOADING_SNAPSHOT;
     }
@@ -173,6 +258,30 @@ export class GcmEntityTypesStore {
             }
         }
     }
+
+    private handleTaskPathUpdates(paths: readonly string[], options: { invalidateAllWhenEmpty?: boolean } = {}): void {
+        if (paths.length === 0) {
+            if (options.invalidateAllWhenEmpty) {
+                this.adapter.invalidateTaskPaths();
+                this.requestReload();
+            }
+            return;
+        }
+        const taskSourcePaths = new Set<string>();
+        for (const records of this.snapshot.recordsByType.values()) {
+            records.forEach(record => {
+                if (record.lineKind === 'task') {
+                    taskSourcePaths.add(normalizePath(record.sourcePath));
+                }
+            });
+        }
+        const relevantPaths = [...new Set(paths.map(path => normalizePath(path)).filter(path => taskSourcePaths.has(path)))];
+        if (relevantPaths.length === 0) {
+            return;
+        }
+        this.adapter.invalidateTaskPaths(relevantPaths);
+        this.requestReload();
+    }
 }
 
 const STORES = new WeakMap<App, GcmEntityTypesStore>();
@@ -190,6 +299,8 @@ function getStore(app: App): GcmEntityTypesStore {
 export interface UseGcmEntityTypesResult {
     snapshot: TpsNavigatorTypesSnapshot;
     activate: (record: TpsNavigatorTypeRecord) => Promise<GcmEntityActivationResult>;
+    setTaskCheckbox: (record: TpsNavigatorTypeRecord, checked: boolean) => Promise<GcmEntityTaskMutationResult>;
+    addTaskContextMenuItems: (menu: GcmTaskMenuLike, record: TpsNavigatorTypeRecord) => boolean;
 }
 
 export function useGcmEntityTypes(app: App, enabled: boolean): UseGcmEntityTypesResult {
@@ -201,5 +312,16 @@ export function useGcmEntityTypes(app: App, enabled: boolean): UseGcmEntityTypes
     const getSnapshot = useCallback(() => (enabled ? store.getSnapshot() : DISABLED_SNAPSHOT), [enabled, store]);
     const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
     const activate = useCallback((record: TpsNavigatorTypeRecord) => store.activate(record), [store]);
-    return useMemo(() => ({ snapshot, activate }), [activate, snapshot]);
+    const setTaskCheckbox = useCallback(
+        (record: TpsNavigatorTypeRecord, checked: boolean) => store.setTaskCheckbox(record, checked),
+        [store]
+    );
+    const addTaskContextMenuItems = useCallback(
+        (menu: GcmTaskMenuLike, record: TpsNavigatorTypeRecord) => store.addTaskContextMenuItems(menu, record),
+        [store]
+    );
+    return useMemo(
+        () => ({ snapshot, activate, setTaskCheckbox, addTaskContextMenuItems }),
+        [activate, addTaskContextMenuItems, setTaskCheckbox, snapshot]
+    );
 }

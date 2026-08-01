@@ -17,6 +17,7 @@ import type {
     NavigatorRowProviderSelection,
     NavigatorRowScope
 } from '../services/rows/types';
+import { resolveNavigatorRowProvidersForScope } from '../services/rows/providerScope';
 
 interface UseProviderRowsParams {
     app: App;
@@ -116,7 +117,7 @@ export function useProviderRows({ app, registry, scope, selection }: UseProvider
         const cleanups: { providerId: string; cleanup: () => void }[] = [];
         let active = true;
 
-        for (const provider of registry.resolve(selection.enabledProviderIds)) {
+        for (const provider of resolveNavigatorRowProvidersForScope(registry, selection.enabledProviderIds, scope)) {
             try {
                 const cleanup = provider.subscribe?.(context, selection.optionsByProviderId?.[provider.id] ?? {}, () => {
                     if (active) {

@@ -63,16 +63,18 @@ export type TagCollectionId = '__tagged__' | '__untagged__';
 // TRANSIENT ROW PROVIDERS (TPS FORK)
 // ============================================================================
 
-export type NavigatorRowSelectionType = 'file' | 'folder' | 'tag' | 'property';
+export type NavigatorRowSelectionType = 'file' | 'folder' | 'tag' | 'property' | 'type';
 export type NavigatorRowProviderOptions = Readonly<Record<string, unknown>>;
 
 export interface NavigatorRowScope {
-    /** Exact markdown paths represented by file rows in the current list. */
+    /** Exact markdown paths represented by native items in the current list. */
     readonly visibleFilePaths: readonly string[];
     readonly selectionType: NavigatorRowSelectionType | null;
     readonly selectedFolderPath: string | null;
     readonly selectedTag: string | null;
     readonly selectedProperty: string | null;
+    /** Opaque structural or Kind collection ID when `selectionType` is `type`. */
+    readonly selectedType: string | null;
 }
 
 export interface NavigatorRowProviderContext {
@@ -98,6 +100,8 @@ export interface NavigatorRowContextMenuContext {
     readonly sourceLineNumber?: number;
     /** Add menu items synchronously. Async work belongs inside each item's onClick handler. */
     readonly addItem: (cb: (item: MenuItem) => void) => void;
+    /** Add a separator synchronously between provider-owned menu groups. */
+    readonly addSeparator: () => void;
 }
 
 export interface NavigatorRowDefinition {
@@ -121,6 +125,11 @@ export interface NavigatorRowDefinition {
 export interface NavigatorRowProvider {
     /** Stable namespaced ID in `vendor/name` form. */
     readonly id: string;
+    /**
+     * Opt in to standalone Type scopes. Providers without this flag retain the
+     * pre-Type attached-row behavior and are never queried from a Type list.
+     */
+    readonly supportsTypeScope?: boolean;
     getRows(
         context: NavigatorRowProviderContext,
         options: NavigatorRowProviderOptions

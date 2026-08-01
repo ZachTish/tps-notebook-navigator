@@ -10,7 +10,8 @@ const scope: NavigatorRowScope = {
     selectionType: null,
     selectedFolderPath: null,
     selectedTag: null,
-    selectedProperty: null
+    selectedProperty: null,
+    selectedType: null
 };
 const selection: NavigatorRowProviderSelection = {
     enabledProviderIds: ['tps/example']
@@ -61,6 +62,26 @@ describe('resolveProviderRowsForRender', () => {
                 selection: { ...selection },
                 revision: 1
             })
+        ).toEqual([]);
+    });
+
+    it('does not retain rows when a different Type is selected over the same source paths', () => {
+        const taskScope: NavigatorRowScope = {
+            ...scope,
+            selectionType: 'type',
+            selectedType: 'structural:task'
+        };
+        const headingScope: NavigatorRowScope = {
+            ...scope,
+            selectionType: 'type',
+            selectedType: 'structural:heading'
+        };
+
+        expect(
+            resolveProviderRowsForRender(
+                { scope: taskScope, selection, revision: 1, rows },
+                { scope: headingScope, selection, revision: 1 }
+            )
         ).toEqual([]);
     });
 });

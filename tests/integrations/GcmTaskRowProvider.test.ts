@@ -52,7 +52,14 @@ function task(path: string, lineNumber: number, title: string, isComplete = fals
 function createApp(api: GcmTaskApiLike | null, enabled = true): { app: App; workspace: EventBus; vault: EventBus } {
     const workspace = new EventBus();
     const vault = new EventBus();
-    const plugin = api ? { api: { tasks: api } } : null;
+    const plugin = api
+        ? {
+              api: {
+                  tasks: api,
+                  taskCheckboxes: { version: 1, stateForStatus: (status: unknown) => (status === 'complete' ? '[x]' : '[ ]') }
+              }
+          }
+        : null;
     const app = {
         workspace,
         vault,
@@ -75,7 +82,14 @@ function setGcmApi(app: App, api: GcmTaskApiLike | null, enabled: boolean): void
             };
         }
     ).plugins;
-    const plugin = api ? { api: { tasks: api } } : null;
+    const plugin = api
+        ? {
+              api: {
+                  tasks: api,
+                  taskCheckboxes: { version: 1, stateForStatus: (status: unknown) => (status === 'complete' ? '[x]' : '[ ]') }
+              }
+          }
+        : null;
     if (enabled) {
         manager.enabledPlugins.add(TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID);
     } else {
@@ -93,7 +107,8 @@ function context(app: App, visibleFilePaths: string[]) {
             selectionType: null,
             selectedFolderPath: null,
             selectedTag: null,
-            selectedProperty: null
+            selectedProperty: null,
+            selectedType: null
         }
     };
 }
@@ -136,14 +151,19 @@ describe('GcmTaskRowProvider', () => {
         });
     });
 
-    it('changes task checkbox state through the optional GCM mutation API', async () => {
-        const list = vi.fn(async () => [task('Notes/one.md', 4, 'First')]);
-        const setCheckbox = vi.fn(async () => ({ ok: true, changed: true }));
+    it('changes task checkbox state through the canonical GCM completion API', async () => {
+        const sourceTask = task('Notes/one.md', 4, 'First');
+        const list = vi.fn(async () => [sourceTask]);
+        const setCompletion = vi.fn(async (_ref: GcmTaskRecordLike, completed: boolean) => ({
+            ok: true,
+            changed: true,
+            task: { ...sourceTask, isComplete: completed }
+        }));
         const api = {
             version: 1,
             list,
             focus: vi.fn(async () => true),
-            setCheckbox
+            setCompletion
         } satisfies GcmTaskApiLike;
         const { app } = createApp(api);
         const provider = new GcmTaskRowProvider();
@@ -153,18 +173,18 @@ describe('GcmTaskRowProvider', () => {
 
         expect(onChange).toBeTypeOf('function');
         await onChange?.(true);
-        expect(setCheckbox).toHaveBeenCalledWith(
+        expect(setCompletion).toHaveBeenCalledWith(
             {
                 path: 'Notes/one.md',
                 lineNumber: 4,
                 rawLine: '- [ ] First',
                 title: 'First'
             },
-            'x'
+            true
         );
 
         await onChange?.(false);
-        expect(setCheckbox).toHaveBeenLastCalledWith(expect.any(Object), ' ');
+        expect(setCompletion).toHaveBeenLastCalledWith(expect.any(Object), false);
     });
 
     it('surfaces GCM mutation failures instead of leaving an optimistic checkbox committed', async () => {

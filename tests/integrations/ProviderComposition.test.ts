@@ -11,7 +11,7 @@ import {
 import type { GcmTaskApiLike, GcmTaskRecordLike } from '../../src/integrations/gcm/gcmTaskApi';
 import { NavigatorRowProviderRegistry } from '../../src/services/rows/NavigatorRowProviderRegistry';
 import { composeProviderRows } from '../../src/services/rows/composeProviderRows';
-import { mergeProviderRowsIntoList } from '../../src/services/rows/providerListItems';
+import { buildStandaloneProviderListItems, mergeProviderRowsIntoList } from '../../src/services/rows/providerListItems';
 import { mergeNavigatorRowProviderSelections } from '../../src/services/rows/providerSelections';
 import type { NavigatorRowContextMenuContext } from '../../src/services/rows/types';
 import { ListPaneItemType } from '../../src/types';
@@ -56,8 +56,12 @@ describe('built-in and external row provider composition', () => {
                 })
         );
         const focus = vi.fn(async () => true);
-        const setCheckbox = vi.fn(async () => ({ ok: true, changed: true }));
-        const app = createApp({ version: 1, list, focus, setCheckbox });
+        const setCompletion = vi.fn(async () => ({
+            ok: true,
+            changed: true,
+            task: { ...task(), marker: 'x', checkbox: '[x]', status: 'complete', isComplete: true }
+        }));
+        const app = createApp({ version: 1, list, focus, setCompletion });
         const contextMenu = vi.fn((_context: NavigatorRowContextMenuContext) => undefined);
         const registry = new NavigatorRowProviderRegistry();
         registry.register(new GcmTaskRowProvider());
@@ -88,7 +92,8 @@ describe('built-in and external row provider composition', () => {
                     selectionType: null,
                     selectedFolderPath: null,
                     selectedTag: null,
-                    selectedProperty: null
+                    selectedProperty: null,
+                    selectedType: null
                 }
             },
             selection,
@@ -121,14 +126,15 @@ describe('built-in and external row provider composition', () => {
             rawLine: '- [ ] Review navigator',
             title: 'Review navigator'
         });
-        expect(setCheckbox).toHaveBeenCalledWith(expect.objectContaining({ path: SOURCE_PATH, lineNumber: 4 }), 'x');
+        expect(setCompletion).toHaveBeenCalledWith(expect.objectContaining({ path: SOURCE_PATH, lineNumber: 4 }), true);
 
         const externalContext = {
             providerId: EXTERNAL_PROVIDER_ID,
             rowId: 'open-related',
             kind: 'example/action',
             sourcePath: SOURCE_PATH,
-            addItem: vi.fn((_configure: (item: MenuItem) => void) => undefined)
+            addItem: vi.fn((_configure: (item: MenuItem) => void) => undefined),
+            addSeparator: vi.fn(() => undefined)
         };
         rows[1]?.contextMenu?.(externalContext);
         expect(contextMenu).toHaveBeenCalledWith(externalContext);
@@ -144,6 +150,57 @@ describe('built-in and external row provider composition', () => {
             `provider:${GCM_TASK_ROW_PROVIDER_ID}:${SOURCE_PATH}:4`,
             `provider:${EXTERNAL_PROVIDER_ID}:open-related`,
             'bottom'
+        ]);
+    });
+
+    it('keeps native Type rows standalone and queries only Type-capable external providers', async () => {
+        const list = vi.fn(async () => [task()]);
+        const app = createApp({ version: 1, list, focus: vi.fn(async () => true) });
+        const externalGetRows = vi.fn(async () => [
+            {
+                id: 'related',
+                kind: 'example/related',
+                label: 'Related record',
+                sourcePath: SOURCE_PATH
+            }
+        ]);
+        const registry = new NavigatorRowProviderRegistry();
+        registry.register(new GcmTaskRowProvider());
+        registry.register({ id: EXTERNAL_PROVIDER_ID, supportsTypeScope: true, getRows: externalGetRows });
+        const selection = mergeNavigatorRowProviderSelections(
+            createGcmTaskRowProviderSelection({ enabled: true, includeCompleted: false, maxRowsPerFile: 10 }),
+            { enabledProviderIds: [EXTERNAL_PROVIDER_ID] }
+        );
+        const typeContext = {
+            app,
+            scope: {
+                visibleFilePaths: [SOURCE_PATH],
+                selectionType: 'type',
+                selectedFolderPath: null,
+                selectedTag: null,
+                selectedProperty: null,
+                selectedType: 'structural:task'
+            }
+        } as const;
+
+        const contributedRows = await composeProviderRows({ registry, context: typeContext, selection });
+        const nativeTypeRow = {
+            providerId: 'tps/entity-types',
+            id: 'structural:task:block:one',
+            kind: 'tps/entity-type/task',
+            label: 'Review navigator',
+            sourcePath: SOURCE_PATH,
+            sourceLineNumber: 4
+        };
+        const listItems = buildStandaloneProviderListItems([nativeTypeRow, ...contributedRows]);
+
+        expect(list).not.toHaveBeenCalled();
+        expect(externalGetRows).toHaveBeenCalledWith(typeContext, {});
+        expect(listItems.map(item => item.key)).toEqual([
+            'top-spacer',
+            'provider:tps/entity-types:structural:task:block:one',
+            `provider:${EXTERNAL_PROVIDER_ID}:related`,
+            'bottom-spacer'
         ]);
     });
 });

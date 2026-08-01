@@ -37,7 +37,22 @@ export interface TpsNavigatorTypeRecord {
     lineNumber?: number;
     locatorKey: string;
     referenceTarget: string;
+    /** Live task state, present only when GCM can hydrate this task line exactly. */
+    task?: TpsNavigatorTypeTaskState;
     checked?: boolean;
+}
+
+export interface TpsNavigatorTypeTaskState {
+    /** Zero-based source line used by GCM's task API. */
+    lineNumber: number;
+    rawLine: string;
+    title: string;
+    checkbox: string;
+    marker: string;
+    status: string;
+    isComplete: boolean;
+    canMutateCheckbox: boolean;
+    hasContextMenu: boolean;
 }
 
 export type TpsNavigatorTypesAvailability = 'loading' | 'ready' | 'unavailable' | 'error';

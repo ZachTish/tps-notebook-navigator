@@ -477,9 +477,13 @@ const { rowVirtualizer, scrollContainerRefCallback, requestScroll } = useNavigat
 - `useListPaneData` emits `ListPaneItem[]` composed of top/bottom spacers, header spacers, group headers (`pinned`,
   `date`, `folder`, `section`, and `manual-sort-custom`), and file items with pinned and hidden flags plus lookup maps
   (`filePathToIndex`, `fileIndexMap`).
+- A Type selection instead builds native entity rows from the GCM Entity Index, followed once by external providers that explicitly set `supportsTypeScope: true`. Its provider scope contains the opaque selected Type id and deduplicated paths from the searched native rows; attached-list providers are excluded to prevent duplicate task rows.
+- Hydrated task-backed Type rows reuse `NavigatorProviderRow` for live checkbox state, optimistic rollback, exact-line activation, and guarded GCM task actions. The menu bridge exposes only queued item/separator operations, and task/file events refresh hydration even when the Entity Index identity is unchanged.
+- Task hydration batches up to 64 uncached source paths per GCM call with four batches in flight. A 2,048-path LRU keyed by source mtime/size avoids repeat parsing; per-path generations and explicit GCM/vault/mutation invalidation prevent in-flight or failed reads from becoming stale cache entries.
 - `useListPaneScroll` feeds `listItems` into `useVirtualizer`, calculating heights with `getListPaneMeasurements`,
   preview availability (`hasPreview`), search metadata, and appearance settings. The current implementation uses
   `scrollMargin: 0`; the calendar overlay is handled by a follow-up `scrollToIndex` when its height changes.
+- Provider rows reserve an explicit 54 px desktop or 57 px mobile height, and their virtual wrapper binds that value through `--item-height`; mobile checkbox, open, and More controls maintain 44 px touch targets.
 - The hook maintains a single pending scroll request with ranked priorities, from lowest to highest: `top`,
   `list-structure-change`, `visibility-change`, `folder-navigation`, then `reveal`. It executes the selected request
   after the index version matches the expected rebuild.

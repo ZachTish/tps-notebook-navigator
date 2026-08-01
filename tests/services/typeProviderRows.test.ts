@@ -42,6 +42,8 @@ function buildRows(options?: {
     message?: string;
     searchQuery?: string;
     activate?: (record: TpsNavigatorTypeRecord) => Promise<TypeRecordActivationResult>;
+    setTaskCheckbox?: (record: TpsNavigatorTypeRecord, checked: boolean) => Promise<{ ok: boolean; reason?: string }>;
+    addTaskContextMenuItems?: (menu: { addItem: () => unknown; addSeparator: () => unknown }, record: TpsNavigatorTypeRecord) => boolean;
     onActivationFailure?: (record: TpsNavigatorTypeRecord, result: TypeRecordActivationResult) => void;
 }) {
     return buildTypeProviderRows({
@@ -49,6 +51,8 @@ function buildRows(options?: {
         selectedType: projectTypeId,
         searchQuery: options?.searchQuery ?? '',
         activate: options?.activate ?? (async () => ({ ok: true })),
+        setTaskCheckbox: options?.setTaskCheckbox ?? (async () => ({ ok: true })),
+        addTaskContextMenuItems: options?.addTaskContextMenuItems ?? (() => true),
         onActivationFailure: options?.onActivationFailure ?? (() => undefined)
     });
 }
@@ -146,9 +150,95 @@ describe('buildTypeProviderRows', () => {
             selectedType: TPS_NAVIGATOR_TYPE_IDS.HEADINGS,
             searchQuery: '',
             activate: async () => ({ ok: true }),
+            setTaskCheckbox: async () => ({ ok: true }),
+            addTaskContextMenuItems: () => true,
             onActivationFailure: () => undefined
         });
 
         expect(rows).toEqual([]);
+    });
+
+    it('decorates hydrated task records in structural and dynamic Kind collections with live GCM controls', async () => {
+        const task = createRecord({
+            id: 'task-one',
+            label: 'Ship it',
+            sourcePath: 'Tasks/Today.md',
+            entityType: 'block',
+            lineKind: 'task',
+            lineNumber: 4,
+            locatorKey: 'block:task-one',
+            task: {
+                lineNumber: 3,
+                rawLine: '- [ ] Ship it',
+                title: 'Ship it',
+                checkbox: '[ ]',
+                marker: ' ',
+                status: 'todo',
+                isComplete: false,
+                canMutateCheckbox: true,
+                hasContextMenu: true
+            }
+        });
+        const setTaskCheckbox = vi.fn(async () => ({ ok: true }) as const);
+        const addTaskContextMenuItems = vi.fn(() => true);
+        const rows = buildRows({ records: [task], setTaskCheckbox, addTaskContextMenuItems });
+
+        expect(rows[0].indicator).toMatchObject({ type: 'checkbox', checked: false, marker: ' ' });
+        await rows[0].indicator?.onChange?.(true);
+        expect(setTaskCheckbox).toHaveBeenCalledWith(task, true);
+
+        const menu = { addItem: vi.fn(), addSeparator: vi.fn() };
+        rows[0].contextMenu?.({
+            providerId: rows[0].providerId,
+            rowId: rows[0].id,
+            kind: rows[0].kind,
+            sourcePath: rows[0].sourcePath,
+            sourceLineNumber: rows[0].sourceLineNumber,
+            ...menu
+        });
+        expect(addTaskContextMenuItems).toHaveBeenCalledWith(menu, task);
+    });
+
+    it('keeps non-task and unhydrated task records open-only', () => {
+        const bullet = createRecord({ entityType: 'block', lineKind: 'bullet', lineNumber: 2 });
+        const unhydratedTask = createRecord({
+            id: 'task',
+            locatorKey: 'block:task',
+            entityType: 'block',
+            lineKind: 'task',
+            lineNumber: 3
+        });
+
+        const rows = buildRows({ records: [bullet, unhydratedTask] });
+        expect(rows).toHaveLength(2);
+        rows.forEach(row => {
+            expect(row.indicator).toBeUndefined();
+            expect(row.contextMenu).toBeUndefined();
+        });
+    });
+
+    it('surfaces a task mutation failure so the shared optimistic checkbox UI can roll back', async () => {
+        const task = createRecord({
+            entityType: 'block',
+            lineKind: 'task',
+            lineNumber: 2,
+            task: {
+                lineNumber: 1,
+                rawLine: '- [ ] Ship it',
+                title: 'Ship it',
+                checkbox: '[ ]',
+                marker: ' ',
+                status: 'todo',
+                isComplete: false,
+                canMutateCheckbox: true,
+                hasContextMenu: false
+            }
+        });
+        const rows = buildRows({
+            records: [task],
+            setTaskCheckbox: async () => ({ ok: false, reason: 'Task moved' })
+        });
+
+        await expect(rows[0].indicator?.onChange?.(true)).rejects.toThrow('Task moved');
     });
 });

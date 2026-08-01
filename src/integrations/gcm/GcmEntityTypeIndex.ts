@@ -6,7 +6,7 @@
  * to finish indexing a Markdown source.
  */
 
-import type { App, TFile } from 'obsidian';
+import { normalizePath, type App, type TFile } from 'obsidian';
 import { TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID } from '../../constants/tpsIdentity';
 import {
     TPS_NAVIGATOR_STRUCTURAL_TYPES,
@@ -19,6 +19,18 @@ import {
     type TpsNavigatorTypeRecord,
     type TpsNavigatorTypesSnapshot
 } from '../../types/navigatorTypes';
+import {
+    isGcmTaskRecord,
+    resolveGcmTaskApiFromPluginApi,
+    resolveGcmTaskCheckboxesApiFromPluginApi,
+    resolveGcmTaskLinesApiFromPluginApi,
+    type GcmTaskApiLike,
+    type GcmTaskCheckboxesApiLike,
+    type GcmTaskLinesApiLike,
+    type GcmTaskMenuLike,
+    type GcmTaskMutationResultLike,
+    type GcmTaskRecordLike
+} from './gcmTaskApi';
 
 export const GCM_ENTITY_INDEX_API_VERSION = 3;
 export const GCM_ENTITY_INDEX_KIND_DIMENSION = 'kind';
@@ -26,6 +38,22 @@ export const GCM_ENTITY_INDEX_KIND_DIMENSION = 'kind';
 const SYNTHETIC_STRUCTURAL_KIND_VALUES = new Set(['task', 'bullet', 'heading']);
 const EMPTY_DESCRIPTORS = Object.freeze([]) as readonly TpsNavigatorTypeDescriptor[];
 const EMPTY_RECORDS_BY_TYPE = new Map<TpsNavigatorTypeId, readonly TpsNavigatorTypeRecord[]>();
+const EMPTY_TASKS_BY_LOCATOR = new Map<string, GcmTaskRecordLike>();
+export const GCM_TYPE_TASK_QUERY_PATHS_PER_BATCH = 64;
+export const GCM_TYPE_TASK_QUERY_CONCURRENCY = 4;
+export const GCM_TYPE_TASK_CACHE_MAX_PATHS = 2_048;
+const GCM_TYPE_TASK_METADATA_MAX_PATHS = GCM_TYPE_TASK_CACHE_MAX_PATHS * 2;
+
+interface TaskHydrationCacheEntry {
+    readonly fingerprint: string;
+    readonly tasks: readonly GcmTaskRecordLike[];
+}
+
+interface TaskHydrationRequest {
+    readonly path: string;
+    readonly fingerprint: string;
+    readonly generation: number;
+}
 
 export type GcmEntityIndexEntityType = 'note' | 'block';
 export type GcmEntityIndexLineKind = 'task' | 'bullet' | 'heading';
@@ -131,6 +159,14 @@ export type GcmEntityActivationResult =
       };
 
 export type GcmEntityIndexRevisionListener = (revision: number) => void;
+
+export type GcmEntityTaskMutationResult =
+    | { readonly ok: true }
+    | {
+          readonly ok: false;
+          readonly reason: 'invalid-record' | 'gcm-unavailable' | 'stale-locator' | 'missing-file' | 'task-unavailable' | 'mutation-failed';
+          readonly error?: unknown;
+      };
 
 export interface GcmApiChangedPayloadLike {
     readonly source: 'tps-global-context-menu';
@@ -297,7 +333,12 @@ function matchesType(record: GcmEntityIndexRecordLike, typeId: TpsNavigatorTypeI
     return kind !== null && !SYNTHETIC_STRUCTURAL_KIND_VALUES.has(normalizeIdentity(kind)) && hasDimensionValue(record, 'kind', kind);
 }
 
-function toNavigatorRecord(record: GcmEntityIndexRecordLike, typeId: TpsNavigatorTypeId): TpsNavigatorTypeRecord {
+function toNavigatorRecord(
+    record: GcmEntityIndexRecordLike,
+    typeId: TpsNavigatorTypeId,
+    task: GcmTaskRecordLike | undefined,
+    capabilities: { canMutateCheckbox: boolean; hasContextMenu: boolean }
+): TpsNavigatorTypeRecord {
     const label = record.displayName.trim() || record.name.trim() || record.basename.trim() || record.sourcePath;
     return Object.freeze({
         id: record.id,
@@ -308,7 +349,23 @@ function toNavigatorRecord(record: GcmEntityIndexRecordLike, typeId: TpsNavigato
         ...(record.lineKind ? { lineKind: record.lineKind } : {}),
         ...(record.lineNumber !== undefined ? { lineNumber: record.lineNumber } : {}),
         locatorKey: record.locatorKey,
-        referenceTarget: record.referenceTarget
+        referenceTarget: record.referenceTarget,
+        ...(task
+            ? {
+                  task: Object.freeze({
+                      lineNumber: task.lineNumber,
+                      rawLine: task.rawLine,
+                      title: task.title,
+                      checkbox: task.checkbox,
+                      marker: task.marker,
+                      status: task.status,
+                      isComplete: task.isComplete,
+                      canMutateCheckbox: capabilities.canMutateCheckbox,
+                      hasContextMenu: capabilities.hasContextMenu
+                  }),
+                  checked: task.isComplete
+              }
+            : {})
     });
 }
 
@@ -412,7 +469,12 @@ function unavailableSnapshot(issue: GcmEntityIndexIssue): GcmEntityTypeIndexSnap
 function buildSnapshot(
     records: readonly GcmEntityIndexRecordLike[],
     kindValues: readonly string[],
-    revision: number
+    revision: number,
+    tasksByLocator: ReadonlyMap<string, GcmTaskRecordLike> = EMPTY_TASKS_BY_LOCATOR,
+    capabilities: { canMutateCheckbox: boolean; hasContextMenu: boolean } = {
+        canMutateCheckbox: false,
+        hasContextMenu: false
+    }
 ): GcmEntityTypeIndexSnapshot {
     const descriptorDefinitions = [...TPS_NAVIGATOR_STRUCTURAL_TYPES, ...createKindDescriptors(kindValues)];
     const mutableRecords = new Map<TpsNavigatorTypeId, TpsNavigatorTypeRecord[]>();
@@ -430,7 +492,9 @@ function buildSnapshot(
     for (const record of records) {
         const structuralType = getStructuralTypeId(record);
         if (structuralType) {
-            mutableRecords.get(structuralType)?.push(toNavigatorRecord(record, structuralType));
+            mutableRecords
+                .get(structuralType)
+                ?.push(toNavigatorRecord(record, structuralType, tasksByLocator.get(record.locatorKey), capabilities));
         }
         const matchedKindTypes = new Set<TpsNavigatorTypeId>();
         for (const kindValue of getDimensionValues(record, GCM_ENTITY_INDEX_KIND_DIMENSION)) {
@@ -439,7 +503,7 @@ function buildSnapshot(
                 continue;
             }
             matchedKindTypes.add(typeId);
-            mutableRecords.get(typeId)?.push(toNavigatorRecord(record, typeId));
+            mutableRecords.get(typeId)?.push(toNavigatorRecord(record, typeId, tasksByLocator.get(record.locatorKey), capabilities));
         }
     }
 
@@ -514,10 +578,17 @@ function findEditor(workspace: WorkspaceLike, preferredLeaf: WorkspaceLeafLike, 
  */
 export class GcmEntityTypeIndexAdapter {
     private api: GcmEntityIndexApiLike | null = null;
+    private taskApi: GcmTaskApiLike | null = null;
+    private taskCheckboxesApi: GcmTaskCheckboxesApiLike | null = null;
+    private taskLinesApi: GcmTaskLinesApiLike | null = null;
     private connectionIssue: GcmEntityIndexIssue | null = null;
     private unregisterDimension: (() => void) | null = null;
     private unsubscribeRevision: (() => void) | null = null;
     private readonly revisionListeners = new Set<GcmEntityIndexRevisionListener>();
+    private readonly taskHydrationCache = new Map<string, TaskHydrationCacheEntry>();
+    private readonly taskPathGenerations = new Map<string, number>();
+    private readonly dirtyTaskPaths = new Set<string>();
+    private taskHydrationEpoch = 0;
 
     constructor(private readonly app: App) {}
 
@@ -543,12 +614,23 @@ export class GcmEntityTypeIndexAdapter {
             };
             return true;
         }
-        this.connect(api);
+        this.connect(api, {
+            taskApi: resolveGcmTaskApiFromPluginApi(payload.api),
+            taskCheckboxesApi: resolveGcmTaskCheckboxesApiFromPluginApi(payload.api),
+            taskLinesApi: resolveGcmTaskLinesApiFromPluginApi(payload.api)
+        });
         return true;
     }
 
     /** Swaps registrations safely when GCM publishes a new API instance. */
-    connect(candidate: unknown): boolean {
+    connect(
+        candidate: unknown,
+        capabilities: {
+            taskApi?: GcmTaskApiLike | null;
+            taskCheckboxesApi?: GcmTaskCheckboxesApiLike | null;
+            taskLinesApi?: GcmTaskLinesApiLike | null;
+        } = {}
+    ): boolean {
         if (!isGcmEntityIndexApiLike(candidate)) {
             this.releaseApi();
             this.connectionIssue = {
@@ -559,6 +641,10 @@ export class GcmEntityTypeIndexAdapter {
         }
         const api = candidate;
         if (this.api === api) {
+            this.resetTaskHydrationCache();
+            this.taskApi = capabilities.taskApi ?? null;
+            this.taskCheckboxesApi = capabilities.taskCheckboxesApi ?? null;
+            this.taskLinesApi = capabilities.taskLinesApi ?? null;
             return true;
         }
 
@@ -603,6 +689,9 @@ export class GcmEntityTypeIndexAdapter {
         }
 
         this.api = api;
+        this.taskApi = capabilities.taskApi ?? null;
+        this.taskCheckboxesApi = capabilities.taskCheckboxesApi ?? null;
+        this.taskLinesApi = capabilities.taskLinesApi ?? null;
         this.unregisterDimension = unregisterDimension;
         this.unsubscribeRevision = unsubscribeRevision;
         this.connectionIssue = null;
@@ -627,6 +716,24 @@ export class GcmEntityTypeIndexAdapter {
         }
     }
 
+    /** Invalidates cached task hydration for exact source paths, or all paths when omitted. */
+    invalidateTaskPaths(paths?: readonly string[]): void {
+        const normalizedPaths = paths ? [...new Set(paths.map(path => normalizePath(String(path ?? '').trim())).filter(Boolean))] : [];
+        if (normalizedPaths.length === 0) {
+            this.resetTaskHydrationCache();
+            return;
+        }
+
+        for (const path of normalizedPaths) {
+            if (!this.taskPathGenerations.has(path) && this.taskPathGenerations.size >= GCM_TYPE_TASK_METADATA_MAX_PATHS) {
+                this.resetTaskHydrationCache();
+            }
+            this.taskHydrationCache.delete(path);
+            this.dirtyTaskPaths.add(path);
+            this.taskPathGenerations.set(path, (this.taskPathGenerations.get(path) ?? 0) + 1);
+        }
+    }
+
     async loadSnapshot(): Promise<GcmEntityTypeIndexSnapshot> {
         if (!this.api) {
             return unavailableSnapshot(
@@ -641,7 +748,8 @@ export class GcmEntityTypeIndexAdapter {
             await api.ensureReady();
             const records = asRecordArray(await api.queryAsync({}));
             const kindValues = api.getDimensionValues(GCM_ENTITY_INDEX_KIND_DIMENSION);
-            return buildSnapshot(records, kindValues, safeRevision(api));
+            const tasksByLocator = await this.hydrateTasks(records);
+            return buildSnapshot(records, kindValues, safeRevision(api), tasksByLocator, this.getTaskCapabilities());
         } catch (error) {
             return unavailableSnapshot(issueFromError(error));
         }
@@ -674,9 +782,10 @@ export class GcmEntityTypeIndexAdapter {
         const api = this.api;
         try {
             await api.ensureReady();
-            const records = asRecordArray(await api.queryAsync(query))
-                .filter(record => matchesType(record, typeId))
-                .map(record => toNavigatorRecord(record, typeId))
+            const matchingRecords = asRecordArray(await api.queryAsync(query)).filter(record => matchesType(record, typeId));
+            const tasksByLocator = await this.hydrateTasks(matchingRecords);
+            const records = matchingRecords
+                .map(record => toNavigatorRecord(record, typeId, tasksByLocator.get(record.locatorKey), this.getTaskCapabilities()))
                 .sort(compareNavigatorRecords);
             return {
                 ok: true,
@@ -750,6 +859,144 @@ export class GcmEntityTypeIndexAdapter {
         return { ok: true, sourcePath, lineNumber: Number(lineNumber) };
     }
 
+    /** Re-resolves the entity and current task before changing its checkbox. */
+    async setTaskCheckbox(record: TpsNavigatorTypeRecord, checked: boolean): Promise<GcmEntityTaskMutationResult> {
+        if (!record?.task || record.lineKind !== 'task' || !isTpsNavigatorTypeId(record.typeId)) {
+            return { ok: false, reason: 'invalid-record' };
+        }
+        const entityApi = this.api;
+        const taskApi = this.taskApi;
+        const taskCheckboxesApi = this.taskCheckboxesApi;
+        const canSetCompletion = typeof taskApi?.setCompletion === 'function';
+        const canSetMappedCheckbox = typeof taskApi?.setCheckbox === 'function' && taskCheckboxesApi !== null;
+        if (!entityApi || !taskApi || (!canSetCompletion && !canSetMappedCheckbox)) {
+            return { ok: false, reason: 'gcm-unavailable' };
+        }
+
+        const current = this.resolveCurrentTaskEntity(record, entityApi);
+        if (!current) {
+            return { ok: false, reason: 'stale-locator' };
+        }
+        const file = this.app.vault.getFileByPath(normalizePath(current.sourcePath));
+        if (!isMarkdownFile(file)) {
+            return { ok: false, reason: 'missing-file' };
+        }
+
+        try {
+            const currentTasks = await taskApi.list({
+                paths: [file.path],
+                includeCompleted: true,
+                maxResults: Number.MAX_SAFE_INTEGER
+            });
+            const currentLineIndex = Number(current.lineNumber) - 1;
+            const task = currentTasks.find(
+                candidate =>
+                    isGcmTaskRecord(candidate) && normalizePath(candidate.path) === file.path && candidate.lineNumber === currentLineIndex
+            );
+            if (!task) {
+                return { ok: false, reason: 'task-unavailable' };
+            }
+
+            // An API swap or locator movement during the async read must not write.
+            if (this.api !== entityApi || this.taskApi !== taskApi || this.taskCheckboxesApi !== taskCheckboxesApi) {
+                return { ok: false, reason: 'gcm-unavailable' };
+            }
+            const latest = this.resolveCurrentTaskEntity(record, entityApi);
+            if (!latest || normalizePath(latest.sourcePath) !== file.path || Number(latest.lineNumber) - 1 !== currentLineIndex) {
+                return { ok: false, reason: 'stale-locator' };
+            }
+
+            let result: GcmTaskMutationResultLike;
+            if (canSetCompletion && taskApi.setCompletion) {
+                result = await taskApi.setCompletion(task, checked);
+            } else if (taskApi.setCheckbox && taskCheckboxesApi) {
+                result = await taskApi.setCheckbox(task, taskCheckboxesApi.stateForStatus(checked ? 'complete' : 'todo'));
+            } else {
+                return { ok: false, reason: 'gcm-unavailable' };
+            }
+            if (!result || result.ok !== true) {
+                return { ok: false, reason: 'mutation-failed', error: result?.error };
+            }
+            let effectiveTask = isGcmTaskRecord(result.task) ? result.task : null;
+            if (!effectiveTask && typeof taskApi.get === 'function') {
+                effectiveTask = await taskApi.get(task);
+            }
+            if (!effectiveTask) {
+                const verifiedTasks = await taskApi.list({
+                    paths: [file.path],
+                    includeCompleted: true,
+                    maxResults: Number.MAX_SAFE_INTEGER
+                });
+                effectiveTask =
+                    verifiedTasks.find(
+                        candidate =>
+                            isGcmTaskRecord(candidate) &&
+                            normalizePath(candidate.path) === file.path &&
+                            candidate.lineNumber === currentLineIndex
+                    ) ?? null;
+            }
+            if (!effectiveTask || effectiveTask.isComplete !== checked) {
+                return {
+                    ok: false,
+                    reason: 'mutation-failed',
+                    error: 'TPS Global Context Menu returned an unexpected task completion state.'
+                };
+            }
+            return { ok: true };
+        } catch (error) {
+            return { ok: false, reason: 'mutation-failed', error };
+        }
+    }
+
+    /** Adds GCM's canonical task actions through Navigator's restricted menu facade. */
+    addTaskContextMenuItems(menu: GcmTaskMenuLike, record: TpsNavigatorTypeRecord): boolean {
+        if (!record?.task || record.lineKind !== 'task' || !isTpsNavigatorTypeId(record.typeId)) {
+            return false;
+        }
+        const entityApi = this.api;
+        const taskLinesApi = this.taskLinesApi;
+        if (!entityApi || !taskLinesApi || typeof menu?.addItem !== 'function' || typeof menu?.addSeparator !== 'function') {
+            return false;
+        }
+        const current = this.resolveCurrentTaskEntity(record, entityApi);
+        if (
+            !current ||
+            normalizePath(current.sourcePath) !== normalizePath(record.sourcePath) ||
+            Number(current.lineNumber) - 1 !== record.task.lineNumber
+        ) {
+            return false;
+        }
+        const file = this.app.vault.getFileByPath(normalizePath(current.sourcePath));
+        if (!isMarkdownFile(file)) {
+            return false;
+        }
+
+        try {
+            taskLinesApi.addMenuItems(
+                menu,
+                {
+                    file,
+                    lineNumber: record.task.lineNumber + 1,
+                    lineIndex: record.task.lineNumber,
+                    rawLine: record.task.rawLine,
+                    title: record.task.title,
+                    checkboxToken: record.task.checkbox,
+                    isCalendarTask: false,
+                    calendarAllDay: false
+                },
+                { includeTags: true }
+            );
+            return true;
+        } catch (error) {
+            console.warn('[TPS Notebook Navigator] GCM task context menu could not be built', {
+                sourcePath: record.sourcePath,
+                lineNumber: record.lineNumber,
+                error
+            });
+            return false;
+        }
+    }
+
     dispose(): void {
         this.releaseApi();
         this.revisionListeners.clear();
@@ -760,6 +1007,10 @@ export class GcmEntityTypeIndexAdapter {
         const unsubscribeRevision = this.unsubscribeRevision;
         const unregisterDimension = this.unregisterDimension;
         this.api = null;
+        this.taskApi = null;
+        this.taskCheckboxesApi = null;
+        this.taskLinesApi = null;
+        this.resetTaskHydrationCache();
         this.unsubscribeRevision = null;
         this.unregisterDimension = null;
         try {
@@ -771,6 +1022,175 @@ export class GcmEntityTypeIndexAdapter {
             unregisterDimension?.();
         } catch {
             // Best-effort cleanup of a foreign optional API.
+        }
+    }
+
+    private getTaskCapabilities(): { canMutateCheckbox: boolean; hasContextMenu: boolean } {
+        return {
+            canMutateCheckbox:
+                typeof this.taskApi?.setCompletion === 'function' ||
+                (typeof this.taskApi?.setCheckbox === 'function' && this.taskCheckboxesApi !== null),
+            hasContextMenu: this.taskLinesApi !== null
+        };
+    }
+
+    private async hydrateTasks(records: readonly GcmEntityIndexRecordLike[]): Promise<ReadonlyMap<string, GcmTaskRecordLike>> {
+        const taskApi = this.taskApi;
+        const taskEntities = records.filter(
+            record => record.entityType === 'block' && record.lineKind === 'task' && Number.isSafeInteger(record.lineNumber)
+        );
+        if (!taskApi || taskEntities.length === 0) {
+            return EMPTY_TASKS_BY_LOCATOR;
+        }
+
+        const paths = [...new Set(taskEntities.map(record => normalizePath(record.sourcePath)))];
+        const tasksByPath = new Map<string, readonly GcmTaskRecordLike[]>();
+        const requests: TaskHydrationRequest[] = [];
+        const requestEpoch = this.taskHydrationEpoch;
+        for (const path of paths) {
+            const fingerprint = this.getTaskSourceFingerprint(path);
+            const cached = fingerprint ? this.readCachedTaskPath(path, fingerprint) : null;
+            if (cached) {
+                tasksByPath.set(path, cached);
+                continue;
+            }
+            if (fingerprint) {
+                requests.push({ path, fingerprint, generation: this.taskPathGenerations.get(path) ?? 0 });
+            }
+        }
+
+        let failedPathCount = 0;
+        const batches: TaskHydrationRequest[][] = [];
+        for (let offset = 0; offset < requests.length; offset += GCM_TYPE_TASK_QUERY_PATHS_PER_BATCH) {
+            batches.push(requests.slice(offset, offset + GCM_TYPE_TASK_QUERY_PATHS_PER_BATCH));
+        }
+        for (let offset = 0; offset < batches.length; offset += GCM_TYPE_TASK_QUERY_CONCURRENCY) {
+            const concurrentBatches = batches.slice(offset, offset + GCM_TYPE_TASK_QUERY_CONCURRENCY);
+            const settled = await Promise.allSettled(
+                concurrentBatches.map(async batch => {
+                    const tasks = await taskApi.list({
+                        paths: batch.map(request => request.path),
+                        includeCompleted: true,
+                        maxResults: Number.MAX_SAFE_INTEGER
+                    });
+                    if (!Array.isArray(tasks)) {
+                        throw new Error('GCM task list returned an invalid result.');
+                    }
+                    return { batch, tasks };
+                })
+            );
+            settled.forEach((result, resultIndex) => {
+                if (result.status === 'rejected') {
+                    const failedBatch = concurrentBatches[resultIndex];
+                    failedPathCount += failedBatch?.length ?? 0;
+                    return;
+                }
+                if (this.taskApi !== taskApi || this.taskHydrationEpoch !== requestEpoch) {
+                    return;
+                }
+                const requestedPaths = new Set(result.value.batch.map(request => request.path));
+                const tasksByResultPath = new Map<string, GcmTaskRecordLike[]>();
+                result.value.tasks.filter(isGcmTaskRecord).forEach(task => {
+                    const taskPath = normalizePath(task.path);
+                    if (!requestedPaths.has(taskPath)) {
+                        return;
+                    }
+                    const pathTasks = tasksByResultPath.get(taskPath) ?? [];
+                    pathTasks.push(task);
+                    tasksByResultPath.set(taskPath, pathTasks);
+                });
+                result.value.batch.forEach(request => {
+                    if (
+                        (this.taskPathGenerations.get(request.path) ?? 0) !== request.generation ||
+                        this.getTaskSourceFingerprint(request.path) !== request.fingerprint
+                    ) {
+                        return;
+                    }
+                    const pathTasks = Object.freeze(
+                        [...(tasksByResultPath.get(request.path) ?? [])].sort(
+                            (left, right) => left.lineNumber - right.lineNumber || left.title.localeCompare(right.title)
+                        )
+                    );
+                    tasksByPath.set(request.path, pathTasks);
+                    this.cacheTaskPath(request.path, { fingerprint: request.fingerprint, tasks: pathTasks });
+                    this.dirtyTaskPaths.delete(request.path);
+                });
+            });
+        }
+        if (failedPathCount > 0) {
+            console.warn('[TPS Notebook Navigator] Some Type task states could not be hydrated', {
+                failedPathCount,
+                requestedPathCount: paths.length
+            });
+        }
+
+        const tasksByLocator = new Map<string, GcmTaskRecordLike>();
+        const tasksByLocation = new Map<string, GcmTaskRecordLike>();
+        tasksByPath.forEach((tasks, path) => {
+            tasks.forEach(task => tasksByLocation.set(`${path}\u0000${task.lineNumber}`, task));
+        });
+        taskEntities.forEach(entity => {
+            const task = tasksByLocation.get(`${normalizePath(entity.sourcePath)}\u0000${Number(entity.lineNumber) - 1}`);
+            if (task) {
+                tasksByLocator.set(entity.locatorKey, task);
+            }
+        });
+        return tasksByLocator;
+    }
+
+    private getTaskSourceFingerprint(path: string): string | null {
+        const file = this.app.vault.getFileByPath(path);
+        if (!isMarkdownFile(file)) {
+            return null;
+        }
+        const mtime = Number(file.stat?.mtime);
+        const size = Number(file.stat?.size);
+        return `${Number.isFinite(mtime) ? mtime : 0}:${Number.isFinite(size) ? size : 0}`;
+    }
+
+    private readCachedTaskPath(path: string, fingerprint: string): readonly GcmTaskRecordLike[] | null {
+        const entry = this.taskHydrationCache.get(path);
+        if (!entry || entry.fingerprint !== fingerprint || this.dirtyTaskPaths.has(path)) {
+            if (entry && entry.fingerprint !== fingerprint) {
+                this.invalidateTaskPaths([path]);
+            }
+            return null;
+        }
+        this.taskHydrationCache.delete(path);
+        this.taskHydrationCache.set(path, entry);
+        return entry.tasks;
+    }
+
+    private cacheTaskPath(path: string, entry: TaskHydrationCacheEntry): void {
+        this.taskHydrationCache.delete(path);
+        this.taskHydrationCache.set(path, entry);
+        while (this.taskHydrationCache.size > GCM_TYPE_TASK_CACHE_MAX_PATHS) {
+            const oldestPath = this.taskHydrationCache.keys().next().value;
+            if (typeof oldestPath !== 'string') {
+                break;
+            }
+            this.taskHydrationCache.delete(oldestPath);
+        }
+    }
+
+    private resetTaskHydrationCache(): void {
+        this.taskHydrationEpoch += 1;
+        this.taskHydrationCache.clear();
+        this.taskPathGenerations.clear();
+        this.dirtyTaskPaths.clear();
+    }
+
+    private resolveCurrentTaskEntity(record: TpsNavigatorTypeRecord, api: GcmEntityIndexApiLike): GcmEntityIndexRecordLike | null {
+        try {
+            const current = api.getByLocator(record.locatorKey);
+            return isGcmEntityIndexRecord(current) &&
+                current.entityType === 'block' &&
+                current.lineKind === 'task' &&
+                matchesType(current, record.typeId)
+                ? current
+                : null;
+        } catch {
+            return null;
         }
     }
 }

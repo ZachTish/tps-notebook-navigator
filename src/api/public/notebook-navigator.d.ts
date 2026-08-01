@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 2.4.0
+ * Version: 2.5.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -70,7 +70,7 @@ export type IconValue = string;
  */
 export type TagCollectionId = '__tagged__' | '__untagged__';
 
-export type NavigatorRowSelectionType = 'file' | 'folder' | 'tag' | 'property';
+export type NavigatorRowSelectionType = 'file' | 'folder' | 'tag' | 'property' | 'type';
 export type NavigatorRowProviderOptions = Readonly<Record<string, unknown>>;
 
 export interface NavigatorRowScope {
@@ -79,6 +79,8 @@ export interface NavigatorRowScope {
     readonly selectedFolderPath: string | null;
     readonly selectedTag: string | null;
     readonly selectedProperty: string | null;
+    /** Opaque structural or Kind collection ID when `selectionType` is `type`. */
+    readonly selectedType: string | null;
 }
 
 export interface NavigatorRowProviderContext {
@@ -103,6 +105,8 @@ export interface NavigatorRowContextMenuContext {
     readonly sourceLineNumber?: number;
     /** Add menu items synchronously. Async work belongs inside each item's onClick handler. */
     readonly addItem: (cb: (item: MenuItem) => void) => void;
+    /** Add a separator synchronously between provider-owned menu groups. */
+    readonly addSeparator: () => void;
 }
 
 export interface NavigatorRowDefinition {
@@ -121,6 +125,8 @@ export interface NavigatorRowDefinition {
 
 export interface NavigatorRowProvider {
     readonly id: string;
+    /** Opt in to standalone rows when a Type collection is selected. */
+    readonly supportsTypeScope?: boolean;
     getRows(
         context: NavigatorRowProviderContext,
         options: NavigatorRowProviderOptions
@@ -363,7 +369,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 2.4.0
+ * @version 2.5.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */

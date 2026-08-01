@@ -3,6 +3,7 @@
  */
 
 import type { NavigatorRowProviderRegistry } from './NavigatorRowProviderRegistry';
+import { resolveNavigatorRowProvidersForScope } from './providerScope';
 import {
     NAVIGATOR_ROW_PROVIDER_MAX_ROWS,
     type NavigatorProvidedRow,
@@ -141,7 +142,7 @@ export async function composeProviderRows({
     onFailure,
     onSnapshot
 }: ComposeProviderRowsOptions): Promise<NavigatorProvidedRow[]> {
-    const providers = registry.resolve(selection.enabledProviderIds);
+    const providers = resolveNavigatorRowProvidersForScope(registry, selection.enabledProviderIds, context.scope);
     if (providers.length === 0 || context.scope.visibleFilePaths.length === 0) {
         return [];
     }

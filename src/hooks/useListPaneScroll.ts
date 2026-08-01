@@ -826,7 +826,7 @@ export function useListPaneScroll({
             }
 
             if (item.type === ListPaneItemType.PROVIDER_ROW) {
-                return heights.titleLineHeight + heights.singleTextLineHeight + 12;
+                return heights.providerRowHeight;
             }
 
             return heights.titleLineHeight;

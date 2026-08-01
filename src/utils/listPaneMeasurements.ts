@@ -44,6 +44,7 @@ export interface ListPaneMeasurements {
     titleLineHeight: number;
     singleTextLineHeight: number;
     multilineTextLineHeight: number;
+    providerRowHeight: number;
     tagRowHeight: number;
     featureImageMinHeight: number;
     groupHeaderHeight: number;
@@ -69,6 +70,7 @@ const DESKTOP_MEASUREMENTS: ListPaneMeasurements = Object.freeze({
     titleLineHeight: 20,
     singleTextLineHeight: 19,
     multilineTextLineHeight: 18,
+    providerRowHeight: 54, // Two text lines, 2px gap, 12px padding, and 1px separator
     tagRowHeight: 26, // 22px row + 4px gap
     featureImageMinHeight: 42,
     groupHeaderHeight: 27,
@@ -84,6 +86,7 @@ const MOBILE_MEASUREMENTS: ListPaneMeasurements = Object.freeze({
     titleLineHeight: 21,
     singleTextLineHeight: 20,
     multilineTextLineHeight: 19,
+    providerRowHeight: 57, // Fits a 44px touch target, 12px padding, and 1px separator
     tagRowHeight: 26, // 22px row + 4px gap
     featureImageMinHeight: 42,
     groupHeaderHeight: 35, // 27px + 8px mobile increment

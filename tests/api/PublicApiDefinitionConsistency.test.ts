@@ -486,6 +486,13 @@ describe('public API declaration file', () => {
         expect(Array.from(publicMembers).sort()).toEqual(Array.from(sourceMembers).sort());
     });
 
+    it.each(['NavigatorRowScope', 'NavigatorRowProvider'] as const)('matches public %s members', interfaceName => {
+        const sourceMembers = getInterfaceMemberNames(readSourceFile('src/api/types.ts'), interfaceName);
+        const publicMembers = getInterfaceMemberNames(readSourceFile('src/api/public/notebook-navigator.d.ts'), interfaceName);
+
+        expect(Array.from(publicMembers).sort()).toEqual(Array.from(sourceMembers).sort());
+    });
+
     it('matches critical nested public method signatures', () => {
         const publicFile = readSourceFile('src/api/public/notebook-navigator.d.ts');
         const apiFile = readSourceFile('src/api/NotebookNavigatorAPI.ts');
@@ -629,7 +636,7 @@ describe('public API declaration file', () => {
         const sourceFile = readSourceFile('src/api/types.ts');
         const publicFile = readSourceFile('src/api/public/notebook-navigator.d.ts');
 
-        for (const typeName of ['NavItem', 'NavItemType', 'TagCollectionId', 'PropertyNodeParts']) {
+        for (const typeName of ['NavItem', 'NavItemType', 'TagCollectionId', 'NavigatorRowSelectionType', 'PropertyNodeParts']) {
             expect(getTypeAliasText(publicFile, typeName)).toEqual(getTypeAliasText(sourceFile, typeName));
         }
 
@@ -654,6 +661,7 @@ describe('public API declaration file', () => {
             { interfaceName: 'NavigatorRowContextMenuContext', propertyName: 'sourcePath' },
             { interfaceName: 'NavigatorRowContextMenuContext', propertyName: 'sourceLineNumber' },
             { interfaceName: 'NavigatorRowContextMenuContext', propertyName: 'addItem' },
+            { interfaceName: 'NavigatorRowContextMenuContext', propertyName: 'addSeparator' },
             { interfaceName: 'NavigatorRowDefinition', propertyName: 'contextMenu' },
             { interfaceName: 'NotebookNavigatorEvents', propertyName: 'nav-item-changed' },
             { interfaceName: 'NotebookNavigatorEvents', propertyName: 'selection-changed' },

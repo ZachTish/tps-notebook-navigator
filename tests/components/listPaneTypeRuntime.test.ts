@@ -24,12 +24,20 @@ describe('Type-mode list runtime behavior', () => {
         expect(shouldCollapseMobileDrawerForTypeProviderActivation(null, true)).toBe(false);
     });
 
-    it('keeps the Type result button at least 44px tall on mobile', async () => {
+    it('binds provider wrappers to their virtual height and keeps every mobile action target at least 44px', async () => {
         const css = await readFile('src/styles/sections/list-provider-rows.css', 'utf8');
-        const mobileRule = css.match(/\.notebook-navigator-mobile\s+\.nn-provider-row-open\s*\{([^}]*)\}/u)?.[1];
+        const wrapperRule = css.match(/\.nn-virtual-provider-row\s*\{([^}]*)\}/u)?.[1];
+        const openRule = css.match(/\.notebook-navigator-mobile\s+\.nn-provider-row-open\s*\{([^}]*)\}/u)?.[1];
+        const checkboxRule = css.match(/\.notebook-navigator-mobile\s+\.nn-provider-row-checkbox\s*\{([^}]*)\}/u)?.[1];
+        const moreRule = css.match(/\.notebook-navigator-mobile\s+\.nn-provider-row-more\s*\{([^}]*)\}/u)?.[1];
 
-        expect(mobileRule).toBeDefined();
-        expect(mobileRule).toMatch(/min-height:\s*44px\s*;/u);
-        expect(mobileRule).toMatch(/align-self:\s*stretch\s*;/u);
+        expect(wrapperRule).toMatch(/height:\s*var\(--item-height\)\s*;/u);
+        expect(openRule).toMatch(/min-height:\s*44px\s*;/u);
+        expect(openRule).toMatch(/align-self:\s*stretch\s*;/u);
+        for (const rule of [checkboxRule, moreRule]) {
+            expect(rule).toMatch(/width:\s*44px\s*;/u);
+            expect(rule).toMatch(/height:\s*44px\s*;/u);
+            expect(rule).toMatch(/flex-basis:\s*44px\s*;/u);
+        }
     });
 });

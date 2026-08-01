@@ -67,6 +67,7 @@ import { useGcmEntityTypes } from '../integrations/gcm/useGcmEntityTypes';
 import { filterTpsNavigatorTypesSnapshot } from '../types/navigatorTypes';
 import { showNotice } from '../utils/noticeUtils';
 import { buildTypeProviderRows } from '../services/rows/typeProviderRows';
+import { collectTypeScopeVisibleFilePaths } from '../services/rows/providerScope';
 
 const EMPTY_SEARCH_META = new Map<string, SearchResultMeta>();
 const EMPTY_HIDDEN_FILE_STATE = new Map<string, boolean>();
@@ -167,7 +168,12 @@ export function useListPaneData({
 
     const [updateKey, setUpdateKey] = useState(0);
     const isTypeSelection = selectionType === ItemType.TYPE && selectedType !== null;
-    const { snapshot: rawTypeSnapshot, activate: activateTypeRecord } = useGcmEntityTypes(app, settings.tpsTypesNavigationEnabled);
+    const {
+        snapshot: rawTypeSnapshot,
+        activate: activateTypeRecord,
+        setTaskCheckbox: setTypeTaskCheckbox,
+        addTaskContextMenuItems: addTypeTaskContextMenuItems
+    } = useGcmEntityTypes(app, settings.tpsTypesNavigationEnabled);
     const visibleTypeSourcePaths = useMemo(() => {
         if (!settings.tpsTypesNavigationEnabled || !isTypeSelection) {
             return new Set<string>();
@@ -523,31 +529,6 @@ export function useListPaneData({
         groupItemCountData
     ]);
 
-    const providerScope = useMemo<NavigatorRowScope>(() => {
-        const seen = new Set<string>();
-        const visibleFilePaths: string[] = [];
-        coreListItems.forEach(item => {
-            if (item.type !== ListPaneItemType.FILE || !(item.data instanceof TFile) || seen.has(item.data.path)) {
-                return;
-            }
-            seen.add(item.data.path);
-            visibleFilePaths.push(item.data.path);
-        });
-
-        return {
-            visibleFilePaths,
-            selectionType: selectionType === ItemType.TYPE ? null : selectionType,
-            selectedFolderPath: selectedFolder?.path ?? null,
-            selectedTag,
-            selectedProperty
-        };
-    }, [coreListItems, selectedFolder, selectedProperty, selectedTag, selectionType]);
-    const providerRows = useProviderRows({
-        app,
-        registry: navigatorRowProviderRegistry,
-        scope: providerScope,
-        selection: isTypeSelection ? NO_ROW_PROVIDERS : rowProviderSelection
-    });
     const typeRows = useMemo(() => {
         if (!isTypeSelection || !selectedType) {
             return [];
@@ -557,6 +538,8 @@ export function useListPaneData({
             selectedType,
             searchQuery: trimmedQuery,
             activate: activateTypeRecord,
+            setTaskCheckbox: setTypeTaskCheckbox,
+            addTaskContextMenuItems: addTypeTaskContextMenuItems,
             onActivationFailure: (record, result) => {
                 console.warn('[TPS Notebook Navigator] Type record activation failed', {
                     typeId: selectedType,
@@ -566,9 +549,53 @@ export function useListPaneData({
                 showNotice('Could not open this item at its current location.', { variant: 'warning' });
             }
         });
-    }, [activateTypeRecord, isTypeSelection, selectedType, trimmedQuery, typeSnapshot]);
+    }, [activateTypeRecord, addTypeTaskContextMenuItems, isTypeSelection, selectedType, setTypeTaskCheckbox, trimmedQuery, typeSnapshot]);
+    const providerScope = useMemo<NavigatorRowScope>(() => {
+        let visibleFilePaths: string[];
+        if (isTypeSelection) {
+            visibleFilePaths = collectTypeScopeVisibleFilePaths(typeRows, visibleTypeSourcePaths);
+        } else {
+            const seen = new Set<string>();
+            visibleFilePaths = [];
+            coreListItems.forEach(item => {
+                if (item.type !== ListPaneItemType.FILE || !(item.data instanceof TFile) || seen.has(item.data.path)) {
+                    return;
+                }
+                seen.add(item.data.path);
+                visibleFilePaths.push(item.data.path);
+            });
+        }
+
+        return {
+            visibleFilePaths,
+            selectionType,
+            selectedFolderPath: selectionType === ItemType.FOLDER ? (selectedFolder?.path ?? null) : null,
+            selectedTag: selectionType === ItemType.TAG ? selectedTag : null,
+            selectedProperty: selectionType === ItemType.PROPERTY ? selectedProperty : null,
+            selectedType: isTypeSelection ? selectedType : null
+        };
+    }, [
+        coreListItems,
+        isTypeSelection,
+        selectedFolder,
+        selectedProperty,
+        selectedTag,
+        selectedType,
+        selectionType,
+        typeRows,
+        visibleTypeSourcePaths
+    ]);
+    const providerRows = useProviderRows({
+        app,
+        registry: navigatorRowProviderRegistry,
+        scope: providerScope,
+        selection: rowProviderSelection
+    });
     const listItems = useMemo(
-        () => (isTypeSelection ? buildStandaloneProviderListItems(typeRows) : mergeProviderRowsIntoList(coreListItems, providerRows)),
+        () =>
+            isTypeSelection
+                ? buildStandaloneProviderListItems([...typeRows, ...providerRows])
+                : mergeProviderRowsIntoList(coreListItems, providerRows),
         [coreListItems, isTypeSelection, providerRows, typeRows]
     );
 

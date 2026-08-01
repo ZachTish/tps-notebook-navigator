@@ -106,6 +106,24 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.3.0',
+        date: '2026-07-31',
+        showOnUpdate: true,
+        info: 'Type collections now support live GCM task controls and explicit external row-provider extensions.',
+        new: [
+            'Task entities in **Checkboxes** and dynamic Kind collections now expose live completion controls and the full guarded GCM task menu.',
+            'External row providers can opt in to selected Type collections through the public Rows API.',
+            'The public API is now version `2.5.0`, with Type row scopes, opaque selected Type ids, provider opt-in, and guarded menu separators.'
+        ],
+        improved: [
+            'Task completion uses GCM configured mappings and validates the effective state before accepting optimistic UI.',
+            'Provider-row virtualization now reserves the full two-line row height and keeps 44 px mobile controls from overlapping adjacent rows.'
+        ],
+        fixed: [
+            'GCM task actions and external task changes now refresh Type checkbox state even when the Entity Index identity is unchanged.'
+        ]
+    },
+    {
         version: '4.2.0',
         date: '2026-07-31',
         showOnUpdate: true,

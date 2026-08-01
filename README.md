@@ -27,7 +27,7 @@ The release assets are `main.js`, `manifest.json`, and `styles.css`. The minimum
 
 The integration surface is intentionally modular. The navigator owns presentation and row composition; a provider owns its data and actions. Provider failures are isolated and never block the normal file list.
 
-The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.13.1 or later is the tested integration baseline: task checkboxes complete or reopen the exact task through GCM, while selecting the title resolves and opens its source line. Generic row providers can also add their own synchronous context-menu actions without granting the navigator access to provider internals. Older structurally compatible APIs without task mutation remain display-only. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
+The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.15.0 is the tested completion baseline: task checkboxes complete or reopen the exact task through GCM's configured status/checkbox rules, while selecting the title resolves and opens its source line. Generic row providers can also add their own synchronous context-menu actions without granting the navigator access to provider internals. Older structurally compatible APIs without a safe task mutation path remain display-only. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
 
 ### Types navigation
 
@@ -35,9 +35,11 @@ The first-class **Types** section is enabled by default. It uses TPS Global Cont
 
 - **Notes**, **Checkboxes**, **Bullets**, and **Headings** are structural collections. **Kinds** is a nested collection built dynamically from every indexed `Kind` value, so note entities and line entities can participate in the same relational model.
 - A selected collection replaces the file list with standalone, virtualized entity rows. Selecting a note opens that note; selecting a checkbox, bullet, or heading re-resolves its stable locator and opens the current source line through direct Obsidian APIs.
+- Hydrated task entities—both in **Checkboxes** and inside any dynamic Kind—show their live checkbox state. Mutable rows use GCM's canonical completion path with optimistic rollback, and right-click, mobile long-press, or **More actions** opens the full GCM task menu. A task that cannot be matched exactly remains open-only rather than inventing state.
+- Task hydration batches cold reads across source files, then reuses a bounded per-path cache keyed by file metadata. Exact GCM and vault update paths invalidate that cache, including failed initial hydration, so unchanged vaults avoid repeated scans without leaving edited checkboxes stale.
 - Counts and rows respect the active Navigator profile, hidden-folder/file/property/tag rules, file visibility, and the hidden-items override. Fenced examples that GCM excludes never become Navigator rows.
 - Type rows are deliberately excluded from file selection, pinning, drag, rename, sort/group editing, and note creation. The Types list keeps its own text search and hides irrelevant file actions on desktop and mobile.
-- Missing, disabled, incompatible, or incomplete GCM indexing fails closed with a visible status row. TPS Global Context Menu 1.14.0 is the tested Entity Index v3 baseline. Older GCM builds may still provide attached task rows but cannot populate Types.
+- Missing, disabled, incompatible, or incomplete GCM indexing fails closed with a visible status row. TPS Global Context Menu 1.15.0 is the tested Entity Index v3 and canonical task-completion baseline. Older GCM builds may populate Types when they expose Entity Index v3, but mutation capabilities are detected independently and fail closed.
 
 The selected type and Types/Kinds expansion state use TPS-namespaced local storage, participate in back/forward history and keyboard navigation, and do not alter upstream Notebook Navigator state. Dynamic Kind collections disappear only after a complete index snapshot confirms that the Kind no longer exists; transient GCM startup does not erase a restored selection.
 
@@ -59,6 +61,7 @@ The Types toggle and all three task-row values persist in the TPS plugin's own `
 - A mutable GCM checkbox updates optimistically, rolls back with a visible warning on failure, and refreshes from GCM's file event. Older compatible GCM APIs retain a labeled display-only checkbox.
 - Provider controls own their keyboard and context-menu events, so completing a task cannot accidentally trigger file deletion, selection, or the empty-list menu.
 - A provider may expose synchronous row actions through `contextMenu(context)`. The same actions open from desktop right-click, the native mobile long-press context-menu event, or the keyboard-focusable **More actions** button. Failed, asynchronous, and empty builders are isolated and never open a blank menu.
+- External providers can opt in to a selected Type collection with `supportsTypeScope: true`. They receive the opaque selected Type id and only the exact visible paths represented by the current searched Type rows; providers that do not opt in retain their previous attached-list behavior.
 - TPS settings import is a copy, not synchronization. Later upstream setting changes are not mirrored unless the import is explicitly run again.
 - Vault-wide Types rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. Their plain-text search matches entity labels and source paths; file-only advanced search operators and Omnisearch ranking do not apply in a Types collection.
 
@@ -74,6 +77,16 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 4.3.0 — interactive and extensible Types
+
+- Makes task-backed Type rows interactive in both **Checkboxes** and dynamic Kind collections, while unmatched or stale task entities remain safely open-only.
+- Uses GCM's canonical configured completion path, validates the effective state before accepting optimistic UI, refreshes after GCM file updates, and exposes the full GCM task menu through a restricted item/separator facade.
+- Batches task hydration, retains a bounded 2,048-path LRU keyed by source metadata, and invalidates exact paths on GCM events, native vault edits, and Navigator checkbox mutations so large vaults do not reread every task file on routine refreshes.
+- Lets external row providers explicitly opt in to standalone Type scopes without duplicating the built-in GCM task provider or repeating contributions for notes with multiple matching entities.
+- Advances the public API to 2.5.0 with `selectionType: 'type'`, opaque `selectedType`, `supportsTypeScope`, and synchronous `addSeparator()` support.
+- Corrects provider-row virtualization to reserve 54 px on desktop and 57 px on mobile, with 44 px mobile checkbox, open, and More targets.
+- Requires no settings or note-data migration and keeps the minimum supported Obsidian version at 1.11.0.
 
 ### 4.2.0 — first-class Types navigation
 

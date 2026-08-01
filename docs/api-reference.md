@@ -4,7 +4,7 @@ Updated: July 31, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 2.4.0
+**Current API Version:** 2.5.0
 
 ## Table of Contents
 
@@ -358,9 +358,10 @@ Provider requirements and safeguards:
 - Row IDs are provider-local. Rows are transient and never enter file selection, drag, rename, persistence, or file indexes.
 - `activate` may open or focus the provider-owned record.
 - A checkbox `indicator.onChange(checked)` is optional. Without it, the checkbox is explicitly display-only.
-- `contextMenu(context)` may synchronously add row actions. It receives an immutable provider/row identity and an `addItem(...)` function, never the host `Menu` object.
+- `contextMenu(context)` may synchronously add row actions and separators. It receives an immutable provider/row identity plus guarded `addItem(...)` and `addSeparator()` functions, never the host `Menu` object.
 - Row actions open from right-click, the native mobile long-press `contextmenu` event, or the accessible **More actions** button. Empty, throwing, and Promise-returning builders do not open a menu.
 - A provider can subscribe to its own data source and call `invalidate()` when rows need to be queried again.
+- Set `supportsTypeScope: true` to opt in when a standalone Type collection is selected. The scope then reports `selectionType: 'type'`, its opaque `selectedType`, and the deduplicated visible source paths represented by the searched native Type rows. Providers without the flag are never subscribed or queried in Type scope.
 - Provider failures, malformed results, timeouts, and oversized result sets are isolated from the ordinary file list.
 
 ```typescript
@@ -373,6 +374,7 @@ if (!nn) {
 
 const provider: NavigatorRowProvider = {
   id: 'example/tasks',
+  supportsTypeScope: true,
   async getRows({ scope }) {
     return scope.visibleFilePaths.map(path => ({
       id: `${path}:review`,
@@ -389,12 +391,14 @@ const provider: NavigatorRowProvider = {
       activate: async () => {
         await openExampleTask(path);
       },
-      contextMenu({ providerId, rowId, sourcePath, addItem }) {
+      contextMenu({ providerId, rowId, sourcePath, addItem, addSeparator }) {
         addItem(item => {
           item.setTitle('Open provider record').onClick(() => {
             void openProviderRecord({ providerId, rowId, sourcePath });
           });
         });
+        addSeparator();
+        addItem(item => item.setTitle('Inspect source').onClick(() => void inspectSource(sourcePath)));
       }
     }));
   }
@@ -669,6 +673,13 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 2.5.0 (2026-07-31)
+
+- Added additive Type row scopes with `selectionType: 'type'` and opaque `selectedType`
+- Added explicit `NavigatorRowProvider.supportsTypeScope` opt-in; existing providers remain attached-list-only
+- Added synchronous `addSeparator()` to the guarded provider-row context-menu surface
+- Type-capable providers receive only exact paths represented by the current visible and searched native Type rows
 
 ### Version 2.4.0 (2026-07-31)
 

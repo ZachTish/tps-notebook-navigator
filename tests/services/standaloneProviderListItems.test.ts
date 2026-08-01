@@ -47,4 +47,42 @@ describe('buildStandaloneProviderListItems', () => {
             { type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom-spacer' }
         ]);
     });
+
+    it('keeps native Type rows once and appends one provider contribution without source-path attachment', () => {
+        const nativeRows = [
+            {
+                providerId: 'tps/entity-types',
+                id: 'task:first',
+                kind: 'tps/entity-type/task',
+                label: 'First task',
+                sourcePath: 'Notes/shared.md'
+            },
+            {
+                providerId: 'tps/entity-types',
+                id: 'task:second',
+                kind: 'tps/entity-type/task',
+                label: 'Second task',
+                sourcePath: 'Notes/shared.md'
+            }
+        ];
+        const providerRows = [
+            {
+                providerId: 'example/related',
+                id: 'shared:related',
+                kind: 'example/related',
+                label: 'Related record',
+                sourcePath: 'Notes/shared.md'
+            }
+        ];
+
+        const items = buildStandaloneProviderListItems([...nativeRows, ...providerRows]);
+
+        expect(items.map(item => item.key)).toEqual([
+            'top-spacer',
+            'provider:tps/entity-types:task:first',
+            'provider:tps/entity-types:task:second',
+            'provider:example/related:shared:related',
+            'bottom-spacer'
+        ]);
+    });
 });

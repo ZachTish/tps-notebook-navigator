@@ -13,7 +13,16 @@ import type {
 } from '../../services/rows/types';
 import { NAVIGATOR_ROW_PROVIDER_MAX_ROWS } from '../../services/rows/types';
 import { TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT, TPS_GCM_TASK_ROWS_PER_NOTE_MAX, TPS_GCM_TASK_ROWS_PER_NOTE_MIN } from '../../settings/types';
-import { isGcmTaskRecord, resolveGcmTaskApi, type GcmTaskRecordLike, type GcmTaskRefLike } from './gcmTaskApi';
+import {
+    isGcmTaskRecord,
+    resolveGcmTaskApi,
+    resolveGcmTaskCheckboxesApi,
+    type GcmTaskApiLike,
+    type GcmTaskCheckboxesApiLike,
+    type GcmTaskMutationResultLike,
+    type GcmTaskRecordLike,
+    type GcmTaskRefLike
+} from './gcmTaskApi';
 
 export const GCM_TASK_ROW_PROVIDER_ID = 'tps/gcm-tasks';
 export const GCM_TASK_ROW_KIND = 'tps/gcm-task';
@@ -93,6 +102,10 @@ function isMarkdownFile(value: unknown): value is TFile {
 
 function compareTasks(left: GcmTaskRecordLike, right: GcmTaskRecordLike): number {
     return left.lineNumber - right.lineNumber || left.title.localeCompare(right.title);
+}
+
+function canMutateTaskCheckbox(api: GcmTaskApiLike | null, checkboxApi: GcmTaskCheckboxesApiLike | null): boolean {
+    return typeof api?.setCompletion === 'function' || (typeof api?.setCheckbox === 'function' && checkboxApi !== null);
 }
 
 export function createGcmTaskRowProviderSelection(options: GcmTaskRowProviderOptions): NavigatorRowProviderSelection {
@@ -239,6 +252,7 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
         }
 
         const rows: NavigatorProvidedRowCandidate[] = [];
+        const canMutateCheckbox = canMutateTaskCheckbox(api, resolveGcmTaskCheckboxesApi(context.app));
         // Fill one task depth across every note before taking the next task
         // from any note. This keeps a task-heavy note from consuming the
         // global provider ceiling and making later notes disappear entirely.
@@ -248,7 +262,7 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
                 if (!task) {
                     continue;
                 }
-                rows.push(this.toRow(context.app, task, typeof api.setCheckbox === 'function'));
+                rows.push(this.toRow(context.app, task, canMutateCheckbox));
                 if (rows.length >= NAVIGATOR_ROW_PROVIDER_MAX_ROWS) {
                     break;
                 }
@@ -280,7 +294,8 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
         const vaultEvents = context.app.vault as unknown as EventBusLike;
         const subscriptions: { bus: EventBusLike; ref: unknown }[] = [];
         let observedApi = resolveGcmTaskApi(context.app);
-        let observedCanMutate = typeof observedApi?.setCheckbox === 'function';
+        let observedCheckboxApi = resolveGcmTaskCheckboxesApi(context.app);
+        let observedCanMutate = canMutateTaskCheckbox(observedApi, observedCheckboxApi);
         this.progressiveInvalidationListeners.add(onInvalidate);
         const subscribe = (bus: EventBusLike, eventName: string, callback: (...args: unknown[]) => void) => {
             const ref = bus.on(eventName, callback);
@@ -298,11 +313,13 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
         subscribe(workspaceEvents, TPS_FILES_UPDATED_EVENT, payload => invalidatePaths(getEventPaths(payload)));
         subscribe(workspaceEvents, 'layout-change', () => {
             const nextApi = resolveGcmTaskApi(context.app);
-            const nextCanMutate = typeof nextApi?.setCheckbox === 'function';
-            if (nextApi === observedApi && nextCanMutate === observedCanMutate) {
+            const nextCheckboxApi = resolveGcmTaskCheckboxesApi(context.app);
+            const nextCanMutate = canMutateTaskCheckbox(nextApi, nextCheckboxApi);
+            if (nextApi === observedApi && nextCheckboxApi === observedCheckboxApi && nextCanMutate === observedCanMutate) {
                 return;
             }
             observedApi = nextApi;
+            observedCheckboxApi = nextCheckboxApi;
             observedCanMutate = nextCanMutate;
             this.clearCache();
             onInvalidate();
@@ -355,12 +372,27 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
         const onCheckboxChange = canMutateCheckbox
             ? async (checked: boolean) => {
                   const currentApi = resolveGcmTaskApi(app);
-                  if (!currentApi?.setCheckbox) {
+                  const currentCheckboxApi = resolveGcmTaskCheckboxesApi(app);
+                  if (!currentApi || !canMutateTaskCheckbox(currentApi, currentCheckboxApi)) {
                       throw new Error('TPS Global Context Menu task mutation is unavailable.');
                   }
-                  const result = await currentApi.setCheckbox(ref, checked ? 'x' : ' ');
+                  let result: GcmTaskMutationResultLike;
+                  if (currentApi.setCompletion) {
+                      result = await currentApi.setCompletion(ref, checked);
+                  } else if (currentApi.setCheckbox && currentCheckboxApi) {
+                      result = await currentApi.setCheckbox(ref, currentCheckboxApi.stateForStatus(checked ? 'complete' : 'todo'));
+                  } else {
+                      throw new Error('TPS Global Context Menu task mutation is unavailable.');
+                  }
                   if (!result || result.ok !== true) {
                       throw new Error(result?.error || 'TPS Global Context Menu could not update the task.');
+                  }
+                  let effectiveTask = isGcmTaskRecord(result.task) ? result.task : null;
+                  if (!effectiveTask && typeof currentApi.get === 'function') {
+                      effectiveTask = await currentApi.get(ref);
+                  }
+                  if (!effectiveTask || effectiveTask.isComplete !== checked) {
+                      throw new Error('TPS Global Context Menu returned an unexpected task completion state.');
                   }
               }
             : undefined;
