@@ -4,12 +4,13 @@ Updated: August 1, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 2.7.0
+**Current API Version:** 2.8.0
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
 - [API Overview](#api-overview)
+- [Host API Lifecycle](#host-api-lifecycle)
 - [Metadata API](#metadata-api)
   - [Folder, Tag, and Property Metadata](#folder-tag-and-property-metadata)
   - [Pinned Files](#pinned-files)
@@ -92,6 +93,69 @@ Core methods:
 - **`getVersion()`** - Get the API version string
 - **`isStorageReady()`** - Check if the initial storage bootstrap is complete
 - **`whenReady()`** - Resolve when the initial storage bootstrap completes
+
+## Host API Lifecycle
+
+Long-lived integrations should not retain a provider registration across a TPS Notebook Navigator-only reload. API 2.8.0
+publishes two TPS-namespaced workspace events so an owner can tear down the old handle and register against each new API
+instance without polling private plugin state:
+
+- `tps:notebook-navigator-api-changed` announces a fully initialized API and announces unavailability before its Rows and
+  Types registries are disposed. The immutable payload contains `source`, `sourcePluginId`, `timestamp`, `available`,
+  `pluginVersion`, `apiVersion`, and `api`; unavailable payloads always use `api: null` and `apiVersion: null`.
+- `tps:notebook-navigator-api-request` accepts a `TpsNotebookNavigatorApiRequestPayload`. The host invokes its guarded
+  `respond` callback synchronously with the current state, so a late-loading owner receives only its own response rather than
+  causing a global change rebroadcast.
+
+Subscribe before requesting to close the load-order race. This reusable pattern automatically reacquires the API and replaces
+both Rows and Types registrations after a TPS-only reload:
+
+```typescript
+import type {
+  NavigatorTypeProvider,
+  NavigatorTypeProviderRegistration,
+  NotebookNavigatorAPI,
+  TpsNotebookNavigatorApiChangedPayload,
+  TpsNotebookNavigatorApiRequestPayload
+} from './notebook-navigator';
+
+const API_CHANGED = 'tps:notebook-navigator-api-changed';
+const API_REQUEST = 'tps:notebook-navigator-api-request';
+let currentApi: NotebookNavigatorAPI | null = null;
+let typeRegistration: NavigatorTypeProviderRegistration | null = null;
+
+const provider: NavigatorTypeProvider = createMyTypeProvider();
+const acceptApi = (state: TpsNotebookNavigatorApiChangedPayload): void => {
+  if (state.sourcePluginId !== 'tps-notebook-navigator' || state.api === currentApi) {
+    return;
+  }
+
+  typeRegistration?.unregister();
+  typeRegistration = null;
+  currentApi = state.available && state.apiVersion?.startsWith('2.') ? state.api : null;
+  if (currentApi) {
+    typeRegistration = currentApi.types.registerProvider(provider);
+  }
+};
+
+this.registerEvent(app.workspace.on(API_CHANGED, payload => {
+  acceptApi(payload as TpsNotebookNavigatorApiChangedPayload);
+}));
+app.workspace.trigger(API_REQUEST, {
+  sourcePluginId: this.manifest.id,
+  timestamp: Date.now(),
+  respond: acceptApi
+} satisfies TpsNotebookNavigatorApiRequestPayload);
+this.register(() => {
+  typeRegistration?.unregister();
+  typeRegistration = null;
+  currentApi = null;
+});
+```
+
+Malformed requests are ignored. Throwing or rejected responders and change listeners are isolated so they cannot interrupt
+Navigator startup or shutdown. Lifecycle callbacks and registrations are runtime-only and never enter settings or global
+persistence.
 
 ## Metadata API
 
@@ -477,9 +541,8 @@ Provider safeguards:
   contributions.
 - Provider definitions, callbacks, options, and registration order are runtime-only. TPS Notebook Navigator never persists
   them to `data.json`.
-- Registrations belong to the current TPS Notebook Navigator API instance. If TPS Notebook Navigator alone is hot-reloaded,
-  an owning plugin that stays loaded must reacquire `app.plugins.plugins['tps-notebook-navigator']?.api` and register again;
-  a normal app/plugin reload naturally reruns the owner's `onload` path.
+- Registrations belong to the current host API instance. Use the [Host API Lifecycle](#host-api-lifecycle) subscription and
+  point-to-point request pattern to replace handles automatically after a TPS-only hot reload.
 - A provider invalidation refreshes both its catalog and rows. A later failure retains the last valid catalog; an explicit
   unregister removes its collections immediately.
 
@@ -816,6 +879,13 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 2.8.0 (2026-08-01)
+
+- Added namespaced API availability and unavailability announcements for safe provider teardown and rebinding
+- Added a guarded point-to-point synchronous request responder so late-loading integrations acquire only their own response
+- Added typed lifecycle payloads with host identity, plugin/API versions, timestamp, availability, and nullable API
+- Kept lifecycle state runtime-only with no settings, provider, or global persistence
 
 ### Version 2.7.0 (2026-08-01)
 

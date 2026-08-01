@@ -106,6 +106,18 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.7.0',
+        date: '2026-08-01',
+        showOnUpdate: true,
+        info: 'External integrations can now reconnect automatically after a TPS Notebook Navigator-only reload.',
+        new: [
+            'Public API `2.8.0` adds TPS-namespaced availability announcements and a point-to-point request handshake for the current host API instance.'
+        ],
+        improved: [
+            'Long-lived Rows and Types providers can release stale registration handles before shutdown and bind to the replacement API without polling or persisted provider state.'
+        ]
+    },
+    {
         version: '4.6.0',
         date: '2026-08-01',
         showOnUpdate: true,

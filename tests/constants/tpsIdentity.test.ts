@@ -23,6 +23,8 @@ import { describe, expect, it } from 'vitest';
 import {
     getTpsNotebookNavigatorDatabaseName,
     TPS_NOTEBOOK_NAVIGATOR_ANDROID_CLASS,
+    TPS_NOTEBOOK_NAVIGATOR_API_CHANGED_EVENT,
+    TPS_NOTEBOOK_NAVIGATOR_API_REQUEST_EVENT,
     TPS_NOTEBOOK_NAVIGATOR_CALENDAR_VIEW,
     TPS_NOTEBOOK_NAVIGATOR_COLOR_DRAG_MIME,
     TPS_NOTEBOOK_NAVIGATOR_DATABASE_NAMESPACE,
@@ -38,6 +40,7 @@ import {
     TPS_NOTEBOOK_NAVIGATOR_ROOT_CLASS,
     TPS_NOTEBOOK_NAVIGATOR_SETTINGS_TRANSFER_ID,
     TPS_NOTEBOOK_NAVIGATOR_SHORTCUT_DRAG_MIME,
+    TPS_NOTEBOOK_NAVIGATOR_STYLE_SETTINGS_ID,
     TPS_NOTEBOOK_NAVIGATOR_STORAGE_PREFIX,
     TPS_NOTEBOOK_NAVIGATOR_SVG_FILTERS_ID,
     TPS_NOTEBOOK_NAVIGATOR_TAG_DRAG_MIME,
@@ -63,6 +66,7 @@ const upstreamGlobalIdentifiers = new Set([
     'notebook-navigator-visible',
     'application/x-notebook-navigator-tag',
     'application/x-notebook-navigator-property',
+    'application/x-notebook-shortcut',
     'application/x-notebook-navigator-shortcut',
     'application/x-notebook-navigator-color',
     'notebook-navigator-svg-filters',
@@ -82,6 +86,8 @@ const tpsGlobalIdentifiers = [
     TPS_NOTEBOOK_NAVIGATOR_IOS_CLASS,
     TPS_NOTEBOOK_NAVIGATOR_IOS_FLOATING_TOOLBARS_CLASS,
     TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT,
+    TPS_NOTEBOOK_NAVIGATOR_API_REQUEST_EVENT,
+    TPS_NOTEBOOK_NAVIGATOR_API_CHANGED_EVENT,
     TPS_NOTEBOOK_NAVIGATOR_TAG_DRAG_MIME,
     TPS_NOTEBOOK_NAVIGATOR_PROPERTY_DRAG_MIME,
     TPS_NOTEBOOK_NAVIGATOR_SHORTCUT_DRAG_MIME,
@@ -91,6 +97,7 @@ const tpsGlobalIdentifiers = [
     TPS_NOTEBOOK_NAVIGATOR_STORAGE_PREFIX,
     TPS_NOTEBOOK_NAVIGATOR_DATABASE_NAMESPACE,
     TPS_NOTEBOOK_NAVIGATOR_SETTINGS_TRANSFER_ID,
+    TPS_NOTEBOOK_NAVIGATOR_STYLE_SETTINGS_ID,
     TPS_NOTEBOOK_NAVIGATOR_REACT_ID_PREFIX
 ];
 
@@ -128,6 +135,10 @@ describe('TPS Notebook Navigator identity isolation', () => {
     });
 
     it('keeps every host-global runtime identifier outside the upstream namespace', () => {
+        expect(TPS_NOTEBOOK_NAVIGATOR_API_REQUEST_EVENT).toBe('tps:notebook-navigator-api-request');
+        expect(TPS_NOTEBOOK_NAVIGATOR_API_CHANGED_EVENT).toBe('tps:notebook-navigator-api-changed');
+        expect(TPS_NOTEBOOK_NAVIGATOR_STYLE_SETTINGS_ID).toBe('tps-notebook-navigator-style-settings');
+        expect(TPS_NOTEBOOK_NAVIGATOR_SHORTCUT_DRAG_MIME).not.toBe('application/x-notebook-shortcut');
         for (const identifier of tpsGlobalIdentifiers) {
             expect(identifier).not.toHaveLength(0);
             expect(upstreamGlobalIdentifiers.has(identifier), identifier).toBe(false);
@@ -158,7 +169,7 @@ describe('TPS Notebook Navigator identity isolation', () => {
         ]);
         const version = API_VERSION.toString();
 
-        expect(version).toBe('2.7.0');
+        expect(version).toBe('2.8.0');
         expect(publicApi).toContain(`Version: ${version}`);
         expect(publicApiReadme).toContain(`Current API Version: **${version}**`);
         expect(apiReference).toContain(`**Current API Version:** ${version}`);

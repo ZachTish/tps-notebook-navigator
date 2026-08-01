@@ -90,6 +90,7 @@ import { DEFAULT_SETTINGS } from './settings/defaultSettings';
 import { buildFilePathInFolder, generateUniqueFilename } from './utils/fileCreationUtils';
 import { showNotice } from './utils/noticeUtils';
 import { strings } from './i18n';
+import { TpsNotebookNavigatorApiLifecycle } from './integrations/TpsNotebookNavigatorApiLifecycle';
 
 interface ObsidianSettingsModal {
     open(): void;
@@ -167,6 +168,7 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
     private homepageController: HomepageController | null = null;
     private folderNoteSidebarService: FolderNoteSidebarService | null = null;
     private settingTab: LazyNotebookNavigatorSettingTab | null = null;
+    private apiLifecycle: TpsNotebookNavigatorApiLifecycle | null = null;
     private pendingUpdateNotice: ReleaseUpdateNotice | null = null;
     private hasWorkspaceLayoutReady = false;
     private lastCalendarPlacement: CalendarPlacement | null = null;
@@ -399,6 +401,9 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
      * Plugin initialization - called when plugin is enabled
      */
     async onload() {
+        this.apiLifecycle = new TpsNotebookNavigatorApiLifecycle(this.app.workspace, this.manifest.version);
+        this.apiLifecycle.start();
+
         // Initialize localStorage before database so version checks work
         localStorage.init(this.app);
         this.debugLoggingService = new DebugLoggingService(this.app, { pluginVersion: this.manifest.version });
@@ -866,6 +871,9 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
 
         // Process external settings changes that arrived while onload was still initializing
         this.hasStartedWithSettings = true;
+        if (this.api) {
+            this.apiLifecycle?.publishAvailable(this.api);
+        }
         if (this.pendingExternalSettingsChange) {
             this.pendingExternalSettingsChange = false;
             runAsyncAction(() => this.onExternalSettingsChange());
@@ -1399,6 +1407,8 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
      */
     onunload() {
         this.initiateShutdown();
+        this.apiLifecycle?.stop();
+        this.apiLifecycle = null;
         this.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].types.dispose();
         this.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].rows.dispose();
         this.api = null;

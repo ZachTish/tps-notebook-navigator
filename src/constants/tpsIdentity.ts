@@ -21,12 +21,15 @@ export const TPS_NOTEBOOK_NAVIGATOR_ANDROID_CLASS = 'tps-notebook-navigator-andr
 export const TPS_NOTEBOOK_NAVIGATOR_IOS_CLASS = 'tps-notebook-navigator-ios';
 export const TPS_NOTEBOOK_NAVIGATOR_IOS_FLOATING_TOOLBARS_CLASS = 'tps-notebook-navigator-ios-floating-toolbars';
 export const TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT = 'tps-notebook-navigator-visible';
+export const TPS_NOTEBOOK_NAVIGATOR_API_REQUEST_EVENT = 'tps:notebook-navigator-api-request';
+export const TPS_NOTEBOOK_NAVIGATOR_API_CHANGED_EVENT = 'tps:notebook-navigator-api-changed';
 export const TPS_NOTEBOOK_NAVIGATOR_TAG_DRAG_MIME = 'application/x-tps-notebook-navigator-tag';
 export const TPS_NOTEBOOK_NAVIGATOR_PROPERTY_DRAG_MIME = 'application/x-tps-notebook-navigator-property';
 export const TPS_NOTEBOOK_NAVIGATOR_SHORTCUT_DRAG_MIME = 'application/x-tps-notebook-navigator-shortcut';
 export const TPS_NOTEBOOK_NAVIGATOR_COLOR_DRAG_MIME = 'application/x-tps-notebook-navigator-color';
 export const TPS_NOTEBOOK_NAVIGATOR_SVG_FILTERS_ID = 'tps-notebook-navigator-svg-filters';
 export const TPS_NOTEBOOK_NAVIGATOR_FROSTED_FILTER_ID = 'tps-notebook-navigator-frosted';
+export const TPS_NOTEBOOK_NAVIGATOR_STYLE_SETTINGS_ID = 'tps-notebook-navigator-style-settings';
 
 export const TPS_NOTEBOOK_NAVIGATOR_STORAGE_PREFIX = TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID;
 export const TPS_NOTEBOOK_NAVIGATOR_DATABASE_NAMESPACE = TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID;

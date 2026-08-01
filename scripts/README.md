@@ -86,7 +86,7 @@ npm run tps:namespace        # Restore accidental TPS prefixes to upstream sourc
 npm run tps:namespace:check  # Report committed runtime-prefix drift without changing files
 ```
 
-The transform is idempotent and intentionally does not change manifest IDs, storage keys, URLs, or integration behavior. At the bundle boundary, the shared runtime helper also gives `@dnd-kit/core` described-by and live-region elements TPS-only ID prefixes so a co-installed upstream instance cannot own the same accessibility DOM IDs. The artifact check enforces both prefixes. Follow [the upstream sync guide](../docs/upstream-sync.md) and review every generated diff.
+The transform is idempotent and intentionally does not change manifest IDs, storage keys, URLs, or integration behavior. At the bundle boundary, the shared runtime helper also gives `@dnd-kit/core` described-by and live-region elements TPS-only ID prefixes so a co-installed upstream instance cannot own the same accessibility DOM IDs. The artifact check enforces both prefixes, the TPS-only Style Settings block ID in source and generated CSS, and the absence of the real upstream shortcut drag MIME. Follow [the upstream sync guide](../docs/upstream-sync.md) and review every generated diff.
 
 ## upstream-merge-audit.mjs
 

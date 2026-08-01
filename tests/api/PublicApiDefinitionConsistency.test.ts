@@ -522,7 +522,9 @@ describe('public API declaration file', () => {
         'NavigatorTypeProviderQueryContext',
         'NavigatorTypeRowsContext',
         'NavigatorTypeProvider',
-        'NavigatorTypeProviderRegistration'
+        'NavigatorTypeProviderRegistration',
+        'TpsNotebookNavigatorApiChangedPayload',
+        'TpsNotebookNavigatorApiRequestPayload'
     ] as const)('matches public %s members', interfaceName => {
         const sourceMembers = getInterfaceMemberNames(readSourceFile('src/api/types.ts'), interfaceName);
         const publicMembers = getInterfaceMemberNames(readSourceFile('src/api/public/notebook-navigator.d.ts'), interfaceName);
@@ -537,7 +539,9 @@ describe('public API declaration file', () => {
         'NavigatorTypeProviderQueryContext',
         'NavigatorTypeRowsContext',
         'NavigatorTypeProvider',
-        'NavigatorTypeProviderRegistration'
+        'NavigatorTypeProviderRegistration',
+        'TpsNotebookNavigatorApiChangedPayload',
+        'TpsNotebookNavigatorApiRequestPayload'
     ] as const)('matches every public %s property signature', interfaceName => {
         const sourceFile = readSourceFile('src/api/types.ts');
         const publicFile = readSourceFile('src/api/public/notebook-navigator.d.ts');

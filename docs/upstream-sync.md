@@ -27,10 +27,11 @@ Never point `origin` at upstream. Do not rebase or force-push the shared TPS `ma
 ## Conflict map
 
 - `src/constants/tpsIdentity.ts` is the source of truth for host-global fork identifiers.
-- `tests/constants/tpsIdentity.test.ts` detects namespace and storage regressions.
+- `tests/constants/tpsIdentity.test.ts` detects namespace and storage regressions, including the global Style Settings ID and the real upstream shortcut drag MIME.
 - `scripts/upstream-merge-audit.mjs` produces a deterministic read-only conflict worklist before any merge mutation.
 - `scripts/tps-runtime-namespace.mjs` owns the one-way source-to-runtime CSS/DOM transform shared by esbuild, Vitest, and generated styles. It also rewrites only bundled `@dnd-kit/core` accessibility ID prefixes so co-installed upstream and TPS views cannot emit duplicate described-by or live-region IDs.
 - `scripts/tps-namespace.mjs` restores accidentally committed runtime prefixes to merge-friendly upstream source tokens.
+- `scripts/check-tps-artifacts.mjs` verifies the TPS Style Settings block in both source and generated CSS and rejects upstream host-global identifiers in the final bundle.
 - `src/services/settings/UpstreamSettingsImport.ts` remains explicit, confirmed, read-only toward upstream, and one-way into TPS settings.
 - `src/services/rows` owns generic transient row composition; `src/integrations/gcm` is an optional adapter with no hard dependency.
 - `esbuild.config.mjs` applies the runtime namespace before bundling and uses the test-vault-owned deployment helper only in the contained development workspace. Standalone source checks deliberately do not deploy.

@@ -26,6 +26,10 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 4. Call `await nn.whenReady()` before storage-backed reads or tag/property navigation that depends on the storage mirror.
    Call `await nn.types.whenReady()` when you need an available aggregate Type catalog before Type navigation. Registered
    providers publish independently, so subscribe when you need to wait for one provider's descriptor.
+5. Long-lived provider integrations should subscribe to `tps:notebook-navigator-api-changed` and send a point-to-point
+   `tps:notebook-navigator-api-request` after subscribing. The documented
+   [lifecycle pattern](../../../docs/api-reference.md#host-api-lifecycle) automatically tears down old registration handles
+   and reacquires the new API after a TPS-only reload.
 
 ## Public Surface
 
@@ -36,7 +40,7 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 - Namespaces: `metadata`, `navigation`, `selection`, `menus`, `tagCollections`, `propertyNodes`, `rows`, `types`
 - Exported types: metadata records and updates, navigation and selection state, pin contexts, tag collections, property
   nodes, Type-catalog snapshots and providers, menu extension contexts, transient row providers, row context-menu actions,
-  event names, and event payloads
+  event names, lifecycle request/change payloads, and event payloads
 
 **For Maintainers:**
 
@@ -47,7 +51,7 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 
 ## Version
 
-Current API Version: **2.7.0**
+Current API Version: **2.8.0**
 
 ## Documentation
 

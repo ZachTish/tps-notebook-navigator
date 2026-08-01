@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 2.7.0
+ * Version: 2.8.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -69,6 +69,26 @@ export type IconValue = string;
  * Aggregate tag collection ids used by the navigator for virtual tag rows.
  */
 export type TagCollectionId = '__tagged__' | '__untagged__';
+
+/** Current host API state published through `tps:notebook-navigator-api-changed`. */
+export interface TpsNotebookNavigatorApiChangedPayload {
+    readonly source: 'tps-notebook-navigator';
+    readonly sourcePluginId: 'tps-notebook-navigator';
+    readonly timestamp: number;
+    readonly available: boolean;
+    readonly pluginVersion: string;
+    readonly apiVersion: string | null;
+    readonly api: NotebookNavigatorAPI | null;
+}
+
+/** Point-to-point request published through `tps:notebook-navigator-api-request`. */
+export interface TpsNotebookNavigatorApiRequestPayload {
+    /** ID of the plugin requesting the current API state. */
+    readonly sourcePluginId: string;
+    readonly timestamp: number;
+    /** Invoked synchronously with only the requesting consumer's response. */
+    readonly respond: (payload: TpsNotebookNavigatorApiChangedPayload) => void;
+}
 
 /** Availability of the optional first-class Types catalog. */
 export type NavigatorTypesAvailability = 'disabled' | 'loading' | 'ready' | 'unavailable' | 'error';
@@ -440,7 +460,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 2.7.0
+ * @version 2.8.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */

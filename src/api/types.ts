@@ -17,6 +17,7 @@
  */
 
 import { App, MenuItem, TFile, TFolder } from 'obsidian';
+import type { NotebookNavigatorAPI } from './NotebookNavigatorAPI';
 
 /**
  * Notebook Navigator Public API Types
@@ -58,6 +59,32 @@ export type IconValue = string;
  * Aggregate tag collection ids used by the navigator for virtual tag rows.
  */
 export type TagCollectionId = '__tagged__' | '__untagged__';
+
+// ============================================================================
+// TPS HOST API LIFECYCLE
+// ============================================================================
+
+/** Current host API state published through `tps:notebook-navigator-api-changed`. */
+export interface TpsNotebookNavigatorApiChangedPayload {
+    readonly source: 'tps-notebook-navigator';
+    readonly sourcePluginId: 'tps-notebook-navigator';
+    readonly timestamp: number;
+    readonly available: boolean;
+    readonly pluginVersion: string;
+    readonly apiVersion: string | null;
+    readonly api: NotebookNavigatorAPI | null;
+}
+
+/**
+ * Point-to-point request published through `tps:notebook-navigator-api-request`.
+ * The host invokes `respond` synchronously instead of rebroadcasting its state.
+ */
+export interface TpsNotebookNavigatorApiRequestPayload {
+    /** ID of the plugin requesting the current API state. */
+    readonly sourcePluginId: string;
+    readonly timestamp: number;
+    readonly respond: (payload: TpsNotebookNavigatorApiChangedPayload) => void;
+}
 
 // ============================================================================
 // NAVIGATOR TYPES CATALOG (TPS FORK)

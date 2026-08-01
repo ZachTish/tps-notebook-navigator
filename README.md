@@ -84,8 +84,9 @@ The Types toggle and all three task-row values persist in the TPS plugin's own `
   so the virtualized list cannot contain duplicate keys.
 - Type-provider catalogs refresh atomically and independently. Invalid or timed-out refreshes retain that provider's last
   valid descriptors, async results are ignored after replacement/unload, and provider callbacks/options remain runtime-only.
-- Type-provider registrations belong to the current host API instance. An owner that remains loaded across a TPS-only hot
-  reload must reacquire the API and register again; ordinary app/plugin reloads rerun the owner's registration path.
+- API lifecycle events announce each available and unavailable host instance. Long-lived owners can subscribe once and send
+  a point-to-point lifecycle request, then automatically replace their registration handles after a TPS-only hot reload
+  without polling, rebroadcasting a request response, or retaining provider state in Navigator.
 - TPS settings import is a copy, not synchronization. Later upstream setting changes are not mirrored unless the import is explicitly run again.
 - Built-in GCM-backed Types rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. External Type-provider rows retain the public provider safety ceiling. Plain-text search matches built-in entity labels and source paths; external owners receive the same query before their row ceiling. File-only advanced search operators and Omnisearch ranking do not apply in a Types collection.
 
@@ -101,6 +102,21 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 4.7.0 — hot-reload-safe provider lifecycle
+
+- Adds API `2.8.0` with `tps:notebook-navigator-api-changed` availability announcements and a guarded,
+  point-to-point `tps:notebook-navigator-api-request` handshake for late-loading integrations.
+- Announces unavailability before the current Rows and Types registries are disposed, then announces the replacement API
+  only after startup registration completes, so long-lived providers can replace stale handles after a TPS-only reload.
+- Isolates malformed, throwing, and rejected consumers from Navigator startup and shutdown; lifecycle callbacks, API state,
+  and provider registrations remain runtime-only and are never persisted.
+- Strengthens the co-install artifact gate around the host-global Style Settings ID and the actual upstream shortcut drag
+  MIME, with fixtures that fail if either upstream identity reappears.
+- Requires no settings or note-data migration and keeps the minimum supported Obsidian version at 1.11.0.
+- Validated with 205 Vitest files and 2,182 tests plus formatting, ESLint, TypeScript, stylesheet, namespace, and artifact
+  gates. The reloaded test vault covered the current API request and a TPS-only disable/re-enable sequence with unavailable
+  and available transitions around a new API instance.
 
 ### 4.6.0 — externally owned Type collections
 
