@@ -15,8 +15,13 @@ export const TPS_NAVIGATOR_TYPE_IDS = {
 
 export type TpsNavigatorStructuralTypeId = (typeof TPS_NAVIGATOR_TYPE_IDS)[keyof typeof TPS_NAVIGATOR_TYPE_IDS];
 export type TpsNavigatorKindTypeId = `kind:${string}`;
-export type TpsNavigatorTypeId = TpsNavigatorStructuralTypeId | TpsNavigatorKindTypeId;
+export type TpsNavigatorProviderTypeId = `provider:${string}:${string}`;
+export type TpsNavigatorTypeId = TpsNavigatorStructuralTypeId | TpsNavigatorKindTypeId | TpsNavigatorProviderTypeId;
 export type TpsNavigatorTypeCategory = 'structure' | 'kind';
+
+export const TPS_NAVIGATOR_BUILTIN_TYPE_SOURCE = 'builtin';
+export const TPS_NAVIGATOR_TYPE_PROVIDER_ID_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*\/[a-z0-9]+(?:[._-][a-z0-9]+)*$/u;
+export const TPS_NAVIGATOR_TYPE_COLLECTION_ID_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,63})$/u;
 
 export interface TpsNavigatorTypeDescriptor {
     id: TpsNavigatorTypeId;
@@ -24,6 +29,12 @@ export interface TpsNavigatorTypeDescriptor {
     icon: string;
     category: TpsNavigatorTypeCategory;
     count: number;
+    /** External collections omit counts because their rows are transient and search/visibility scoped. */
+    showCount?: boolean;
+    /** Present only for externally registered top-level collections. */
+    providerId?: string;
+    /** Provider-local collection ID, present only for external collections. */
+    providerCollectionId?: string;
 }
 
 export interface TpsNavigatorTypeRecord {
@@ -63,6 +74,11 @@ export interface TpsNavigatorTypesSnapshot {
     recordsByType: ReadonlyMap<TpsNavigatorTypeId, readonly TpsNavigatorTypeRecord[]>;
     revision: number;
     message?: string;
+    /** Source keys whose current missing descriptors are authoritative. */
+    authoritativeSourceKeys?: ReadonlySet<string>;
+    /** Original GCM source state, independent from healthy external providers. */
+    builtinAvailability?: TpsNavigatorTypesAvailability;
+    builtinMessage?: string;
 }
 
 export const TPS_NAVIGATOR_STRUCTURAL_TYPES: readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] = Object.freeze([
@@ -112,6 +128,69 @@ export function getTpsNavigatorKindValue(typeId: string): string | null {
     }
 }
 
+export interface TpsNavigatorProviderTypeIdentity {
+    providerId: string;
+    collectionId: string;
+}
+
+export function getTpsNavigatorProviderSourceKey(providerId: string): string {
+    return `provider:${providerId}`;
+}
+
+export function createTpsNavigatorProviderTypeId(providerId: string, collectionId: string): TpsNavigatorProviderTypeId | null {
+    const normalizedProviderId = String(providerId ?? '').trim();
+    const normalizedCollectionId = String(collectionId ?? '').trim();
+    if (
+        normalizedProviderId.length > 128 ||
+        !TPS_NAVIGATOR_TYPE_PROVIDER_ID_PATTERN.test(normalizedProviderId) ||
+        !TPS_NAVIGATOR_TYPE_COLLECTION_ID_PATTERN.test(normalizedCollectionId)
+    ) {
+        return null;
+    }
+    return `provider:${encodeURIComponent(normalizedProviderId)}:${encodeURIComponent(normalizedCollectionId)}`;
+}
+
+export function parseTpsNavigatorProviderTypeId(typeId: string): TpsNavigatorProviderTypeIdentity | null {
+    if (!typeId.startsWith('provider:')) {
+        return null;
+    }
+    const encodedParts = typeId.slice('provider:'.length).split(':');
+    if (encodedParts.length !== 2) {
+        return null;
+    }
+    try {
+        const providerId = decodeURIComponent(encodedParts[0]);
+        const collectionId = decodeURIComponent(encodedParts[1]);
+        const canonical = createTpsNavigatorProviderTypeId(providerId, collectionId);
+        return canonical === typeId ? { providerId, collectionId } : null;
+    } catch {
+        return null;
+    }
+}
+
+export function getTpsNavigatorTypeSourceKey(typeId: TpsNavigatorTypeId): string {
+    const providerIdentity = parseTpsNavigatorProviderTypeId(typeId);
+    return providerIdentity ? getTpsNavigatorProviderSourceKey(providerIdentity.providerId) : TPS_NAVIGATOR_BUILTIN_TYPE_SOURCE;
+}
+
+/**
+ * Returns true only when the source that owns a missing Type has produced an
+ * authoritative catalog. Unknown provider IDs remain provisional so restored
+ * selections survive cross-plugin load order.
+ */
+export function isTpsNavigatorTypeAuthoritativelyMissing(
+    snapshot: Pick<TpsNavigatorTypesSnapshot, 'availability' | 'descriptors' | 'authoritativeSourceKeys'>,
+    typeId: TpsNavigatorTypeId
+): boolean {
+    if (snapshot.descriptors.some(descriptor => descriptor.id === typeId)) {
+        return false;
+    }
+    if (snapshot.authoritativeSourceKeys) {
+        return snapshot.authoritativeSourceKeys.has(getTpsNavigatorTypeSourceKey(typeId));
+    }
+    return snapshot.availability === 'ready';
+}
+
 export function isTpsNavigatorTypeId(value: unknown): value is TpsNavigatorTypeId {
     if (typeof value !== 'string') {
         return false;
@@ -119,7 +198,7 @@ export function isTpsNavigatorTypeId(value: unknown): value is TpsNavigatorTypeI
     if ((Object.values(TPS_NAVIGATOR_TYPE_IDS) as string[]).includes(value)) {
         return true;
     }
-    return getTpsNavigatorKindValue(value) !== null;
+    return getTpsNavigatorKindValue(value) !== null || parseTpsNavigatorProviderTypeId(value) !== null;
 }
 
 /** Applies Navigator visibility rules to a raw entity-index snapshot. */
@@ -131,6 +210,9 @@ export function filterTpsNavigatorTypesSnapshot(
     const descriptors = snapshot.descriptors.map(descriptor => {
         const records = (snapshot.recordsByType.get(descriptor.id) ?? []).filter(record => visibleSourcePaths.has(record.sourcePath));
         recordsByType.set(descriptor.id, records);
+        if (descriptor.showCount === false) {
+            return descriptor;
+        }
         return records.length === descriptor.count ? descriptor : { ...descriptor, count: records.length };
     });
 

@@ -34,13 +34,14 @@ export function buildTypeProviderRows({
     addTaskContextMenuItems,
     onActivationFailure
 }: BuildTypeProviderRowsOptions): NavigatorProvidedRow[] {
-    if (snapshot.availability !== 'ready') {
+    const builtinAvailability = snapshot.builtinAvailability ?? snapshot.availability;
+    if (builtinAvailability !== 'ready') {
         return [
             {
                 providerId: 'tps/entity-types',
-                id: `status:${snapshot.availability}`,
+                id: `status:${builtinAvailability}`,
                 kind: 'tps/entity-type-status',
-                label: snapshot.message ?? 'Types are unavailable.',
+                label: snapshot.builtinMessage ?? snapshot.message ?? 'Types are unavailable.',
                 sourcePath: 'Types'
             }
         ];

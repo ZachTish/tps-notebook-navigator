@@ -12,6 +12,7 @@ import { ItemType, TYPES_KINDS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID }
 import {
     createTpsNavigatorKindTypeId,
     getTpsNavigatorKindValue,
+    isTpsNavigatorTypeAuthoritativelyMissing,
     isTpsNavigatorTypeId,
     type TpsNavigatorTypeId,
     type TpsNavigatorTypesSnapshot
@@ -29,7 +30,7 @@ export interface NavigateToTypeOptions {
 
 export interface TypeNavigationEnvironment {
     enabled: boolean;
-    snapshot: Pick<TpsNavigatorTypesSnapshot, 'availability' | 'descriptors'>;
+    snapshot: Pick<TpsNavigatorTypesSnapshot, 'availability' | 'descriptors' | 'authoritativeSourceKeys'>;
     expandedVirtualFolders: ReadonlySet<string>;
     expansionDispatch: Dispatch<ExpansionAction>;
     selectionDispatch: Dispatch<SelectionAction>;
@@ -47,9 +48,9 @@ function canonicalizeTypeId(value: string): TpsNavigatorTypeId | null {
 }
 
 function expandTypeAncestors(env: TypeNavigationEnvironment, typeId: TpsNavigatorTypeId): void {
-    const ancestorIds = getTpsNavigatorKindValue(typeId)
-        ? [TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID]
-        : [TYPES_ROOT_VIRTUAL_FOLDER_ID];
+    const descriptor = env.snapshot.descriptors.find(candidate => candidate.id === typeId);
+    const isKind = descriptor ? descriptor.category === 'kind' : getTpsNavigatorKindValue(typeId) !== null;
+    const ancestorIds = isKind ? [TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID] : [TYPES_ROOT_VIRTUAL_FOLDER_ID];
     if (ancestorIds.every(id => env.expandedVirtualFolders.has(id))) {
         return;
     }
@@ -60,7 +61,7 @@ function expandTypeAncestors(env: TypeNavigationEnvironment, typeId: TpsNavigato
 }
 
 /**
- * Selects a structural or Kind Type collection and reveals it in navigation.
+ * Selects a built-in, Kind, or registered-provider Type collection and reveals it in navigation.
  *
  * A ready snapshot is authoritative, so a missing descriptor is rejected.
  * During loading or an integration outage, syntactically valid IDs remain
@@ -76,7 +77,7 @@ export function navigateToType(env: TypeNavigationEnvironment, typeId: string, o
         return null;
     }
 
-    if (env.snapshot.availability === 'ready' && !env.snapshot.descriptors.some(descriptor => descriptor.id === canonicalTypeId)) {
+    if (isTpsNavigatorTypeAuthoritativelyMissing(env.snapshot, canonicalTypeId)) {
         return null;
     }
 

@@ -94,7 +94,7 @@ import type { SelectionHistoryEntry } from '../context/selection/types';
 import type { SearchQueryUpdateOptions } from '../hooks/useListPaneSearch';
 import { isTpsNavigatorTypeId } from '../types/navigatorTypes';
 import { resolveTypeSelectionHistoryEntry } from '../utils/navigationTypeHistory';
-import { useGcmEntityTypes } from '../integrations/gcm/useGcmEntityTypes';
+import { useNavigatorTypes } from '../hooks/useNavigatorTypes';
 import { navigateToType as navigateToTypeInternal, type NavigateToTypeOptions } from '../utils/typeNavigation';
 
 // Checks if two string arrays have identical content in the same order
@@ -592,7 +592,7 @@ export const NotebookNavigatorComponent = React.memo(
             focusNavigationPane: focusNavigationPaneCallback,
             focusFilesPane: focusFilesPaneCallback
         });
-        const { snapshot: typeSnapshot } = useGcmEntityTypes(app, settings.tpsTypesNavigationEnabled);
+        const typeSnapshot = useNavigatorTypes(plugin.api);
         const navigateToType = useCallback(
             (typeId: string, options?: NavigateToTypeOptions) =>
                 navigateToTypeInternal(

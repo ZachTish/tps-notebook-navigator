@@ -8,12 +8,14 @@ import {
 import { TYPES_KINDS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
 import {
     createTpsNavigatorKindTypeId,
+    createTpsNavigatorProviderTypeId,
     TPS_NAVIGATOR_TYPE_IDS,
     type TpsNavigatorTypeDescriptor,
     type TpsNavigatorTypesSnapshot
 } from '../../src/types/navigatorTypes';
 
 const projectTypeId = createTpsNavigatorKindTypeId('project')!;
+const externalTypeId = createTpsNavigatorProviderTypeId('example/entities', 'contexts')!;
 
 function createSnapshot(descriptors: readonly TpsNavigatorTypeDescriptor[]): TpsNavigatorTypesSnapshot {
     return {
@@ -38,6 +40,17 @@ const kindDescriptor: TpsNavigatorTypeDescriptor = {
     icon: 'lucide-box',
     category: 'kind',
     count: 3
+};
+
+const externalDescriptor: TpsNavigatorTypeDescriptor = {
+    id: externalTypeId,
+    label: 'Contexts',
+    icon: 'lucide-at-sign',
+    category: 'structure',
+    count: 0,
+    showCount: false,
+    providerId: 'example/entities',
+    providerCollectionId: 'contexts'
 };
 
 describe('buildNavigationTypeItems', () => {
@@ -133,6 +146,30 @@ describe('buildNavigationTypeItems', () => {
                 icon: 'lucide-box'
             }
         });
+    });
+
+    it('renders external collections directly under Types without a misleading pre-query count', () => {
+        const items = buildNavigationTypeItems(
+            createSnapshot([structuralDescriptor, externalDescriptor, kindDescriptor]),
+            new Set([TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID])
+        );
+
+        expect(items.map(item => item.key)).toEqual([
+            TYPES_ROOT_VIRTUAL_FOLDER_ID,
+            TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
+            externalTypeId,
+            TYPES_KINDS_VIRTUAL_FOLDER_ID,
+            projectTypeId
+        ]);
+        expect(items[2]).toMatchObject({
+            level: 1,
+            key: externalTypeId,
+            typeCollectionId: externalTypeId,
+            showFileCount: false,
+            data: { name: 'Contexts', icon: 'lucide-at-sign' }
+        });
+        expect(items[2]).not.toHaveProperty('noteCount');
+        expect(getTypeSelectionAncestorIds(externalTypeId, [externalDescriptor])).toEqual([TYPES_ROOT_VIRTUAL_FOLDER_ID]);
     });
 
     it('omits the Kinds group when no kind descriptors exist and marks an empty root as childless', () => {

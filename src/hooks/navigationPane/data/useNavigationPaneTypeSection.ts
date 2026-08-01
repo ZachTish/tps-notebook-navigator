@@ -11,15 +11,19 @@ import { getTpsNavigatorKindValue, type TpsNavigatorTypeId, type TpsNavigatorTyp
 import type { CombinedNavigationItem } from '../../../types/virtualization';
 
 /** Virtual ancestors that must be visible before a selected Type row can render. */
-export function getTypeSelectionAncestorIds(typeId: TpsNavigatorTypeId): string[] {
-    return getTpsNavigatorKindValue(typeId)
-        ? [TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID]
-        : [TYPES_ROOT_VIRTUAL_FOLDER_ID];
+export function getTypeSelectionAncestorIds(typeId: TpsNavigatorTypeId, descriptors?: TpsNavigatorTypesSnapshot['descriptors']): string[] {
+    const descriptor = descriptors?.find(candidate => candidate.id === typeId);
+    const isKind = descriptor ? descriptor.category === 'kind' : getTpsNavigatorKindValue(typeId) !== null;
+    return isKind ? [TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID] : [TYPES_ROOT_VIRTUAL_FOLDER_ID];
 }
 
 /** Returns the current set when no reveal work is needed so callers can avoid redundant dispatches. */
-export function expandTypeSelectionAncestors(expandedVirtualFolders: ReadonlySet<string>, typeId: TpsNavigatorTypeId): ReadonlySet<string> {
-    const ancestorIds = getTypeSelectionAncestorIds(typeId);
+export function expandTypeSelectionAncestors(
+    expandedVirtualFolders: ReadonlySet<string>,
+    typeId: TpsNavigatorTypeId,
+    descriptors?: TpsNavigatorTypesSnapshot['descriptors']
+): ReadonlySet<string> {
+    const ancestorIds = getTypeSelectionAncestorIds(typeId, descriptors);
     if (ancestorIds.every(id => expandedVirtualFolders.has(id))) {
         return expandedVirtualFolders;
     }
@@ -55,6 +59,7 @@ export function buildNavigationTypeItems(
     }
 
     structuralDescriptors.forEach(descriptor => {
+        const showCount = descriptor.showCount !== false;
         items.push({
             type: NavigationPaneItemType.VIRTUAL_FOLDER,
             data: {
@@ -67,8 +72,8 @@ export function buildNavigationTypeItems(
             typeCollectionId: descriptor.id,
             isSelectable: true,
             hasChildren: false,
-            showFileCount: true,
-            noteCount: { current: descriptor.count, descendants: 0, total: descriptor.count }
+            showFileCount: showCount,
+            ...(showCount ? { noteCount: { current: descriptor.count, descendants: 0, total: descriptor.count } } : {})
         });
     });
 

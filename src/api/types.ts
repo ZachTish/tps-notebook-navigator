@@ -73,6 +73,10 @@ export interface NavigatorTypeDescriptor {
     readonly label: string;
     readonly icon: string;
     readonly category: 'structure' | 'kind';
+    /** Stable owner ID for a collection registered by another plugin. */
+    readonly providerId?: string;
+    /** Provider-local collection ID for a collection registered by another plugin. */
+    readonly providerCollectionId?: string;
 }
 
 /** Immutable discovery snapshot for the first-class Types catalog. */
@@ -85,6 +89,63 @@ export interface NavigatorTypesSnapshot {
 
 /** Listener used by the Types catalog subscription API. */
 export type NavigatorTypesListener = (snapshot: NavigatorTypesSnapshot) => void;
+
+/** Immutable options owned by the plugin that registers a Type provider. */
+export type NavigatorTypeProviderOptions = Readonly<Record<string, unknown>>;
+
+/** One top-level Type collection exposed by an external provider. */
+export interface NavigatorTypeCollectionDefinition {
+    /** Stable provider-local lowercase slug. */
+    readonly id: string;
+    readonly label: string;
+    readonly icon: string;
+}
+
+export interface NavigatorTypeProviderContext {
+    readonly app: App;
+}
+
+export interface NavigatorTypeProviderQueryContext extends NavigatorTypeProviderContext {
+    /** Aborted when a query is superseded, times out, unregisters, or unloads. */
+    readonly signal: AbortSignal;
+}
+
+export interface NavigatorTypeRowsContext extends NavigatorTypeProviderQueryContext {
+    /** Canonical host-owned Type ID selected in the Navigator. */
+    readonly typeId: string;
+    readonly searchQuery: string;
+    /** Exact visible Markdown paths the provider may return rows for. */
+    readonly allowedVaultFilePaths: readonly string[];
+}
+
+/**
+ * Establishes one or more top-level Type collections and supplies their rows.
+ * Returned rows use the same guarded DTO as the ordinary Rows API.
+ */
+export interface NavigatorTypeProvider {
+    /** Stable namespaced ID in `vendor/name` form. */
+    readonly id: string;
+    getCollections(
+        context: NavigatorTypeProviderQueryContext,
+        options: NavigatorTypeProviderOptions
+    ): Promise<readonly NavigatorTypeCollectionDefinition[]> | readonly NavigatorTypeCollectionDefinition[];
+    getRows(
+        collectionId: string,
+        context: NavigatorTypeRowsContext,
+        options: NavigatorTypeProviderOptions
+    ): Promise<readonly NavigatorRowDefinition[]> | readonly NavigatorRowDefinition[];
+    subscribe?(context: NavigatorTypeProviderContext, options: NavigatorTypeProviderOptions, invalidate: () => void): (() => void) | void;
+}
+
+export interface NavigatorTypeProviderRegistration {
+    readonly id: string;
+    /** Build the canonical ID for a valid local slug while this handle is active. */
+    getTypeId(collectionId: string): string | null;
+    /** Replace active options and refresh every open TPS Navigator view. */
+    updateOptions(options: NavigatorTypeProviderOptions): void;
+    /** Disable and unregister this provider. Safe to call repeatedly. */
+    unregister(): void;
+}
 
 // ============================================================================
 // TRANSIENT ROW PROVIDERS (TPS FORK)
@@ -100,7 +161,7 @@ export interface NavigatorRowScope {
     readonly selectedFolderPath: string | null;
     readonly selectedTag: string | null;
     readonly selectedProperty: string | null;
-    /** Opaque structural or Kind collection ID when `selectionType` is `type`. */
+    /** Opaque built-in, Kind, or registered-provider collection ID when `selectionType` is `type`. */
     readonly selectedType: string | null;
 }
 

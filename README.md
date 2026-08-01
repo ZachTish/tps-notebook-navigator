@@ -43,14 +43,19 @@ The first-class **Types** section is enabled by default. It uses TPS Global Cont
 
 The selected type and Types/Kinds expansion state use TPS-namespaced local storage, participate in back/forward history and keyboard navigation, and do not alter upstream Notebook Navigator state. Dynamic Kind collections disappear only after a complete index snapshot confirms that the Kind no longer exists; transient GCM startup does not erase a restored selection.
 
-External integrations can discover the same structural and dynamic Kind descriptors through the provider-neutral public
-`types` catalog, subscribe to its availability/revision changes, build or parse opaque Kind ids, and navigate through
-`navigation.navigateToType(typeId)`. Clicks, back/forward history, and public calls share one validator, ancestor-expansion,
-focus, and scroll path. Catalog DTOs are immutable and intentionally omit GCM records, source paths, task payloads, and
-counts whose meaning would differ before and after Navigator visibility filtering. A complete `ready` catalog is
-authoritative; provisional valid ids survive `loading`, `unavailable`, and `error` states so an integration restart cannot
-erase navigation history. External providers may still augment an existing selected Type through the Rows API, but defining
-new top-level Type collections remains a future generic-provider milestone.
+External integrations can discover built-in, dynamic Kind, and registered-provider descriptors through the provider-neutral
+public `types` catalog, subscribe to its availability/revision changes, build or parse opaque Kind ids, and navigate through
+`navigation.navigateToType(typeId)`. API 2.7.0 also adds `types.registerProvider(...)`: one runtime registration defines one
+or more new top-level Type collections and supplies their rows through the existing guarded row DTO. TPS owns collision-free
+opaque ids, visible-path enforcement, timeouts, cancellation, validation, and lifecycle cleanup; the provider owns its data,
+search, activation, checkbox changes, and context-menu actions. Provider definitions and options are never persisted.
+
+Clicks, back/forward history, and public calls share one validator, ancestor-expansion, focus, and scroll path. Catalog DTOs
+are immutable and intentionally omit GCM records, source paths, task payloads, and counts whose meaning would differ before
+and after Navigator visibility filtering. Readiness and removal authority are tracked per source: a failed provider cannot
+poison GCM or another provider, a late-loading provider selection is preserved, and explicit unregistration removes a stale
+selection immediately. See [the API reference](docs/api-reference.md#registering-a-top-level-type-provider) for a complete
+provider example.
 
 ### Settings map
 
@@ -72,8 +77,17 @@ The Types toggle and all three task-row values persist in the TPS plugin's own `
 - Provider controls own their keyboard and context-menu events, so completing a task cannot accidentally trigger file deletion, selection, or the empty-list menu.
 - A provider may expose synchronous row actions through `contextMenu(context)`. The same actions open from desktop right-click, the native mobile long-press context-menu event, or the keyboard-focusable **More actions** button. Failed, asynchronous, and empty builders are isolated and never open a blank menu.
 - External providers can opt in to a selected Type collection with `supportsTypeScope: true`. They receive the opaque selected Type id and only the exact visible paths represented by the current searched Type rows; providers that do not opt in retain their previous attached-list behavior.
+- A Type provider establishes a new top-level collection through `types.registerProvider(...)`. Its owner-row query receives
+  the active search text, an abort signal, and every Markdown path allowed by the current Navigator visibility profile. The
+  host rejects rows outside that allowlist; ordinary `supportsTypeScope` row providers may then augment only the exact paths
+  represented by accepted owner rows. If both registries emit the same `providerId` plus row `id`, the owning Type row wins
+  so the virtualized list cannot contain duplicate keys.
+- Type-provider catalogs refresh atomically and independently. Invalid or timed-out refreshes retain that provider's last
+  valid descriptors, async results are ignored after replacement/unload, and provider callbacks/options remain runtime-only.
+- Type-provider registrations belong to the current host API instance. An owner that remains loaded across a TPS-only hot
+  reload must reacquire the API and register again; ordinary app/plugin reloads rerun the owner's registration path.
 - TPS settings import is a copy, not synchronization. Later upstream setting changes are not mirrored unless the import is explicitly run again.
-- Vault-wide Types rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. Their plain-text search matches entity labels and source paths; file-only advanced search operators and Omnisearch ranking do not apply in a Types collection.
+- Built-in GCM-backed Types rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. External Type-provider rows retain the public provider safety ceiling. Plain-text search matches built-in entity labels and source paths; external owners receive the same query before their row ceiling. File-only advanced search operators and Omnisearch ranking do not apply in a Types collection.
 
 ## Keeping up with Notebook Navigator
 
@@ -87,6 +101,21 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 4.6.0 — externally owned Type collections
+
+- Adds `types.registerProvider(...)` in public API 2.7.0 so integrations can define top-level **Types** collections and supply
+  note or line rows without depending on GCM internals.
+- Gives providers host-owned opaque ids, async catalog and row cancellation, five-second timeouts, deterministic ordering,
+  atomic last-good refreshes, and idempotent options/unload cleanup.
+- Applies Navigator visibility before rendering provider-owned rows, forwards the active Type search, hides misleading
+  pre-query counts, and preserves activation, checkbox, and context-menu parity through the existing guarded row renderer.
+- Tracks readiness and missing-item authority per provider so one failing integration cannot poison another, late plugin load
+  cannot erase restored navigation, and explicit removal still falls back safely.
+- Requires no settings or note-data migration and keeps the minimum supported Obsidian version at 1.11.0.
+- Validated with 202 Vitest files and 2,169 tests plus formatting, ESLint, TypeScript, stylesheet, namespace, and artifact
+  gates. The reloaded test vault covered built-in checkbox/bullet activation and an external Type provider's navigation,
+  search, checkbox mutation, context-menu action, exact-line activation, and unregister fallback.
 
 ### 4.5.0 — programmatic Types control
 

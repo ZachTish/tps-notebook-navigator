@@ -5,21 +5,30 @@
 import { TFile } from 'obsidian';
 import { ListPaneItemType } from '../../types';
 import type { ListPaneItem } from '../../types/virtualization';
-import type { NavigatorProvidedRow } from './types';
+import { NAVIGATOR_ROW_PROVIDER_MAX_ROWS, type NavigatorProvidedRow } from './types';
 
 /** Builds a complete virtualized list from rows that are not attached to file rows. */
 export function buildStandaloneProviderListItems(providerRows: readonly NavigatorProvidedRow[]): ListPaneItem[] {
+    const seenKeys = new Set<string>();
+    const rows: ListPaneItem[] = [];
+    for (const row of providerRows) {
+        if (rows.length >= NAVIGATOR_ROW_PROVIDER_MAX_ROWS) {
+            break;
+        }
+        const key = `provider:${row.providerId}:${row.id}`;
+        if (seenKeys.has(key)) {
+            continue;
+        }
+        seenKeys.add(key);
+        rows.push({ type: ListPaneItemType.PROVIDER_ROW, data: row, key });
+    }
     return [
         {
             type: ListPaneItemType.TOP_SPACER,
             data: '',
             key: 'top-spacer'
         },
-        ...providerRows.map(row => ({
-            type: ListPaneItemType.PROVIDER_ROW,
-            data: row,
-            key: `provider:${row.providerId}:${row.id}`
-        })),
+        ...rows,
         {
             type: ListPaneItemType.BOTTOM_SPACER,
             data: '',

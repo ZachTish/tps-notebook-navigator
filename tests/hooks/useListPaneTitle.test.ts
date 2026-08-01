@@ -10,6 +10,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { getTpsNavigatorTypeTitleData } from '../../src/hooks/useListPaneTitle';
+import { createTpsNavigatorProviderTypeId } from '../../src/types/navigatorTypes';
 
 describe('getTpsNavigatorTypeTitleData', () => {
     it('uses the structural descriptor label and icon', () => {
@@ -24,5 +25,23 @@ describe('getTpsNavigatorTypeTitleData', () => {
             label: 'project objective',
             icon: 'lucide-box'
         });
+    });
+
+    it('uses the active descriptor for an external provider collection', () => {
+        const typeId = createTpsNavigatorProviderTypeId('example/entities', 'projects')!;
+        expect(
+            getTpsNavigatorTypeTitleData(typeId, [
+                {
+                    id: typeId,
+                    label: 'Active projects',
+                    icon: 'lucide-folder-kanban',
+                    category: 'structure',
+                    count: 0,
+                    showCount: false,
+                    providerId: 'example/entities',
+                    providerCollectionId: 'projects'
+                }
+            ])
+        ).toEqual({ label: 'Active projects', icon: 'lucide-folder-kanban' });
     });
 });

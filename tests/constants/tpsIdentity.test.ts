@@ -158,7 +158,7 @@ describe('TPS Notebook Navigator identity isolation', () => {
         ]);
         const version = API_VERSION.toString();
 
-        expect(version).toBe('2.6.0');
+        expect(version).toBe('2.7.0');
         expect(publicApi).toContain(`Version: ${version}`);
         expect(publicApiReadme).toContain(`Current API Version: **${version}**`);
         expect(apiReference).toContain(`**Current API Version:** ${version}`);

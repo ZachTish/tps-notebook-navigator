@@ -64,10 +64,12 @@ import { navigatorRowProviderRegistry } from '../services/rows/defaultRegistry';
 import { buildStandaloneProviderListItems, mergeProviderRowsIntoList } from '../services/rows/providerListItems';
 import type { NavigatorRowProviderSelection, NavigatorRowScope } from '../services/rows/types';
 import { useGcmEntityTypes } from '../integrations/gcm/useGcmEntityTypes';
-import { filterTpsNavigatorTypesSnapshot } from '../types/navigatorTypes';
+import { filterTpsNavigatorTypesSnapshot, parseTpsNavigatorProviderTypeId } from '../types/navigatorTypes';
 import { showNotice } from '../utils/noticeUtils';
 import { buildTypeProviderRows } from '../services/rows/typeProviderRows';
 import { collectTypeScopeVisibleFilePaths } from '../services/rows/providerScope';
+import { useNavigatorTypes } from './useNavigatorTypes';
+import { useNavigatorTypeRows } from './useNavigatorTypeRows';
 
 const EMPTY_SEARCH_META = new Map<string, SearchResultMeta>();
 const EMPTY_HIDDEN_FILE_STATE = new Map<string, boolean>();
@@ -161,32 +163,65 @@ export function useListPaneData({
     propertySortOrderOverride,
     rowProviderSelection = NO_ROW_PROVIDERS
 }: UseListPaneDataParams): UseListPaneDataResult {
-    const { app, tagTreeService, propertyTreeService, commandQueue, omnisearchService } = useServices();
+    const { app, plugin, tagTreeService, propertyTreeService, commandQueue, omnisearchService } = useServices();
     const { getFileTimestamps, getDB, getFileDisplayName } = useFileCache();
     const { includeDescendantNotes, showHiddenItems } = visibility;
     const dayKey = useLocalDayKey();
 
     const [updateKey, setUpdateKey] = useState(0);
     const isTypeSelection = selectionType === ItemType.TYPE && selectedType !== null;
+    const rawTypeSnapshot = useNavigatorTypes(plugin.api);
     const {
-        snapshot: rawTypeSnapshot,
         activate: activateTypeRecord,
         setTaskCheckbox: setTypeTaskCheckbox,
         addTaskContextMenuItems: addTypeTaskContextMenuItems
     } = useGcmEntityTypes(app, settings.tpsTypesNavigationEnabled);
     const visibleTypeSourcePaths = useMemo(() => {
+        void updateKey;
         if (!settings.tpsTypesNavigationEnabled || !isTypeSelection) {
             return new Set<string>();
         }
         return new Set(getVisibleVaultMarkdownFiles(settings, showHiddenItems, app).map(file => file.path));
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- revisions and updateKey invalidate vault-derived visibility.
-    }, [app, isTypeSelection, rawTypeSnapshot.revision, settings, showHiddenItems, updateKey]);
+    }, [app, isTypeSelection, settings, showHiddenItems, updateKey]);
     const typeSnapshot = useMemo(
         () => filterTpsNavigatorTypesSnapshot(rawTypeSnapshot, visibleTypeSourcePaths),
         [rawTypeSnapshot, visibleTypeSourcePaths]
     );
 
     const trimmedQuery = searchQuery?.trim() ?? '';
+    const allowedTypeSourcePaths = useMemo(() => Object.freeze([...visibleTypeSourcePaths]), [visibleTypeSourcePaths]);
+    const providerOwnedTypeRowsResult = useNavigatorTypeRows({
+        api: plugin.api,
+        selectedType: isTypeSelection ? selectedType : null,
+        searchQuery: trimmedQuery,
+        allowedVaultFilePaths: allowedTypeSourcePaths,
+        catalogRevision: typeSnapshot.revision
+    });
+    const providerOwnedTypeRows = useMemo(() => {
+        if (providerOwnedTypeRowsResult.status === 'loading') {
+            return [
+                {
+                    providerId: 'tps/type-provider-status',
+                    id: `loading:${selectedType ?? 'unknown'}`,
+                    kind: 'tps/type-provider-status',
+                    label: 'Loading items…',
+                    sourcePath: 'Types'
+                }
+            ];
+        }
+        if (providerOwnedTypeRowsResult.status === 'error') {
+            return [
+                {
+                    providerId: 'tps/type-provider-status',
+                    id: `error:${selectedType ?? 'unknown'}`,
+                    kind: 'tps/type-provider-status',
+                    label: 'Could not load items from this Type provider.',
+                    sourcePath: 'Types'
+                }
+            ];
+        }
+        return providerOwnedTypeRowsResult.rows;
+    }, [providerOwnedTypeRowsResult, selectedType]);
     const hasSearchQuery = trimmedQuery.length > 0;
     const isOmnisearchAvailable = omnisearchService?.isAvailable() ?? false;
     const useOmnisearch = !isTypeSelection && searchProvider === 'omnisearch' && isOmnisearchAvailable && hasSearchQuery;
@@ -529,8 +564,8 @@ export function useListPaneData({
         groupItemCountData
     ]);
 
-    const typeRows = useMemo(() => {
-        if (!isTypeSelection || !selectedType) {
+    const gcmTypeRows = useMemo(() => {
+        if (!isTypeSelection || !selectedType || parseTpsNavigatorProviderTypeId(selectedType)) {
             return [];
         }
         return buildTypeProviderRows({
@@ -550,6 +585,7 @@ export function useListPaneData({
             }
         });
     }, [activateTypeRecord, addTypeTaskContextMenuItems, isTypeSelection, selectedType, setTypeTaskCheckbox, trimmedQuery, typeSnapshot]);
+    const typeRows = parseTpsNavigatorProviderTypeId(selectedType ?? '') ? providerOwnedTypeRows : gcmTypeRows;
     const providerScope = useMemo<NavigatorRowScope>(() => {
         let visibleFilePaths: string[];
         if (isTypeSelection) {

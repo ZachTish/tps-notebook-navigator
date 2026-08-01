@@ -99,6 +99,17 @@
             }
         }
 
+        async waitForCondition(predicate, message, timeoutMs = 2000) {
+            const deadline = Date.now() + timeoutMs;
+            while (Date.now() < deadline) {
+                if (predicate()) {
+                    return;
+                }
+                await new Promise(resolve => window.setTimeout(resolve, 20));
+            }
+            throw new Error(message || `Condition was not met within ${timeoutMs}ms`);
+        }
+
         assertExists(value, message) {
             if (value === null || value === undefined) {
                 throw new Error(message || 'Value does not exist');
@@ -303,7 +314,7 @@
                     this.assertEqual(rootParts.kind, 'root', 'Root descriptor should use kind=root');
                 },
 
-                'Should expose the API 2.6 Types catalog': async function () {
+                'Should expose the API 2.7 Types catalog and provider registry': async function () {
                     this.assertExists(this.api.types, 'types catalog not found');
                     this.assertEqual(this.api.types.notesId, 'entity:note', 'notesId should match the stable Type id');
                     this.assertEqual(this.api.types.checkboxesId, 'structural:task', 'checkboxesId should match the stable Type id');
@@ -318,6 +329,30 @@
                     this.assertTrue(
                         ['disabled', 'ready', 'unavailable', 'error'].includes(snapshot.availability),
                         `Unexpected terminal Types availability: ${snapshot.availability}`
+                    );
+                    this.assertExists(this.api.types.registerProvider, 'Type provider registration not found');
+                    const registration = this.api.types.registerProvider({
+                        id: 'tps-api-test/entities',
+                        getCollections: () => [{ id: 'examples', label: 'API examples', icon: 'lucide-flask-conical' }],
+                        getRows: () => []
+                    });
+                    const typeId = registration.getTypeId('examples');
+                    try {
+                        this.assertEqual(typeId, 'provider:tps-api-test%2Fentities:examples', 'Host Type id should be canonical');
+                        this.assertTrue(this.api.types.isType(typeId), 'Canonical provider Type id should pass isType()');
+                        await this.waitForCondition(
+                            () => this.api.types.getSnapshot().descriptors.some(descriptor => descriptor.id === typeId),
+                            'Registered Type collection should enter the catalog'
+                        );
+                        const providerDescriptor = this.api.types.getSnapshot().descriptors.find(descriptor => descriptor.id === typeId);
+                        this.assertExists(providerDescriptor, 'Registered Type collection should enter the catalog');
+                        this.assertEqual(providerDescriptor.providerId, 'tps-api-test/entities', 'Descriptor should expose its owner');
+                    } finally {
+                        registration.unregister();
+                    }
+                    await this.waitForCondition(
+                        () => !this.api.types.getSnapshot().descriptors.some(descriptor => descriptor.id === typeId),
+                        'Unregistered Type collection should leave the catalog'
                     );
                 }
             };

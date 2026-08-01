@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 2.6.0
+ * Version: 2.7.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -80,6 +80,10 @@ export interface NavigatorTypeDescriptor {
     readonly label: string;
     readonly icon: string;
     readonly category: 'structure' | 'kind';
+    /** Stable owner ID for a collection registered by another plugin. */
+    readonly providerId?: string;
+    /** Provider-local collection ID for a collection registered by another plugin. */
+    readonly providerCollectionId?: string;
 }
 
 /** Immutable discovery snapshot for the first-class Types catalog. */
@@ -93,6 +97,49 @@ export interface NavigatorTypesSnapshot {
 /** Listener used by the Types catalog subscription API. */
 export type NavigatorTypesListener = (snapshot: NavigatorTypesSnapshot) => void;
 
+export type NavigatorTypeProviderOptions = Readonly<Record<string, unknown>>;
+
+export interface NavigatorTypeCollectionDefinition {
+    readonly id: string;
+    readonly label: string;
+    readonly icon: string;
+}
+
+export interface NavigatorTypeProviderContext {
+    readonly app: App;
+}
+
+export interface NavigatorTypeProviderQueryContext extends NavigatorTypeProviderContext {
+    readonly signal: AbortSignal;
+}
+
+export interface NavigatorTypeRowsContext extends NavigatorTypeProviderQueryContext {
+    readonly typeId: string;
+    readonly searchQuery: string;
+    readonly allowedVaultFilePaths: readonly string[];
+}
+
+export interface NavigatorTypeProvider {
+    readonly id: string;
+    getCollections(
+        context: NavigatorTypeProviderQueryContext,
+        options: NavigatorTypeProviderOptions
+    ): Promise<readonly NavigatorTypeCollectionDefinition[]> | readonly NavigatorTypeCollectionDefinition[];
+    getRows(
+        collectionId: string,
+        context: NavigatorTypeRowsContext,
+        options: NavigatorTypeProviderOptions
+    ): Promise<readonly NavigatorRowDefinition[]> | readonly NavigatorRowDefinition[];
+    subscribe?(context: NavigatorTypeProviderContext, options: NavigatorTypeProviderOptions, invalidate: () => void): (() => void) | void;
+}
+
+export interface NavigatorTypeProviderRegistration {
+    readonly id: string;
+    getTypeId(collectionId: string): string | null;
+    updateOptions(options: NavigatorTypeProviderOptions): void;
+    unregister(): void;
+}
+
 export type NavigatorRowSelectionType = 'file' | 'folder' | 'tag' | 'property' | 'type';
 export type NavigatorRowProviderOptions = Readonly<Record<string, unknown>>;
 
@@ -102,7 +149,7 @@ export interface NavigatorRowScope {
     readonly selectedFolderPath: string | null;
     readonly selectedTag: string | null;
     readonly selectedProperty: string | null;
-    /** Opaque structural or Kind collection ID when `selectionType` is `type`. */
+    /** Opaque built-in, Kind, or registered-provider collection ID when `selectionType` is `type`. */
     readonly selectedType: string | null;
 }
 
@@ -393,7 +440,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 2.6.0
+ * @version 2.7.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */
@@ -445,11 +492,11 @@ export interface NotebookNavigatorAPI {
         navigateToTag(tag: string): Promise<boolean>;
         /** Select a property node in the navigator navigation pane (e.g. 'key:status' or 'key:status=done'). */
         navigateToProperty(nodeId: string): Promise<boolean>;
-        /** Select a structural or dynamic Kind collection discovered through `types`. */
+        /** Select any built-in, dynamic Kind, or registered-provider collection discovered through `types`. */
         navigateToType(typeId: string): Promise<boolean>;
     };
 
-    /** Discover and address first-class structural and dynamic Kind collections. */
+    /** Discover and address built-in, dynamic Kind, and registered-provider Type collections. */
     types: {
         readonly notesId: 'entity:note';
         readonly checkboxesId: 'structural:task';
@@ -459,8 +506,10 @@ export interface NotebookNavigatorAPI {
         buildKind(kind: string): string | null;
         /** Parse a configured Kind value from an opaque Type id. */
         parseKind(typeId: string): string | null;
-        /** Check whether a runtime value is a syntactically valid built-in Type id. */
+        /** Check whether a runtime value is a syntactically valid built-in, Kind, or provider Type id. */
         isType(typeId: unknown): boolean;
+        /** Register runtime-owned top-level collections and their guarded rows. */
+        registerProvider(provider: NavigatorTypeProvider, options?: NavigatorTypeProviderOptions): NavigatorTypeProviderRegistration;
         /** Read the latest immutable provider-neutral catalog snapshot. */
         getSnapshot(): NavigatorTypesSnapshot;
         /** Receive the current snapshot immediately and every later catalog change. */

@@ -21,9 +21,11 @@ import { App, TFile } from 'obsidian';
 import {
     getModifiedSortBoundaryRefreshKey,
     hasPropertySearchContentChange,
+    hasTypeVisibilityContentChange,
     shouldRefreshForCustomGroupHeaderMetadataChange,
     shouldSkipModifiedSortBoundaryRefresh
 } from '../../../src/hooks/listPaneData/useListPaneRefresh';
+import { ItemType } from '../../../src/types';
 
 function createFile(path: string, mtime: number): TFile {
     const file = new TFile(path);
@@ -173,6 +175,44 @@ describe('hasPropertySearchContentChange', () => {
                 basePathSet
             )
         ).toBe(false);
+    });
+});
+
+describe('hasTypeVisibilityContentChange', () => {
+    it('refreshes a Type allowlist for relevant hidden-property and hidden-tag changes without a base path', () => {
+        expect(
+            hasTypeVisibilityContentChange({
+                changes: [{ path: 'notes/project.md', changes: { properties: [] }, metadataHiddenChanged: true, changeType: 'content' }],
+                selectionType: ItemType.TYPE,
+                showHiddenItems: false,
+                hasHiddenPropertyRules: true,
+                hasHiddenTagRules: false
+            })
+        ).toBe(true);
+        expect(
+            hasTypeVisibilityContentChange({
+                changes: [{ path: 'notes/project.md', changes: { tags: ['hidden'] }, changeType: 'content' }],
+                selectionType: ItemType.TYPE,
+                showHiddenItems: false,
+                hasHiddenPropertyRules: false,
+                hasHiddenTagRules: true
+            })
+        ).toBe(true);
+    });
+
+    it('ignores unrelated fields, other selections, and the explicit hidden-items override', () => {
+        const changes = [{ path: 'notes/project.md', changes: { wordCount: 42 }, changeType: 'content' as const }];
+        const base = {
+            changes,
+            selectionType: ItemType.TYPE,
+            showHiddenItems: false,
+            hasHiddenPropertyRules: true,
+            hasHiddenTagRules: true
+        };
+
+        expect(hasTypeVisibilityContentChange(base)).toBe(false);
+        expect(hasTypeVisibilityContentChange({ ...base, selectionType: ItemType.FOLDER })).toBe(false);
+        expect(hasTypeVisibilityContentChange({ ...base, showHiddenItems: true })).toBe(false);
     });
 });
 

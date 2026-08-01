@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildStandaloneProviderListItems } from '../../src/services/rows/providerListItems';
+import { NAVIGATOR_ROW_PROVIDER_MAX_ROWS, type NavigatorProvidedRow } from '../../src/services/rows/types';
 import { ListPaneItemType } from '../../src/types';
 
 describe('buildStandaloneProviderListItems', () => {
@@ -84,5 +85,45 @@ describe('buildStandaloneProviderListItems', () => {
             'provider:example/related:shared:related',
             'bottom-spacer'
         ]);
+    });
+
+    it('keeps the owning Type row when an augmenting provider repeats the same public row identity', () => {
+        const ownerRow = {
+            providerId: 'example/shared',
+            id: 'project:one',
+            kind: 'example/project',
+            label: 'Owner row',
+            sourcePath: 'Projects/One.md'
+        };
+        const duplicateAugmentation = { ...ownerRow, label: 'Duplicate augmentation' };
+
+        const items = buildStandaloneProviderListItems([ownerRow, duplicateAugmentation]);
+
+        expect(items.map(item => item.key)).toEqual(['top-spacer', 'provider:example/shared:project:one', 'bottom-spacer']);
+        expect(items[1].data).toBe(ownerRow);
+    });
+
+    it('keeps the owner-first 1,000-row budget when 1,000 augmenting rows are also available', () => {
+        const ownerRows: NavigatorProvidedRow[] = Array.from({ length: NAVIGATOR_ROW_PROVIDER_MAX_ROWS }, (_, index) => ({
+            providerId: 'example/owner',
+            id: `owner:${index}`,
+            kind: 'example/owner',
+            label: `Owner ${index}`,
+            sourcePath: `Projects/${index}.md`
+        }));
+        const augmentingRows: NavigatorProvidedRow[] = Array.from({ length: NAVIGATOR_ROW_PROVIDER_MAX_ROWS }, (_, index) => ({
+            providerId: 'example/augmenting',
+            id: `augmentation:${index}`,
+            kind: 'example/augmentation',
+            label: `Augmentation ${index}`,
+            sourcePath: `Projects/${index}.md`
+        }));
+
+        const items = buildStandaloneProviderListItems([...ownerRows, ...augmentingRows]);
+        const renderedRows = items.filter(item => item.type === ListPaneItemType.PROVIDER_ROW);
+
+        expect(renderedRows).toHaveLength(NAVIGATOR_ROW_PROVIDER_MAX_ROWS);
+        expect(renderedRows.map(item => item.data)).toEqual(ownerRows);
+        expect(items).toHaveLength(NAVIGATOR_ROW_PROVIDER_MAX_ROWS + 2);
     });
 });

@@ -93,13 +93,13 @@ import type { NavigationPaneSourceState } from '../../hooks/navigationPane/data/
 import type { NavigationPaneTreeSectionsResult } from '../../hooks/navigationPane/data/useNavigationPaneTreeSections';
 import type { FolderDecorationModel } from '../../utils/folderDecoration';
 import { focusElementPreventScroll } from '../../utils/domUtils';
-import { useGcmEntityTypes } from '../../integrations/gcm/useGcmEntityTypes';
+import { useNavigatorTypes } from '../../hooks/useNavigatorTypes';
 import {
     buildNavigationTypeReorderItems,
     expandTypeSelectionAncestors,
     useNavigationPaneTypeSection
 } from '../../hooks/navigationPane/data/useNavigationPaneTypeSection';
-import { filterTpsNavigatorTypesSnapshot } from '../../types/navigatorTypes';
+import { filterTpsNavigatorTypesSnapshot, isTpsNavigatorTypeAuthoritativelyMissing } from '../../types/navigatorTypes';
 import { getVisibleVaultMarkdownFiles } from '../../utils/selectionUtils';
 import { createTypeSelectionFallbackAction } from '../../utils/navigationTypeHistory';
 
@@ -433,7 +433,7 @@ export const NavigationPane = React.memo(
         );
 
         const isVisible = uiState.dualPane || uiState.currentSinglePaneView === 'navigation';
-        const { snapshot: rawTypeSnapshot } = useGcmEntityTypes(app, settings.tpsTypesNavigationEnabled);
+        const rawTypeSnapshot = useNavigatorTypes(plugin.api);
         const visibleTypeSourcePaths = useMemo(() => {
             // Source-state changes can alter the active visibility scope before the next index revision.
             void props.navigationSourceState;
@@ -469,7 +469,11 @@ export const NavigationPane = React.memo(
             }
             revealedTypeSelectionRef.current = selectedType;
 
-            const nextExpandedVirtualFolders = expandTypeSelectionAncestors(expansionState.expandedVirtualFolders, selectedType);
+            const nextExpandedVirtualFolders = expandTypeSelectionAncestors(
+                expansionState.expandedVirtualFolders,
+                selectedType,
+                typeSnapshot.descriptors
+            );
             if (nextExpandedVirtualFolders !== expansionState.expandedVirtualFolders) {
                 expansionDispatch({
                     type: 'SET_EXPANDED_VIRTUAL_FOLDERS',
@@ -481,7 +485,8 @@ export const NavigationPane = React.memo(
             expansionState.expandedVirtualFolders,
             selectionState.selectedType,
             selectionState.selectionType,
-            settings.tpsTypesNavigationEnabled
+            settings.tpsTypesNavigationEnabled,
+            typeSnapshot.descriptors
         ]);
         useEffect(() => {
             if (settings.tpsTypesNavigationEnabled || selectionState.selectionType !== ItemType.TYPE) {
@@ -491,10 +496,9 @@ export const NavigationPane = React.memo(
         }, [app.vault, selectionDispatch, selectionState.selectionType, settings.tpsTypesNavigationEnabled]);
         useEffect(() => {
             if (
-                typeSnapshot.availability !== 'ready' ||
                 selectionState.selectionType !== ItemType.TYPE ||
                 !selectionState.selectedType ||
-                typeSnapshot.descriptors.some(descriptor => descriptor.id === selectionState.selectedType)
+                !isTpsNavigatorTypeAuthoritativelyMissing(typeSnapshot, selectionState.selectedType)
             ) {
                 return;
             }

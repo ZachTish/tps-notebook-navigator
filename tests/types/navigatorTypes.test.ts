@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
     createTpsNavigatorKindTypeId,
+    createTpsNavigatorProviderTypeId,
     filterTpsNavigatorTypesSnapshot,
     getTpsNavigatorKindValue,
     isTpsNavigatorTypeId,
+    parseTpsNavigatorProviderTypeId,
     TPS_NAVIGATOR_TYPE_IDS,
     type TpsNavigatorTypeDescriptor,
     type TpsNavigatorTypeRecord,
@@ -53,6 +55,19 @@ describe('TPS navigator type ids', () => {
         expect(isTpsNavigatorTypeId('kind:')).toBe(false);
         expect(isTpsNavigatorTypeId('entity:project')).toBe(false);
         expect(isTpsNavigatorTypeId(null)).toBe(false);
+    });
+
+    it('accepts only canonical host-owned provider identifiers', () => {
+        const typeId = createTpsNavigatorProviderTypeId('example/entities', 'project-items');
+        expect(typeId).toBe('provider:example%2Fentities:project-items');
+        expect(isTpsNavigatorTypeId(typeId)).toBe(true);
+        expect(parseTpsNavigatorProviderTypeId(typeId!)).toEqual({
+            providerId: 'example/entities',
+            collectionId: 'project-items'
+        });
+        expect(isTpsNavigatorTypeId('provider:example%2fentities:project-items')).toBe(false);
+        expect(isTpsNavigatorTypeId('provider:example%2Fentities:Project')).toBe(false);
+        expect(isTpsNavigatorTypeId('provider:example%2Fentities:project:extra')).toBe(false);
     });
 });
 
@@ -112,5 +127,30 @@ describe('filterTpsNavigatorTypesSnapshot', () => {
 
         expect(filtered.descriptors[0]).toBe(descriptor);
         expect(filtered.recordsByType.get(descriptor.id)).toEqual([record]);
+    });
+
+    it('does not invent a zero count for an external collection before its rows are queried', () => {
+        const typeId = createTpsNavigatorProviderTypeId('example/entities', 'projects')!;
+        const descriptor: TpsNavigatorTypeDescriptor = {
+            id: typeId,
+            label: 'Projects',
+            icon: 'lucide-folder-kanban',
+            category: 'structure',
+            count: 0,
+            showCount: false,
+            providerId: 'example/entities',
+            providerCollectionId: 'projects'
+        };
+        const snapshot: TpsNavigatorTypesSnapshot = {
+            availability: 'ready',
+            descriptors: [descriptor],
+            recordsByType: new Map(),
+            revision: 2
+        };
+
+        const filtered = filterTpsNavigatorTypesSnapshot(snapshot, new Set(['Projects/Visible.md']));
+
+        expect(filtered.descriptors[0]).toBe(descriptor);
+        expect(filtered.descriptors[0].showCount).toBe(false);
     });
 });

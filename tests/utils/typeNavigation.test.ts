@@ -7,6 +7,8 @@ import {
     TPS_NAVIGATOR_STRUCTURAL_TYPES,
     TPS_NAVIGATOR_TYPE_IDS,
     createTpsNavigatorKindTypeId,
+    createTpsNavigatorProviderTypeId,
+    getTpsNavigatorProviderSourceKey,
     type TpsNavigatorTypeDescriptor,
     type TpsNavigatorTypesAvailability
 } from '../../src/types/navigatorTypes';
@@ -28,6 +30,7 @@ function createEnvironment(options?: {
     availability?: TpsNavigatorTypesAvailability;
     descriptors?: readonly TpsNavigatorTypeDescriptor[];
     expanded?: readonly string[];
+    authoritativeSourceKeys?: ReadonlySet<string>;
 }) {
     const expansionDispatch = vi.fn<(action: ExpansionAction) => void>();
     const selectionDispatch = vi.fn<(action: SelectionAction) => void>();
@@ -37,7 +40,8 @@ function createEnvironment(options?: {
         enabled: options?.enabled ?? true,
         snapshot: {
             availability: options?.availability ?? 'ready',
-            descriptors: options?.descriptors ?? [descriptor(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES)]
+            descriptors: options?.descriptors ?? [descriptor(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES)],
+            authoritativeSourceKeys: options?.authoritativeSourceKeys
         },
         expandedVirtualFolders: new Set(options?.expanded ?? []),
         expansionDispatch,
@@ -117,6 +121,26 @@ describe('navigateToType', () => {
             folders: new Set([TYPES_ROOT_VIRTUAL_FOLDER_ID])
         });
         expect(activatePane).toHaveBeenCalledWith('files');
+    });
+
+    it('keeps late provider selections provisional but rejects them after their owner becomes authoritative', () => {
+        const providerTypeId = createTpsNavigatorProviderTypeId('example/entities', 'projects')!;
+        const provisional = createEnvironment({
+            descriptors: [],
+            authoritativeSourceKeys: new Set(['builtin'])
+        });
+        expect(navigateToType(provisional.env, providerTypeId)).toBe(providerTypeId);
+        expect(provisional.expansionDispatch).toHaveBeenCalledWith({
+            type: 'SET_EXPANDED_VIRTUAL_FOLDERS',
+            folders: new Set([TYPES_ROOT_VIRTUAL_FOLDER_ID])
+        });
+
+        const removed = createEnvironment({
+            descriptors: [],
+            authoritativeSourceKeys: new Set(['builtin', getTpsNavigatorProviderSourceKey('example/entities')])
+        });
+        expect(navigateToType(removed.env, providerTypeId)).toBeNull();
+        expect(removed.selectionDispatch).not.toHaveBeenCalled();
     });
 
     it('avoids redundant expansion and honors skipFocus and skipScroll', () => {

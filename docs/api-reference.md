@@ -1,10 +1,10 @@
 # TPS Notebook Navigator API Reference
 
-Updated: July 31, 2026
+Updated: August 1, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 2.6.0
+**Current API Version:** 2.7.0
 
 ## Table of Contents
 
@@ -68,7 +68,7 @@ The API provides eight main namespaces:
 
 - **`metadata`** - Folder, tag, and property node colors/icons, and pinned files
 - **`navigation`** - Navigate to files in the navigator
-- **`types`** - Discover structural and dynamic Kind collections and build stable Type ids
+- **`types`** - Discover built-in, dynamic Kind, and registered-provider collections and build stable Type ids
 - **`tagCollections`** - Work with aggregate tag rows such as "Tags" and "Untagged"
 - **`propertyNodes`** - Build and parse property node ids
 - **`rows`** - Register transient rows and actions beneath owning note files
@@ -368,9 +368,10 @@ const root = nn.propertyNodes.parse(nn.propertyNodes.rootId);
 
 ## Types Catalog API
 
-The Types catalog is a read-only, provider-neutral view of the same structural and dynamic Kind collections shown in the
-navigation pane. It does not expose GCM records, task payloads, note paths, internal maps, or ambiguous pre-visibility
-counts.
+The Types catalog is the provider-neutral view of every structural, dynamic Kind, and externally registered collection shown
+in the navigation pane. Reading the catalog does not expose GCM records, task payloads, note paths, internal maps, or
+ambiguous pre-visibility counts. `registerProvider(...)` lets an integration establish a new top-level Type scope and reuse
+the Navigator's guarded row renderer.
 
 | Member | Description | Returns |
 | ------ | ----------- | ------- |
@@ -380,15 +381,17 @@ counts.
 | `headingsId` | Stable Headings collection id | `'structural:heading'` |
 | `buildKind(kind)` | Build the opaque id for a configured Kind value | `string \| null` |
 | `parseKind(typeId)` | Decode a Kind id | `string \| null` |
-| `isType(value)` | Validate a structural or Kind id | `boolean` |
+| `isType(value)` | Validate a built-in, Kind, or canonical provider Type id | `boolean` |
+| `registerProvider(provider, options?)` | Register top-level Type collections and their rows | `NavigatorTypeProviderRegistration` |
 | `getSnapshot()` | Read the latest immutable catalog state | `NavigatorTypesSnapshot` |
 | `subscribe(listener)` | Receive the current state immediately and subsequent changes | `() => void` |
 | `whenReady()` | Wait for any non-loading success or guarded failure state | `Promise<NavigatorTypesSnapshot>` |
 
-Availability is `disabled`, `loading`, `ready`, `unavailable`, or `error`. `subscribe()` shares one underlying entity-index
-subscription across all callers and returns an idempotent disposer. Snapshots, descriptor arrays, and descriptors are frozen;
-`getSnapshot()` returns the same object while its source snapshot is unchanged. Plugin unload resolves pending readiness waits
-with `unavailable` and closes the underlying subscription.
+Availability is `disabled`, `loading`, `ready`, `unavailable`, or `error`. Readiness is provider-isolated: one healthy external
+provider can make the aggregate catalog ready while GCM remains unavailable, and one failing provider cannot remove other
+collections. `subscribe()` shares source subscriptions and returns an idempotent disposer. Snapshots, descriptor arrays, and
+descriptors are frozen; `getSnapshot()` returns the same object while its sources are unchanged. Plugin unload resolves
+pending readiness waits with `unavailable` and closes every provider subscription.
 
 ```typescript
 const stop = nn.types.subscribe(snapshot => {
@@ -402,6 +405,83 @@ await nn.navigation.navigateToType(nn.types.checkboxesId);
 // Later, for example during your plugin unload:
 stop();
 ```
+
+### Registering a top-level Type provider
+
+A Type provider owns both its collection catalog and the rows that establish each collection's scope. Provider ids use
+`vendor/name`; collection ids are provider-local lowercase slugs. TPS Notebook Navigator creates collision-free opaque ids
+such as `provider:example%2Frelations:projects`. External collections appear directly beneath **Types**, omit navigation
+counts, and remain independent from GCM availability. Their public descriptor keeps `category: 'structure'` for flat root
+placement and identifies its true owner through `providerId` and `providerCollectionId`.
+
+```typescript
+import type { NavigatorTypeProvider, NotebookNavigatorAPI } from './notebook-navigator';
+
+const nn = app.plugins.plugins['tps-notebook-navigator']?.api as NotebookNavigatorAPI | undefined;
+if (!nn) {
+  return;
+}
+
+const provider: NavigatorTypeProvider = {
+  id: 'example/relations',
+  getCollections: () => [
+    { id: 'projects', label: 'Projects', icon: 'lucide-folder-kanban' },
+    { id: 'contexts', label: 'Contexts', icon: 'lucide-at-sign' }
+  ],
+  async getRows(collectionId, { app, searchQuery, allowedVaultFilePaths, signal }) {
+    const allowed = new Set(allowedVaultFilePaths);
+    const entities = await loadExampleEntities(collectionId, { signal });
+    const query = searchQuery.trim().toLocaleLowerCase();
+
+    return entities
+      .filter(entity => allowed.has(entity.sourcePath))
+      .filter(entity => !query || entity.label.toLocaleLowerCase().includes(query))
+      .map(entity => ({
+        id: entity.id,
+        kind: `example/${collectionId}`,
+        label: entity.label,
+        secondaryLabel: entity.sourcePath,
+        sourcePath: entity.sourcePath,
+        sourceLineNumber: entity.sourceLineNumber,
+        activate: () => openExampleEntity(app, entity),
+        contextMenu: context => addExampleActions(context, entity)
+      }));
+  },
+  subscribe(_context, _options, invalidate) {
+    return exampleIndex.subscribe(invalidate);
+  }
+};
+
+const registration = nn.types.registerProvider(provider, { includeArchived: false });
+const projectsTypeId = registration.getTypeId('projects');
+if (projectsTypeId) {
+  await nn.navigation.navigateToType(projectsTypeId);
+}
+
+// Replace options and refresh the provider without changing its order.
+registration.updateOptions({ includeArchived: true });
+
+// Call during the owning plugin's unload path. It is idempotent.
+registration.unregister();
+```
+
+Provider safeguards:
+
+- Catalog and row queries receive an `AbortSignal` and have a five-second host timeout. Late results after options changes,
+  unregistration, or unload are ignored.
+- Catalog refreshes are atomic. Duplicate or malformed collection definitions leave the provider's last good catalog intact.
+- `allowedVaultFilePaths` is the exact active-profile/hidden-item allowlist. Returned rows outside it are discarded by the
+  host, as are malformed and duplicate provider-local row ids.
+- `searchQuery` is supplied to the owning provider so it can search before the global 1,000-row safety ceiling.
+- Row `activate`, checkbox `indicator`, and `contextMenu` callbacks use the same renderer and safety boundaries as Rows API
+  contributions.
+- Provider definitions, callbacks, options, and registration order are runtime-only. TPS Notebook Navigator never persists
+  them to `data.json`.
+- Registrations belong to the current TPS Notebook Navigator API instance. If TPS Notebook Navigator alone is hot-reloaded,
+  an owning plugin that stays loaded must reacquire `app.plugins.plugins['tps-notebook-navigator']?.api` and register again;
+  a normal app/plugin reload naturally reruns the owner's `onload` path.
+- A provider invalidation refreshes both its catalog and rows. A later failure retains the last valid catalog; an explicit
+  unregister removes its collections immediately.
 
 ## Rows API
 
@@ -736,6 +816,16 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 2.7.0 (2026-08-01)
+
+- Added `types.registerProvider(provider, options?)` for runtime-owned top-level Type collections and rows
+- Added host-owned provider Type ids, provider-origin descriptor fields, async catalog cancellation, isolated readiness, and
+  idempotent registration handles
+- Added visibility-bound owner-row queries with search text, abort signals, timeouts, row validation, activation, checkbox,
+  and context-menu parity
+- Preserved late-loading external Type selections until their own provider becomes authoritative; explicit removal still
+  replaces stale navigation safely
 
 ### Version 2.6.0 (2026-07-31)
 

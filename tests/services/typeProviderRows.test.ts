@@ -76,6 +76,24 @@ describe('buildTypeProviderRows', () => {
         ]);
     });
 
+    it('keeps built-in GCM status independent when an external provider makes the aggregate catalog ready', () => {
+        const snapshot = createSnapshot([], 'ready');
+        snapshot.builtinAvailability = 'unavailable';
+        snapshot.builtinMessage = 'GCM is unavailable.';
+
+        const rows = buildTypeProviderRows({
+            snapshot,
+            selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
+            searchQuery: '',
+            activate: async () => ({ ok: true }),
+            setTaskCheckbox: async () => ({ ok: true }),
+            addTaskContextMenuItems: () => true,
+            onActivationFailure: () => undefined
+        });
+
+        expect(rows[0]).toMatchObject({ id: 'status:unavailable', label: 'GCM is unavailable.' });
+    });
+
     it('maps note records to path-only rows and one-based line records to zero-based source positions', () => {
         const note = createRecord();
         const checkbox = createRecord({

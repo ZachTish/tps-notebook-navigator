@@ -1399,8 +1399,8 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
      */
     onunload() {
         this.initiateShutdown();
-        this.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].rows.dispose();
         this.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].types.dispose();
+        this.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].rows.dispose();
         this.api = null;
         this.debugLoggingService?.dispose();
         setDebugLoggingService(null);

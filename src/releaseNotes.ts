@@ -106,6 +106,20 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.6.0',
+        date: '2026-08-01',
+        showOnUpdate: true,
+        info: 'Other plugins can now establish their own top-level Type collections and guarded rows.',
+        new: [
+            'Public API `2.7.0` adds `types.registerProvider(...)` for runtime-owned collection catalogs, search-aware rows, options updates, and idempotent cleanup.',
+            'External Type rows support the same source activation, checkbox indicator, and context-menu actions as existing provider rows.'
+        ],
+        improved: [
+            'Provider ids are host-owned and collision-free, while catalogs and rows are visibility-bound, validated, cancellable, and protected by five-second timeouts.',
+            'Readiness and removal authority are isolated per provider, so one failed integration cannot hide healthy Types and late plugin startup cannot erase restored selections.'
+        ]
+    },
+    {
         version: '4.5.0',
         date: '2026-07-31',
         showOnUpdate: true,

@@ -131,6 +131,24 @@ export function hasPropertySearchContentChange(changes: readonly FileContentChan
     return changes.some(change => change.changes.properties !== undefined && basePathSet.has(change.path));
 }
 
+/** Type collections use a vault-wide visibility allowlist rather than the file view's empty base-path set. */
+export function hasTypeVisibilityContentChange(params: {
+    changes: readonly FileContentChange[];
+    selectionType: ItemType | null;
+    showHiddenItems: boolean;
+    hasHiddenPropertyRules: boolean;
+    hasHiddenTagRules: boolean;
+}): boolean {
+    if (params.selectionType !== ItemType.TYPE || params.showHiddenItems) {
+        return false;
+    }
+    return params.changes.some(
+        change =>
+            (params.hasHiddenTagRules && change.changes.tags !== undefined) ||
+            (params.hasHiddenPropertyRules && (change.changes.properties !== undefined || change.metadataHiddenChanged === true))
+    );
+}
+
 /**
  * Current metadata detects added headers, while the rendered and count-snapshot paths detect removals
  * after the header property no longer identifies the file as an owner.
@@ -443,6 +461,13 @@ export function useListPaneRefresh({
                 return;
             }
 
+            if (selectionType === ItemType.TYPE) {
+                if (!showHiddenItems && hasHiddenPropertyStateChanged()) {
+                    queueRefresh();
+                }
+                return;
+            }
+
             if (selectionType !== ItemType.FOLDER || !fileIsWithinSelectedFolder(file, includeDescendantNotes, selectedFolder)) {
                 return;
             }
@@ -476,6 +501,17 @@ export function useListPaneRefresh({
 
             const hasTagChanges = changes.some(change => change.changes.tags !== undefined);
             const hasPropertyChanges = changes.some(change => change.changes.properties !== undefined);
+            if (
+                hasTypeVisibilityContentChange({
+                    changes,
+                    selectionType,
+                    showHiddenItems,
+                    hasHiddenPropertyRules: hiddenFilePropertyMatcher.hasCriteria,
+                    hasHiddenTagRules: hiddenFileTags.length > 0
+                })
+            ) {
+                shouldRefresh = true;
+            }
             if (hasPropertySearchFilters && hasPropertySearchContentChange(changes, basePathSet)) {
                 shouldRefresh = true;
             }

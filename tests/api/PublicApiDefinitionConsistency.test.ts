@@ -232,6 +232,7 @@ type SerializedParameter = {
 };
 
 type SerializedMethodSignature = {
+    isOptional: boolean;
     parameters: SerializedParameter[];
     returnType: string;
 };
@@ -259,6 +260,7 @@ function serializeMethodDeclaration(
     sourceFile: ts.SourceFile
 ): SerializedMethodSignature {
     return {
+        isOptional: Boolean(declaration.questionToken),
         parameters: serializeParameters(declaration.parameters, sourceFile),
         returnType: normalizeTypeText(declaration.type, sourceFile)
     };
@@ -327,6 +329,7 @@ function getTypeLiteralCallableSignature(
 
         if (ts.isPropertySignature(member) && member.type && ts.isFunctionTypeNode(member.type)) {
             return {
+                isOptional: Boolean(member.questionToken),
                 parameters: serializeParameters(member.type.parameters, sourceFile),
                 returnType: normalizeTypeText(member.type.type, sourceFile)
             };
@@ -388,6 +391,30 @@ function getInterfacePropertySignature(
     }
 
     return null;
+}
+
+function getInterfacePropertySignatures(sourceFile: ts.SourceFile, interfaceName: string): Record<string, SerializedPropertySignature> {
+    const signatures: Record<string, SerializedPropertySignature> = {};
+    for (const statement of sourceFile.statements) {
+        if (!ts.isInterfaceDeclaration(statement) || statement.name.text !== interfaceName) {
+            continue;
+        }
+        for (const member of statement.members) {
+            if (!ts.isPropertySignature(member)) {
+                continue;
+            }
+            const name = getNameText(member.name);
+            if (!name) {
+                continue;
+            }
+            signatures[name] = {
+                isOptional: Boolean(member.questionToken),
+                isReadonly: hasReadonlyModifier(member),
+                type: normalizeTypeText(member.type, sourceFile)
+            };
+        }
+    }
+    return signatures;
 }
 
 function getInterfaceMethodSignature(
@@ -486,11 +513,54 @@ describe('public API declaration file', () => {
         expect(Array.from(publicMembers).sort()).toEqual(Array.from(sourceMembers).sort());
     });
 
-    it.each(['NavigatorRowScope', 'NavigatorRowProvider'] as const)('matches public %s members', interfaceName => {
+    it.each([
+        'NavigatorRowScope',
+        'NavigatorRowProvider',
+        'NavigatorTypeDescriptor',
+        'NavigatorTypeCollectionDefinition',
+        'NavigatorTypeProviderContext',
+        'NavigatorTypeProviderQueryContext',
+        'NavigatorTypeRowsContext',
+        'NavigatorTypeProvider',
+        'NavigatorTypeProviderRegistration'
+    ] as const)('matches public %s members', interfaceName => {
         const sourceMembers = getInterfaceMemberNames(readSourceFile('src/api/types.ts'), interfaceName);
         const publicMembers = getInterfaceMemberNames(readSourceFile('src/api/public/notebook-navigator.d.ts'), interfaceName);
 
         expect(Array.from(publicMembers).sort()).toEqual(Array.from(sourceMembers).sort());
+    });
+
+    it.each([
+        'NavigatorTypeDescriptor',
+        'NavigatorTypeCollectionDefinition',
+        'NavigatorTypeProviderContext',
+        'NavigatorTypeProviderQueryContext',
+        'NavigatorTypeRowsContext',
+        'NavigatorTypeProvider',
+        'NavigatorTypeProviderRegistration'
+    ] as const)('matches every public %s property signature', interfaceName => {
+        const sourceFile = readSourceFile('src/api/types.ts');
+        const publicFile = readSourceFile('src/api/public/notebook-navigator.d.ts');
+
+        expect(getInterfacePropertySignatures(publicFile, interfaceName)).toEqual(
+            getInterfacePropertySignatures(sourceFile, interfaceName)
+        );
+    });
+
+    it.each([
+        ['NavigatorTypeProvider', 'getCollections'],
+        ['NavigatorTypeProvider', 'getRows'],
+        ['NavigatorTypeProvider', 'subscribe'],
+        ['NavigatorTypeProviderRegistration', 'getTypeId'],
+        ['NavigatorTypeProviderRegistration', 'updateOptions'],
+        ['NavigatorTypeProviderRegistration', 'unregister']
+    ] as const)('matches public %s.%s signature', (interfaceName, methodName) => {
+        const sourceFile = readSourceFile('src/api/types.ts');
+        const publicFile = readSourceFile('src/api/public/notebook-navigator.d.ts');
+
+        expect(getInterfaceMethodSignature(publicFile, interfaceName, methodName)).toEqual(
+            getInterfaceMethodSignature(sourceFile, interfaceName, methodName)
+        );
     });
 
     it('matches critical nested public method signatures', () => {
@@ -540,7 +610,7 @@ describe('public API declaration file', () => {
                 sourceClass: 'NavigationAPI',
                 methodName: 'navigateToType'
             },
-            ...['buildKind', 'parseKind', 'isType', 'getSnapshot', 'subscribe', 'whenReady'].map(methodName => ({
+            ...['buildKind', 'parseKind', 'isType', 'registerProvider', 'getSnapshot', 'subscribe', 'whenReady'].map(methodName => ({
                 namespace: 'types',
                 sourceFile: typesFile,
                 sourceClass: 'TypesAPI',
@@ -649,7 +719,14 @@ describe('public API declaration file', () => {
         const sourceFile = readSourceFile('src/api/types.ts');
         const publicFile = readSourceFile('src/api/public/notebook-navigator.d.ts');
 
-        for (const typeName of ['NavItem', 'NavItemType', 'TagCollectionId', 'NavigatorRowSelectionType', 'PropertyNodeParts']) {
+        for (const typeName of [
+            'NavItem',
+            'NavItemType',
+            'TagCollectionId',
+            'NavigatorRowSelectionType',
+            'NavigatorTypeProviderOptions',
+            'PropertyNodeParts'
+        ]) {
             expect(getTypeAliasText(publicFile, typeName)).toEqual(getTypeAliasText(sourceFile, typeName));
         }
 

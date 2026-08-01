@@ -99,7 +99,8 @@ async function queryProviderWithTimeout(
     }
 }
 
-function normalizeProviderRows(
+/** Validate, path-bound, de-duplicate, and host-stamp one provider's row DTOs. */
+export function normalizeNavigatorProviderRows(
     providerId: string,
     candidates: readonly unknown[],
     visibleFilePaths: ReadonlySet<string>
@@ -187,7 +188,7 @@ export async function composeProviderRows({
                 return;
             }
 
-            settledRows[providerIndex] = normalizeProviderRows(provider.id, result, visibleFilePaths);
+            settledRows[providerIndex] = normalizeNavigatorProviderRows(provider.id, result, visibleFilePaths);
             publishSnapshot();
         })
     );

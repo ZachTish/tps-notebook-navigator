@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { App } from 'obsidian';
 import { TypesAPI, type NavigatorTypesStore } from '../../src/api/modules/TypesAPI';
+import { NavigatorTypeProviderRegistry } from '../../src/services/types/NavigatorTypeProviderRegistry';
+import { getTpsNavigatorProviderSourceKey } from '../../src/types/navigatorTypes';
 import type { TpsNavigatorTypeDescriptor, TpsNavigatorTypeId, TpsNavigatorTypesSnapshot } from '../../src/types/navigatorTypes';
 
 const EMPTY_RECORDS = new Map<TpsNavigatorTypeId, readonly never[]>();
@@ -238,5 +241,47 @@ describe('TypesAPI', () => {
         unsubscribe();
         api.updateEnabled(false);
         expect(store.subscribeCalls).toHaveBeenCalledTimes(2);
+    });
+
+    it('composes external top-level collections independently from GCM readiness and tracks owner authority', async () => {
+        const store = new FakeStore(
+            snapshot(
+                'unavailable',
+                [descriptor(), descriptor({ id: 'kind:project', label: 'Project', category: 'kind', count: 2 })],
+                3,
+                'GCM is unavailable.'
+            )
+        );
+        const registry = new NavigatorTypeProviderRegistry({} as App);
+        const api = new TypesAPI(store, true, registry);
+        const registration = api.registerProvider({
+            id: 'example/entities',
+            getCollections: async () => [{ id: 'events', label: 'Events', icon: 'lucide-calendar' }],
+            getRows: async () => []
+        });
+
+        await vi.waitFor(() => expect(api.getSnapshot().descriptors).toHaveLength(3));
+        expect(api.getSnapshot()).toMatchObject({
+            availability: 'ready',
+            descriptors: [
+                { id: 'structural:task' },
+                {
+                    id: 'provider:example%2Fentities:events',
+                    label: 'Events',
+                    category: 'structure',
+                    providerId: 'example/entities',
+                    providerCollectionId: 'events'
+                },
+                { id: 'kind:project' }
+            ]
+        });
+        const internal = api.getInternalSnapshot();
+        expect(internal.builtinAvailability).toBe('unavailable');
+        expect(internal.authoritativeSourceKeys).not.toContain('builtin');
+        expect(internal.authoritativeSourceKeys).toContain(getTpsNavigatorProviderSourceKey('example/entities'));
+
+        registration.unregister();
+        expect(api.getSnapshot().descriptors.map(item => item.id)).toEqual(['structural:task', 'kind:project']);
+        expect(api.getInternalSnapshot().authoritativeSourceKeys).toContain(getTpsNavigatorProviderSourceKey('example/entities'));
     });
 });

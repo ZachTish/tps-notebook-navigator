@@ -30,6 +30,7 @@ import { RowsAPI } from './modules/RowsAPI';
 import { TypesAPI } from './modules/TypesAPI';
 import { getVirtualTagCollection, isVirtualTagCollectionId, VIRTUAL_TAG_COLLECTION_IDS } from '../utils/virtualTagCollections';
 import { getNavigatorTypesStore } from '../integrations/gcm/useGcmEntityTypes';
+import { NavigatorTypeProviderRegistry } from '../services/types/NavigatorTypeProviderRegistry';
 
 // Import versioning
 import { API_VERSION } from './version';
@@ -45,7 +46,10 @@ export interface NotebookNavigatorInternalAPI {
         'applyFileMenuExtensions' | 'applyFolderMenuExtensions' | 'applyTagMenuExtensions' | 'applyPropertyMenuExtensions'
     >;
     readonly rows: Pick<RowsAPI, 'getSelection' | 'subscribe' | 'dispose'>;
-    readonly types: Pick<TypesAPI, 'updateEnabled' | 'dispose'>;
+    readonly types: Pick<
+        TypesAPI,
+        'getInternalSnapshot' | 'subscribeInternal' | 'getProviderOwner' | 'queryProviderRows' | 'updateEnabled' | 'dispose'
+    >;
     setStorageReady: (ready: boolean) => void;
 }
 
@@ -100,7 +104,7 @@ export class NotebookNavigatorAPI {
     public readonly propertyNodes: Pick<PropertyNodesAPI, 'rootId' | 'buildKey' | 'buildValue' | 'parse' | 'normalize'>;
     /** Register active transient rows supplied by another plugin. */
     public readonly rows: Pick<RowsAPI, 'registerProvider'>;
-    /** Discover structural and dynamic Kind collections without depending on GCM internals. */
+    /** Discover built-in, dynamic Kind, and registered-provider collections without depending on provider internals. */
     public readonly types: Pick<
         TypesAPI,
         | 'notesId'
@@ -110,6 +114,7 @@ export class NotebookNavigatorAPI {
         | 'buildKind'
         | 'parseKind'
         | 'isType'
+        | 'registerProvider'
         | 'getSnapshot'
         | 'subscribe'
         | 'whenReady'
@@ -143,7 +148,11 @@ export class NotebookNavigatorAPI {
         this.menusController = new MenusAPI();
         this.propertyNodesController = new PropertyNodesAPI();
         this.rowsController = new RowsAPI();
-        this.typesController = new TypesAPI(getNavigatorTypesStore(this.app), this.plugin.settings.tpsTypesNavigationEnabled !== false);
+        this.typesController = new TypesAPI(
+            getNavigatorTypesStore(this.app),
+            this.plugin.settings.tpsTypesNavigationEnabled !== false,
+            new NavigatorTypeProviderRegistry(this.app)
+        );
 
         this.navigation = Object.freeze({
             reveal: file => this.navigationController.reveal(file),
@@ -205,6 +214,7 @@ export class NotebookNavigatorAPI {
             buildKind: kind => this.typesController.buildKind(kind),
             parseKind: typeId => this.typesController.parseKind(typeId),
             isType: typeId => this.typesController.isType(typeId),
+            registerProvider: (provider, options) => this.typesController.registerProvider(provider, options),
             getSnapshot: () => this.typesController.getSnapshot(),
             subscribe: listener => this.typesController.subscribe(listener),
             whenReady: () => this.typesController.whenReady()
