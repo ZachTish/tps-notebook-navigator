@@ -19,7 +19,7 @@
 // src/components/NotebookNavigatorComponent.tsx
 import React, { useEffect, useImperativeHandle, forwardRef, useRef, useState, useCallback, useLayoutEffect, useMemo } from 'react';
 import { TFile, TFolder } from 'obsidian';
-import { useExpansionState } from '../context/ExpansionContext';
+import { useExpansionDispatch, useExpansionState } from '../context/ExpansionContext';
 import { useSelectionState, useSelectionDispatch, resolvePrimarySelectedFile } from '../context/SelectionContext';
 import { useServices } from '../context/ServicesContext';
 import { useActiveProfile, useSettingsState } from '../context/SettingsContext';
@@ -94,6 +94,8 @@ import type { SelectionHistoryEntry } from '../context/selection/types';
 import type { SearchQueryUpdateOptions } from '../hooks/useListPaneSearch';
 import { isTpsNavigatorTypeId } from '../types/navigatorTypes';
 import { resolveTypeSelectionHistoryEntry } from '../utils/navigationTypeHistory';
+import { useGcmEntityTypes } from '../integrations/gcm/useGcmEntityTypes';
+import { navigateToType as navigateToTypeInternal, type NavigateToTypeOptions } from '../utils/typeNavigation';
 
 // Checks if two string arrays have identical content in the same order
 const arraysEqual = (a: string[], b: string[]): boolean => {
@@ -163,6 +165,7 @@ export interface NotebookNavigatorHandle {
     navigateToFolder: (folder: TFolder | string, options?: NavigateToFolderOptions) => boolean;
     navigateToTag: (tagPath: string, options?: NavigateToTagOptions) => string | null;
     navigateToProperty: (propertyNodeId: string, options?: NavigateToPropertyOptions) => string | null;
+    navigateToType: (typeId: string, options?: NavigateToTypeOptions) => string | null;
     addDateFilterToSearch: (dateToken: string) => void;
     navigateToFolderWithModal: () => void;
     navigateToTagWithModal: () => void;
@@ -200,6 +203,7 @@ export const NotebookNavigatorComponent = React.memo(
         const settings = useSettingsState();
         const activeProfile = useActiveProfile();
         const expansionState = useExpansionState();
+        const expansionDispatch = useExpansionDispatch();
         const uxPreferences = useUXPreferences();
         const uiState = useUIState();
         const uiDispatch = useUIDispatch();
@@ -588,6 +592,31 @@ export const NotebookNavigatorComponent = React.memo(
             focusNavigationPane: focusNavigationPaneCallback,
             focusFilesPane: focusFilesPaneCallback
         });
+        const { snapshot: typeSnapshot } = useGcmEntityTypes(app, settings.tpsTypesNavigationEnabled);
+        const navigateToType = useCallback(
+            (typeId: string, options?: NavigateToTypeOptions) =>
+                navigateToTypeInternal(
+                    {
+                        enabled: settings.tpsTypesNavigationEnabled,
+                        snapshot: typeSnapshot,
+                        expandedVirtualFolders: expansionState.expandedVirtualFolders,
+                        expansionDispatch,
+                        selectionDispatch,
+                        activatePane: focusPane,
+                        requestScroll: (path, scrollOptions) => navigationPaneRef.current?.requestScroll(path, scrollOptions)
+                    },
+                    typeId,
+                    options
+                ),
+            [
+                expansionDispatch,
+                expansionState.expandedVirtualFolders,
+                focusPane,
+                selectionDispatch,
+                settings.tpsTypesNavigationEnabled,
+                typeSnapshot
+            ]
+        );
 
         const resolveSelectionHistoryEntry = useCallback(
             (entry: SelectionHistoryEntry): SelectionHistoryEntry | null => {
@@ -665,12 +694,20 @@ export const NotebookNavigatorComponent = React.memo(
                 }
 
                 if (entry.type === ItemType.TYPE) {
-                    return resolveTypeSelectionHistoryEntry(entry, settings.tpsTypesNavigationEnabled);
+                    return resolveTypeSelectionHistoryEntry(entry, settings.tpsTypesNavigationEnabled, typeSnapshot);
                 }
 
                 return null;
             },
-            [app.vault, propertyTreeService, settings.showProperties, settings.showTags, settings.tpsTypesNavigationEnabled, tagTreeService]
+            [
+                app.vault,
+                propertyTreeService,
+                settings.showProperties,
+                settings.showTags,
+                settings.tpsTypesNavigationEnabled,
+                tagTreeService,
+                typeSnapshot
+            ]
         );
 
         const getSelectionHistoryTarget = useCallback(
@@ -730,13 +767,13 @@ export const NotebookNavigatorComponent = React.memo(
                 }
 
                 if (target.entry.type === ItemType.TYPE && isTpsNavigatorTypeId(target.entry.value)) {
-                    selectionDispatch({
-                        type: 'SET_SELECTED_TYPE',
-                        typeId: target.entry.value,
-                        historyIndex: target.index,
-                        source: 'manual'
-                    });
-                    return true;
+                    return (
+                        navigateToType(target.entry.value, {
+                            historyIndex: target.index,
+                            skipFocus: true,
+                            source: 'manual'
+                        }) !== null
+                    );
                 }
 
                 return (
@@ -747,7 +784,7 @@ export const NotebookNavigatorComponent = React.memo(
                     }) !== null
                 );
             },
-            [app.vault, getSelectionHistoryTarget, navigateToFolder, navigateToProperty, navigateToTag, selectionDispatch]
+            [app.vault, getSelectionHistoryTarget, navigateToFolder, navigateToProperty, navigateToTag, navigateToType]
         );
 
         const preserveNavigationFocusForModal = !uiState.singlePane || uiState.currentSinglePaneView === 'navigation';
@@ -1171,6 +1208,7 @@ export const NotebookNavigatorComponent = React.memo(
                 navigateToFolder,
                 navigateToTag,
                 navigateToProperty,
+                navigateToType,
                 addDateFilterToSearch: handleModifySearchWithDateFilter,
                 navigateToFolderWithModal: () => {
                     // Show the folder selection modal for navigation
@@ -1344,6 +1382,7 @@ export const NotebookNavigatorComponent = React.memo(
             navigateToFolder,
             navigateToTag,
             navigateToProperty,
+            navigateToType,
             navigateSelectionHistory,
             uiState.singlePane,
             uiState.currentSinglePaneView,

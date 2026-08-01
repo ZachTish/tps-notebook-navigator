@@ -553,6 +553,7 @@ export const NavigationPane = React.memo(
             propertyTreeService,
             tagTree: props.navigationTreeSections.renderTagTree,
             propertyTree: props.navigationTreeSections.renderPropertyTree,
+            typeSnapshot,
             tagsVirtualFolderHasChildren,
             setShortcutsExpanded: shortcuts.setShortcutsExpanded,
             setRecentNotesExpanded: shortcuts.setRecentNotesExpanded,

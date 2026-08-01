@@ -286,7 +286,8 @@ export class GcmEntityTypesStore {
 
 const STORES = new WeakMap<App, GcmEntityTypesStore>();
 
-function getStore(app: App): GcmEntityTypesStore {
+/** Shared provider-neutral catalog store used by React and the public Types API. */
+export function getNavigatorTypesStore(app: App): GcmEntityTypesStore {
     const existing = STORES.get(app);
     if (existing) {
         return existing;
@@ -304,7 +305,7 @@ export interface UseGcmEntityTypesResult {
 }
 
 export function useGcmEntityTypes(app: App, enabled: boolean): UseGcmEntityTypesResult {
-    const store = useMemo(() => getStore(app), [app]);
+    const store = useMemo(() => getNavigatorTypesStore(app), [app]);
     const subscribe = useCallback(
         (listener: SnapshotListener) => (enabled ? store.subscribe(listener) : () => undefined),
         [enabled, store]

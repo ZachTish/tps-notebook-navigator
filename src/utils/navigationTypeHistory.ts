@@ -3,14 +3,19 @@
 import type { TFolder } from 'obsidian';
 import type { SelectionAction, SelectionHistoryEntry } from '../context/selection/types';
 import { ItemType } from '../types';
-import { isTpsNavigatorTypeId } from '../types/navigatorTypes';
+import { isTpsNavigatorTypeId, type TpsNavigatorTypesSnapshot } from '../types/navigatorTypes';
 
 /** Hidden or malformed Type entries must be skipped by back/forward navigation. */
 export function resolveTypeSelectionHistoryEntry(
     entry: SelectionHistoryEntry,
-    typesNavigationEnabled: boolean
+    typesNavigationEnabled: boolean,
+    snapshot?: Pick<TpsNavigatorTypesSnapshot, 'availability' | 'descriptors'>
 ): SelectionHistoryEntry | null {
     if (entry.type !== ItemType.TYPE || !typesNavigationEnabled || !isTpsNavigatorTypeId(entry.value)) {
+        return null;
+    }
+
+    if (snapshot?.availability === 'ready' && !snapshot.descriptors.some(descriptor => descriptor.id === entry.value)) {
         return null;
     }
 

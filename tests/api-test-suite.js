@@ -301,6 +301,24 @@
                     const rootParts = this.api.propertyNodes.parse(this.api.propertyNodes.rootId);
                     this.assertExists(rootParts, 'parse(rootId) should return a descriptor');
                     this.assertEqual(rootParts.kind, 'root', 'Root descriptor should use kind=root');
+                },
+
+                'Should expose the API 2.6 Types catalog': async function () {
+                    this.assertExists(this.api.types, 'types catalog not found');
+                    this.assertEqual(this.api.types.notesId, 'entity:note', 'notesId should match the stable Type id');
+                    this.assertEqual(this.api.types.checkboxesId, 'structural:task', 'checkboxesId should match the stable Type id');
+                    this.assertEqual(
+                        this.api.types.parseKind(this.api.types.buildKind('project')),
+                        'project',
+                        'Kind ids should round-trip'
+                    );
+                    const snapshot = await this.api.types.whenReady();
+                    this.assertTrue(Object.isFrozen(snapshot), 'Types snapshots should be immutable');
+                    this.assertTrue(Array.isArray(snapshot.descriptors), 'Types snapshot should expose descriptors');
+                    this.assertTrue(
+                        ['disabled', 'ready', 'unavailable', 'error'].includes(snapshot.availability),
+                        `Unexpected terminal Types availability: ${snapshot.availability}`
+                    );
                 }
             };
         }
@@ -321,6 +339,15 @@
                     const fakeFile = { path: 'fake-file-that-does-not-exist.md' };
                     const revealed = await this.api.navigation.reveal(fakeFile);
                     this.assertFalse(revealed, 'Should return false for non-existent file');
+                },
+
+                'Should navigate to a stable Type collection when Types are enabled': async function () {
+                    const snapshot = await this.api.types.whenReady();
+                    const navigated = await this.api.navigation.navigateToType(this.api.types.notesId);
+                    this.assertTrue(typeof navigated === 'boolean', 'Type navigation should resolve to a boolean');
+                    if (snapshot.availability !== 'disabled') {
+                        this.assertTrue(navigated, 'Notes Type navigation should succeed while Types are enabled');
+                    }
                 }
             };
         }

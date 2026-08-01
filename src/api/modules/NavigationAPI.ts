@@ -24,6 +24,7 @@ type NavigatorView = {
     navigateToFolder: (folder: TFolder | string, options?: { preserveNavigationFocus?: boolean }) => boolean;
     navigateToTag: (tag: string, options?: { preserveNavigationFocus?: boolean }) => string | null;
     navigateToProperty: (propertyNodeId: string, options?: { preserveNavigationFocus?: boolean }) => string | null;
+    navigateToType: (typeId: string, options?: { preserveNavigationFocus?: boolean }) => string | null;
     whenReady?: () => Promise<boolean>;
 };
 
@@ -108,6 +109,19 @@ export class NavigationAPI {
         return view.navigateToProperty(nodeId, { preserveNavigationFocus: true }) !== null;
     }
 
+    /**
+     * Select a Type collection in the navigator navigation pane.
+     * @param typeId - Opaque Type id discovered through the public Types catalog
+     */
+    async navigateToType(typeId: string): Promise<boolean> {
+        const view = await this.ensureViewOpen();
+        if (!view) {
+            return false;
+        }
+
+        return view.navigateToType(typeId, { preserveNavigationFocus: true }) !== null;
+    }
+
     private resolveFile(file: TFile | string): TFile | null {
         if (typeof file === 'string') {
             return this.api.app.vault.getFileByPath(file);
@@ -175,6 +189,9 @@ export class NavigationAPI {
             return false;
         }
         if (!('navigateToProperty' in view) || typeof view.navigateToProperty !== 'function') {
+            return false;
+        }
+        if (!('navigateToType' in view) || typeof view.navigateToType !== 'function') {
             return false;
         }
 

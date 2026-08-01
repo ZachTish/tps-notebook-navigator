@@ -106,6 +106,20 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.5.0',
+        date: '2026-07-31',
+        showOnUpdate: true,
+        info: 'Type collections can now be discovered and selected through one provider-neutral public control surface.',
+        new: [
+            'The public `types` catalog exposes immutable structural and dynamic Kind descriptors, stable ids, Kind helpers, live subscriptions, and readiness states without leaking GCM records.',
+            '`navigation.navigateToType(typeId)` opens the TPS Navigator and selects any discovered Type collection through public API `2.6.0`.'
+        ],
+        improved: [
+            'Type clicks, public navigation, and back/forward history now share validation, ancestor expansion, focus, and scroll behavior.',
+            'Valid restored Type ids remain provisional during index startup or a temporary integration outage and are rejected only when a complete catalog proves they are absent.'
+        ]
+    },
+    {
         version: '4.4.0',
         date: '2026-07-31',
         showOnUpdate: true,

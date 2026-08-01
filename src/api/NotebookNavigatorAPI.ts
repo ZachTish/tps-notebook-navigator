@@ -27,7 +27,9 @@ import { SelectionAPI } from './modules/SelectionAPI';
 import { MenusAPI } from './modules/MenusAPI';
 import { PropertyNodesAPI } from './modules/PropertyNodesAPI';
 import { RowsAPI } from './modules/RowsAPI';
+import { TypesAPI } from './modules/TypesAPI';
 import { getVirtualTagCollection, isVirtualTagCollectionId, VIRTUAL_TAG_COLLECTION_IDS } from '../utils/virtualTagCollections';
+import { getNavigatorTypesStore } from '../integrations/gcm/useGcmEntityTypes';
 
 // Import versioning
 import { API_VERSION } from './version';
@@ -43,6 +45,7 @@ export interface NotebookNavigatorInternalAPI {
         'applyFileMenuExtensions' | 'applyFolderMenuExtensions' | 'applyTagMenuExtensions' | 'applyPropertyMenuExtensions'
     >;
     readonly rows: Pick<RowsAPI, 'getSelection' | 'subscribe' | 'dispose'>;
+    readonly types: Pick<TypesAPI, 'updateEnabled' | 'dispose'>;
     setStorageReady: (ready: boolean) => void;
 }
 
@@ -66,9 +69,13 @@ export class NotebookNavigatorAPI {
     private readonly menusController: MenusAPI;
     private readonly propertyNodesController: PropertyNodesAPI;
     private readonly rowsController: RowsAPI;
+    private readonly typesController: TypesAPI;
 
     // Sub-APIs
-    public readonly navigation: Pick<NavigationAPI, 'reveal' | 'navigateToFolder' | 'navigateToTag' | 'navigateToProperty'>;
+    public readonly navigation: Pick<
+        NavigationAPI,
+        'reveal' | 'navigateToFolder' | 'navigateToTag' | 'navigateToProperty' | 'navigateToType'
+    >;
     public readonly metadata: Pick<
         MetadataAPI,
         | 'getFolderMeta'
@@ -93,6 +100,20 @@ export class NotebookNavigatorAPI {
     public readonly propertyNodes: Pick<PropertyNodesAPI, 'rootId' | 'buildKey' | 'buildValue' | 'parse' | 'normalize'>;
     /** Register active transient rows supplied by another plugin. */
     public readonly rows: Pick<RowsAPI, 'registerProvider'>;
+    /** Discover structural and dynamic Kind collections without depending on GCM internals. */
+    public readonly types: Pick<
+        TypesAPI,
+        | 'notesId'
+        | 'checkboxesId'
+        | 'bulletsId'
+        | 'headingsId'
+        | 'buildKind'
+        | 'parseKind'
+        | 'isType'
+        | 'getSnapshot'
+        | 'subscribe'
+        | 'whenReady'
+    >;
     readonly [INTERNAL_NOTEBOOK_NAVIGATOR_API]: NotebookNavigatorInternalAPI;
 
     constructor(plugin: NotebookNavigatorPlugin, app: App) {
@@ -122,12 +143,14 @@ export class NotebookNavigatorAPI {
         this.menusController = new MenusAPI();
         this.propertyNodesController = new PropertyNodesAPI();
         this.rowsController = new RowsAPI();
+        this.typesController = new TypesAPI(getNavigatorTypesStore(this.app), this.plugin.settings.tpsTypesNavigationEnabled !== false);
 
         this.navigation = Object.freeze({
             reveal: file => this.navigationController.reveal(file),
             navigateToFolder: folder => this.navigationController.navigateToFolder(folder),
             navigateToTag: tag => this.navigationController.navigateToTag(tag),
-            navigateToProperty: nodeId => this.navigationController.navigateToProperty(nodeId)
+            navigateToProperty: nodeId => this.navigationController.navigateToProperty(nodeId),
+            navigateToType: typeId => this.navigationController.navigateToType(typeId)
         });
         this.metadata = Object.freeze({
             getFolderMeta: folder => this.metadataController.getFolderMeta(folder),
@@ -174,11 +197,24 @@ export class NotebookNavigatorAPI {
         this.rows = Object.freeze({
             registerProvider: (provider, options) => this.rowsController.registerProvider(provider, options)
         });
+        this.types = Object.freeze({
+            notesId: this.typesController.notesId,
+            checkboxesId: this.typesController.checkboxesId,
+            bulletsId: this.typesController.bulletsId,
+            headingsId: this.typesController.headingsId,
+            buildKind: kind => this.typesController.buildKind(kind),
+            parseKind: typeId => this.typesController.parseKind(typeId),
+            isType: typeId => this.typesController.isType(typeId),
+            getSnapshot: () => this.typesController.getSnapshot(),
+            subscribe: listener => this.typesController.subscribe(listener),
+            whenReady: () => this.typesController.whenReady()
+        });
         this[INTERNAL_NOTEBOOK_NAVIGATOR_API] = Object.freeze({
             metadata: this.metadataController,
             selection: this.selectionController,
             menus: this.menusController,
             rows: this.rowsController,
+            types: this.typesController,
             setStorageReady: (ready: boolean) => {
                 this.setStorageReady(ready);
             }

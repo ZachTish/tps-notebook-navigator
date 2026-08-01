@@ -465,7 +465,7 @@ describe('public API declaration file', () => {
     it('matches nested public NotebookNavigatorAPI namespace member names', () => {
         const sourceFile = readSourceFile('src/api/NotebookNavigatorAPI.ts');
         const publicFile = readSourceFile('src/api/public/notebook-navigator.d.ts');
-        const namespaceNames = ['navigation', 'metadata', 'selection', 'menus', 'tagCollections', 'propertyNodes', 'rows'];
+        const namespaceNames = ['navigation', 'metadata', 'selection', 'menus', 'tagCollections', 'propertyNodes', 'rows', 'types'];
 
         for (const namespaceName of namespaceNames) {
             const sourceMembers = getNestedMemberNamesFromTypeNode(
@@ -501,6 +501,7 @@ describe('public API declaration file', () => {
         const selectionFile = readSourceFile('src/api/modules/SelectionAPI.ts');
         const propertyNodesFile = readSourceFile('src/api/modules/PropertyNodesAPI.ts');
         const rowsFile = readSourceFile('src/api/modules/RowsAPI.ts');
+        const typesFile = readSourceFile('src/api/modules/TypesAPI.ts');
 
         const checks = [
             {
@@ -533,6 +534,18 @@ describe('public API declaration file', () => {
                 sourceClass: 'NavigationAPI',
                 methodName: 'navigateToProperty'
             },
+            {
+                namespace: 'navigation',
+                sourceFile: navigationFile,
+                sourceClass: 'NavigationAPI',
+                methodName: 'navigateToType'
+            },
+            ...['buildKind', 'parseKind', 'isType', 'getSnapshot', 'subscribe', 'whenReady'].map(methodName => ({
+                namespace: 'types',
+                sourceFile: typesFile,
+                sourceClass: 'TypesAPI',
+                methodName
+            })),
             {
                 namespace: 'metadata',
                 sourceFile: metadataFile,

@@ -24,6 +24,7 @@ import type { NotebookNavigatorHandle } from '../components/NotebookNavigatorCom
 import type { RevealFileOptions, NavigateToFolderOptions } from '../hooks/useNavigatorReveal';
 import type { NavigateToPropertyOptions } from '../utils/propertyNavigation';
 import type { NavigateToTagOptions } from '../utils/tagNavigation';
+import type { NavigateToTypeOptions } from '../utils/typeNavigation';
 import { ExpansionProvider } from '../context/ExpansionContext';
 import { SelectionProvider } from '../context/SelectionContext';
 import { ServicesProvider } from '../context/ServicesContext';
@@ -368,6 +369,13 @@ export class NotebookNavigatorView extends ItemView {
      */
     navigateToProperty(propertyNodeId: string, options?: NavigateToPropertyOptions) {
         return this.componentHandle?.navigateToProperty(propertyNodeId, options) ?? null;
+    }
+
+    /**
+     * Navigates directly to a TPS Type collection id.
+     */
+    navigateToType(typeId: string, options?: NavigateToTypeOptions) {
+        return this.componentHandle?.navigateToType(typeId, options) ?? null;
     }
 
     /**

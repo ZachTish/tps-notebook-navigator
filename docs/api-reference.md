@@ -4,7 +4,7 @@ Updated: July 31, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 2.5.0
+**Current API Version:** 2.6.0
 
 ## Table of Contents
 
@@ -14,6 +14,7 @@ TPS Notebook Navigator exposes a public API for other plugins and scripts to int
   - [Folder, Tag, and Property Metadata](#folder-tag-and-property-metadata)
   - [Pinned Files](#pinned-files)
 - [Navigation API](#navigation-api)
+- [Types Catalog API](#types-catalog-api)
 - [Tag Collections API](#tag-collections-api)
 - [Property Nodes API](#property-nodes-api)
 - [Rows API](#rows-api)
@@ -63,10 +64,11 @@ if (nn) {
 
 ## API Overview
 
-The API provides seven main namespaces:
+The API provides eight main namespaces:
 
 - **`metadata`** - Folder, tag, and property node colors/icons, and pinned files
 - **`navigation`** - Navigate to files in the navigator
+- **`types`** - Discover structural and dynamic Kind collections and build stable Type ids
 - **`tagCollections`** - Work with aggregate tag rows such as "Tags" and "Untagged"
 - **`propertyNodes`** - Build and parse property node ids
 - **`rows`** - Register transient rows and actions beneath owning note files
@@ -229,6 +231,7 @@ for (const [path, context] of pinned) {
 | `navigateToFolder(folder)` | Select a folder in the navigation pane | `Promise<boolean>` |
 | `navigateToTag(tag)`       | Select a tag in the navigation pane    | `Promise<boolean>` |
 | `navigateToProperty(nodeId)` | Select a property node in navigation | `Promise<boolean>` |
+| `navigateToType(typeId)` | Select a discovered Type collection | `Promise<boolean>` |
 
 ### Reveal Behavior
 
@@ -299,6 +302,28 @@ await nn.navigation.navigateToTag('#work');
 await nn.navigation.navigateToProperty('key:status=done');
 ```
 
+### Type Navigation Behavior
+
+When calling `navigateToType(typeId)`:
+
+- Use a descriptor id returned by `nn.types.getSnapshot()` or a stable helper such as `nn.types.checkboxesId`.
+- Opens and waits for the TPS Navigator view, expands **Types** and **Kinds** ancestors, records ordinary navigation history,
+  requests the selected row into view, and preserves navigation focus.
+- Returns `false` when Types are disabled, the id is malformed, the view cannot mount, or a complete `ready` catalog proves
+  the collection no longer exists.
+- A syntactically valid id remains provisional during `loading`, `unavailable`, or `error` so transient GCM startup cannot
+  destroy restored navigation state. Await `nn.types.whenReady()` when the caller needs an authoritative catalog first.
+
+```typescript
+const catalog = await nn.types.whenReady();
+if (catalog.availability === 'ready') {
+  const projects = catalog.descriptors.find(descriptor => descriptor.id === nn.types.buildKind('project'));
+  if (projects) {
+    await nn.navigation.navigateToType(projects.id);
+  }
+}
+```
+
 ## Tag Collections API
 
 Helpers for aggregate tag rows used by tag menus and navigation.
@@ -339,6 +364,43 @@ const statusKey = nn.propertyNodes.buildKey('Status');
 const doneValue = nn.propertyNodes.buildValue('Status', 'Done');
 const parsed = nn.propertyNodes.parse('key:Status=Done');
 const root = nn.propertyNodes.parse(nn.propertyNodes.rootId);
+```
+
+## Types Catalog API
+
+The Types catalog is a read-only, provider-neutral view of the same structural and dynamic Kind collections shown in the
+navigation pane. It does not expose GCM records, task payloads, note paths, internal maps, or ambiguous pre-visibility
+counts.
+
+| Member | Description | Returns |
+| ------ | ----------- | ------- |
+| `notesId` | Stable Notes collection id | `'entity:note'` |
+| `checkboxesId` | Stable Checkboxes collection id | `'structural:task'` |
+| `bulletsId` | Stable Bullets collection id | `'structural:bullet'` |
+| `headingsId` | Stable Headings collection id | `'structural:heading'` |
+| `buildKind(kind)` | Build the opaque id for a configured Kind value | `string \| null` |
+| `parseKind(typeId)` | Decode a Kind id | `string \| null` |
+| `isType(value)` | Validate a structural or Kind id | `boolean` |
+| `getSnapshot()` | Read the latest immutable catalog state | `NavigatorTypesSnapshot` |
+| `subscribe(listener)` | Receive the current state immediately and subsequent changes | `() => void` |
+| `whenReady()` | Wait for any non-loading success or guarded failure state | `Promise<NavigatorTypesSnapshot>` |
+
+Availability is `disabled`, `loading`, `ready`, `unavailable`, or `error`. `subscribe()` shares one underlying entity-index
+subscription across all callers and returns an idempotent disposer. Snapshots, descriptor arrays, and descriptors are frozen;
+`getSnapshot()` returns the same object while its source snapshot is unchanged. Plugin unload resolves pending readiness waits
+with `unavailable` and closes the underlying subscription.
+
+```typescript
+const stop = nn.types.subscribe(snapshot => {
+  if (snapshot.availability !== 'ready') {
+    return;
+  }
+  console.table(snapshot.descriptors.map(({ id, label, category }) => ({ id, label, category })));
+});
+
+await nn.navigation.navigateToType(nn.types.checkboxesId);
+// Later, for example during your plugin unload:
+stop();
 ```
 
 ## Rows API
@@ -674,6 +736,13 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 2.6.0 (2026-07-31)
+
+- Added the immutable `types` catalog namespace with structural ids, Kind id helpers, live discovery, subscription, and readiness
+- Added `navigation.navigateToType(typeId)` with shared validation, ancestor expansion, history, focus, and scroll behavior
+- Added the explicit `disabled` catalog state without exposing GCM records, source paths, task payloads, or provider counts
+- Preserved provisional valid Type selections during transient loading or integration failure; a complete `ready` snapshot is authoritative
 
 ### Version 2.5.0 (2026-07-31)
 

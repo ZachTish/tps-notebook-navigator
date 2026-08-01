@@ -60,6 +60,33 @@ export type IconValue = string;
 export type TagCollectionId = '__tagged__' | '__untagged__';
 
 // ============================================================================
+// NAVIGATOR TYPES CATALOG (TPS FORK)
+// ============================================================================
+
+/** Availability of the optional first-class Types catalog. */
+export type NavigatorTypesAvailability = 'disabled' | 'loading' | 'ready' | 'unavailable' | 'error';
+
+/** Provider-neutral descriptor for one structural or relational Type collection. */
+export interface NavigatorTypeDescriptor {
+    /** Opaque ID accepted by Type navigation helpers. */
+    readonly id: string;
+    readonly label: string;
+    readonly icon: string;
+    readonly category: 'structure' | 'kind';
+}
+
+/** Immutable discovery snapshot for the first-class Types catalog. */
+export interface NavigatorTypesSnapshot {
+    readonly availability: NavigatorTypesAvailability;
+    readonly descriptors: readonly NavigatorTypeDescriptor[];
+    readonly revision: number;
+    readonly message?: string;
+}
+
+/** Listener used by the Types catalog subscription API. */
+export type NavigatorTypesListener = (snapshot: NavigatorTypesSnapshot) => void;
+
+// ============================================================================
 // TRANSIENT ROW PROVIDERS (TPS FORK)
 // ============================================================================
 

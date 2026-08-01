@@ -178,12 +178,27 @@ describe('NotebookNavigatorAPI', () => {
         expect('updateNavigationState' in api.selection).toBe(false);
         expect('applyFileMenuExtensions' in api.menus).toBe(false);
         expect(typeof api.rows.registerProvider).toBe('function');
+        expect(Object.isFrozen(api.types)).toBe(true);
+        expect(api.types.notesId).toBe('entity:note');
+        expect(api.types.checkboxesId).toBe('structural:task');
+        expect(api.types.bulletsId).toBe('structural:bullet');
+        expect(api.types.headingsId).toBe('structural:heading');
+        expect(api.types.buildKind('Project')).toBe('kind:Project');
+        expect(api.types.parseKind('kind:Project')).toBe('Project');
+        expect(api.types.isType('structural:task')).toBe(true);
+        expect(typeof api.types.getSnapshot).toBe('function');
+        expect(typeof api.types.subscribe).toBe('function');
+        expect(typeof api.types.whenReady).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].metadata.updateFromSettings).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].selection.updateNavigationState).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].menus.applyFileMenuExtensions).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].rows.getSelection).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].rows.subscribe).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].rows.dispose).toBe('function');
+        expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].types.updateEnabled).toBe('function');
+        expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].types.dispose).toBe('function');
+        expect('updateEnabled' in api.types).toBe(false);
+        expect('dispose' in api.types).toBe(false);
     });
 
     it('keeps public storage readiness monotonic after the initial ready signal', () => {

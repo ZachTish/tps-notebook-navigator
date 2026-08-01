@@ -43,6 +43,15 @@ The first-class **Types** section is enabled by default. It uses TPS Global Cont
 
 The selected type and Types/Kinds expansion state use TPS-namespaced local storage, participate in back/forward history and keyboard navigation, and do not alter upstream Notebook Navigator state. Dynamic Kind collections disappear only after a complete index snapshot confirms that the Kind no longer exists; transient GCM startup does not erase a restored selection.
 
+External integrations can discover the same structural and dynamic Kind descriptors through the provider-neutral public
+`types` catalog, subscribe to its availability/revision changes, build or parse opaque Kind ids, and navigate through
+`navigation.navigateToType(typeId)`. Clicks, back/forward history, and public calls share one validator, ancestor-expansion,
+focus, and scroll path. Catalog DTOs are immutable and intentionally omit GCM records, source paths, task payloads, and
+counts whose meaning would differ before and after Navigator visibility filtering. A complete `ready` catalog is
+authoritative; provisional valid ids survive `loading`, `unavailable`, and `error` states so an integration restart cannot
+erase navigation history. External providers may still augment an existing selected Type through the Rows API, but defining
+new top-level Type collections remains a future generic-provider milestone.
+
 ### Settings map
 
 The default settings surface remains the normal Notebook Navigator landing page. **TPS integration** is a top-level destination under **Configuration**, one click from that landing page.
@@ -78,6 +87,17 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 4.5.0 — programmatic Types control
+
+- Adds a provider-neutral, immutable public catalog for discovering structural and dynamic Kind Type collections without
+  importing or depending on GCM internals.
+- Adds stable structural ids, Kind id build/parse helpers, immediate live subscriptions, and terminal readiness handling under
+  API `2.6.0`.
+- Adds `navigation.navigateToType(typeId)` and routes UI clicks plus back/forward history through the same guarded resolver.
+- Expands **Types** and **Kinds**, preserves the requested focus mode, scrolls the target into view, and rejects missing ids only
+  after a complete authoritative catalog snapshot.
+- Requires no settings or note-data migration and keeps the minimum supported Obsidian version at 1.11.0.
 
 ### 4.4.0 — task control and isolation parity
 

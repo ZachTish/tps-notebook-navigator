@@ -28,6 +28,7 @@ function createView() {
         navigateToProperty: vi.fn<(nodeId: string, options?: { preserveNavigationFocus?: boolean }) => string | null>(
             () => 'key:status=done'
         ),
+        navigateToType: vi.fn<(typeId: string, options?: { preserveNavigationFocus?: boolean }) => string | null>(() => 'structural:task'),
         whenReady: vi.fn(async () => true)
     };
 }
@@ -191,6 +192,47 @@ describe('NavigationAPI', () => {
         expect(view.navigateToProperty).toHaveBeenCalledWith('key:status=done', { preserveNavigationFocus: true });
     });
 
+    it('navigates to a discovered Type through the mounted navigator view', async () => {
+        const view = createView();
+        const api: ConstructorParameters<typeof NavigationAPI>[0] = {
+            app: {
+                vault: {
+                    getFileByPath: () => null,
+                    getFolderByPath: () => null
+                },
+                workspace: {
+                    getLeavesOfType: () => [{ view }]
+                }
+            },
+            getPlugin: () => ({ activateView: vi.fn(async () => null) })
+        };
+
+        const navigationAPI = new NavigationAPI(api);
+        await expect(navigationAPI.navigateToType('structural:task')).resolves.toBe(true);
+
+        expect(view.navigateToType).toHaveBeenCalledWith('structural:task', { preserveNavigationFocus: true });
+    });
+
+    it('returns false when Type navigation rejects the id', async () => {
+        const view = createView();
+        view.navigateToType.mockReturnValue(null);
+        const api: ConstructorParameters<typeof NavigationAPI>[0] = {
+            app: {
+                vault: {
+                    getFileByPath: () => null,
+                    getFolderByPath: () => null
+                },
+                workspace: {
+                    getLeavesOfType: () => [{ view }]
+                }
+            },
+            getPlugin: () => ({ activateView: vi.fn(async () => null) })
+        };
+
+        const navigationAPI = new NavigationAPI(api);
+        await expect(navigationAPI.navigateToType('kind:missing')).resolves.toBe(false);
+    });
+
     it('returns false when the navigator view cannot be opened', async () => {
         const activateView = vi.fn(async () => null);
 
@@ -212,8 +254,9 @@ describe('NavigationAPI', () => {
         const navigationAPI = new NavigationAPI(api);
         await expect(navigationAPI.navigateToTag('#work')).resolves.toBe(false);
         await expect(navigationAPI.navigateToProperty('key:status=done')).resolves.toBe(false);
+        await expect(navigationAPI.navigateToType('structural:task')).resolves.toBe(false);
 
-        expect(activateView).toHaveBeenCalledTimes(2);
+        expect(activateView).toHaveBeenCalledTimes(3);
     });
 
     it('returns false for reveal and folder navigation when the navigator view cannot be opened', async () => {
@@ -327,6 +370,8 @@ describe('NavigationAPI', () => {
         await expect(navigationAPI.navigateToTag('#work')).resolves.toBe(false);
 
         expect(view.navigateToTag).not.toHaveBeenCalled();
+        await expect(navigationAPI.navigateToType('structural:task')).resolves.toBe(false);
+        expect(view.navigateToType).not.toHaveBeenCalled();
     });
 
     it('returns false for reveal and folder navigation when the navigator view does not become ready', async () => {

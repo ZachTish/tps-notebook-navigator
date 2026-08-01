@@ -52,7 +52,8 @@ import {
     toggleNavigationExpansionTarget
 } from '../../utils/navigationExpansion';
 import { useStableHandlerFacade } from '../useStableHandlerFacade';
-import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
+import type { TpsNavigatorTypeId, TpsNavigatorTypesSnapshot } from '../../types/navigatorTypes';
+import { navigateToType as navigateToTypeInternal } from '../../utils/typeNavigation';
 
 interface ExpansionStateLike {
     expandedFolders: Set<string>;
@@ -78,6 +79,7 @@ interface UseNavigationPaneTreeInteractionsProps {
     propertyTreeService: IPropertyTreeProvider | null;
     tagTree: Map<string, TagTreeNode>;
     propertyTree: Map<string, PropertyTreeNode>;
+    typeSnapshot: TpsNavigatorTypesSnapshot;
     tagsVirtualFolderHasChildren: boolean;
     setShortcutsExpanded: Dispatch<SetStateAction<boolean>>;
     setRecentNotesExpanded: Dispatch<SetStateAction<boolean>>;
@@ -119,6 +121,7 @@ export function useNavigationPaneTreeInteractions({
     propertyTreeService,
     tagTree,
     propertyTree,
+    typeSnapshot,
     tagsVirtualFolderHasChildren,
     setShortcutsExpanded,
     setRecentNotesExpanded,
@@ -719,11 +722,32 @@ export function useNavigationPaneTreeInteractions({
 
     const handleTypeClick = useCallback(
         (typeId: TpsNavigatorTypeId) => {
-            clearActiveShortcut();
-            selectionDispatch({ type: 'SET_SELECTED_TYPE', typeId });
-            uiDispatch({ type: 'ACTIVATE_PANE', target: uiState.singlePane ? 'files' : 'navigation' });
+            const selectedType = navigateToTypeInternal(
+                {
+                    enabled: settings.tpsTypesNavigationEnabled,
+                    snapshot: typeSnapshot,
+                    expandedVirtualFolders: expansionState.expandedVirtualFolders,
+                    expansionDispatch,
+                    selectionDispatch,
+                    activatePane: target => uiDispatch({ type: 'ACTIVATE_PANE', target })
+                },
+                typeId,
+                { preserveNavigationFocus: !uiState.singlePane }
+            );
+            if (selectedType) {
+                clearActiveShortcut();
+            }
         },
-        [clearActiveShortcut, selectionDispatch, uiDispatch, uiState.singlePane]
+        [
+            clearActiveShortcut,
+            expansionDispatch,
+            expansionState.expandedVirtualFolders,
+            selectionDispatch,
+            settings.tpsTypesNavigationEnabled,
+            typeSnapshot,
+            uiDispatch,
+            uiState.singlePane
+        ]
     );
 
     const interactions: NavigationPaneTreeInteractionsResult = {

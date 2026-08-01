@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 2.5.0
+ * Version: 2.6.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -69,6 +69,29 @@ export type IconValue = string;
  * Aggregate tag collection ids used by the navigator for virtual tag rows.
  */
 export type TagCollectionId = '__tagged__' | '__untagged__';
+
+/** Availability of the optional first-class Types catalog. */
+export type NavigatorTypesAvailability = 'disabled' | 'loading' | 'ready' | 'unavailable' | 'error';
+
+/** Provider-neutral descriptor for one structural or relational Type collection. */
+export interface NavigatorTypeDescriptor {
+    /** Opaque ID accepted by Type navigation helpers. */
+    readonly id: string;
+    readonly label: string;
+    readonly icon: string;
+    readonly category: 'structure' | 'kind';
+}
+
+/** Immutable discovery snapshot for the first-class Types catalog. */
+export interface NavigatorTypesSnapshot {
+    readonly availability: NavigatorTypesAvailability;
+    readonly descriptors: readonly NavigatorTypeDescriptor[];
+    readonly revision: number;
+    readonly message?: string;
+}
+
+/** Listener used by the Types catalog subscription API. */
+export type NavigatorTypesListener = (snapshot: NavigatorTypesSnapshot) => void;
 
 export type NavigatorRowSelectionType = 'file' | 'folder' | 'tag' | 'property' | 'type';
 export type NavigatorRowProviderOptions = Readonly<Record<string, unknown>>;
@@ -370,7 +393,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 2.5.0
+ * @version 2.6.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */
@@ -422,6 +445,28 @@ export interface NotebookNavigatorAPI {
         navigateToTag(tag: string): Promise<boolean>;
         /** Select a property node in the navigator navigation pane (e.g. 'key:status' or 'key:status=done'). */
         navigateToProperty(nodeId: string): Promise<boolean>;
+        /** Select a structural or dynamic Kind collection discovered through `types`. */
+        navigateToType(typeId: string): Promise<boolean>;
+    };
+
+    /** Discover and address first-class structural and dynamic Kind collections. */
+    types: {
+        readonly notesId: 'entity:note';
+        readonly checkboxesId: 'structural:task';
+        readonly bulletsId: 'structural:bullet';
+        readonly headingsId: 'structural:heading';
+        /** Build an opaque Type id from a configured Kind value. */
+        buildKind(kind: string): string | null;
+        /** Parse a configured Kind value from an opaque Type id. */
+        parseKind(typeId: string): string | null;
+        /** Check whether a runtime value is a syntactically valid built-in Type id. */
+        isType(typeId: unknown): boolean;
+        /** Read the latest immutable provider-neutral catalog snapshot. */
+        getSnapshot(): NavigatorTypesSnapshot;
+        /** Receive the current snapshot immediately and every later catalog change. */
+        subscribe(listener: NavigatorTypesListener): () => void;
+        /** Resolve when the catalog reaches a non-loading success or guarded failure state. */
+        whenReady(): Promise<NavigatorTypesSnapshot>;
     };
 
     /** Query current selection state */

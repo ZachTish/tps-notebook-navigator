@@ -4,6 +4,15 @@ import { selectionReducer } from '../../src/context/selection/state';
 import type { SelectionState } from '../../src/context/selection/types';
 import { ItemType } from '../../src/types';
 import { createTypeSelectionFallbackAction, resolveTypeSelectionHistoryEntry } from '../../src/utils/navigationTypeHistory';
+import type { TpsNavigatorTypeDescriptor } from '../../src/types/navigatorTypes';
+
+const PROJECT_DESCRIPTOR: TpsNavigatorTypeDescriptor = {
+    id: 'kind:Project',
+    label: 'Projects',
+    icon: 'lucide-box',
+    category: 'kind',
+    count: 1
+};
 
 function createTypeSelectionState(app: App): SelectionState {
     const root = app.vault.getRoot();
@@ -36,6 +45,19 @@ describe('Types navigation history', () => {
 
         expect(resolveTypeSelectionHistoryEntry(entry, false)).toBeNull();
         expect(resolveTypeSelectionHistoryEntry(entry, true)).toEqual(entry);
+    });
+
+    it('skips removed Types only when a ready catalog is authoritative', () => {
+        const removed = { type: ItemType.TYPE, value: 'kind:Removed' } as const;
+        const present = { type: ItemType.TYPE, value: 'kind:Project' } as const;
+        const readySnapshot = { availability: 'ready', descriptors: [PROJECT_DESCRIPTOR] } as const;
+
+        expect(resolveTypeSelectionHistoryEntry(removed, true, readySnapshot)).toBeNull();
+        expect(resolveTypeSelectionHistoryEntry(present, true, readySnapshot)).toEqual(present);
+
+        for (const availability of ['loading', 'unavailable', 'error'] as const) {
+            expect(resolveTypeSelectionHistoryEntry(removed, true, { availability, descriptors: [] })).toEqual(removed);
+        }
     });
 
     it('replaces a removed Kind selection so Back can move past the stale entry', () => {
