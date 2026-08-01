@@ -7,21 +7,42 @@ import { ListPaneItemType } from '../../types';
 import type { ListPaneItem } from '../../types/virtualization';
 import { NAVIGATOR_ROW_PROVIDER_MAX_ROWS, type NavigatorProvidedRow } from './types';
 
-/** Builds a complete virtualized list from rows that are not attached to file rows. */
-export function buildStandaloneProviderListItems(providerRows: readonly NavigatorProvidedRow[]): ListPaneItem[] {
+/**
+ * Builds a complete virtualized Types list from rows that are not attached to file rows.
+ *
+ * Built-in rows come from the host's GCM-backed index and are intentionally not subject
+ * to the external-provider safety ceiling. Externally owned and augmenting rows continue
+ * to share that ceiling.
+ */
+export function buildStandaloneProviderListItems(
+    builtInTypeRows: readonly NavigatorProvidedRow[],
+    externalProviderRows: readonly NavigatorProvidedRow[]
+): ListPaneItem[] {
     const seenKeys = new Set<string>();
     const rows: ListPaneItem[] = [];
-    for (const row of providerRows) {
-        if (rows.length >= NAVIGATOR_ROW_PROVIDER_MAX_ROWS) {
-            break;
-        }
+
+    const appendRow = (row: NavigatorProvidedRow): boolean => {
         const key = `provider:${row.providerId}:${row.id}`;
         if (seenKeys.has(key)) {
-            continue;
+            return false;
         }
         seenKeys.add(key);
         rows.push({ type: ListPaneItemType.PROVIDER_ROW, data: row, key });
+        return true;
+    };
+
+    builtInTypeRows.forEach(appendRow);
+
+    let externalRowsAdded = 0;
+    for (const row of externalProviderRows) {
+        if (externalRowsAdded >= NAVIGATOR_ROW_PROVIDER_MAX_ROWS) {
+            break;
+        }
+        if (appendRow(row)) {
+            externalRowsAdded += 1;
+        }
     }
+
     return [
         {
             type: ListPaneItemType.TOP_SPACER,

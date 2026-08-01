@@ -103,6 +103,18 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 4.7.1 — complete and discoverable Types navigation
+
+- Removes the external-provider 1,000-row ceiling from built-in Notes, Checkboxes, Bullets, Headings, and GCM Kind
+  collections, so their visible count and virtualized result list now describe the same complete set.
+- Keeps externally owned and augmenting Type rows under the existing shared 1,000-row safety ceiling, including
+  owner-first ordering and duplicate-identity protection.
+- Inserts Types immediately after Folders when normalizing a legacy saved navigation order that predates Types, while
+  preserving an existing custom Types placement and every other user-ordered section.
+- Requires no settings, API, or note-data migration and keeps the minimum supported Obsidian version at 1.11.0.
+- Validated with focused large-collection and legacy-order regressions, the full test suite, production build gates, and
+  live test-vault verification of the Types placement, five-digit Bullet count, and exact-line Bullet activation.
+
 ### 4.7.0 — hot-reload-safe provider lifecycle
 
 - Adds API `2.8.0` with `tps:notebook-navigator-api-changed` availability announcements and a guarded,

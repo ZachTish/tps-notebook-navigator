@@ -106,6 +106,16 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.7.1',
+        date: '2026-08-01',
+        showOnUpdate: true,
+        info: 'Types navigation now shows every matching built-in item and stays easy to find after an upgrade.',
+        fixed: [
+            'Notes, Checkboxes, Bullets, Headings, and GCM Kind collections are no longer silently truncated at the external-provider 1,000-row safety limit.',
+            'Legacy saved navigation orders now insert a missing Types section immediately after Folders while preserving every other customized section placement.'
+        ]
+    },
+    {
         version: '4.7.0',
         date: '2026-08-01',
         showOnUpdate: true,

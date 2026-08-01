@@ -51,14 +51,25 @@ export function sanitizeNavigationSectionOrder(order: NavigationSectionId[]): Na
         normalized.push(identifier);
     });
 
-    // Add any missing sections from the default order to maintain completeness
+    const shouldInsertTypes = !seen.has(NavigationSectionId.TYPES);
+
+    // Add any missing sections from the default order to maintain completeness. Types is handled
+    // separately so legacy saved orders gain it at its default anchor without moving existing items.
     DEFAULT_NAVIGATION_SECTION_ORDER.forEach(identifier => {
+        if (identifier === NavigationSectionId.TYPES) {
+            return;
+        }
         if (seen.has(identifier)) {
             return;
         }
         seen.add(identifier);
         normalized.push(identifier);
     });
+
+    if (shouldInsertTypes) {
+        const foldersIndex = normalized.indexOf(NavigationSectionId.FOLDERS);
+        normalized.splice(foldersIndex + 1, 0, NavigationSectionId.TYPES);
+    }
 
     return normalized;
 }

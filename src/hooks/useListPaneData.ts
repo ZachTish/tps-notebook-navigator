@@ -564,8 +564,9 @@ export function useListPaneData({
         groupItemCountData
     ]);
 
+    const isProviderOwnedTypeSelection = parseTpsNavigatorProviderTypeId(selectedType ?? '') !== null;
     const gcmTypeRows = useMemo(() => {
-        if (!isTypeSelection || !selectedType || parseTpsNavigatorProviderTypeId(selectedType)) {
+        if (!isTypeSelection || !selectedType || isProviderOwnedTypeSelection) {
             return [];
         }
         return buildTypeProviderRows({
@@ -584,8 +585,17 @@ export function useListPaneData({
                 showNotice('Could not open this item at its current location.', { variant: 'warning' });
             }
         });
-    }, [activateTypeRecord, addTypeTaskContextMenuItems, isTypeSelection, selectedType, setTypeTaskCheckbox, trimmedQuery, typeSnapshot]);
-    const typeRows = parseTpsNavigatorProviderTypeId(selectedType ?? '') ? providerOwnedTypeRows : gcmTypeRows;
+    }, [
+        activateTypeRecord,
+        addTypeTaskContextMenuItems,
+        isProviderOwnedTypeSelection,
+        isTypeSelection,
+        selectedType,
+        setTypeTaskCheckbox,
+        trimmedQuery,
+        typeSnapshot
+    ]);
+    const typeRows = isProviderOwnedTypeSelection ? providerOwnedTypeRows : gcmTypeRows;
     const providerScope = useMemo<NavigatorRowScope>(() => {
         let visibleFilePaths: string[];
         if (isTypeSelection) {
@@ -627,13 +637,14 @@ export function useListPaneData({
         scope: providerScope,
         selection: rowProviderSelection
     });
-    const listItems = useMemo(
-        () =>
-            isTypeSelection
-                ? buildStandaloneProviderListItems([...typeRows, ...providerRows])
-                : mergeProviderRowsIntoList(coreListItems, providerRows),
-        [coreListItems, isTypeSelection, providerRows, typeRows]
-    );
+    const listItems = useMemo(() => {
+        if (!isTypeSelection) {
+            return mergeProviderRowsIntoList(coreListItems, providerRows);
+        }
+        return isProviderOwnedTypeSelection
+            ? buildStandaloneProviderListItems([], [...typeRows, ...providerRows])
+            : buildStandaloneProviderListItems(typeRows, providerRows);
+    }, [coreListItems, isProviderOwnedTypeSelection, isTypeSelection, providerRows, typeRows]);
 
     const filePathToIndex = useMemo(() => {
         return buildFilePathToIndexMap(listItems);

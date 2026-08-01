@@ -220,7 +220,7 @@ describe('built-in and external row provider composition', () => {
             sourcePath: SOURCE_PATH,
             sourceLineNumber: 4
         };
-        const listItems = buildStandaloneProviderListItems([nativeTypeRow, ...contributedRows]);
+        const listItems = buildStandaloneProviderListItems([nativeTypeRow], contributedRows);
 
         expect(list).not.toHaveBeenCalled();
         expect(externalGetRows).toHaveBeenCalledWith(typeContext, {});

@@ -22,7 +22,7 @@ describe('buildStandaloneProviderListItems', () => {
             }
         ];
 
-        const items = buildStandaloneProviderListItems(rows);
+        const items = buildStandaloneProviderListItems([], rows);
 
         expect(items.map(item => item.type)).toEqual([
             ListPaneItemType.TOP_SPACER,
@@ -41,7 +41,7 @@ describe('buildStandaloneProviderListItems', () => {
     });
 
     it('still returns both virtualized boundary spacers for an empty result', () => {
-        const items = buildStandaloneProviderListItems([]);
+        const items = buildStandaloneProviderListItems([], []);
 
         expect(items).toEqual([
             { type: ListPaneItemType.TOP_SPACER, data: '', key: 'top-spacer' },
@@ -76,7 +76,7 @@ describe('buildStandaloneProviderListItems', () => {
             }
         ];
 
-        const items = buildStandaloneProviderListItems([...nativeRows, ...providerRows]);
+        const items = buildStandaloneProviderListItems(nativeRows, providerRows);
 
         expect(items.map(item => item.key)).toEqual([
             'top-spacer',
@@ -97,7 +97,7 @@ describe('buildStandaloneProviderListItems', () => {
         };
         const duplicateAugmentation = { ...ownerRow, label: 'Duplicate augmentation' };
 
-        const items = buildStandaloneProviderListItems([ownerRow, duplicateAugmentation]);
+        const items = buildStandaloneProviderListItems([], [ownerRow, duplicateAugmentation]);
 
         expect(items.map(item => item.key)).toEqual(['top-spacer', 'provider:example/shared:project:one', 'bottom-spacer']);
         expect(items[1].data).toBe(ownerRow);
@@ -119,11 +119,59 @@ describe('buildStandaloneProviderListItems', () => {
             sourcePath: `Projects/${index}.md`
         }));
 
-        const items = buildStandaloneProviderListItems([...ownerRows, ...augmentingRows]);
+        const items = buildStandaloneProviderListItems([], [...ownerRows, ...augmentingRows]);
         const renderedRows = items.filter(item => item.type === ListPaneItemType.PROVIDER_ROW);
 
         expect(renderedRows).toHaveLength(NAVIGATOR_ROW_PROVIDER_MAX_ROWS);
         expect(renderedRows.map(item => item.data)).toEqual(ownerRows);
         expect(items).toHaveLength(NAVIGATOR_ROW_PROVIDER_MAX_ROWS + 2);
+    });
+
+    it.each([
+        ['Notes', 'structural:note', 'note'],
+        ['Checkboxes', 'structural:task', 'task'],
+        ['Bullets', 'structural:bullet', 'bullet'],
+        ['Headings', 'structural:heading', 'heading'],
+        ['GCM Kinds', 'kind:project', 'note']
+    ])('keeps every built-in %s row above the external-provider ceiling', (_label, typeId, rowKind) => {
+        const builtInRows: NavigatorProvidedRow[] = Array.from({ length: NAVIGATOR_ROW_PROVIDER_MAX_ROWS + 1 }, (_, index) => ({
+            providerId: 'tps/entity-types',
+            id: `${typeId}:${index}`,
+            kind: `tps/entity-type/${rowKind}`,
+            label: `${rowKind} ${index}`,
+            sourcePath: `Types/${rowKind}/${index}.md`
+        }));
+
+        const items = buildStandaloneProviderListItems(builtInRows, []);
+        const renderedRows = items.filter(item => item.type === ListPaneItemType.PROVIDER_ROW);
+
+        expect(renderedRows).toHaveLength(NAVIGATOR_ROW_PROVIDER_MAX_ROWS + 1);
+        expect(renderedRows.map(item => item.data)).toEqual(builtInRows);
+    });
+
+    it('keeps all built-in rows without spending the separate external-provider budget', () => {
+        const builtInRows: NavigatorProvidedRow[] = Array.from({ length: NAVIGATOR_ROW_PROVIDER_MAX_ROWS + 1 }, (_, index) => ({
+            providerId: 'tps/entity-types',
+            id: `builtin:${index}`,
+            kind: 'tps/entity-type/task',
+            label: `Built-in ${index}`,
+            sourcePath: `Tasks/Built-in-${index}.md`
+        }));
+        const externalRows: NavigatorProvidedRow[] = Array.from({ length: NAVIGATOR_ROW_PROVIDER_MAX_ROWS + 1 }, (_, index) => ({
+            providerId: 'example/external',
+            id: `external:${index}`,
+            kind: 'example/external',
+            label: `External ${index}`,
+            sourcePath: `Tasks/External-${index}.md`
+        }));
+
+        const items = buildStandaloneProviderListItems(builtInRows, externalRows);
+        const renderedRows = items.filter(item => item.type === ListPaneItemType.PROVIDER_ROW);
+
+        expect(renderedRows).toHaveLength(builtInRows.length + NAVIGATOR_ROW_PROVIDER_MAX_ROWS);
+        expect(renderedRows.slice(0, builtInRows.length).map(item => item.data)).toEqual(builtInRows);
+        expect(renderedRows.slice(builtInRows.length).map(item => item.data)).toEqual(
+            externalRows.slice(0, NAVIGATOR_ROW_PROVIDER_MAX_ROWS)
+        );
     });
 });
