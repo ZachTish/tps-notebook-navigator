@@ -35,7 +35,7 @@ interface RootFolderReorderItemProps {
     chevronIcon?: string;
     isMissing?: boolean;
     color?: string;
-    itemType?: 'folder' | 'tag' | 'property' | 'section'; // Type of navigation item (folder, tag, property, or section header)
+    itemType?: 'folder' | 'tag' | 'property' | 'type' | 'section'; // Type of navigation item or section header
     className?: string; // Additional CSS classes to apply to the item
     dragHandleConfig?: DragHandleConfig;
     trailingAccessory?: ReactNode;
@@ -102,6 +102,8 @@ export function RootFolderReorderItem({
             classes.push('nn-tag');
         } else if (itemType === 'property') {
             classes.push('nn-property');
+        } else if (itemType === 'type') {
+            classes.push('nn-type');
         } else if (itemType === 'section') {
             classes.push('nn-section');
         }
@@ -127,6 +129,9 @@ export function RootFolderReorderItem({
         }
         if (itemType === 'property') {
             return settings.showPropertyIcons;
+        }
+        if (itemType === 'type') {
+            return true;
         }
         return true;
     }, [itemType, settings.showFolderIcons, settings.showPropertyIcons, settings.showTagIcons]);

@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 2.3.0
+ * Version: 2.4.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -207,17 +207,18 @@ export interface PropertyMetadataUpdate {
 }
 
 /**
- * Currently selected navigation item (folder, tag, property, or none).
+ * Currently selected navigation item (folder, tag, property, TPS type, or none).
  *
  * `property` uses the property tree node id (`properties-root` for the section root,
  * or `key:<normalizedKey>` / `key:<normalizedKey>=<normalizedValuePath>` for key/value nodes).
  */
-export type NavItemType = 'folder' | 'tag' | 'property' | 'none';
+export type NavItemType = 'folder' | 'tag' | 'property' | 'type' | 'none';
 
 export type NavItem =
     | { type: 'folder'; folder: TFolder; tag: null; property: null }
     | { type: 'tag'; folder: null; tag: string; property: null }
     | { type: 'property'; folder: null; tag: null; property: string }
+    | { type: 'type'; folder: null; tag: null; property: null; navigatorType: string }
     | { type: 'none'; folder: null; tag: null; property: null };
 
 export type PropertyNodeParts =
@@ -362,7 +363,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 2.3.0
+ * @version 2.4.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */

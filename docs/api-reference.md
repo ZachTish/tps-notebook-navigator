@@ -4,7 +4,7 @@ Updated: July 31, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 2.3.0
+**Current API Version:** 2.4.0
 
 ## Table of Contents
 
@@ -414,9 +414,13 @@ view is active, and navigation selection is restored from localStorage on startu
 When `navItem.type === 'tag'`, `navItem.tag` can be either a canonical tag path or an aggregate tag collection id
 (`'__tagged__'` or `'__untagged__'`).
 
+When `navItem.type === 'type'`, `navItem.navigatorType` is a stable structural id such as `entity:note` or
+`structural:task`, or an encoded dynamic Kind id beginning with `kind:`. Existing NavItem variants do not gain extra
+fields.
+
 | Method         | Description                  | Returns          |
 | -------------- | ---------------------------- | ---------------- |
-| `getNavItem()` | Get selected folder, tag, or property | `NavItem`        |
+| `getNavItem()` | Get selected folder, tag, property, or TPS type | `NavItem`        |
 | `getCurrent()` | Get current file selection state | `SelectionState` |
 
 ```typescript
@@ -428,6 +432,8 @@ if (navItem.type === 'folder') {
   console.log('Tag selected:', navItem.tag);
 } else if (navItem.type === 'property') {
   console.log('Property selected:', navItem.property);
+} else if (navItem.type === 'type') {
+  console.log('TPS type selected:', navItem.navigatorType);
 } else {
   console.log('Nothing selected in navigation pane');
 }
@@ -566,6 +572,8 @@ const navRef = nn.on('nav-item-changed', ({ item }) => {
     console.log('Tag selected:', item.tag);
   } else if (item.type === 'property') {
     console.log('Property selected:', item.property);
+  } else if (item.type === 'type') {
+    console.log('TPS type selected:', item.navigatorType);
   } else {
     console.log('Navigation selection cleared');
   }
@@ -661,6 +669,12 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 2.4.0 (2026-07-31)
+
+- Added the additive `type` variant to `NavItem` and `nav-item-changed`
+- Added `navigatorType` on that variant for structural and dynamic Kind collection ids
+- Preserved the exact runtime and TypeScript shapes of existing folder, tag, property, and none variants
 
 ### Version 2.3.0 (2026-07-31)
 

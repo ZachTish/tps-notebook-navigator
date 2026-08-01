@@ -108,13 +108,17 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         trackRevealFileAvailability: !useMobileChrome && showRevealButton
     });
     const showBackButton = listToolbarVisibility.back && uiState.singlePane;
+    const isTypeSelection = selectionState.selectionType === ItemType.TYPE && Boolean(selectionState.selectedType);
     const showSearchButton = listToolbarVisibility.search;
-    const showDescendantsButton = listToolbarVisibility.descendants;
-    const showGroupExpansionButton = listToolbarVisibility.groupExpansion;
-    const showSortButton = listToolbarVisibility.sort;
-    const showAppearanceButton = listToolbarVisibility.appearance;
-    const showNewNoteButton = listToolbarVisibility.newNote;
-    const hasNavigationSelection = Boolean(selectionState.selectedFolder || selectionState.selectedTag || selectionState.selectedProperty);
+    const showDescendantsButton = !isTypeSelection && listToolbarVisibility.descendants;
+    const showGroupExpansionButton = !isTypeSelection && listToolbarVisibility.groupExpansion;
+    const showSortButton = !isTypeSelection && listToolbarVisibility.sort;
+    const showAppearanceButton = !isTypeSelection && listToolbarVisibility.appearance;
+    const showNewNoteButton = !isTypeSelection && listToolbarVisibility.newNote;
+    const showEffectiveRevealButton = !isTypeSelection && showRevealButton;
+    const hasNavigationSelection = Boolean(
+        selectionState.selectedFolder || selectionState.selectedTag || selectionState.selectedProperty || selectionState.selectedType
+    );
 
     const shouldRenderBreadcrumbSegments = useMobileChrome;
     const shouldShowHeaderTitle = !useMobileChrome && listPaneTitlePreference === 'header';
@@ -123,7 +127,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         showBackButton ||
         shouldShowHeaderTitle ||
         showSearchButton ||
-        showRevealButton ||
+        showEffectiveRevealButton ||
         showDescendantsButton ||
         showGroupExpansionButton ||
         showSortButton ||
@@ -407,7 +411,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                             <ServiceIcon iconId={resolveUXIcon(settings.interfaceIcons, 'list-search')} />
                         </button>
                     ) : null}
-                    {showRevealButton ? (
+                    {showEffectiveRevealButton ? (
                         <button
                             className="nn-icon-button"
                             aria-label={strings.commands.revealFile}

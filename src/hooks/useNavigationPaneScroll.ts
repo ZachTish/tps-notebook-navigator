@@ -245,7 +245,12 @@ export function useNavigationPaneScroll({
                 return tagIndex;
             }
 
-            return getNavigationIndex(pathToIndex, ItemType.PROPERTY, path);
+            const propertyIndex = getNavigationIndex(pathToIndex, ItemType.PROPERTY, path);
+            if (propertyIndex !== undefined) {
+                return propertyIndex;
+            }
+
+            return getNavigationIndex(pathToIndex, ItemType.TYPE, path);
         },
         [pathToIndex]
     );
@@ -440,7 +445,9 @@ export function useNavigationPaneScroll({
               ? ItemType.PROPERTY
               : selectionState.selectionType === ItemType.FOLDER
                 ? ItemType.FOLDER
-                : null;
+                : selectionState.selectionType === ItemType.TYPE
+                  ? ItemType.TYPE
+                  : null;
 
     // Extract and normalize the currently selected path from selection state
     const selectedPath =
@@ -450,7 +457,9 @@ export function useNavigationPaneScroll({
               ? normalizeNavigationPath(ItemType.TAG, selectionState.selectedTag)
               : selectionState.selectionType === ItemType.PROPERTY && selectionState.selectedProperty
                 ? selectionState.selectedProperty
-                : null;
+                : selectionState.selectionType === ItemType.TYPE && selectionState.selectedType
+                  ? selectionState.selectedType
+                  : null;
 
     /**
      * Scroll to selected folder/tag when needed
@@ -551,7 +560,7 @@ export function useNavigationPaneScroll({
             return;
         }
 
-        if (selectedItemType !== ItemType.TAG && selectedItemType !== ItemType.PROPERTY) {
+        if (selectedItemType !== ItemType.TAG && selectedItemType !== ItemType.PROPERTY && selectedItemType !== ItemType.TYPE) {
             return;
         }
 

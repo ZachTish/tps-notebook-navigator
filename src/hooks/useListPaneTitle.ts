@@ -37,6 +37,7 @@ import { resolveUXIcon } from '../utils/uxIcons';
 import { buildPropertyKeyNodeId, parsePropertyNodeId, type PropertySelectionNodeId } from '../utils/propertyTree';
 import { resolveFolderDisplayName, resolveFolderDisplayPathSegments } from '../utils/folderDisplayName';
 import { resolveRootFolderNoteSourceName } from '../utils/folderNoteLookup';
+import { getTpsNavigatorKindValue, TPS_NAVIGATOR_STRUCTURAL_TYPES, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 
 const FOLDER_NOTE_EXTENSIONS = Object.values(FOLDER_NOTE_TYPE_EXTENSIONS);
 
@@ -93,6 +94,26 @@ interface UseListPaneTitleResult {
 interface ListPaneTitleMemoResult {
     desktopTitle: string;
     breadcrumbSegments: BreadcrumbSegment[];
+}
+
+export interface TpsNavigatorTypeTitleData {
+    label: string;
+    icon: string;
+}
+
+export function getTpsNavigatorTypeTitleData(typeId: TpsNavigatorTypeId): TpsNavigatorTypeTitleData {
+    const structuralType = TPS_NAVIGATOR_STRUCTURAL_TYPES.find(descriptor => descriptor.id === typeId);
+    if (structuralType) {
+        return {
+            label: structuralType.label,
+            icon: structuralType.icon
+        };
+    }
+
+    return {
+        label: getTpsNavigatorKindValue(typeId) ?? 'Types',
+        icon: 'lucide-box'
+    };
 }
 
 export function useListPaneTitle(): UseListPaneTitleResult {
@@ -279,6 +300,10 @@ export function useListPaneTitle(): UseListPaneTitleResult {
             return resolveUXIcon(settings.interfaceIcons, 'nav-property');
         }
 
+        if (selectionState.selectionType === ItemType.TYPE && selectionState.selectedType) {
+            return getTpsNavigatorTypeTitleData(selectionState.selectedType).icon;
+        }
+
         return '';
     }, [
         expansionState.expandedFolders,
@@ -286,6 +311,7 @@ export function useListPaneTitle(): UseListPaneTitleResult {
         selectionState.selectedFolder,
         selectionState.selectedTag,
         selectionState.selectedProperty,
+        selectionState.selectedType,
         selectionState.selectionType,
         hiddenFolders,
         showHiddenItems,
@@ -455,6 +481,17 @@ export function useListPaneTitle(): UseListPaneTitleResult {
             };
         }
 
+        if (selectionState.selectionType === ItemType.TYPE && selectionState.selectedType) {
+            const typeTitle = getTpsNavigatorTypeTitleData(selectionState.selectedType);
+            return {
+                desktopTitle: typeTitle.label,
+                breadcrumbSegments: [
+                    { label: 'Types', targetType: 'none', isLast: false },
+                    { label: typeTitle.label, targetType: 'none', isLast: true }
+                ]
+            };
+        }
+
         const noSelectionBreadcrumb: BreadcrumbSegment[] = [
             {
                 label: strings.common.noSelection,
@@ -475,6 +512,7 @@ export function useListPaneTitle(): UseListPaneTitleResult {
         selectionState.selectedFolder,
         selectionState.selectedTag,
         selectionState.selectedProperty,
+        selectionState.selectedType,
         selectionState.selectionType,
         settings.customVaultName,
         metadataVersion
@@ -487,7 +525,8 @@ export function useListPaneTitle(): UseListPaneTitleResult {
         showIcon:
             (selectionState.selectionType === ItemType.FOLDER && settings.showFolderIcons && iconName.length > 0) ||
             (selectionState.selectionType === ItemType.TAG && settings.showTagIcons && iconName.length > 0) ||
-            (selectionState.selectionType === ItemType.PROPERTY && settings.showPropertyIcons && iconName.length > 0),
+            (selectionState.selectionType === ItemType.PROPERTY && settings.showPropertyIcons && iconName.length > 0) ||
+            (selectionState.selectionType === ItemType.TYPE && iconName.length > 0),
         selectionType: selectionState.selectionType
     };
 }

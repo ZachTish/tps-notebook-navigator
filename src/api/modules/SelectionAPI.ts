@@ -28,6 +28,7 @@ import {
     type PropertySelectionNodeId
 } from '../../utils/propertyTree';
 import { normalizeTagPath } from '../../utils/tagUtils';
+import { isTpsNavigatorTypeId, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
 
 type SelectionAPIHost = {
     app: {
@@ -56,6 +57,7 @@ export class SelectionAPI {
         navigationFolder: TFolder | null;
         navigationTag: string | null;
         navigationProperty: PropertySelectionNodeId | null;
+        navigationType: TpsNavigatorTypeId | null;
     } = {
         // File selection state
         files: new Set<string>(),
@@ -63,7 +65,8 @@ export class SelectionAPI {
         // Navigation selection state
         navigationFolder: null,
         navigationTag: null,
-        navigationProperty: null
+        navigationProperty: null,
+        navigationType: null
     };
 
     // Snapshot signature of last-emitted selection to ensure events fire when
@@ -88,11 +91,20 @@ export class SelectionAPI {
     private initializeNavigationState(): void {
         try {
             const settings = this.api.getPlugin().settings;
+            const storedType = localStorage.get<unknown>(STORAGE_KEYS.selectedTypeKey);
+            if (settings.tpsTypesNavigationEnabled !== false && isTpsNavigatorTypeId(storedType)) {
+                this.selectionState.navigationType = storedType;
+                this.selectionState.navigationProperty = null;
+                this.selectionState.navigationTag = null;
+                this.selectionState.navigationFolder = null;
+                return;
+            }
 
             if (settings.showProperties) {
                 const propertySelection = parseStoredPropertySelectionNodeId(localStorage.get<unknown>(STORAGE_KEYS.selectedPropertyKey));
                 if (propertySelection && canRestorePropertySelectionNodeId(settings, propertySelection)) {
                     this.selectionState.navigationProperty = propertySelection;
+                    this.selectionState.navigationType = null;
                     this.selectionState.navigationTag = null;
                     this.selectionState.navigationFolder = null;
                     return;
@@ -114,12 +126,14 @@ export class SelectionAPI {
                 this.selectionState.navigationTag = normalizedTagName;
                 this.selectionState.navigationFolder = null;
                 this.selectionState.navigationProperty = null;
+                this.selectionState.navigationType = null;
             } else if (folderPath) {
                 const folder = this.api.app.vault.getFolderByPath(folderPath);
                 if (folder) {
                     this.selectionState.navigationFolder = folder;
                     this.selectionState.navigationTag = null;
                     this.selectionState.navigationProperty = null;
+                    this.selectionState.navigationType = null;
                 }
             }
         } catch (error) {
@@ -140,6 +154,14 @@ export class SelectionAPI {
                 folder: null,
                 tag: null,
                 property: this.selectionState.navigationProperty
+            };
+        } else if (this.selectionState.navigationType) {
+            return {
+                type: 'type',
+                folder: null,
+                tag: null,
+                property: null,
+                navigatorType: this.selectionState.navigationType
             };
         } else if (this.selectionState.navigationTag) {
             return {
@@ -169,27 +191,41 @@ export class SelectionAPI {
      * Called by React components when navigation changes
      * @internal
      */
-    updateNavigationState(folder: TFolder | null, tag: string | null, property: PropertySelectionNodeId | null): void {
+    updateNavigationState(
+        folder: TFolder | null,
+        tag: string | null,
+        property: PropertySelectionNodeId | null,
+        navigatorType: TpsNavigatorTypeId | null = null
+    ): void {
         this.navigationStateInitialized = true;
         const normalizedProperty = property === null ? null : (normalizePropertyNodeId(property) ?? property);
         const normalizedTag = tag === null ? null : normalizeTagPath(tag);
 
-        if (normalizedProperty) {
+        if (navigatorType) {
+            this.selectionState.navigationFolder = null;
+            this.selectionState.navigationTag = null;
+            this.selectionState.navigationProperty = null;
+            this.selectionState.navigationType = navigatorType;
+        } else if (normalizedProperty) {
             this.selectionState.navigationFolder = null;
             this.selectionState.navigationTag = null;
             this.selectionState.navigationProperty = normalizedProperty;
+            this.selectionState.navigationType = null;
         } else if (normalizedTag) {
             this.selectionState.navigationFolder = null;
             this.selectionState.navigationTag = normalizedTag;
             this.selectionState.navigationProperty = null;
+            this.selectionState.navigationType = null;
         } else if (folder) {
             this.selectionState.navigationFolder = folder;
             this.selectionState.navigationTag = null;
             this.selectionState.navigationProperty = null;
+            this.selectionState.navigationType = null;
         } else {
             this.selectionState.navigationFolder = null;
             this.selectionState.navigationTag = null;
             this.selectionState.navigationProperty = null;
+            this.selectionState.navigationType = null;
         }
 
         // Trigger the consolidated navigation event

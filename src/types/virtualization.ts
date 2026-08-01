@@ -24,6 +24,7 @@ import type { SearchShortcut, ShortcutEntry } from '../types/shortcuts';
 import type { NoteCountInfo } from '../types/noteCounts';
 import type { ManualSortGroupHeaderData } from '../utils/manualSort';
 import type { NavigatorProvidedRow } from '../services/rows/types';
+import type { TpsNavigatorTypeId } from './navigatorTypes';
 
 export interface VirtualItem<T> {
     type: string;
@@ -150,6 +151,8 @@ export interface VirtualFolderItem {
     isSelected?: boolean;
     tagCollectionId?: string;
     propertyCollectionId?: string;
+    /** TPS type descriptor selected by this otherwise-generic virtual row. */
+    typeCollectionId?: TpsNavigatorTypeId;
     // Pre-computed child presence flag used for rendering the expander chevron and for keyboard expand/collapse decisions.
     // Some virtual folders are backed by dynamic data (e.g. recent notes, shortcuts), where the source list can contain
     // entries that do not render (deleted/missing items). This flag reflects whether expansion would render any children.

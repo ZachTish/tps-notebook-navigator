@@ -61,6 +61,8 @@ interface UseNavigationPaneDataParams {
     sourceState: NavigationPaneSourceState;
     /** Precomputed navigation tree sections shared with file-list decoration */
     treeSections: NavigationPaneTreeSectionsResult;
+    /** TPS descriptor-backed type rows rendered as their own section. */
+    typeItems: CombinedNavigationItem[];
     /** Shared folder decoration model */
     folderDecorationModel: FolderDecorationModel;
     /** Shared navigation rainbow state */
@@ -141,6 +143,7 @@ export function useNavigationPaneData({
     isVisible,
     sourceState,
     treeSections,
+    typeItems,
     folderDecorationModel,
     navRainbowState,
     shortcutsExpanded,
@@ -235,6 +238,7 @@ export function useNavigationPaneData({
         folderItems,
         tagItems,
         propertyItems,
+        typeItems,
         shortcutItems,
         recentNotesItems,
         parsedExcludedFolders,

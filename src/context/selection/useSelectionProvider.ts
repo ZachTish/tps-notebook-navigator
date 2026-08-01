@@ -44,6 +44,7 @@ import { getActivePropertyKeySet } from '../../utils/vaultProfiles';
 import { getFirstSelectedFile } from './state';
 import { createSelectionHistoryEntry } from './state';
 import type { SelectionAction, SelectionDispatch, SelectionState } from './types';
+import { isTpsNavigatorTypeId, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
 
 interface LoadInitialSelectionStateArgs {
     app: App;
@@ -137,6 +138,9 @@ export function loadInitialSelectionState({ app, settings }: LoadInitialSelectio
         'Failed to load selected folder from localStorage:'
     );
     const savedTag = loadStoredValue<string | null>(STORAGE_KEYS.selectedTagKey, null, 'Failed to load selected tag from localStorage:');
+    const storedType = loadStoredValue<unknown>(STORAGE_KEYS.selectedTypeKey, null, 'Failed to load selected type from localStorage:');
+    const selectedType: TpsNavigatorTypeId | null =
+        settings.tpsTypesNavigationEnabled !== false && isTpsNavigatorTypeId(storedType) ? storedType : null;
     const savedFilePath = loadStoredValue<string | null>(
         STORAGE_KEYS.selectedFileKey,
         null,
@@ -189,7 +193,13 @@ export function loadInitialSelectionState({ app, settings }: LoadInitialSelectio
 
     const normalizedTag = normalizeTagPath(savedTag);
     let selectionType: SelectionState['selectionType'] = 'folder';
-    if (selectedProperty) {
+    if (selectedType) {
+        selectionType = 'type';
+        selectedFolder = null;
+        selectedProperty = null;
+        selectedFiles.clear();
+        selectedFile = null;
+    } else if (selectedProperty) {
         selectionType = 'property';
         selectedFolder = null;
     } else if (normalizedTag) {
@@ -202,8 +212,9 @@ export function loadInitialSelectionState({ app, settings }: LoadInitialSelectio
     const currentHistoryEntry = createSelectionHistoryEntry({
         selectionType,
         selectedFolder,
-        selectedTag: selectedProperty ? null : normalizedTag,
-        selectedProperty
+        selectedTag: selectedProperty || selectedType ? null : normalizedTag,
+        selectedProperty,
+        selectedType
     });
     const navigationHistory = currentHistoryEntry ? [currentHistoryEntry] : [];
     const navigationHistoryIndex = currentHistoryEntry ? 0 : 0;
@@ -211,8 +222,9 @@ export function loadInitialSelectionState({ app, settings }: LoadInitialSelectio
     return {
         selectionType,
         selectedFolder,
-        selectedTag: selectedProperty ? null : normalizedTag,
+        selectedTag: selectedProperty || selectedType ? null : normalizedTag,
         selectedProperty,
+        selectedType,
         selectedFiles,
         selectedFile,
         anchorIndex: null,
@@ -606,6 +618,10 @@ export function useSelectionPersistence({ api, app, state }: UseSelectionPersist
     }, [state.selectedProperty]);
 
     useEffect(() => {
+        persistStoredValue(STORAGE_KEYS.selectedTypeKey, state.selectedType, 'Failed to save selected type to localStorage:');
+    }, [state.selectedType]);
+
+    useEffect(() => {
         const firstFile = state.selectedFile ?? getFirstSelectedFile(state.selectedFiles, app);
         persistStoredValue(
             STORAGE_KEYS.selectedFileKey,
@@ -628,7 +644,8 @@ export function useSelectionPersistence({ api, app, state }: UseSelectionPersist
         api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].selection.updateNavigationState(
             state.selectedFolder,
             state.selectedTag,
-            state.selectedProperty
+            state.selectedProperty,
+            state.selectedType
         );
-    }, [api, state.selectedFolder, state.selectedProperty, state.selectedTag]);
+    }, [api, state.selectedFolder, state.selectedProperty, state.selectedTag, state.selectedType]);
 }

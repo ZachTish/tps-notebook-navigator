@@ -106,6 +106,22 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.2.0',
+        date: '2026-07-31',
+        showOnUpdate: true,
+        info: 'The navigation pane can now browse notes and indexed line entities by structural type or relational Kind.',
+        new: [
+            'A new **Types** section groups Notes, Checkboxes, Bullets, Headings, and every Kind exposed by TPS Global Context Menu Entity Index v3.',
+            'Selecting a type shows its entities in a standalone virtualized list. Notes open directly, while line entities re-resolve and open at their current source line.',
+            'The public Selection API is now version `2.4.0` and reports selected Types through an additive `type` navigation-item variant.'
+        ],
+        improved: [
+            'Type counts and results follow the active Navigator visibility profile and hidden-items override.',
+            'Type selection participates in history, keyboard navigation, persisted selection, search, and responsive navigation without exposing file-only actions.'
+        ],
+        fixed: ['Disabling Types now falls back to the vault root instead of restoring a hidden Types selection on startup.']
+    },
+    {
         version: '4.1.0',
         date: '2026-07-31',
         showOnUpdate: true,

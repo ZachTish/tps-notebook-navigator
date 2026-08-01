@@ -44,7 +44,8 @@ import type { SearchResultMeta } from '../types/search';
 import type { ActiveProfileState } from '../context/SettingsContext';
 import type { SearchProvider } from '../types/search';
 import type { PropertySelectionNodeId } from '../utils/propertyTree';
-import { getFilesForNavigationSelection } from '../utils/selectionUtils';
+import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
+import { getFilesForNavigationSelection, getVisibleVaultMarkdownFiles } from '../utils/selectionUtils';
 import { getListSortOverrideForSelection, isManualSortPropertyKey, resolveListSort } from '../utils/sortUtils';
 import { applyManualSortMarkdownOrder, getManualSortGroupHeaderPropertyKey } from '../utils/manualSort';
 import { getPropertyFieldsFromPropertyKeys } from '../utils/vaultProfiles';
@@ -60,8 +61,12 @@ import {
 import { useListPaneRefresh } from './listPaneData/useListPaneRefresh';
 import { useProviderRows } from './useProviderRows';
 import { navigatorRowProviderRegistry } from '../services/rows/defaultRegistry';
-import { mergeProviderRowsIntoList } from '../services/rows/providerListItems';
+import { buildStandaloneProviderListItems, mergeProviderRowsIntoList } from '../services/rows/providerListItems';
 import type { NavigatorRowProviderSelection, NavigatorRowScope } from '../services/rows/types';
+import { useGcmEntityTypes } from '../integrations/gcm/useGcmEntityTypes';
+import { filterTpsNavigatorTypesSnapshot } from '../types/navigatorTypes';
+import { showNotice } from '../utils/noticeUtils';
+import { buildTypeProviderRows } from '../services/rows/typeProviderRows';
 
 const EMPTY_SEARCH_META = new Map<string, SearchResultMeta>();
 const EMPTY_HIDDEN_FILE_STATE = new Map<string, boolean>();
@@ -80,6 +85,8 @@ interface UseListPaneDataParams {
     selectedTag: string | null;
     /** The currently selected property key/value, if any */
     selectedProperty: PropertySelectionNodeId | null;
+    /** The currently selected TPS type collection, if any. */
+    selectedType: TpsNavigatorTypeId | null;
     /** Plugin settings */
     settings: NotebookNavigatorSettings;
     /** Active profile-derived values */
@@ -140,6 +147,7 @@ export function useListPaneData({
     selectedFolder,
     selectedTag,
     selectedProperty,
+    selectedType,
     settings,
     activeProfile,
     groupBy,
@@ -158,11 +166,24 @@ export function useListPaneData({
     const dayKey = useLocalDayKey();
 
     const [updateKey, setUpdateKey] = useState(0);
+    const isTypeSelection = selectionType === ItemType.TYPE && selectedType !== null;
+    const { snapshot: rawTypeSnapshot, activate: activateTypeRecord } = useGcmEntityTypes(app, settings.tpsTypesNavigationEnabled);
+    const visibleTypeSourcePaths = useMemo(() => {
+        if (!settings.tpsTypesNavigationEnabled || !isTypeSelection) {
+            return new Set<string>();
+        }
+        return new Set(getVisibleVaultMarkdownFiles(settings, showHiddenItems, app).map(file => file.path));
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- revisions and updateKey invalidate vault-derived visibility.
+    }, [app, isTypeSelection, rawTypeSnapshot.revision, settings, showHiddenItems, updateKey]);
+    const typeSnapshot = useMemo(
+        () => filterTpsNavigatorTypesSnapshot(rawTypeSnapshot, visibleTypeSourcePaths),
+        [rawTypeSnapshot, visibleTypeSourcePaths]
+    );
 
     const trimmedQuery = searchQuery?.trim() ?? '';
     const hasSearchQuery = trimmedQuery.length > 0;
     const isOmnisearchAvailable = omnisearchService?.isAvailable() ?? false;
-    const useOmnisearch = searchProvider === 'omnisearch' && isOmnisearchAvailable && hasSearchQuery;
+    const useOmnisearch = !isTypeSelection && searchProvider === 'omnisearch' && isOmnisearchAvailable && hasSearchQuery;
     const activeFilterSearchTokens = useMemo(() => {
         if (!trimmedQuery || useOmnisearch) {
             return null;
@@ -235,6 +256,9 @@ export function useListPaneData({
     const activePropertyFields = useMemo(() => getPropertyFieldsFromPropertyKeys(activeProfile.propertyKeys), [activeProfile.propertyKeys]);
 
     const baseFiles = useMemo(() => {
+        if (isTypeSelection) {
+            return [];
+        }
         return getFilesForNavigationSelection(
             {
                 selectionType,
@@ -251,6 +275,7 @@ export function useListPaneData({
         // eslint-disable-next-line react-hooks/exhaustive-deps -- updateKey refreshes storage data while getFilesForNavigationSelection is static.
     }, [
         selectionType,
+        isTypeSelection,
         selectedFolder,
         selectedTag,
         selectedProperty,
@@ -511,7 +536,7 @@ export function useListPaneData({
 
         return {
             visibleFilePaths,
-            selectionType,
+            selectionType: selectionType === ItemType.TYPE ? null : selectionType,
             selectedFolderPath: selectedFolder?.path ?? null,
             selectedTag,
             selectedProperty
@@ -521,9 +546,31 @@ export function useListPaneData({
         app,
         registry: navigatorRowProviderRegistry,
         scope: providerScope,
-        selection: rowProviderSelection
+        selection: isTypeSelection ? NO_ROW_PROVIDERS : rowProviderSelection
     });
-    const listItems = useMemo(() => mergeProviderRowsIntoList(coreListItems, providerRows), [coreListItems, providerRows]);
+    const typeRows = useMemo(() => {
+        if (!isTypeSelection || !selectedType) {
+            return [];
+        }
+        return buildTypeProviderRows({
+            snapshot: typeSnapshot,
+            selectedType,
+            searchQuery: trimmedQuery,
+            activate: activateTypeRecord,
+            onActivationFailure: (record, result) => {
+                console.warn('[TPS Notebook Navigator] Type record activation failed', {
+                    typeId: selectedType,
+                    recordId: record.id,
+                    reason: result.reason
+                });
+                showNotice('Could not open this item at its current location.', { variant: 'warning' });
+            }
+        });
+    }, [activateTypeRecord, isTypeSelection, selectedType, trimmedQuery, typeSnapshot]);
+    const listItems = useMemo(
+        () => (isTypeSelection ? buildStandaloneProviderListItems(typeRows) : mergeProviderRowsIntoList(coreListItems, providerRows)),
+        [coreListItems, isTypeSelection, providerRows, typeRows]
+    );
 
     const filePathToIndex = useMemo(() => {
         return buildFilePathToIndexMap(listItems);

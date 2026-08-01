@@ -34,6 +34,8 @@ export const TPS_NOTEBOOK_NAVIGATOR_SETTINGS_TRANSFER_ID = TPS_NOTEBOOK_NAVIGATO
 export const TPS_NOTEBOOK_NAVIGATOR_REACT_ID_PREFIX = 'tps-notebook-navigator-';
 
 export const TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID = 'tps-global-context-menu';
+export const TPS_GCM_API_REQUEST_EVENT = 'tps:gcm-api-request';
+export const TPS_GCM_API_CHANGED_EVENT = 'tps:gcm-api-changed';
 export const TPS_FILES_UPDATED_EVENT = 'tps:files-updated';
 
 export const UPSTREAM_NOTEBOOK_NAVIGATOR_PLUGIN_ID = 'notebook-navigator';

@@ -23,6 +23,7 @@ interface ShouldSkipNavigatorAutoRevealParams {
     isOpeningVersionHistory: boolean;
     isOpeningInNewContext: boolean;
     isNavigatorOpeningSelectedFile: boolean;
+    isTypeCollectionSelected: boolean;
 }
 
 /**
@@ -33,7 +34,8 @@ export function shouldSkipNavigatorAutoReveal({
     hasNavigatorFocus,
     isOpeningVersionHistory,
     isOpeningInNewContext,
-    isNavigatorOpeningSelectedFile
+    isNavigatorOpeningSelectedFile,
+    isTypeCollectionSelected
 }: ShouldSkipNavigatorAutoRevealParams): boolean {
     if (!hasNavigatorFocus) {
         return false;
@@ -43,7 +45,10 @@ export function shouldSkipNavigatorAutoReveal({
         return false;
     }
 
-    return isNavigatorOpeningSelectedFile;
+    // Type rows are standalone entity/line results rather than file-list selections.
+    // While the navigator keeps focus, opening one must preserve its Type collection just
+    // like opening the selected file preserves an ordinary folder/tag/property collection.
+    return isNavigatorOpeningSelectedFile || isTypeCollectionSelected;
 }
 
 export function isLeafInNavigatorWindow(leaf: WorkspaceLeaf | null, navigatorLeaves: WorkspaceLeaf[]): boolean {

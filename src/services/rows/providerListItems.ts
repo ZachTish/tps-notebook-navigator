@@ -7,6 +7,27 @@ import { ListPaneItemType } from '../../types';
 import type { ListPaneItem } from '../../types/virtualization';
 import type { NavigatorProvidedRow } from './types';
 
+/** Builds a complete virtualized list from rows that are not attached to file rows. */
+export function buildStandaloneProviderListItems(providerRows: readonly NavigatorProvidedRow[]): ListPaneItem[] {
+    return [
+        {
+            type: ListPaneItemType.TOP_SPACER,
+            data: '',
+            key: 'top-spacer'
+        },
+        ...providerRows.map(row => ({
+            type: ListPaneItemType.PROVIDER_ROW,
+            data: row,
+            key: `provider:${row.providerId}:${row.id}`
+        })),
+        {
+            type: ListPaneItemType.BOTTOM_SPACER,
+            data: '',
+            key: 'bottom-spacer'
+        }
+    ];
+}
+
 export function mergeProviderRowsIntoList(listItems: ListPaneItem[], providerRows: readonly NavigatorProvidedRow[]): ListPaneItem[] {
     if (providerRows.length === 0) {
         return listItems;

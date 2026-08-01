@@ -93,6 +93,15 @@ import type { NavigationPaneSourceState } from '../../hooks/navigationPane/data/
 import type { NavigationPaneTreeSectionsResult } from '../../hooks/navigationPane/data/useNavigationPaneTreeSections';
 import type { FolderDecorationModel } from '../../utils/folderDecoration';
 import { focusElementPreventScroll } from '../../utils/domUtils';
+import { useGcmEntityTypes } from '../../integrations/gcm/useGcmEntityTypes';
+import {
+    buildNavigationTypeReorderItems,
+    expandTypeSelectionAncestors,
+    useNavigationPaneTypeSection
+} from '../../hooks/navigationPane/data/useNavigationPaneTypeSection';
+import { filterTpsNavigatorTypesSnapshot } from '../../types/navigatorTypes';
+import { getVisibleVaultMarkdownFiles } from '../../utils/selectionUtils';
+import { createTypeSelectionFallbackAction } from '../../utils/navigationTypeHistory';
 
 const EMPTY_INDENT_GUIDE_MAP = new Map<string, number[]>();
 
@@ -325,6 +334,7 @@ export const NavigationPane = React.memo(
         const [foldersSectionExpanded, setFoldersSectionExpanded] = useState(true);
         const [tagsSectionExpanded, setTagsSectionExpanded] = useState(true);
         const [propertiesSectionExpanded, setPropertiesSectionExpanded] = useState(true);
+        const [typesSectionExpanded, setTypesSectionExpanded] = useState(true);
         const [inlineRenameTarget, setInlineRenameTarget] = useState<NavigationInlineRenameTarget | null>(null);
         const handleToggleFoldersSection = useCallback(() => {
             setFoldersSectionExpanded(prev => !prev);
@@ -334,6 +344,9 @@ export const NavigationPane = React.memo(
         }, []);
         const handleTogglePropertiesSection = useCallback(() => {
             setPropertiesSectionExpanded(prev => !prev);
+        }, []);
+        const handleToggleTypesSection = useCallback(() => {
+            setTypesSectionExpanded(prev => !prev);
         }, []);
         const [isRootReorderMode, setRootReorderMode] = useState(false);
 
@@ -420,6 +433,73 @@ export const NavigationPane = React.memo(
         );
 
         const isVisible = uiState.dualPane || uiState.currentSinglePaneView === 'navigation';
+        const { snapshot: rawTypeSnapshot } = useGcmEntityTypes(app, settings.tpsTypesNavigationEnabled);
+        const visibleTypeSourcePaths = useMemo(() => {
+            // Source-state changes can alter the active visibility scope before the next index revision.
+            void props.navigationSourceState;
+            if (!settings.tpsTypesNavigationEnabled) {
+                return new Set<string>();
+            }
+            return new Set(getVisibleVaultMarkdownFiles(settings, showHiddenItems, app).map(file => file.path));
+        }, [app, props.navigationSourceState, settings, showHiddenItems]);
+        const typeSnapshot = useMemo(
+            () => filterTpsNavigatorTypesSnapshot(rawTypeSnapshot, visibleTypeSourcePaths),
+            [rawTypeSnapshot, visibleTypeSourcePaths]
+        );
+        const typeItems = useNavigationPaneTypeSection(
+            typeSnapshot,
+            expansionState.expandedVirtualFolders,
+            settings.tpsTypesNavigationEnabled
+        );
+        const typeReorderSourceItems = useMemo(
+            () => (settings.tpsTypesNavigationEnabled ? buildNavigationTypeReorderItems(typeSnapshot) : []),
+            [settings.tpsTypesNavigationEnabled, typeSnapshot]
+        );
+        const revealedTypeSelectionRef = useRef<string | null>(null);
+        useEffect(() => {
+            const selectedType =
+                settings.tpsTypesNavigationEnabled && selectionState.selectionType === ItemType.TYPE ? selectionState.selectedType : null;
+            if (!selectedType) {
+                revealedTypeSelectionRef.current = null;
+                return;
+            }
+
+            if (revealedTypeSelectionRef.current === selectedType) {
+                return;
+            }
+            revealedTypeSelectionRef.current = selectedType;
+
+            const nextExpandedVirtualFolders = expandTypeSelectionAncestors(expansionState.expandedVirtualFolders, selectedType);
+            if (nextExpandedVirtualFolders !== expansionState.expandedVirtualFolders) {
+                expansionDispatch({
+                    type: 'SET_EXPANDED_VIRTUAL_FOLDERS',
+                    folders: new Set(nextExpandedVirtualFolders)
+                });
+            }
+        }, [
+            expansionDispatch,
+            expansionState.expandedVirtualFolders,
+            selectionState.selectedType,
+            selectionState.selectionType,
+            settings.tpsTypesNavigationEnabled
+        ]);
+        useEffect(() => {
+            if (settings.tpsTypesNavigationEnabled || selectionState.selectionType !== ItemType.TYPE) {
+                return;
+            }
+            selectionDispatch(createTypeSelectionFallbackAction(app.vault.getRoot()));
+        }, [app.vault, selectionDispatch, selectionState.selectionType, settings.tpsTypesNavigationEnabled]);
+        useEffect(() => {
+            if (
+                typeSnapshot.availability !== 'ready' ||
+                selectionState.selectionType !== ItemType.TYPE ||
+                !selectionState.selectedType ||
+                typeSnapshot.descriptors.some(descriptor => descriptor.id === selectionState.selectedType)
+            ) {
+                return;
+            }
+            selectionDispatch(createTypeSelectionFallbackAction(app.vault.getRoot()));
+        }, [app.vault, selectionDispatch, selectionState.selectedType, selectionState.selectionType, typeSnapshot]);
         const {
             items,
             firstSectionId,
@@ -448,6 +528,7 @@ export const NavigationPane = React.memo(
             isVisible,
             sourceState: props.navigationSourceState,
             treeSections: props.navigationTreeSections,
+            typeItems,
             folderDecorationModel: props.folderDecorationModel,
             navRainbowState: props.navRainbowState,
             shortcutsExpanded: shortcuts.shortcutsExpanded,
@@ -621,6 +702,7 @@ export const NavigationPane = React.memo(
             folderReorderItems,
             tagReorderItems,
             propertyReorderItems,
+            typeReorderItems,
             canReorderSections,
             canReorderRootFolders,
             canReorderRootTags,
@@ -629,6 +711,7 @@ export const NavigationPane = React.memo(
             showRootFolderSection,
             showRootTagSection,
             showRootPropertySection,
+            showRootTypeSection,
             resetRootTagOrderLabel,
             resetRootPropertyOrderLabel,
             handleResetRootFolderOrder,
@@ -654,14 +737,17 @@ export const NavigationPane = React.memo(
             resolvedRootPropertyKeys,
             rootOrderingPropertyTree,
             missingRootPropertyKeys,
+            typeReorderSourceItems,
             metadataService,
             foldersSectionExpanded,
             tagsSectionExpanded,
             propertiesSectionExpanded,
+            typesSectionExpanded,
             propertiesSectionActive,
             handleToggleFoldersSection,
             handleToggleTagsSection,
             handleTogglePropertiesSection,
+            handleToggleTypesSection,
             activeProfile
         });
 
@@ -753,7 +839,9 @@ export const NavigationPane = React.memo(
                     ? ItemType.TAG
                     : selectionState.selectionType === ItemType.PROPERTY
                       ? ItemType.PROPERTY
-                      : ItemType.FOLDER;
+                      : selectionState.selectionType === ItemType.TYPE
+                        ? ItemType.TYPE
+                        : ItemType.FOLDER;
             requestScroll(normalizeNavigationPath(itemType, selectedPath), { align: 'auto', itemType });
         }, [requestScroll, selectionState]);
 
@@ -969,7 +1057,7 @@ export const NavigationPane = React.memo(
 
         const keyboardItems = isRootReorderMode ? [] : items;
         const keyboardPathToIndex = isRootReorderMode ? new Map<string, number>() : pathToIndex;
-        useNavigationPaneKeyboard({
+        const { keyboardFocusedVirtualFolderId } = useNavigationPaneKeyboard({
             items: keyboardItems,
             virtualizer: rowVirtualizer,
             containerRef: props.rootContainerRef,
@@ -1136,7 +1224,10 @@ export const NavigationPane = React.memo(
                 const renameTarget = inlineRenameTarget ? matchNavigationInlineRenameTarget(item, inlineRenameTarget) : null;
 
                 return {
-                    isSelected: isNavigationItemSelected(item, selectionState),
+                    isSelected:
+                        item.type === NavigationPaneItemType.VIRTUAL_FOLDER && item.data.id === keyboardFocusedVirtualFolderId
+                            ? true
+                            : keyboardFocusedVirtualFolderId === null && isNavigationItemSelected(item, selectionState),
                     isExpanded,
                     renameTarget,
                     isDragSource
@@ -1145,6 +1236,7 @@ export const NavigationPane = React.memo(
             [
                 expansionState,
                 inlineRenameTarget,
+                keyboardFocusedVirtualFolderId,
                 selectionState,
                 shortcuts.shortcutsExpanded,
                 shortcuts.recentNotesExpanded,
@@ -1154,14 +1246,20 @@ export const NavigationPane = React.memo(
         );
 
         const isNavigationItemFilledForAdjacency = useCallback(
-            (item: CombinedNavigationItem) =>
-                isNavigationItemFilled({
+            (item: CombinedNavigationItem) => {
+                const keyboardSelectionOverride =
+                    keyboardFocusedVirtualFolderId === null
+                        ? undefined
+                        : item.type === NavigationPaneItemType.VIRTUAL_FOLDER && item.data.id === keyboardFocusedVirtualFolderId;
+                return isNavigationItemFilled({
                     item,
                     selectionState,
                     searchHighlights,
-                    getSolidBackground
-                }),
-            [getSolidBackground, searchHighlights, selectionState]
+                    getSolidBackground,
+                    isSelectedOverride: keyboardSelectionOverride
+                });
+            },
+            [getSolidBackground, keyboardFocusedVirtualFolderId, searchHighlights, selectionState]
         );
 
         const renderNavigationItem = useCallback(
@@ -1185,12 +1283,15 @@ export const NavigationPane = React.memo(
                 folderItems={folderReorderItems}
                 tagItems={tagReorderItems}
                 propertyItems={propertyReorderItems}
+                typeItems={typeReorderItems}
                 showRootFolderSection={showRootFolderSection}
                 showRootTagSection={showRootTagSection}
                 showRootPropertySection={showRootPropertySection}
+                showRootTypeSection={showRootTypeSection}
                 foldersSectionExpanded={foldersSectionExpanded}
                 tagsSectionExpanded={tagsSectionExpanded}
                 propertiesSectionExpanded={propertiesSectionExpanded}
+                typesSectionExpanded={typesSectionExpanded}
                 showRootFolderReset={settings.rootFolderOrder.length > 0}
                 showRootTagReset={settings.rootTagOrder.length > 0}
                 showRootPropertyReset={settings.rootPropertyOrder.length > 0}

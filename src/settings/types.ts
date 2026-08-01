@@ -596,6 +596,7 @@ export interface NotebookNavigatorSettings {
     syncModes: Record<SyncModeSettingId, SettingSyncMode>;
 
     // TPS integration
+    tpsTypesNavigationEnabled: boolean;
     tpsGcmTaskRowsEnabled: boolean;
     tpsGcmTaskRowsIncludeCompleted: boolean;
     tpsGcmTaskRowsPerNote: number;

@@ -29,14 +29,27 @@ The integration surface is intentionally modular. The navigator owns presentatio
 
 The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.13.1 or later is the tested integration baseline: task checkboxes complete or reopen the exact task through GCM, while selecting the title resolves and opens its source line. Generic row providers can also add their own synchronous context-menu actions without granting the navigator access to provider internals. Older structurally compatible APIs without task mutation remain display-only. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
 
+### Types navigation
+
+The first-class **Types** section is enabled by default. It uses TPS Global Context Menu's generic Entity Index v3 rather than maintaining a second Markdown parser.
+
+- **Notes**, **Checkboxes**, **Bullets**, and **Headings** are structural collections. **Kinds** is a nested collection built dynamically from every indexed `Kind` value, so note entities and line entities can participate in the same relational model.
+- A selected collection replaces the file list with standalone, virtualized entity rows. Selecting a note opens that note; selecting a checkbox, bullet, or heading re-resolves its stable locator and opens the current source line through direct Obsidian APIs.
+- Counts and rows respect the active Navigator profile, hidden-folder/file/property/tag rules, file visibility, and the hidden-items override. Fenced examples that GCM excludes never become Navigator rows.
+- Type rows are deliberately excluded from file selection, pinning, drag, rename, sort/group editing, and note creation. The Types list keeps its own text search and hides irrelevant file actions on desktop and mobile.
+- Missing, disabled, incompatible, or incomplete GCM indexing fails closed with a visible status row. TPS Global Context Menu 1.14.0 is the tested Entity Index v3 baseline. Older GCM builds may still provide attached task rows but cannot populate Types.
+
+The selected type and Types/Kinds expansion state use TPS-namespaced local storage, participate in back/forward history and keyboard navigation, and do not alter upstream Notebook Navigator state. Dynamic Kind collections disappear only after a complete index snapshot confirms that the Kind no longer exists; transient GCM startup does not erase a restored selection.
+
 ### Settings map
 
 The default settings surface remains the normal Notebook Navigator landing page. **TPS integration** is a top-level destination under **Configuration**, one click from that landing page.
 
 - **Task rows** — **Show GCM tasks beneath notes** is off by default. When enabled, the same page reveals **Include completed tasks** and **Tasks per note**; there is no nested editor or second configuration page.
+- **Types navigation** — **Show Types in navigation** is on by default and directly controls the first-class Types section. It is a single flat toggle; structural and Kind collections require no nested rule editor.
 - **One-way setup** — **Import upstream Notebook Navigator settings** always asks for confirmation. It reads only `.obsidian/plugins/notebook-navigator/data.json`, copies recognized upstream settings into the TPS plugin, preserves TPS-only integration settings, and never writes to upstream state.
 
-All three task-row values persist in the TPS plugin's own `data.json`. The importer, active route, disclosures, focus, and scroll position do not create extra persisted schema. On mobile, these controls use Obsidian's native stacked setting rows; the optional controls disappear while task rows are disabled so they do not consume the viewport.
+The Types toggle and all three task-row values persist in the TPS plugin's own `data.json`. The importer, active route, disclosures, focus, and scroll position do not create extra persisted schema. On mobile, these controls use Obsidian's native stacked setting rows; the optional controls disappear while task rows are disabled so they do not consume the viewport.
 
 ### Provider behavior and limits
 
@@ -47,6 +60,7 @@ All three task-row values persist in the TPS plugin's own `data.json`. The impor
 - Provider controls own their keyboard and context-menu events, so completing a task cannot accidentally trigger file deletion, selection, or the empty-list menu.
 - A provider may expose synchronous row actions through `contextMenu(context)`. The same actions open from desktop right-click, the native mobile long-press context-menu event, or the keyboard-focusable **More actions** button. Failed, asynchronous, and empty builders are isolated and never open a blank menu.
 - TPS settings import is a copy, not synchronization. Later upstream setting changes are not mirrored unless the import is explicitly run again.
+- Vault-wide Types rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. Their plain-text search matches entity labels and source paths; file-only advanced search operators and Omnisearch ranking do not apply in a Types collection.
 
 ## Keeping up with Notebook Navigator
 
@@ -60,6 +74,16 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 4.2.0 — first-class Types navigation
+
+- Adds an expandable **Types** navigation section with Notes, Checkboxes, Bullets, Headings, and dynamic Kind collections from GCM Entity Index v3.
+- Opens note entities directly and re-resolves line locators immediately before opening checkbox, bullet, heading, or Kind-backed line entities at their current source line.
+- Applies active Navigator visibility rules to both collection counts and results, keeps selection/history/keyboard/mobile behavior native, and prevents file-only actions from mutating a virtual Types list.
+- Adds the default-on **Show Types in navigation** setting without importing or overwriting it from upstream settings.
+- Advances the public API to 2.4.0 with a `type` navigation item while preserving existing folder/tag/property/none result shapes.
+- Requires no note or settings migration, keeps the minimum supported Obsidian version at 1.11.0, and treats GCM 1.14.0 Entity Index v3 as the tested Types baseline.
+- Validated with 195 Vitest files and 2,067 tests, formatting, ESLint, TypeScript, stylesheet and TPS namespace gates, a production build deployed to the test vault, an Obsidian 1.12.7 plugin reload, and live interaction checks for every structural collection plus note-backed and line-backed Kinds.
 
 ### 4.1.0 — provider actions and resilient composition
 
@@ -497,7 +521,7 @@ Set custom hotkeys for these commands in Obsidian's Hotkeys settings:
 
 ### 10.1 Interface
 
-- **Dual-pane layout** - Navigation pane (folders/tags/properties) and list pane (files)
+- **Dual-pane layout** - Navigation pane (folders/tags/properties/types) and list pane (files or virtual entity rows)
 - **Single-pane mode** - Navigation and list views with animated transitions
 - **Resizable panes** - Horizontal or vertical split orientation
 - **Independent UI zoom** - Scale Notebook Navigator without changing Obsidian zoom
@@ -514,6 +538,7 @@ Set custom hotkeys for these commands in Obsidian's Hotkeys settings:
 - **Folder tree** - Expand/collapse navigation with manual root folder ordering
 - **Tag tree** - Hierarchical tags with configurable root tag ordering
 - **Property browser** - Browse file properties organized by key and value with file counts, custom colors, icons, and drag and drop
+- **Types browser** - Browse structural notes/checkboxes/bullets/headings and dynamic relational Kind entities, opening notes or exact source lines
 - **Auto-reveal active file** - Folder expansion and scroll-to-selection
 - **Keyboard and commands** - Configurable hotkeys, selection history back/forward commands, next/previous file commands, open shortcut 1–9 commands
 

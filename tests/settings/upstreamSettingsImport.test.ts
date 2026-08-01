@@ -67,6 +67,7 @@ describe('prepareUpstreamSettingsImport', () => {
     it('accepts a schema-compatible partial record and deeply preserves omitted TPS values', async () => {
         const current = structuredClone(DEFAULT_SETTINGS);
         current.recentNotesCount = 37;
+        current.tpsTypesNavigationEnabled = false;
         current.tpsGcmTaskRowsEnabled = true;
         current.tpsGcmTaskRowsIncludeCompleted = true;
         current.tpsGcmTaskRowsPerNote = 17;
@@ -77,6 +78,7 @@ describe('prepareUpstreamSettingsImport', () => {
             contents: JSON.stringify({
                 folderSortOrder: 'alpha-desc',
                 toolbarVisibility: { list: { search: false } },
+                tpsTypesNavigationEnabled: true,
                 tpsGcmTaskRowsEnabled: false,
                 tpsGcmTaskRowsIncludeCompleted: false,
                 tpsGcmTaskRowsPerNote: 1,
@@ -93,6 +95,7 @@ describe('prepareUpstreamSettingsImport', () => {
         }
         expect(result.settingsRecord.folderSortOrder).toBe('alpha-desc');
         expect(result.settingsRecord.recentNotesCount).toBe(37);
+        expect(result.settingsRecord.tpsTypesNavigationEnabled).toBe(false);
         expect(result.settingsRecord.tpsGcmTaskRowsEnabled).toBe(true);
         expect(result.settingsRecord.tpsGcmTaskRowsIncludeCompleted).toBe(true);
         expect(result.settingsRecord.tpsGcmTaskRowsPerNote).toBe(17);

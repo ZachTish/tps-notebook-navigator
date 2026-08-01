@@ -72,6 +72,7 @@ export function createSelectionHistoryEntry(params: {
     selectedFolder: TFolder | null;
     selectedTag: string | null;
     selectedProperty: SelectionState['selectedProperty'];
+    selectedType?: SelectionState['selectedType'];
 }): SelectionHistoryEntry | null {
     if (params.selectionType === 'folder' && params.selectedFolder) {
         return {
@@ -101,6 +102,13 @@ export function createSelectionHistoryEntry(params: {
         return {
             type: 'property',
             value: normalizedProperty
+        };
+    }
+
+    if (params.selectionType === 'type' && params.selectedType) {
+        return {
+            type: 'type',
+            value: params.selectedType
         };
     }
 
@@ -208,6 +216,7 @@ function withSingleSelection(
         selectedFolder: TFolder | null;
         selectedTag: string | null;
         selectedProperty: SelectionState['selectedProperty'];
+        selectedType?: SelectionState['selectedType'];
         selectedFile: TFile | null;
         isRevealOperation: boolean;
         isFolderChangeWithAutoSelect: boolean;
@@ -222,7 +231,8 @@ function withSingleSelection(
         selectionType: params.selectionType,
         selectedFolder: params.selectedFolder,
         selectedTag: params.selectedTag,
-        selectedProperty: params.selectedProperty
+        selectedProperty: params.selectedProperty,
+        selectedType: params.selectedType ?? null
     });
     const { navigationHistory, navigationHistoryIndex } = updateSelectionHistory(
         state,
@@ -237,6 +247,7 @@ function withSingleSelection(
         selectedFolder: params.selectedFolder,
         selectedTag: params.selectedTag,
         selectedProperty: params.selectedProperty,
+        selectedType: params.selectedType ?? null,
         selectedFiles: createSelectedFilesSet(params.selectedFile),
         selectedFile: params.selectedFile,
         anchorIndex: null,
@@ -323,6 +334,23 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
                 historyIndex: action.historyIndex
             });
 
+        case 'SET_SELECTED_TYPE':
+            return withSingleSelection(state, {
+                selectionType: 'type',
+                selectedFolder: null,
+                selectedTag: null,
+                selectedProperty: null,
+                selectedType: action.typeId,
+                selectedFile: null,
+                isRevealOperation: false,
+                isFolderChangeWithAutoSelect: false,
+                isKeyboardNavigation: false,
+                isFolderNavigation: true,
+                revealSource: action.source ?? null,
+                historyBehavior: action.historyBehavior,
+                historyIndex: action.historyIndex
+            });
+
         case 'SET_SELECTED_FILE':
             return {
                 ...state,
@@ -353,6 +381,7 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
                 selectedFolder: null,
                 selectedTag: null,
                 selectedProperty: null,
+                selectedType: null,
                 selectedFiles: new Set<string>(),
                 selectedFile: null,
                 anchorIndex: null,

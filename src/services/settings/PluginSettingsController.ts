@@ -546,6 +546,10 @@ export class PluginSettingsController {
             DEFAULT_SETTINGS.calendarEnabled
         );
 
+        this.currentSettings.tpsTypesNavigationEnabled = this.sanitizeBooleanSetting(
+            this.currentSettings.tpsTypesNavigationEnabled,
+            DEFAULT_SETTINGS.tpsTypesNavigationEnabled
+        );
         this.currentSettings.tpsGcmTaskRowsEnabled = this.sanitizeBooleanSetting(
             this.currentSettings.tpsGcmTaskRowsEnabled,
             DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled

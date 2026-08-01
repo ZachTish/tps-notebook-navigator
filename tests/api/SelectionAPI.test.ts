@@ -73,6 +73,15 @@ describe('SelectionAPI', () => {
             tag: null,
             property: 'key:status'
         });
+
+        selectionAPI.updateNavigationState(null, null, null, 'structural:task');
+        expect(selectionAPI.getNavItem()).toEqual({
+            type: 'type',
+            folder: null,
+            tag: null,
+            property: null,
+            navigatorType: 'structural:task'
+        });
     });
 
     it('normalizes property navigation ids before storing navigation state', () => {

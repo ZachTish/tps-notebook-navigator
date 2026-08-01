@@ -146,6 +146,11 @@ export function useNavigatorReveal({ app, navigationPaneRef, focusNavigationPane
     const activeFileRef = useRef<TFile | null>(null);
     const hasInitializedRef = useRef<boolean>(false);
     const selectedFilePathRef = useRef<string | null>(null);
+    const selectionTypeRef = useRef(selectionState.selectionType);
+
+    // Workspace listeners are intentionally stable, so keep the current collection kind in
+    // a ref that they can consult without capturing the selection from their registration render.
+    selectionTypeRef.current = selectionState.selectionType;
 
     useEffect(() => {
         // Track the latest selected file path for workspace event handlers without re-registering listeners.
@@ -970,7 +975,8 @@ export function useNavigatorReveal({ app, navigationPaneRef, focusNavigationPane
                 hasNavigatorFocus,
                 isOpeningVersionHistory,
                 isOpeningInNewContext,
-                isNavigatorOpeningSelectedFile
+                isNavigatorOpeningSelectedFile,
+                isTypeCollectionSelected: selectionTypeRef.current === ItemType.TYPE
             });
 
             if (shouldSkipNavigatorAutoRevealForFile) {

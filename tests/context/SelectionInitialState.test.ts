@@ -139,6 +139,40 @@ describe('loadInitialSelectionState', () => {
         expect(state.selectedProperty).toBe(buildPropertyValueNodeId('réunion', normalizePropertyTreeValuePath('Planifié')));
     });
 
+    it('restores a valid TPS type ahead of other stored navigation selections when Types is enabled', () => {
+        storage.set(STORAGE_KEYS.selectedTypeKey, 'structural:task');
+        storage.set(STORAGE_KEYS.selectedFolderKey, '/');
+        storage.set(STORAGE_KEYS.selectedFileKey, 'notes/one.md');
+        storage.set(STORAGE_KEYS.selectedFilesKey, ['notes/one.md']);
+
+        const { app, files, rootFolder } = createAppWithRoot();
+        const storedFile = createFile('notes/one.md', rootFolder);
+        files.set(storedFile.path, storedFile);
+        const state = loadInitialSelectionState({ app, settings: { ...DEFAULT_SETTINGS } });
+
+        expect(state.selectionType).toBe('type');
+        expect(state.selectedType).toBe('structural:task');
+        expect(state.selectedFolder).toBeNull();
+        expect(state.selectedFile).toBeNull();
+        expect(state.selectedFiles.size).toBe(0);
+        expect(state.navigationHistory).toEqual([{ type: 'type', value: 'structural:task' }]);
+    });
+
+    it('ignores a stored TPS type when Types navigation is disabled', () => {
+        storage.set(STORAGE_KEYS.selectedTypeKey, 'structural:task');
+        storage.set(STORAGE_KEYS.selectedFolderKey, '/');
+
+        const { app } = createAppWithRoot();
+        const state = loadInitialSelectionState({
+            app,
+            settings: { ...DEFAULT_SETTINGS, tpsTypesNavigationEnabled: false }
+        });
+
+        expect(state.selectionType).toBe('folder');
+        expect(state.selectedType).toBeNull();
+        expect(state.selectedFolder?.path).toBe('/');
+    });
+
     it('initializes navigation history in memory from the current selection only', () => {
         storage.set(STORAGE_KEYS.selectedFolderKey, '/');
 

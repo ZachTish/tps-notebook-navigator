@@ -38,13 +38,16 @@ interface NavigationRootReorderPanelProps {
     folderItems: RootReorderRenderItem[];
     tagItems: RootReorderRenderItem[];
     propertyItems: RootReorderRenderItem[];
+    typeItems: RootReorderRenderItem[];
     isMobile: boolean;
     showRootFolderSection: boolean;
     showRootTagSection: boolean;
     showRootPropertySection: boolean;
+    showRootTypeSection: boolean;
     foldersSectionExpanded: boolean;
     tagsSectionExpanded: boolean;
     propertiesSectionExpanded: boolean;
+    typesSectionExpanded: boolean;
     showRootFolderReset: boolean;
     showRootTagReset: boolean;
     showRootPropertyReset: boolean;
@@ -129,6 +132,10 @@ function SortableList({ entries, canReorder, children, isMobile }: SortableListP
     );
 }
 
+function StaticList({ items }: { items: RootReorderRenderItem[] }) {
+    return items.map(item => <RootFolderReorderItem key={item.key} {...item.props} />);
+}
+
 interface SectionEntry {
     id: NavigationSectionId;
     item: SectionReorderRenderItem;
@@ -157,13 +164,16 @@ export function NavigationRootReorderPanel({
     folderItems,
     tagItems,
     propertyItems,
+    typeItems,
     isMobile,
     showRootFolderSection,
     showRootTagSection,
     showRootPropertySection,
+    showRootTypeSection,
     foldersSectionExpanded,
     tagsSectionExpanded,
     propertiesSectionExpanded,
+    typesSectionExpanded,
     showRootFolderReset,
     showRootTagReset,
     showRootPropertyReset,
@@ -320,7 +330,8 @@ export function NavigationRootReorderPanel({
         sectionEntries.length > 0 ||
         (showRootFolderSection && folderEntries.length > 0) ||
         (showRootTagSection && tagEntries.length > 0) ||
-        (showRootPropertySection && propertyEntries.length > 0);
+        (showRootPropertySection && propertyEntries.length > 0) ||
+        (showRootTypeSection && typeItems.length > 0);
 
     const handleDragEnd = useCallback(
         (event: DragEndEvent) => {
@@ -430,6 +441,8 @@ export function NavigationRootReorderPanel({
                                     item.sectionId === NavigationSectionId.PROPERTIES &&
                                     propertiesSectionExpanded &&
                                     showRootPropertySection;
+                                const shouldRenderTypes =
+                                    item.sectionId === NavigationSectionId.TYPES && typesSectionExpanded && showRootTypeSection;
 
                                 return (
                                     <div key={`section:${item.key}`} className="nn-root-reorder-section">
@@ -458,6 +471,8 @@ export function NavigationRootReorderPanel({
                                                 ) : null}
                                             </SortableList>
                                         ) : null}
+
+                                        {shouldRenderTypes && typeItems.length > 0 ? <StaticList items={typeItems} /> : null}
                                     </div>
                                 );
                             })
@@ -490,6 +505,12 @@ export function NavigationRootReorderPanel({
                                                 <ResetAction label={resetRootPropertyOrderLabel} onClick={handleResetProperties} />
                                             ) : null}
                                         </SortableList>
+                                    </div>
+                                ) : null}
+
+                                {showRootTypeSection && typeItems.length > 0 ? (
+                                    <div className="nn-root-reorder-section">
+                                        <StaticList items={typeItems} />
                                     </div>
                                 ) : null}
                             </>

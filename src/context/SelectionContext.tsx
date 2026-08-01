@@ -39,7 +39,10 @@ import type { SelectionAction, SelectionState } from './selection/types';
 export type { SelectionAction, SelectionDispatch, SelectionRevealSource, SelectionState } from './selection/types';
 export { resolvePrimarySelectedFile } from './selection/state';
 
-export type NavigationSelectionState = Pick<SelectionState, 'selectionType' | 'selectedFolder' | 'selectedTag' | 'selectedProperty'>;
+export type NavigationSelectionState = Pick<
+    SelectionState,
+    'selectionType' | 'selectedFolder' | 'selectedTag' | 'selectedProperty' | 'selectedType'
+>;
 export type FileSelectionState = Pick<SelectionState, 'selectedFiles' | 'selectedFile' | 'anchorIndex' | 'lastMovementDirection'>;
 export type SelectionFlagsState = Pick<
     SelectionState,
@@ -141,9 +144,10 @@ export function SelectionProvider({
             selectionType: state.selectionType,
             selectedFolder: state.selectedFolder,
             selectedTag: state.selectedTag,
-            selectedProperty: state.selectedProperty
+            selectedProperty: state.selectedProperty,
+            selectedType: state.selectedType
         }),
-        [state.selectedFolder, state.selectedProperty, state.selectedTag, state.selectionType]
+        [state.selectedFolder, state.selectedProperty, state.selectedTag, state.selectedType, state.selectionType]
     );
     const fileSelection = useMemo<FileSelectionState>(
         () => ({

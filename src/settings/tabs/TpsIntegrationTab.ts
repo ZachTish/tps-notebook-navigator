@@ -35,6 +35,12 @@ const UPSTREAM_IMPORT_COPY = {
     failed: 'Could not import upstream Notebook Navigator settings: {message}'
 } as const;
 
+const TYPES_NAVIGATION_COPY = {
+    group: 'Types navigation',
+    name: 'Show Types in navigation',
+    desc: 'Show a Types section for notes, checkboxes, bullets, headings, and Kind values exposed by TPS Global Context Menu.'
+} as const;
+
 const TASK_ROWS_COPY = {
     group: 'Task rows',
     enabledName: 'Show GCM tasks beneath notes',
@@ -48,6 +54,14 @@ const TASK_ROWS_COPY = {
 
 /** Builds native settings definitions for the fork-specific TPS integration destination. */
 export function createTpsIntegrationSettingDefinitions(context: SettingsTabContext): SettingDefinitionItem[] {
+    const typeItems: NonNullable<SettingDefinitionGroup['items']> = [
+        createRenderDefinition({
+            name: TYPES_NAVIGATION_COPY.name,
+            desc: TYPES_NAVIGATION_COPY.desc,
+            aliases: ['Types section', 'entity navigation', 'GCM kinds'],
+            render: setting => renderTpsTypesNavigationEnabledSetting(setting, context)
+        })
+    ];
     const taskItems: NonNullable<SettingDefinitionGroup['items']> = [
         createRenderDefinition({
             name: TASK_ROWS_COPY.enabledName,
@@ -77,7 +91,25 @@ export function createTpsIntegrationSettingDefinitions(context: SettingsTabConte
         })
     ];
 
-    return [createGroupDefinition(TASK_ROWS_COPY.group, taskItems), createGroupDefinition(UPSTREAM_IMPORT_COPY.group, setupItems)];
+    return [
+        createGroupDefinition(TYPES_NAVIGATION_COPY.group, typeItems),
+        createGroupDefinition(TASK_ROWS_COPY.group, taskItems),
+        createGroupDefinition(UPSTREAM_IMPORT_COPY.group, setupItems)
+    ];
+}
+
+/** Shared renderer for the Types-navigation enable control. */
+export function renderTpsTypesNavigationEnabledSetting(setting: Setting, context: SettingsTabContext): void {
+    const { plugin } = context;
+    setting
+        .setName(TYPES_NAVIGATION_COPY.name)
+        .setDesc(TYPES_NAVIGATION_COPY.desc)
+        .addToggle(toggle =>
+            toggle.setValue(plugin.settings.tpsTypesNavigationEnabled).onChange(async value => {
+                plugin.settings.tpsTypesNavigationEnabled = value;
+                await plugin.saveSettingsAndUpdate();
+            })
+        );
 }
 
 /** Shared renderer for the task-row enable control. */

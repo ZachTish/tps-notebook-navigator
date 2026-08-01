@@ -118,6 +118,7 @@ interface ListPaneVirtualContentProps {
     isCompactMode: boolean;
     isEmptySelection: boolean;
     hasNoFiles: boolean;
+    emptyMessage?: string;
     topSpacerHeight: number;
     settings: NotebookNavigatorSettings;
     pinnedGroupExpanded: boolean;
@@ -134,6 +135,7 @@ interface ListPaneVirtualContentProps {
     suppressRowHover: boolean;
     onHoveredFilePathChange: (path: string | null, pointerClientPosition: PointerClientPosition | null) => void;
     onFileClick: (file: TFile, fileIndex: number | undefined, event: React.MouseEvent) => void;
+    onProviderRowActivationRequested?: () => void;
     onModifySearchWithTag: (tag: string, operator: InclusionOperator) => void;
     onModifySearchWithProperty: (key: string, value: string | null, operator: InclusionOperator) => void;
     localDayReference: Date | null;
@@ -468,6 +470,7 @@ interface ListPaneRowProps {
     onFolderGroupHeaderClick: (event: React.MouseEvent<HTMLSpanElement>, target: FolderGroupHeaderTarget) => void;
     onFolderGroupHeaderMouseDown: (event: React.MouseEvent<HTMLSpanElement>, target: FolderGroupHeaderTarget) => void;
     onGroupHeaderContextMenu: (event: React.MouseEvent<HTMLDivElement>, header: HeaderRenderModel) => void;
+    onProviderRowActivationRequested?: () => void;
 }
 
 /**
@@ -506,7 +509,8 @@ const ListPaneRow = React.memo(function ListPaneRow({
     onListGroupHeaderToggle,
     onFolderGroupHeaderClick,
     onFolderGroupHeaderMouseDown,
-    onGroupHeaderContextMenu
+    onGroupHeaderContextMenu,
+    onProviderRowActivationRequested
 }: ListPaneRowProps) {
     const virtualItemStyle: VirtualRowStyle = {
         top,
@@ -590,7 +594,7 @@ const ListPaneRow = React.memo(function ListPaneRow({
                     inlineRename={isInlineRenaming ? inlineRenameHandlers : undefined}
                 />
             ) : item.type === ListPaneItemType.PROVIDER_ROW && typeof item.data === 'object' ? (
-                <NavigatorProviderRow row={item.data as NavigatorProvidedRow} />
+                <NavigatorProviderRow row={item.data as NavigatorProvidedRow} onActivationRequested={onProviderRowActivationRequested} />
             ) : null}
         </div>
     );
@@ -638,6 +642,7 @@ export function ListPaneVirtualContent({
     isCompactMode,
     isEmptySelection,
     hasNoFiles,
+    emptyMessage,
     topSpacerHeight,
     settings,
     pinnedGroupExpanded,
@@ -654,6 +659,7 @@ export function ListPaneVirtualContent({
     suppressRowHover,
     onHoveredFilePathChange,
     onFileClick,
+    onProviderRowActivationRequested,
     onModifySearchWithTag,
     onModifySearchWithProperty,
     localDayReference,
@@ -1117,7 +1123,7 @@ export function ListPaneVirtualContent({
                     </div>
                 ) : hasNoFiles ? (
                     <div className="nn-empty-state">
-                        <div className="nn-empty-message">{strings.listPane.emptyStateNoNotes}</div>
+                        <div className="nn-empty-message">{emptyMessage ?? strings.listPane.emptyStateNoNotes}</div>
                     </div>
                 ) : listItems.length > 0 ? (
                     <div
@@ -1219,6 +1225,7 @@ export function ListPaneVirtualContent({
                                     onFolderGroupHeaderClick={handleFolderGroupHeaderClick}
                                     onFolderGroupHeaderMouseDown={handleFolderGroupHeaderMouseDown}
                                     onGroupHeaderContextMenu={handleGroupHeaderContextMenu}
+                                    onProviderRowActivationRequested={onProviderRowActivationRequested}
                                 />
                             );
                         })}

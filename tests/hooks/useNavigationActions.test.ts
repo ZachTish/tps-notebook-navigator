@@ -24,7 +24,13 @@ import {
     getCollapseBehaviorScope,
     hasCollapsibleFolderExpansion
 } from '../../src/hooks/useNavigationActions';
-import { PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, SHORTCUTS_VIRTUAL_FOLDER_ID, TAGS_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
+import {
+    PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
+    SHORTCUTS_VIRTUAL_FOLDER_ID,
+    TAGS_ROOT_VIRTUAL_FOLDER_ID,
+    TYPES_KINDS_VIRTUAL_FOLDER_ID,
+    TYPES_ROOT_VIRTUAL_FOLDER_ID
+} from '../../src/types';
 
 describe('useNavigationActions helpers', () => {
     function createFolder(path: string, children: TFolder[] = []): TFolder {
@@ -37,7 +43,8 @@ describe('useNavigationActions helpers', () => {
         expect(getCollapseBehaviorScope('properties-only')).toEqual({
             affectFolders: false,
             affectTags: false,
-            affectProperties: true
+            affectProperties: true,
+            affectTypes: false
         });
     });
 
@@ -97,6 +104,30 @@ describe('useNavigationActions helpers', () => {
         expect(collapsedState.properties).toEqual(new Set(['property:key:status']));
         expect(collapsedState.virtualFolders).toEqual(
             new Set([SHORTCUTS_VIRTUAL_FOLDER_ID, TAGS_ROOT_VIRTUAL_FOLDER_ID, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID])
+        );
+    });
+
+    it('keeps the Types branch visible for structural selections and the Kinds branch for kind selections', () => {
+        const structuralState = buildCollapsedExpansionState({
+            behavior: 'all',
+            currentExpandedVirtualFolders: new Set([
+                SHORTCUTS_VIRTUAL_FOLDER_ID,
+                TYPES_ROOT_VIRTUAL_FOLDER_ID,
+                TYPES_KINDS_VIRTUAL_FOLDER_ID
+            ]),
+            revealTypesRoot: true,
+            revealTypeKinds: false
+        });
+        const kindState = buildCollapsedExpansionState({
+            behavior: 'all',
+            currentExpandedVirtualFolders: structuralState.virtualFolders,
+            revealTypesRoot: true,
+            revealTypeKinds: true
+        });
+
+        expect(structuralState.virtualFolders).toEqual(new Set([SHORTCUTS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID]));
+        expect(kindState.virtualFolders).toEqual(
+            new Set([SHORTCUTS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID])
         );
     });
 

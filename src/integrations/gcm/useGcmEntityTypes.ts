@@ -1,0 +1,205 @@
+/*
+ * TPS Notebook Navigator - shared React store for the optional GCM entity index.
+ *
+ * Navigation and list panes share one adapter/query per Obsidian app. This avoids
+ * duplicate dimension registrations and duplicate whole-vault index queries.
+ */
+
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import type { App, EventRef } from 'obsidian';
+import {
+    TPS_NAVIGATOR_STRUCTURAL_TYPES,
+    type TpsNavigatorTypeId,
+    type TpsNavigatorTypeRecord,
+    type TpsNavigatorTypesSnapshot
+} from '../../types/navigatorTypes';
+import { GcmEntityTypeIndexAdapter, type GcmEntityActivationResult } from './GcmEntityTypeIndex';
+import { TPS_GCM_API_CHANGED_EVENT, TPS_GCM_API_REQUEST_EVENT, TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID } from '../../constants/tpsIdentity';
+
+const EMPTY_RECORDS_BY_TYPE = new Map<TpsNavigatorTypeId, readonly TpsNavigatorTypeRecord[]>();
+const LOADING_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
+    availability: 'loading',
+    descriptors: Object.freeze(TPS_NAVIGATOR_STRUCTURAL_TYPES.map(descriptor => Object.freeze({ ...descriptor, count: 0 }))),
+    recordsByType: EMPTY_RECORDS_BY_TYPE,
+    revision: 0,
+    message: 'Loading types…'
+});
+const DISABLED_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
+    availability: 'unavailable',
+    descriptors: Object.freeze([]),
+    recordsByType: EMPTY_RECORDS_BY_TYPE,
+    revision: 0,
+    message: 'Types navigation is disabled.'
+});
+
+function withStructuralFallback(snapshot: TpsNavigatorTypesSnapshot): TpsNavigatorTypesSnapshot {
+    if (snapshot.descriptors.length > 0) {
+        return snapshot;
+    }
+    const recordsByType = new Map<TpsNavigatorTypeId, readonly TpsNavigatorTypeRecord[]>();
+    const descriptors = TPS_NAVIGATOR_STRUCTURAL_TYPES.map(descriptor => {
+        recordsByType.set(descriptor.id, Object.freeze([]));
+        return Object.freeze({ ...descriptor, count: 0 });
+    });
+    return {
+        ...snapshot,
+        descriptors: Object.freeze(descriptors),
+        recordsByType
+    };
+}
+
+type SnapshotListener = () => void;
+
+export class GcmEntityTypesStore {
+    private readonly adapter: GcmEntityTypeIndexAdapter;
+    private snapshot: TpsNavigatorTypesSnapshot = LOADING_SNAPSHOT;
+    private readonly listeners = new Set<SnapshotListener>();
+    private stopRevision: (() => void) | null = null;
+    private stopWorkspaceEvents: (() => void) | null = null;
+    private loadGeneration = 0;
+    private reloadPending = false;
+    private reloadInFlight: { generation: number; task: Promise<void> } | null = null;
+
+    constructor(private readonly app: App) {
+        this.adapter = new GcmEntityTypeIndexAdapter(app);
+    }
+
+    readonly subscribe = (listener: SnapshotListener): (() => void) => {
+        this.listeners.add(listener);
+        if (this.listeners.size === 1) {
+            this.start();
+        }
+        return () => {
+            this.listeners.delete(listener);
+            if (this.listeners.size === 0) {
+                this.stop();
+            }
+        };
+    };
+
+    readonly getSnapshot = (): TpsNavigatorTypesSnapshot => this.snapshot;
+
+    activate(record: TpsNavigatorTypeRecord): Promise<GcmEntityActivationResult> {
+        return this.adapter.activate(record);
+    }
+
+    private start(): void {
+        this.stopRevision = this.adapter.subscribe(() => {
+            this.requestReload();
+        });
+        const workspace = this.app.workspace;
+        let receivedApiPayload = false;
+        if (workspace && typeof workspace.on === 'function' && typeof workspace.trigger === 'function') {
+            const eventSource = workspace as unknown as {
+                on(name: string, callback: (payload: unknown) => void): EventRef;
+                offref(ref: EventRef): void;
+                trigger(name: string, payload: unknown): void;
+            };
+            const eventRef = eventSource.on(TPS_GCM_API_CHANGED_EVENT, payload => {
+                if (!this.adapter.acceptApiPayload(payload)) {
+                    return;
+                }
+                receivedApiPayload = true;
+                this.requestReload({ supersede: true });
+            });
+            this.stopWorkspaceEvents = () => eventSource.offref(eventRef);
+            eventSource.trigger(TPS_GCM_API_REQUEST_EVENT, {
+                sourcePluginId: TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID,
+                requester: TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID,
+                timestamp: Date.now()
+            });
+        }
+        if (!receivedApiPayload) {
+            this.requestReload({ supersede: true });
+        }
+    }
+
+    private stop(): void {
+        this.loadGeneration += 1;
+        this.reloadPending = false;
+        this.reloadInFlight = null;
+        this.stopRevision?.();
+        this.stopWorkspaceEvents?.();
+        this.stopRevision = null;
+        this.stopWorkspaceEvents = null;
+        this.adapter.dispose();
+        this.snapshot = LOADING_SNAPSHOT;
+    }
+
+    private requestReload(options: { supersede?: boolean } = {}): void {
+        const generation = ++this.loadGeneration;
+        this.reloadPending = true;
+        if (this.reloadInFlight && !options.supersede) {
+            return;
+        }
+        this.reloadPending = false;
+        const task = this.loadAndPublish(generation);
+        const activeLoad = { generation, task };
+        this.reloadInFlight = activeLoad;
+        void task.finally(() => {
+            if (this.reloadInFlight !== activeLoad) {
+                return;
+            }
+            this.reloadInFlight = null;
+            if (this.reloadPending && this.listeners.size > 0) {
+                this.requestReload();
+            }
+        });
+    }
+
+    private async loadAndPublish(generation: number): Promise<void> {
+        let snapshot: TpsNavigatorTypesSnapshot;
+        try {
+            snapshot = withStructuralFallback(await this.adapter.loadSnapshot());
+        } catch (error) {
+            console.warn('[TPS Notebook Navigator] Types index refresh failed', { error });
+            snapshot = withStructuralFallback({
+                availability: 'error',
+                descriptors: Object.freeze([]),
+                recordsByType: EMPTY_RECORDS_BY_TYPE,
+                revision: 0,
+                message: 'The entity index could not be loaded.'
+            });
+        }
+        if (generation !== this.loadGeneration || this.listeners.size === 0) {
+            return;
+        }
+        this.snapshot = snapshot;
+        for (const listener of [...this.listeners]) {
+            try {
+                listener();
+            } catch {
+                // One React consumer must not break the shared refresh loop.
+            }
+        }
+    }
+}
+
+const STORES = new WeakMap<App, GcmEntityTypesStore>();
+
+function getStore(app: App): GcmEntityTypesStore {
+    const existing = STORES.get(app);
+    if (existing) {
+        return existing;
+    }
+    const created = new GcmEntityTypesStore(app);
+    STORES.set(app, created);
+    return created;
+}
+
+export interface UseGcmEntityTypesResult {
+    snapshot: TpsNavigatorTypesSnapshot;
+    activate: (record: TpsNavigatorTypeRecord) => Promise<GcmEntityActivationResult>;
+}
+
+export function useGcmEntityTypes(app: App, enabled: boolean): UseGcmEntityTypesResult {
+    const store = useMemo(() => getStore(app), [app]);
+    const subscribe = useCallback(
+        (listener: SnapshotListener) => (enabled ? store.subscribe(listener) : () => undefined),
+        [enabled, store]
+    );
+    const getSnapshot = useCallback(() => (enabled ? store.getSnapshot() : DISABLED_SNAPSHOT), [enabled, store]);
+    const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+    const activate = useCallback((record: TpsNavigatorTypeRecord) => store.activate(record), [store]);
+    return useMemo(() => ({ snapshot, activate }), [activate, snapshot]);
+}

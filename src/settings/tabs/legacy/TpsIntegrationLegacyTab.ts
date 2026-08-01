@@ -13,6 +13,7 @@ import {
     renderGcmTaskRowsEnabledSetting,
     renderGcmTaskRowsIncludeCompletedSetting,
     renderGcmTaskRowsPerNoteSetting,
+    renderTpsTypesNavigationEnabledSetting,
     renderUpstreamSettingsImportSetting,
     setTpsTaskRowSettingVisibility
 } from '../TpsIntegrationTab';
@@ -21,6 +22,7 @@ import type { SettingsTabContext } from '../SettingsTabContext';
 /** Legacy renderer for the fork-specific TPS integration destination. */
 export function renderTpsIntegrationTab(context: SettingsTabContext): void {
     const createGroup = createSettingGroupFactory(context.containerEl);
+    const typesGroup = createGroup('Types navigation');
     const taskGroup = createGroup('Task rows');
     const setupGroup = createGroup('One-way setup');
 
@@ -30,6 +32,7 @@ export function renderTpsIntegrationTab(context: SettingsTabContext): void {
         setTpsTaskRowSettingVisibility([includeCompletedSettingEl, taskLimitSettingEl], context.plugin.settings.tpsGcmTaskRowsEnabled);
     };
 
+    typesGroup.addSetting(setting => renderTpsTypesNavigationEnabledSetting(setting, context));
     taskGroup.addSetting(setting => renderGcmTaskRowsEnabledSetting(setting, context, updateTaskRowVisibility));
     const includeCompletedSetting = taskGroup.addSetting(setting => renderGcmTaskRowsIncludeCompletedSetting(setting, context));
     includeCompletedSettingEl = includeCompletedSetting.settingEl;

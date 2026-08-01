@@ -71,6 +71,7 @@ export interface UseNavigationPaneItemPipelineParams {
     folderItems: CombinedNavigationItem[];
     tagItems: CombinedNavigationItem[];
     propertyItems: CombinedNavigationItem[];
+    typeItems: CombinedNavigationItem[];
     shortcutItems: CombinedNavigationItem[];
     recentNotesItems: CombinedNavigationItem[];
     parsedExcludedFolders: string[];
@@ -125,6 +126,7 @@ export function useNavigationPaneItemPipeline({
     folderItems,
     tagItems,
     propertyItems,
+    typeItems,
     shortcutItems,
     recentNotesItems,
     parsedExcludedFolders,
@@ -148,6 +150,7 @@ export function useNavigationPaneItemPipeline({
         const shouldIncludeFoldersSection = folderItems.length > 0;
         const shouldIncludeTagsSection = settings.showTags && tagItems.length > 0;
         const shouldIncludePropertiesSection = propertiesSectionActive && propertyItems.length > 0;
+        const shouldIncludeTypesSection = typeItems.length > 0;
 
         const orderedSections: SectionItems[] = [];
 
@@ -176,6 +179,11 @@ export function useNavigationPaneItemPipeline({
                 case NavigationSectionId.PROPERTIES:
                     if (shouldIncludePropertiesSection) {
                         orderedSections.push({ id: identifier, items: propertyItems });
+                    }
+                    break;
+                case NavigationSectionId.TYPES:
+                    if (shouldIncludeTypesSection) {
+                        orderedSections.push({ id: identifier, items: typeItems });
                     }
                     break;
                 default:
@@ -221,7 +229,8 @@ export function useNavigationPaneItemPipeline({
         settings.showTags,
         shortcutItems,
         shouldPinRecentNotes,
-        tagItems
+        tagItems,
+        typeItems
     ]);
 
     const [navigationSeparatorVersion, setNavigationSeparatorVersion] = useState(() => metadataService.getNavigationSeparatorsVersion());

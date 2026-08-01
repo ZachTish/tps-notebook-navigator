@@ -18,7 +18,9 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import type { ExpansionAction } from '../../src/context/ExpansionContext';
-import { toggleNavigationExpansionTarget } from '../../src/utils/navigationExpansion';
+import { NavigationPaneItemType, TYPES_KINDS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
+import type { VirtualFolderItem } from '../../src/types/virtualization';
+import { getNavigationExpansionTargetForItem, toggleNavigationExpansionTarget } from '../../src/utils/navigationExpansion';
 
 describe('navigationExpansion', () => {
     it('replaces unrelated tag branches when branch collapse is enabled', () => {
@@ -72,4 +74,24 @@ describe('navigationExpansion', () => {
         expect(didCollapse).toBe(true);
         expect(dispatch).toHaveBeenCalledWith({ type: 'TOGGLE_PROPERTY_EXPANDED', propertyNodeId: 'key:status' });
     });
+
+    it.each([TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID])(
+        'exposes the %s Type group as a keyboard expansion target',
+        folderId => {
+            const item: VirtualFolderItem = {
+                type: NavigationPaneItemType.VIRTUAL_FOLDER,
+                data: { id: folderId, name: folderId },
+                key: folderId,
+                level: 0,
+                isSelectable: true,
+                hasChildren: true
+            };
+
+            expect(getNavigationExpansionTargetForItem(item, { showHiddenItems: false })).toEqual({
+                type: 'virtual-folder',
+                id: folderId,
+                hasChildren: true
+            });
+        }
+    );
 });

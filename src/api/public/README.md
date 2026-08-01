@@ -44,7 +44,7 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 
 ## Version
 
-Current API Version: **2.3.0**
+Current API Version: **2.4.0**
 
 ## Documentation
 

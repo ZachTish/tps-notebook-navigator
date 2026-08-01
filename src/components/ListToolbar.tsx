@@ -25,6 +25,7 @@ import { useListActions } from '../hooks/useListActions';
 import { runAsyncAction } from '../utils/async';
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
+import { ItemType } from '../types';
 
 interface ListToolbarProps {
     isSearchActive?: boolean;
@@ -70,17 +71,21 @@ export function ListToolbar({
         hasCustomAppearance
     } = useListActions({ onManualSortStart, getManualSortNewFileContext, trackRevealFileAvailability: showRevealButton });
 
+    const isTypeSelection = selectionState.selectionType === ItemType.TYPE && Boolean(selectionState.selectedType);
     const showSearchButton = listVisibility.search;
-    const showDescendantsButton = listVisibility.descendants;
-    const showGroupExpansionButton = listVisibility.groupExpansion;
-    const showSortButton = listVisibility.sort;
-    const showAppearanceButton = listVisibility.appearance;
-    const showNewNoteButton = listVisibility.newNote;
-    const hasNavigationSelection = Boolean(selectionState.selectedFolder || selectionState.selectedTag || selectionState.selectedProperty);
+    const showDescendantsButton = !isTypeSelection && listVisibility.descendants;
+    const showGroupExpansionButton = !isTypeSelection && listVisibility.groupExpansion;
+    const showSortButton = !isTypeSelection && listVisibility.sort;
+    const showAppearanceButton = !isTypeSelection && listVisibility.appearance;
+    const showNewNoteButton = !isTypeSelection && listVisibility.newNote;
+    const showEffectiveRevealButton = !isTypeSelection && showRevealButton;
+    const hasNavigationSelection = Boolean(
+        selectionState.selectedFolder || selectionState.selectedTag || selectionState.selectedProperty || selectionState.selectedType
+    );
 
     const leftButtonCount = [
         showSearchButton,
-        showRevealButton,
+        showEffectiveRevealButton,
         showDescendantsButton,
         showGroupExpansionButton,
         showSortButton,
@@ -108,7 +113,7 @@ export function ListToolbar({
                 <ServiceIcon iconId={resolveUXIcon(settings.interfaceIcons, 'list-search')} />
             </button>
         ) : null,
-        showRevealButton ? (
+        showEffectiveRevealButton ? (
             <button
                 key="reveal"
                 className={leftButtonBaseClassName}

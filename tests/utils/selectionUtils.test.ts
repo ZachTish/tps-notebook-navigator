@@ -17,7 +17,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { orderFilesByReference } from '../../src/utils/selectionUtils';
+import {
+    canAddShortcutForNavigationSelection,
+    getNavigatorPinContext,
+    getPinnedSectionCollapseKey,
+    getSelectedPath,
+    orderFilesByReference
+} from '../../src/utils/selectionUtils';
+import { ItemType } from '../../src/types';
 import { createTestTFile } from './createTestTFile';
 
 describe('orderFilesByReference', () => {
@@ -30,5 +37,31 @@ describe('orderFilesByReference', () => {
         const ordered = orderFilesByReference([third, first, second], [outsideReference, second, first]);
 
         expect(ordered.map(file => file.path)).toEqual([second.path, first.path, third.path]);
+    });
+});
+
+describe('Types selection helpers', () => {
+    const typeSelection = {
+        selectionType: ItemType.TYPE,
+        selectedFolder: null,
+        selectedTag: null,
+        selectedProperty: null,
+        selectedType: 'kind:project' as const
+    };
+
+    it('returns the selected type as the navigation path', () => {
+        expect(getSelectedPath(typeSelection)).toBe('kind:project');
+    });
+
+    it('does not introduce a new persisted pin namespace', () => {
+        expect(getNavigatorPinContext(typeSelection.selectionType)).toBe(ItemType.FOLDER);
+        expect(getPinnedSectionCollapseKey(typeSelection)).toBe('folder:/');
+    });
+
+    it('blocks shortcut mutation instead of falling through to the active file', () => {
+        expect(canAddShortcutForNavigationSelection(ItemType.TYPE)).toBe(false);
+        expect(canAddShortcutForNavigationSelection(ItemType.FOLDER)).toBe(true);
+        expect(canAddShortcutForNavigationSelection(ItemType.TAG)).toBe(true);
+        expect(canAddShortcutForNavigationSelection(ItemType.PROPERTY)).toBe(true);
     });
 });

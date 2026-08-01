@@ -33,18 +33,48 @@ describe('shouldSkipNavigatorAutoReveal', () => {
                 hasNavigatorFocus: true,
                 isOpeningVersionHistory: false,
                 isOpeningInNewContext: false,
-                isNavigatorOpeningSelectedFile: true
+                isNavigatorOpeningSelectedFile: true,
+                isTypeCollectionSelected: false
             })
         ).toBe(true);
     });
 
-    it('does not skip auto-reveal when the navigator is not focused', () => {
+    it('skips auto-reveal when a focused navigator opens a result from the selected Type collection', () => {
+        expect(
+            shouldSkipNavigatorAutoReveal({
+                hasNavigatorFocus: true,
+                isOpeningVersionHistory: false,
+                isOpeningInNewContext: false,
+                isNavigatorOpeningSelectedFile: false,
+                isTypeCollectionSelected: true
+            })
+        ).toBe(true);
+    });
+
+    it.each([
+        { isNavigatorOpeningSelectedFile: true, isTypeCollectionSelected: false },
+        { isNavigatorOpeningSelectedFile: false, isTypeCollectionSelected: true }
+    ])('does not skip auto-reveal when the navigator is not focused', selection => {
         expect(
             shouldSkipNavigatorAutoReveal({
                 hasNavigatorFocus: false,
                 isOpeningVersionHistory: false,
                 isOpeningInNewContext: false,
-                isNavigatorOpeningSelectedFile: true
+                ...selection
+            })
+        ).toBe(false);
+    });
+
+    it.each([
+        { isOpeningVersionHistory: true, isOpeningInNewContext: false },
+        { isOpeningVersionHistory: false, isOpeningInNewContext: true }
+    ])('does not suppress explicit alternate-context opens from a selected Type collection', context => {
+        expect(
+            shouldSkipNavigatorAutoReveal({
+                hasNavigatorFocus: true,
+                ...context,
+                isNavigatorOpeningSelectedFile: false,
+                isTypeCollectionSelected: true
             })
         ).toBe(false);
     });

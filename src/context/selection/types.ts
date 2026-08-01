@@ -20,6 +20,7 @@ import type { Dispatch } from 'react';
 import type { TFile, TFolder } from 'obsidian';
 import type { NavigationItemType } from '../../types';
 import type { PropertySelectionNodeId } from '../../utils/propertyTree';
+import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
 
 export type SelectionRevealSource = 'auto' | 'manual' | 'shortcut' | 'startup';
 export type SelectionHistoryBehavior = 'record' | 'replace' | 'skip';
@@ -34,6 +35,7 @@ export interface SelectionState {
     selectedFolder: TFolder | null;
     selectedTag: string | null;
     selectedProperty: PropertySelectionNodeId | null;
+    selectedType: TpsNavigatorTypeId | null;
     selectedFiles: Set<string>;
     anchorIndex: number | null;
     lastMovementDirection: 'up' | 'down' | null;
@@ -68,6 +70,13 @@ export type SelectionAction =
           type: 'SET_SELECTED_PROPERTY';
           nodeId: PropertySelectionNodeId;
           autoSelectedFile?: TFile | null;
+          source?: SelectionRevealSource;
+          historyBehavior?: SelectionHistoryBehavior;
+          historyIndex?: number;
+      }
+    | {
+          type: 'SET_SELECTED_TYPE';
+          typeId: TpsNavigatorTypeId;
           source?: SelectionRevealSource;
           historyBehavior?: SelectionHistoryBehavior;
           historyIndex?: number;

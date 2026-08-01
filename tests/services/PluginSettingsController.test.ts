@@ -543,11 +543,12 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         expect(saveData).not.toHaveBeenCalled();
     });
 
-    it('persists valid TPS task-row settings and rejects malformed values', () => {
+    it('persists valid TPS integration settings and rejects malformed values', () => {
         const { controller } = createController();
 
         controller.applySettingsRecord(
             {
+                tpsTypesNavigationEnabled: false,
                 tpsGcmTaskRowsEnabled: true,
                 tpsGcmTaskRowsIncludeCompleted: true,
                 tpsGcmTaskRowsPerNote: 12
@@ -555,10 +556,12 @@ describe('PluginSettingsController.applySettingsRecord', () => {
             { isFirstLaunch: false }
         );
 
+        expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
         expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(true);
         expect(controller.settings.tpsGcmTaskRowsIncludeCompleted).toBe(true);
         expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(12);
         expect(controller.getPersistableSettings()).toMatchObject({
+            tpsTypesNavigationEnabled: false,
             tpsGcmTaskRowsEnabled: true,
             tpsGcmTaskRowsIncludeCompleted: true,
             tpsGcmTaskRowsPerNote: 12
@@ -566,6 +569,7 @@ describe('PluginSettingsController.applySettingsRecord', () => {
 
         controller.applySettingsRecord(
             {
+                tpsTypesNavigationEnabled: 'no',
                 tpsGcmTaskRowsEnabled: 'yes',
                 tpsGcmTaskRowsIncludeCompleted: 1,
                 tpsGcmTaskRowsPerNote: 500
@@ -573,6 +577,7 @@ describe('PluginSettingsController.applySettingsRecord', () => {
             { isFirstLaunch: false }
         );
 
+        expect(controller.settings.tpsTypesNavigationEnabled).toBe(DEFAULT_SETTINGS.tpsTypesNavigationEnabled);
         expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled);
         expect(controller.settings.tpsGcmTaskRowsIncludeCompleted).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsIncludeCompleted);
         expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsPerNote);

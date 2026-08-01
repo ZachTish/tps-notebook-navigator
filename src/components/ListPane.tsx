@@ -111,6 +111,7 @@ import {
     type ManualSortOrderAssignment,
     type ManualSortNewFilePlacementContext
 } from '../utils/manualSort';
+
 import { showNotice } from '../utils/noticeUtils';
 import { getErrorMessage } from '../utils/errorUtils';
 import { strings } from '../i18n';
@@ -120,6 +121,7 @@ import { focusElementPreventScroll } from '../utils/domUtils';
 import { createBuiltInRowProviderSelection } from '../integrations/rowProviderIntegrations';
 import { useExternalRowProviderSelection } from '../hooks/useProviderRows';
 import { mergeNavigatorRowProviderSelections } from '../services/rows/providerSelections';
+import { shouldCollapseMobileDrawerForTypeProviderActivation, supportsCalendarInteractionsForSelection } from './listPane/typeModeRuntime';
 
 const EMPTY_COLLAPSED_LIST_GROUPS = new Set<string>();
 
@@ -329,7 +331,11 @@ export const ListPane = React.memo(
         const isVerticalDualPane = !uiState.singlePane && uiState.effectiveDualPaneOrientation === 'vertical';
         const calendarPlacement = settings.calendarPlacement;
         const shouldRenderCalendarOverlay =
-            settings.calendarEnabled && calendarPlacement === 'left-sidebar' && showCalendar && isVerticalDualPane;
+            supportsCalendarInteractionsForSelection(selectionState.selectionType) &&
+            settings.calendarEnabled &&
+            calendarPlacement === 'left-sidebar' &&
+            showCalendar &&
+            isVerticalDualPane;
         const listPaneRef = useRef<HTMLDivElement | null>(null);
         const hoverPointerClientPositionRef = useRef<PointerClientPosition | null>(null);
         // Android uses toolbar at top, iOS at bottom
@@ -455,7 +461,12 @@ export const ListPane = React.memo(
             ensureSelectionForCurrentFilterRef
         });
 
-        const { selectionType, selectedFolder, selectedTag, selectedProperty, selectedFile } = selectionState;
+        const { selectionType, selectedFolder, selectedTag, selectedProperty, selectedType, selectedFile } = selectionState;
+        const handleTypeProviderRowActivationRequested = React.useCallback(() => {
+            if (shouldCollapseMobileDrawerForTypeProviderActivation(selectionType, isMobile)) {
+                app.workspace.leftSplit?.collapse();
+            }
+        }, [app, isMobile, selectionType]);
         const selectedFolderPath = selectionType === ItemType.FOLDER ? (selectedFolder?.path ?? null) : null;
         const shouldForceSearchDescendants =
             forceSearchDescendants && isSearchActive && selectionType === ItemType.FOLDER && selectedFolderPath === '/';
@@ -464,7 +475,8 @@ export const ListPane = React.memo(
         const effectiveSortOption = effectiveSortSpec.option;
         const effectivePropertySortKey = effectiveSortSpec.propertyKey.trim();
         const isPropertySortActive = getSortField(effectiveSortOption) === 'property';
-        const isManualSortActive = isPropertySortActive && isManualSortPropertyKey(settings, effectivePropertySortKey);
+        const isManualSortActive =
+            selectionType !== ItemType.TYPE && isPropertySortActive && isManualSortPropertyKey(settings, effectivePropertySortKey);
         const manualSortGroupHeaderPropertyKey = getManualSortGroupHeaderPropertyKey(settings);
         const manualSortSelectionKey = useMemo(() => {
             if (selectionType === ItemType.FOLDER && selectedFolder) {
@@ -743,6 +755,7 @@ export const ListPane = React.memo(
             selectedFolder,
             selectedTag,
             selectedProperty,
+            selectedType,
             settings,
             activeProfile,
             groupBy: effectiveAppearanceSettings.groupBy,
@@ -1604,10 +1617,13 @@ export const ListPane = React.memo(
 
         const modifySearchWithDateTokenWithDefaultScope = React.useCallback(
             (dateToken: string, options?: SearchQueryUpdateOptions) => {
+                if (!supportsCalendarInteractionsForSelection(selectionType)) {
+                    return;
+                }
                 setForceSearchDescendants(false);
                 modifySearchWithDateToken(dateToken, options);
             },
-            [modifySearchWithDateToken]
+            [modifySearchWithDateToken, selectionType]
         );
 
         const executeSearchShortcutWithDefaultScope = React.useCallback(
@@ -1762,8 +1778,8 @@ export const ListPane = React.memo(
         });
 
         // Determine if we're showing empty state
-        const isEmptySelection = !selectedFolder && !selectedTag && !selectedProperty;
-        const hasNoFiles = files.length === 0;
+        const isEmptySelection = !selectedFolder && !selectedTag && !selectedProperty && !selectedType;
+        const hasNoFiles = files.length === 0 && !listItems.some(item => item.type === ListPaneItemType.PROVIDER_ROW);
 
         const shouldRenderBottomToolbar = useMobileChrome && !isAndroid;
         const shouldRenderBottomToolbarInsidePanel = shouldRenderBottomToolbar && shouldUseFloatingToolbars;
@@ -1867,6 +1883,7 @@ export const ListPane = React.memo(
                             isCompactMode={isCompactMode}
                             isEmptySelection={isEmptySelection}
                             hasNoFiles={hasNoFiles}
+                            emptyMessage={selectionType === ItemType.TYPE ? 'No items found.' : undefined}
                             topSpacerHeight={effectiveTopSpacerHeight}
                             settings={settings}
                             pinnedGroupExpanded={pinnedGroupExpanded}
@@ -1901,6 +1918,9 @@ export const ListPane = React.memo(
                             onFileRenameCancel={handleFileRenameCancel}
                             onFileRenameRestoreFocus={restoreListPaneFocus}
                             onNavigateToFolder={onNavigateToFolder}
+                            onProviderRowActivationRequested={
+                                selectionType === ItemType.TYPE ? handleTypeProviderRowActivationRequested : undefined
+                            }
                             folderDecorationModel={folderDecorationModel}
                             fileItemPillDecorationModel={fileItemPillDecorationModel}
                             fileItemPillOrderModel={fileItemPillOrderModel}

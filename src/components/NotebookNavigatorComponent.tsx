@@ -49,7 +49,12 @@ import {
     type BackgroundMode,
     type DualPaneOrientation
 } from '../types';
-import { getSelectedPath, getFilesForSelection, orderFilesByReference } from '../utils/selectionUtils';
+import {
+    canAddShortcutForNavigationSelection,
+    getSelectedPath,
+    getFilesForSelection,
+    orderFilesByReference
+} from '../utils/selectionUtils';
 import { normalizeNavigationPath } from '../utils/navigationIndex';
 import { createIndexMap } from '../utils/arrayUtils';
 import { deleteSelectedFiles } from '../utils/deleteOperations';
@@ -87,6 +92,8 @@ import { useNavigationPaneTreeSections } from '../hooks/navigationPane/data/useN
 import { useNavigationPaneSourceState } from '../hooks/navigationPane/data/useNavigationPaneSourceState';
 import type { SelectionHistoryEntry } from '../context/selection/types';
 import type { SearchQueryUpdateOptions } from '../hooks/useListPaneSearch';
+import { isTpsNavigatorTypeId } from '../types/navigatorTypes';
+import { resolveTypeSelectionHistoryEntry } from '../utils/navigationTypeHistory';
 
 // Checks if two string arrays have identical content in the same order
 const arraysEqual = (a: string[], b: string[]): boolean => {
@@ -254,9 +261,16 @@ export const NotebookNavigatorComponent = React.memo(
                 selectionType: selectionState.selectionType,
                 selectedFolder: selectionState.selectedFolder,
                 selectedTag: selectionState.selectedTag,
-                selectedProperty: selectionState.selectedProperty
+                selectedProperty: selectionState.selectedProperty,
+                selectedType: selectionState.selectedType
             }),
-            [selectionState.selectedFolder, selectionState.selectedProperty, selectionState.selectedTag, selectionState.selectionType]
+            [
+                selectionState.selectedFolder,
+                selectionState.selectedProperty,
+                selectionState.selectedTag,
+                selectionState.selectedType,
+                selectionState.selectionType
+            ]
         );
         const { stopAllProcessing, rebuildCache, fileData } = useFileCache();
         const { bannerNotice, markAsDisplayed } = useUpdateNotice();
@@ -650,9 +664,13 @@ export const NotebookNavigatorComponent = React.memo(
                         : null;
                 }
 
+                if (entry.type === ItemType.TYPE) {
+                    return resolveTypeSelectionHistoryEntry(entry, settings.tpsTypesNavigationEnabled);
+                }
+
                 return null;
             },
-            [app.vault, propertyTreeService, settings.showProperties, settings.showTags, tagTreeService]
+            [app.vault, propertyTreeService, settings.showProperties, settings.showTags, settings.tpsTypesNavigationEnabled, tagTreeService]
         );
 
         const getSelectionHistoryTarget = useCallback(
@@ -711,6 +729,16 @@ export const NotebookNavigatorComponent = React.memo(
                     );
                 }
 
+                if (target.entry.type === ItemType.TYPE && isTpsNavigatorTypeId(target.entry.value)) {
+                    selectionDispatch({
+                        type: 'SET_SELECTED_TYPE',
+                        typeId: target.entry.value,
+                        historyIndex: target.index,
+                        source: 'manual'
+                    });
+                    return true;
+                }
+
                 return (
                     navigateToProperty(target.entry.value, {
                         historyIndex: target.index,
@@ -719,7 +747,7 @@ export const NotebookNavigatorComponent = React.memo(
                     }) !== null
                 );
             },
-            [app.vault, getSelectionHistoryTarget, navigateToFolder, navigateToProperty, navigateToTag]
+            [app.vault, getSelectionHistoryTarget, navigateToFolder, navigateToProperty, navigateToTag, selectionDispatch]
         );
 
         const preserveNavigationFocusForModal = !uiState.singlePane || uiState.currentSinglePaneView === 'navigation';
@@ -816,7 +844,9 @@ export const NotebookNavigatorComponent = React.memo(
                     ? ItemType.TAG
                     : selectionState.selectionType === ItemType.PROPERTY
                       ? ItemType.PROPERTY
-                      : ItemType.FOLDER;
+                      : selectionState.selectionType === ItemType.TYPE
+                        ? ItemType.TYPE
+                        : ItemType.FOLDER;
             const normalizedPath = normalizeNavigationPath(itemType, selectedPath);
             navigationPaneRef.current?.requestScroll(normalizedPath, {
                 align: 'auto',
@@ -1073,6 +1103,11 @@ export const NotebookNavigatorComponent = React.memo(
                     });
                 },
                 addShortcutForCurrentSelection: async () => {
+                    if (!canAddShortcutForNavigationSelection(selectionState.selectionType)) {
+                        showNotice(strings.common.noSelection, { variant: 'warning' });
+                        return;
+                    }
+
                     const toggleShortcut = async (
                         existingShortcutKey: string | undefined,
                         addShortcut: () => Promise<boolean>

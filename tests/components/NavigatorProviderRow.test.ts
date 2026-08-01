@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
     NavigatorProviderRow,
     applyProviderCheckboxChange,
+    requestProviderRowActivation,
     stopProviderRowKeyboardPropagation
 } from '../../src/components/providerRows/NavigatorProviderRow';
 import type { NavigatorProvidedRow } from '../../src/services/rows/types';
@@ -30,6 +31,24 @@ function row(
 }
 
 describe('NavigatorProviderRow', () => {
+    it('runs the first-party activation callback only for an actionable row', () => {
+        const events: string[] = [];
+        const activate = vi.fn(() => events.push('activate'));
+        const onActivationRequested = vi.fn(() => events.push('collapse'));
+        const onError = vi.fn();
+        const actionableRow = { ...row(), activate };
+
+        expect(requestProviderRowActivation(actionableRow, onActivationRequested, onError)).toBe(true);
+        expect(onActivationRequested).toHaveBeenCalledOnce();
+        expect(activate).toHaveBeenCalledOnce();
+        expect(events).toEqual(['activate', 'collapse']);
+        expect(onError).not.toHaveBeenCalled();
+
+        onActivationRequested.mockClear();
+        expect(requestProviderRowActivation(row(), onActivationRequested, onError)).toBe(false);
+        expect(onActivationRequested).not.toHaveBeenCalled();
+    });
+
     it('commits a successful optimistic checkbox mutation in busy-state order', async () => {
         const events: string[] = [];
 

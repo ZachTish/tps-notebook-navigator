@@ -77,6 +77,8 @@ export function buildNavigationPathIndexMap(items: readonly CombinedNavigationIt
             setNavigationIndex(indexMap, ItemType.TAG, item.tagCollectionId, index);
         } else if (item.type === NavigationPaneItemType.VIRTUAL_FOLDER && item.propertyCollectionId) {
             setNavigationIndex(indexMap, ItemType.PROPERTY, item.key, index);
+        } else if (item.type === NavigationPaneItemType.VIRTUAL_FOLDER && item.typeCollectionId) {
+            setNavigationIndex(indexMap, ItemType.TYPE, item.typeCollectionId, index);
         } else if (item.type === NavigationPaneItemType.PROPERTY_KEY || item.type === NavigationPaneItemType.PROPERTY_VALUE) {
             setNavigationIndex(indexMap, ItemType.PROPERTY, item.data.id, index);
         }

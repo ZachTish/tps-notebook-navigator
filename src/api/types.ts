@@ -278,10 +278,10 @@ export interface NotebookNavigatorEvents {
 // SELECTION STATE
 // ============================================================================
 
-export type NavItemType = 'folder' | 'tag' | 'property' | 'none';
+export type NavItemType = 'folder' | 'tag' | 'property' | 'type' | 'none';
 
 /**
- * Currently selected navigation item (folder, tag, property, or none).
+ * Currently selected navigation item (folder, tag, property, TPS type, or none).
  *
  * `property` uses the property tree node id (`properties-root` for the section root,
  * or `key:<normalizedKey>` / `key:<normalizedKey>=<normalizedValuePath>` for key/value nodes).
@@ -290,6 +290,7 @@ export type NavItem =
     | { type: 'folder'; folder: TFolder; tag: null; property: null }
     | { type: 'tag'; folder: null; tag: string; property: null }
     | { type: 'property'; folder: null; tag: null; property: string }
+    | { type: 'type'; folder: null; tag: null; property: null; navigatorType: string }
     | { type: 'none'; folder: null; tag: null; property: null };
 
 /**

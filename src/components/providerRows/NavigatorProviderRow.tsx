@@ -15,6 +15,8 @@ import { ObsidianIcon } from '../ObsidianIcon';
 
 interface NavigatorProviderRowProps {
     row: NavigatorProvidedRow;
+    /** Internal first-party hook; omitted for ordinary external provider rows. */
+    onActivationRequested?: () => void;
 }
 
 interface ApplyProviderCheckboxChangeOptions {
@@ -51,7 +53,21 @@ export function stopProviderRowKeyboardPropagation(event: Pick<React.KeyboardEve
     event.stopPropagation();
 }
 
-export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ row }: NavigatorProviderRowProps) {
+export function requestProviderRowActivation(
+    row: NavigatorProvidedRow,
+    onActivationRequested: (() => void) | undefined,
+    onError: (error: unknown) => void
+): boolean {
+    if (!row.activate) {
+        return false;
+    }
+
+    runAsyncAction(row.activate, { onError });
+    onActivationRequested?.();
+    return true;
+}
+
+export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ row, onActivationRequested }: NavigatorProviderRowProps) {
     const sourceChecked = row.indicator?.checked ?? false;
     const [displayedChecked, setDisplayedChecked] = useState(sourceChecked);
     const [checkboxBusy, setCheckboxBusy] = useState(false);
@@ -62,19 +78,14 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
     }, [row.id, row.providerId, sourceChecked]);
 
     const handleActivate = useCallback(() => {
-        if (!row.activate) {
-            return;
-        }
-        runAsyncAction(row.activate, {
-            onError: error => {
-                console.warn('[TPS Notebook Navigator] Provider row activation failed', {
-                    providerId: row.providerId,
-                    rowId: row.id,
-                    error
-                });
-            }
+        requestProviderRowActivation(row, onActivationRequested, error => {
+            console.warn('[TPS Notebook Navigator] Provider row activation failed', {
+                providerId: row.providerId,
+                rowId: row.id,
+                error
+            });
         });
-    }, [row]);
+    }, [onActivationRequested, row]);
     const handleCheckboxChange = useCallback(() => {
         const onChange = row.indicator?.onChange;
         if (!onChange || checkboxBusy) {

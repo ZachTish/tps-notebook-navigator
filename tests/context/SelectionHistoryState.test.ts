@@ -50,6 +50,7 @@ function createSelectionState(rootFolder: TFolder): SelectionState {
         selectedFolder: rootFolder,
         selectedTag: null,
         selectedProperty: null,
+        selectedType: null,
         selectedFiles: new Set<string>(),
         anchorIndex: null,
         lastMovementDirection: null,
@@ -199,6 +200,36 @@ describe('selectionReducer navigation history', () => {
         expect(selectedFileState.selectedTag).toBeNull();
         expect(selectedFileState.selectedProperty).toBe(propertyNodeId);
         expect(selectedFileState.selectedFile?.path).toBe('Alpha/note.md');
+    });
+
+    it('records and restores a Types selection without retaining another navigation context', () => {
+        const root = createFolder('/');
+        const initialState = createSelectionState(root);
+        const typeState = selectionReducer(initialState, {
+            type: 'SET_SELECTED_TYPE',
+            typeId: 'structural:task'
+        });
+        const folderState = selectionReducer(typeState, {
+            type: 'SET_SELECTED_FOLDER',
+            folder: root
+        });
+        const restoredTypeState = selectionReducer(folderState, {
+            type: 'SET_SELECTED_TYPE',
+            typeId: 'structural:task',
+            historyIndex: 1
+        });
+
+        expect(typeState.selectionType).toBe('type');
+        expect(typeState.selectedFolder).toBeNull();
+        expect(typeState.selectedTag).toBeNull();
+        expect(typeState.selectedProperty).toBeNull();
+        expect(typeState.selectedType).toBe('structural:task');
+        expect(typeState.navigationHistory).toEqual([
+            { type: 'folder', value: '/' },
+            { type: 'type', value: 'structural:task' }
+        ]);
+        expect(restoredTypeState.navigationHistoryIndex).toBe(1);
+        expect(restoredTypeState.selectedType).toBe('structural:task');
     });
 
     it('sets the selected file set without changing the current navigation context', () => {

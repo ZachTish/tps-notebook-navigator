@@ -25,6 +25,7 @@ import {
     SHORTCUTS_VIRTUAL_FOLDER_ID,
     TAGGED_TAG_ID,
     TAGS_ROOT_VIRTUAL_FOLDER_ID,
+    TYPES_ROOT_VIRTUAL_FOLDER_ID,
     UNTAGGED_TAG_ID
 } from '../../types';
 import { FolderItem } from '../FolderItem';
@@ -120,8 +121,10 @@ export function NavigationPaneTreeRow({
             const hasChildren = item.hasChildren ?? false;
             const tagCollectionId = item.tagCollectionId ?? null;
             const propertyCollectionId = item.propertyCollectionId ?? null;
+            const typeCollectionId = item.typeCollectionId ?? null;
             const isTagCollection = Boolean(tagCollectionId);
             const isPropertyCollection = Boolean(propertyCollectionId);
+            const isTypeCollection = Boolean(typeCollectionId);
             const collectionCountInfo = item.noteCount ?? (tagCollectionId ? tagCounts.get(tagCollectionId) : undefined);
             const showFileCount = item.showFileCount ?? false;
             const collectionSearchMatch = getNavigationItemSearchMatch(item, searchHighlights);
@@ -141,7 +144,9 @@ export function NavigationPaneTreeRow({
                     ? NavigationSectionId.TAGS
                     : virtualFolder.id === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID
                       ? NavigationSectionId.PROPERTIES
-                      : null;
+                      : virtualFolder.id === TYPES_ROOT_VIRTUAL_FOLDER_ID
+                        ? NavigationSectionId.TYPES
+                        : null;
             const shouldDisableFirstSectionMenu =
                 shouldPinShortcuts && sectionId !== null && firstSectionId !== null && sectionId === firstSectionId;
             const baseAllowSeparatorActions = !isShortcutsGroup || !shouldPinShortcuts;
@@ -180,7 +185,9 @@ export function NavigationPaneTreeRow({
                             ? event => tree.handleTagCollectionClick(tagCollectionId, event)
                             : isPropertyCollection
                               ? tree.handlePropertyCollectionClick
-                              : undefined
+                              : isTypeCollection && typeCollectionId
+                                ? event => tree.handleTypeClick(typeCollectionId, event)
+                                : undefined
                     }
                     onToggle={() => tree.handleVirtualFolderToggle(virtualFolder.id)}
                     onToggleAllSiblings={

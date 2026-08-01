@@ -28,7 +28,7 @@
  * - Page navigation
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { TFolder } from 'obsidian';
 import { Virtualizer } from '@tanstack/react-virtual';
 import { useExpansionState, useExpansionDispatch } from '../context/ExpansionContext';
@@ -37,7 +37,14 @@ import { useServices, useFileSystemOps } from '../context/ServicesContext';
 import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferences } from '../context/UXPreferencesContext';
 import { useUIState, useUIDispatch } from '../context/UIStateContext';
-import { NavigationPaneItemType, ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID } from '../types';
+import {
+    NavigationPaneItemType,
+    ItemType,
+    PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
+    TAGGED_TAG_ID,
+    TYPES_KINDS_VIRTUAL_FOLDER_ID,
+    TYPES_ROOT_VIRTUAL_FOLDER_ID
+} from '../types';
 import type { CombinedNavigationItem, VirtualFolderItem } from '../types/virtualization';
 import { deleteSelectedFolder } from '../utils/deleteOperations';
 import { useKeyboardNavigation, KeyboardNavigationHelpers } from './useKeyboardNavigation';
@@ -51,18 +58,24 @@ import { getNavigationExpansionTargetForItem, toggleNavigationExpansionTarget } 
 
 type VirtualTagCollectionItem = VirtualFolderItem & { tagCollectionId: string };
 type VirtualPropertyCollectionItem = VirtualFolderItem & { propertyCollectionId: string };
+type VirtualTypeCollectionItem = VirtualFolderItem & { typeCollectionId: NonNullable<VirtualFolderItem['typeCollectionId']> };
 
 /**
  * Check if a navigation item is selectable
  */
-const isSelectableNavigationItem = (item: CombinedNavigationItem): boolean => {
+export const isSelectableNavigationItem = (item: CombinedNavigationItem): boolean => {
     return (
         item.type === NavigationPaneItemType.FOLDER ||
         item.type === NavigationPaneItemType.TAG ||
         item.type === NavigationPaneItemType.UNTAGGED ||
         item.type === NavigationPaneItemType.PROPERTY_KEY ||
         item.type === NavigationPaneItemType.PROPERTY_VALUE ||
-        ((isVirtualTagCollection(item) || isVirtualPropertyCollection(item)) && Boolean(item.isSelectable))
+        (item.type === NavigationPaneItemType.VIRTUAL_FOLDER &&
+            Boolean(item.isSelectable) &&
+            (isVirtualTagCollection(item) ||
+                isVirtualPropertyCollection(item) ||
+                isVirtualTypeCollection(item) ||
+                isKeyboardOnlyTypeRoot(item)))
     );
 };
 
@@ -78,6 +91,23 @@ function isVirtualPropertyCollection(item: CombinedNavigationItem): item is Virt
         typeof item.propertyCollectionId === 'string' &&
         item.propertyCollectionId.length > 0
     );
+}
+
+function isVirtualTypeCollection(item: CombinedNavigationItem): item is VirtualTypeCollectionItem {
+    return (
+        item.type === NavigationPaneItemType.VIRTUAL_FOLDER && typeof item.typeCollectionId === 'string' && item.typeCollectionId.length > 0
+    );
+}
+
+function getKeyboardOnlyTypeRootId(item: CombinedNavigationItem): string | null {
+    return item.type === NavigationPaneItemType.VIRTUAL_FOLDER &&
+        (item.data.id === TYPES_ROOT_VIRTUAL_FOLDER_ID || item.data.id === TYPES_KINDS_VIRTUAL_FOLDER_ID)
+        ? item.data.id
+        : null;
+}
+
+function isKeyboardOnlyTypeRoot(item: CombinedNavigationItem): boolean {
+    return getKeyboardOnlyTypeRootId(item) !== null;
 }
 
 function isShiftTab(event: KeyboardEvent): boolean {
@@ -120,6 +150,20 @@ export function useNavigationPaneKeyboard({
     const expansionDispatch = useExpansionDispatch();
     const uiState = useUIState();
     const uiDispatch = useUIDispatch();
+    const [keyboardFocusedVirtualFolderId, setKeyboardFocusedVirtualFolderId] = useState<string | null>(null);
+
+    useEffect(() => {
+        setKeyboardFocusedVirtualFolderId(null);
+    }, [selectionState]);
+
+    useEffect(() => {
+        if (
+            keyboardFocusedVirtualFolderId &&
+            !items.some(item => item.type === NavigationPaneItemType.VIRTUAL_FOLDER && item.data.id === keyboardFocusedVirtualFolderId)
+        ) {
+            setKeyboardFocusedVirtualFolderId(null);
+        }
+    }, [items, keyboardFocusedVirtualFolderId]);
     const resolveIndex = useCallback(
         (path: string | null | undefined, type: ItemType | null) => {
             if (!path) {
@@ -148,6 +192,11 @@ export function useNavigationPaneKeyboard({
                 return propertyIndex;
             }
 
+            const typeIndex = getNavigationIndex(pathToIndex, ItemType.TYPE, path);
+            if (typeIndex !== undefined) {
+                return typeIndex;
+            }
+
             return -1;
         },
         [pathToIndex]
@@ -157,6 +206,15 @@ export function useNavigationPaneKeyboard({
      * Get current selection index
      */
     const getCurrentIndex = useCallback(() => {
+        if (keyboardFocusedVirtualFolderId) {
+            const virtualFolderIndex = items.findIndex(
+                item => item.type === NavigationPaneItemType.VIRTUAL_FOLDER && item.data.id === keyboardFocusedVirtualFolderId
+            );
+            if (virtualFolderIndex >= 0) {
+                return virtualFolderIndex;
+            }
+        }
+
         if (selectionState.selectionType === ItemType.FOLDER && selectionState.selectedFolder?.path) {
             return resolveIndex(selectionState.selectedFolder.path, ItemType.FOLDER);
         }
@@ -169,14 +227,25 @@ export function useNavigationPaneKeyboard({
             return resolveIndex(selectionState.selectedProperty, ItemType.PROPERTY);
         }
 
+        if (selectionState.selectionType === ItemType.TYPE && selectionState.selectedType) {
+            return resolveIndex(selectionState.selectedType, ItemType.TYPE);
+        }
+
         return -1;
-    }, [selectionState, resolveIndex]);
+    }, [items, keyboardFocusedVirtualFolderId, selectionState, resolveIndex]);
 
     /**
      * Select item at given index
      */
     const selectItemAtIndex = useCallback(
         (item: CombinedNavigationItem) => {
+            const keyboardOnlyTypeRootId = getKeyboardOnlyTypeRootId(item);
+            if (keyboardOnlyTypeRootId) {
+                setKeyboardFocusedVirtualFolderId(keyboardOnlyTypeRootId);
+                return;
+            }
+
+            setKeyboardFocusedVirtualFolderId(null);
             if (item.type === NavigationPaneItemType.FOLDER) {
                 if (!(item.data instanceof TFolder)) return;
                 const folder = item.data;
@@ -237,6 +306,8 @@ export function useNavigationPaneKeyboard({
                 // Select virtual tag collection as a tag
                 const tagCollectionId = item.tagCollectionId;
                 selectionDispatch({ type: 'SET_SELECTED_TAG', tag: tagCollectionId });
+            } else if (isVirtualTypeCollection(item)) {
+                selectionDispatch({ type: 'SET_SELECTED_TYPE', typeId: item.typeCollectionId });
             }
         },
         [selectionDispatch, settings, expansionState, expansionDispatch, showHiddenItems]
@@ -496,7 +567,7 @@ export function useNavigationPaneKeyboard({
                                 }
                             }
                         }
-                    } else if (isVirtualTagCollection(item) || isVirtualPropertyCollection(item)) {
+                    } else if (isVirtualTagCollection(item) || isVirtualPropertyCollection(item) || isVirtualTypeCollection(item)) {
                         collapseItem();
                     }
                 }
@@ -584,4 +655,6 @@ export function useNavigationPaneKeyboard({
         _getCurrentIndex: getCurrentIndex,
         onKeyDown: handleKeyDown
     });
+
+    return { keyboardFocusedVirtualFolderId };
 }

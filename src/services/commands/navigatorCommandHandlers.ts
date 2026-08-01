@@ -74,6 +74,7 @@ import {
     type PropertySelectionNodeId
 } from '../../utils/propertyTree';
 import { getAdjacentFile, getFilesForNavigationSelection, getPinnedSectionCollapseKey } from '../../utils/selectionUtils';
+import { isTpsNavigatorTypeId } from '../../types/navigatorTypes';
 
 /**
  * Reveals the navigator view and focuses whichever pane is currently visible
@@ -210,11 +211,42 @@ function getFilesForCommandSelection(plugin: NotebookNavigatorPlugin, selectionS
     );
 }
 
+export function hasActiveTypeCommandSelection(plugin: NotebookNavigatorPlugin): boolean {
+    const api = plugin.api;
+    if (api) {
+        return api.selection.getNavItem().type === ItemType.TYPE;
+    }
+
+    if (plugin.settings.tpsTypesNavigationEnabled === false) {
+        return false;
+    }
+
+    try {
+        return isTpsNavigatorTypeId(localStorage.get<unknown>(STORAGE_KEYS.selectedTypeKey));
+    } catch (error) {
+        console.error('Failed to load selected type from localStorage:', error);
+        return false;
+    }
+}
+
+function createNoCommandSelectionScope(): CommandNavigationSelectionScope {
+    return {
+        selectionType: null,
+        selectedFolder: null,
+        selectedTag: null,
+        selectedProperty: null
+    };
+}
+
 function resolveStoredCommandSelection(plugin: NotebookNavigatorPlugin, currentFile: TFile | null): CommandNavigationSelectionScope {
     const vault = plugin.app.vault;
     let selectedProperty: PropertySelectionNodeId | null = null;
     let selectedTag: string | null = null;
     let selectedFolder: TFolder | null = null;
+
+    if (hasActiveTypeCommandSelection(plugin)) {
+        return createNoCommandSelectionScope();
+    }
 
     if (plugin.settings.showProperties) {
         try {
@@ -283,7 +315,10 @@ function resolveStoredCommandSelection(plugin: NotebookNavigatorPlugin, currentF
     };
 }
 
-async function selectAdjacentFileWithoutNavigatorView(plugin: NotebookNavigatorPlugin, direction: 'next' | 'previous'): Promise<boolean> {
+export async function selectAdjacentFileWithoutNavigatorView(
+    plugin: NotebookNavigatorPlugin,
+    direction: 'next' | 'previous'
+): Promise<boolean> {
     const app = plugin.app;
     const vault = app.vault;
 
@@ -395,7 +430,13 @@ function getSelectedPropertyForCommand(plugin: NotebookNavigatorPlugin): Propert
     return isPropertySelectionNodeIdVisibleInNavigation(plugin.settings, selectedProperty) ? selectedProperty : null;
 }
 
-function resolveOpenAllFilesContext(plugin: NotebookNavigatorPlugin): CommandNavigationSelectionScope {
+export function resolveOpenAllFilesContext(plugin: NotebookNavigatorPlugin): CommandNavigationSelectionScope {
+    // Type collections are virtual entity rows, not a file scope. Never fall
+    // through to the active file's parent while one is selected.
+    if (hasActiveTypeCommandSelection(plugin)) {
+        return createNoCommandSelectionScope();
+    }
+
     const selectedProperty = getSelectedPropertyForCommand(plugin);
     if (selectedProperty) {
         return {
@@ -858,12 +899,25 @@ export default function registerNavigatorCommands(plugin: NotebookNavigatorPlugi
     plugin.addCommand({
         id: 'toggle-pinned-section',
         name: strings.commands.togglePinnedSection,
-        callback: () => {
+        checkCallback: (checking: boolean) => {
+            if (hasActiveTypeCommandSelection(plugin)) {
+                return false;
+            }
+
+            if (checking) {
+                return true;
+            }
+
             runAsyncAction(async () => {
                 const view = await ensureNavigatorOpen(plugin);
                 await view?.whenReady();
+                if (hasActiveTypeCommandSelection(plugin)) {
+                    return;
+                }
                 plugin.togglePinnedGroupCollapsed(getPinnedCollapseKeyForCommand(plugin));
             });
+
+            return true;
         }
     });
 

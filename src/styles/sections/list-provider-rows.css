@@ -111,6 +111,12 @@
     cursor: default;
 }
 
+.notebook-navigator-mobile .nn-provider-row-open {
+    min-height: 44px;
+    align-self: stretch;
+    justify-content: center;
+}
+
 .nn-provider-row-more {
     width: 28px;
     height: 28px;

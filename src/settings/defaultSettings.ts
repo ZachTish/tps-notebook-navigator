@@ -147,6 +147,7 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     syncModes: defaultSettingsSync,
 
     // TPS integration
+    tpsTypesNavigationEnabled: true,
     tpsGcmTaskRowsEnabled: false,
     tpsGcmTaskRowsIncludeCompleted: false,
     tpsGcmTaskRowsPerNote: TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT,

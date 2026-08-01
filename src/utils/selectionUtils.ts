@@ -40,7 +40,7 @@ import { getFilesForFolder, getFilesForProperty, getFilesForTag } from './fileFi
  * @returns The path string or null if nothing is selected
  */
 export function getSelectedPath(
-    selectionState: Pick<SelectionState, 'selectionType' | 'selectedFolder' | 'selectedTag' | 'selectedProperty'>
+    selectionState: Pick<SelectionState, 'selectionType' | 'selectedFolder' | 'selectedTag' | 'selectedProperty' | 'selectedType'>
 ): string | null {
     if (selectionState.selectionType === ItemType.FOLDER && selectionState.selectedFolder) {
         return selectionState.selectedFolder.path;
@@ -51,7 +51,15 @@ export function getSelectedPath(
     if (selectionState.selectionType === ItemType.PROPERTY && selectionState.selectedProperty) {
         return selectionState.selectedProperty;
     }
+    if (selectionState.selectionType === ItemType.TYPE && selectionState.selectedType) {
+        return selectionState.selectedType;
+    }
     return null;
+}
+
+/** Type collections are transient virtual rows and cannot become persisted shortcuts. */
+export function canAddShortcutForNavigationSelection(selectionType: NavigationSelectionScope['selectionType']): boolean {
+    return selectionType !== ItemType.TYPE;
 }
 
 /**
@@ -76,7 +84,8 @@ export function getFilesForSelection(
             selectionType: selectionState.selectionType,
             selectedFolder: selectionState.selectedFolder,
             selectedTag: selectionState.selectedTag,
-            selectedProperty: selectionState.selectedProperty
+            selectedProperty: selectionState.selectedProperty,
+            selectedType: selectionState.selectedType
         },
         settings,
         visibility,
@@ -91,6 +100,7 @@ export interface NavigationSelectionScope {
     selectedFolder?: SelectionState['selectedFolder'];
     selectedTag?: SelectionState['selectedTag'];
     selectedProperty?: SelectionState['selectedProperty'];
+    selectedType?: SelectionState['selectedType'];
 }
 
 interface NavigationSelectionOptions {
@@ -140,6 +150,22 @@ export function getFilesForNavigationSelection(
         return getFilesForProperty(selectionScope.selectedProperty, settings, visibility, app, propertyTreeService, options);
     }
     return [];
+}
+
+/** Returns the complete visible Markdown scope used by vault-wide virtual sources. */
+export function getVisibleVaultMarkdownFiles(settings: NotebookNavigatorSettings, showHiddenItems: boolean, app: App): TFile[] {
+    return getFilesForNavigationSelection(
+        {
+            selectionType: ItemType.FOLDER,
+            selectedFolder: app.vault.getRoot()
+        },
+        settings,
+        { includeDescendantNotes: true, showHiddenItems },
+        app,
+        null,
+        null,
+        { orderResults: false }
+    ).filter(file => file.extension === 'md');
 }
 
 /**

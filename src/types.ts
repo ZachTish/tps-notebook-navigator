@@ -72,6 +72,10 @@ export const TAGS_ROOT_VIRTUAL_FOLDER_ID = 'tags-root';
  */
 export const PROPERTIES_ROOT_VIRTUAL_FOLDER_ID = 'properties-root';
 
+/** TPS virtual folder ids for the first-class Types navigator. */
+export const TYPES_ROOT_VIRTUAL_FOLDER_ID = 'tps-types-root';
+export const TYPES_KINDS_VIRTUAL_FOLDER_ID = 'tps-types-kinds';
+
 /**
  * Identifies which pane currently has keyboard focus
  * Used for keyboard navigation between folder tree and file list
@@ -88,7 +92,8 @@ export const ItemType = {
     FILE: 'file',
     FOLDER: 'folder',
     TAG: 'tag',
-    PROPERTY: 'property'
+    PROPERTY: 'property',
+    TYPE: 'type'
 } as const;
 
 /**
@@ -173,7 +178,8 @@ export const NavigationSectionId = {
     RECENT: 'recent',
     FOLDERS: 'folders',
     TAGS: 'tags',
-    PROPERTIES: 'properties'
+    PROPERTIES: 'properties',
+    TYPES: 'types'
 } as const;
 
 /**
@@ -188,6 +194,7 @@ export const DEFAULT_NAVIGATION_SECTION_ORDER: NavigationSectionId[] = [
     NavigationSectionId.SHORTCUTS,
     NavigationSectionId.RECENT,
     NavigationSectionId.FOLDERS,
+    NavigationSectionId.TYPES,
     NavigationSectionId.TAGS,
     NavigationSectionId.PROPERTIES
 ];
@@ -256,7 +263,7 @@ export type ItemType = (typeof ItemType)[keyof typeof ItemType];
  * Either a folder from the file tree or a tag from the tag tree
  * This is a subset of ItemType that excludes 'file'
  */
-export type NavigationItemType = typeof ItemType.FOLDER | typeof ItemType.TAG | typeof ItemType.PROPERTY;
+export type NavigationItemType = typeof ItemType.FOLDER | typeof ItemType.TAG | typeof ItemType.PROPERTY | typeof ItemType.TYPE;
 
 /**
  * Keys used for persisting state in browser localStorage
@@ -272,6 +279,7 @@ export interface LocalStorageKeys {
     selectedFileKey: string;
     selectedFilesKey: string;
     selectedTagKey: string;
+    selectedTypeKey: string;
     navigationPaneWidthKey: string;
     navigationPaneHeightKey: string;
     dualPaneOrientationKey: string;
@@ -340,6 +348,7 @@ export const STORAGE_KEYS: LocalStorageKeys = {
     selectedFileKey: tpsStorageKey('selected-file'),
     selectedFilesKey: tpsStorageKey('selected-files'),
     selectedTagKey: tpsStorageKey('selected-tag'),
+    selectedTypeKey: tpsStorageKey('selected-type'),
     navigationPaneWidthKey: tpsStorageKey('navigation-pane-width'),
     navigationPaneHeightKey: tpsStorageKey('navigation-pane-height'),
     dualPaneOrientationKey: tpsStorageKey('dual-pane-orientation'),

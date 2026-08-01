@@ -87,14 +87,17 @@ export interface UseNavigationRootReorderOptions {
     resolvedRootPropertyKeys: string[];
     rootOrderingPropertyTree: Map<string, PropertyTreeNode>;
     missingRootPropertyKeys: string[];
+    typeReorderSourceItems: CombinedNavigationItem[];
     metadataService: MetadataService;
     foldersSectionExpanded: boolean;
     tagsSectionExpanded: boolean;
     propertiesSectionExpanded: boolean;
+    typesSectionExpanded: boolean;
     propertiesSectionActive: boolean;
     handleToggleFoldersSection: (event: React.MouseEvent<HTMLDivElement>) => void;
     handleToggleTagsSection: (event: React.MouseEvent<HTMLDivElement>) => void;
     handleTogglePropertiesSection: (event: React.MouseEvent<HTMLDivElement>) => void;
+    handleToggleTypesSection: (event: React.MouseEvent<HTMLDivElement>) => void;
     activeProfile: ActiveProfileState;
 }
 
@@ -106,6 +109,7 @@ export interface NavigationRootReorderState {
     folderReorderItems: RootReorderRenderItem[];
     tagReorderItems: RootReorderRenderItem[];
     propertyReorderItems: RootReorderRenderItem[];
+    typeReorderItems: RootReorderRenderItem[];
     canReorderSections: boolean;
     canReorderRootFolders: boolean;
     canReorderRootTags: boolean;
@@ -114,6 +118,7 @@ export interface NavigationRootReorderState {
     showRootFolderSection: boolean;
     showRootTagSection: boolean;
     showRootPropertySection: boolean;
+    showRootTypeSection: boolean;
     resetRootTagOrderLabel: string;
     resetRootPropertyOrderLabel: string;
     vaultRootDescriptor: RootFolderDescriptor | undefined;
@@ -143,14 +148,17 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
         resolvedRootPropertyKeys,
         rootOrderingPropertyTree,
         missingRootPropertyKeys,
+        typeReorderSourceItems,
         metadataService,
         foldersSectionExpanded,
         tagsSectionExpanded,
         propertiesSectionExpanded,
+        typesSectionExpanded,
         propertiesSectionActive,
         handleToggleFoldersSection,
         handleToggleTagsSection,
         handleTogglePropertiesSection,
+        handleToggleTypesSection,
         activeProfile
     } = options;
 
@@ -386,6 +394,9 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
             if (identifier === NavigationSectionId.PROPERTIES) {
                 return propertiesSectionActive;
             }
+            if (identifier === NavigationSectionId.TYPES) {
+                return settings.tpsTypesNavigationEnabled;
+            }
             return true;
         });
     }, [
@@ -396,7 +407,8 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
         showHiddenItems,
         showRecentNotes,
         showShortcuts,
-        showTags
+        showTags,
+        settings.tpsTypesNavigationEnabled
     ]);
 
     const canReorderSections = sectionDisplayOrder.length > 1;
@@ -420,6 +432,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
     const showRootFolderSection = reorderableRootFolders.length > 0;
     const showRootTagSection = reorderableRootTags.length > 0;
     const showRootPropertySection = reorderableRootProperties.length > 0;
+    const showRootTypeSection = typeReorderSourceItems.length > 0;
 
     const rootItemMaps = useMemo(() => {
         const folderIconMap = new Map<string, string | undefined>();
@@ -768,6 +781,28 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
         handleRemoveMissingRootProperty
     ]);
 
+    const typeReorderItems = useMemo<RootReorderRenderItem[]>(() => {
+        return typeReorderSourceItems.flatMap(item => {
+            if (item.type !== NavigationPaneItemType.VIRTUAL_FOLDER) {
+                return [];
+            }
+
+            return [
+                {
+                    key: item.key,
+                    props: {
+                        icon: item.data.icon ?? 'lucide-shapes',
+                        label: item.data.name,
+                        level: item.level,
+                        dragHandlers: undefined,
+                        isDragSource: false,
+                        itemType: 'type' as const
+                    }
+                }
+            ];
+        });
+    }, [typeReorderSourceItems]);
+
     const sectionReorderItems = useMemo<SectionReorderRenderItem[]>(() => {
         return sectionDisplayOrder.map(identifier => {
             const isHidden =
@@ -775,7 +810,8 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
                 (identifier === NavigationSectionId.RECENT && !showRecentNotes) ||
                 (identifier === NavigationSectionId.FOLDERS && rootFolderDescriptors.length === 0) ||
                 (identifier === NavigationSectionId.TAGS && !showTags) ||
-                (identifier === NavigationSectionId.PROPERTIES && !propertiesSectionActive);
+                (identifier === NavigationSectionId.PROPERTIES && !propertiesSectionActive) ||
+                (identifier === NavigationSectionId.TYPES && !settings.tpsTypesNavigationEnabled);
             let icon = 'lucide-circle';
             let label = '';
             let chevronIcon: string | undefined;
@@ -820,6 +856,13 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
                 label = strings.navigationPane.properties;
                 chevronIcon = propertiesSectionExpanded ? 'lucide-chevron-down' : 'lucide-chevron-right';
                 onClick = handleTogglePropertiesSection;
+            } else if (identifier === NavigationSectionId.TYPES) {
+                icon = 'lucide-shapes';
+                label = 'Types';
+                if (showRootTypeSection) {
+                    chevronIcon = typesSectionExpanded ? 'lucide-chevron-down' : 'lucide-chevron-right';
+                    onClick = handleToggleTypesSection;
+                }
             }
 
             return {
@@ -858,7 +901,11 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
         handleToggleFoldersSection,
         handleToggleTagsSection,
         propertiesSectionExpanded,
-        handleTogglePropertiesSection
+        handleTogglePropertiesSection,
+        showRootTypeSection,
+        typesSectionExpanded,
+        handleToggleTypesSection,
+        settings.tpsTypesNavigationEnabled
     ]);
 
     const handleResetRootFolderOrder = useCallback(async () => {
@@ -887,6 +934,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
         folderReorderItems,
         tagReorderItems,
         propertyReorderItems,
+        typeReorderItems,
         canReorderSections,
         canReorderRootFolders,
         canReorderRootTags,
@@ -895,6 +943,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
         showRootFolderSection,
         showRootTagSection,
         showRootPropertySection,
+        showRootTypeSection,
         resetRootTagOrderLabel,
         resetRootPropertyOrderLabel,
         vaultRootDescriptor,

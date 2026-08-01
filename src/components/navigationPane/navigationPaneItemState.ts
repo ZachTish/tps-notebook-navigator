@@ -28,6 +28,7 @@ interface NavigationItemFilledParams {
     selectionState: NavigationSelectionState;
     searchHighlights: NavigationSearchHighlightsResult;
     getSolidBackground: (color?: string | null) => string | undefined;
+    isSelectedOverride?: boolean;
 }
 
 export function getNavigationItemSearchMatch(
@@ -59,13 +60,17 @@ export function isNavigationItemSelected(item: CombinedNavigationItem, selection
         case NavigationPaneItemType.VIRTUAL_FOLDER: {
             const tagCollectionId = item.tagCollectionId ?? null;
             const propertyCollectionId = item.propertyCollectionId ?? null;
+            const typeCollectionId = item.typeCollectionId ?? null;
             return (
                 (tagCollectionId !== null &&
                     selectionState.selectionType === ItemType.TAG &&
                     selectionState.selectedTag === tagCollectionId) ||
                 (propertyCollectionId !== null &&
                     selectionState.selectionType === ItemType.PROPERTY &&
-                    selectionState.selectedProperty === propertyCollectionId)
+                    selectionState.selectedProperty === propertyCollectionId) ||
+                (typeCollectionId !== null &&
+                    selectionState.selectionType === ItemType.TYPE &&
+                    selectionState.selectedType === typeCollectionId)
             );
         }
 
@@ -86,7 +91,8 @@ export function isNavigationItemFilled({
     item,
     selectionState,
     searchHighlights,
-    getSolidBackground
+    getSolidBackground,
+    isSelectedOverride
 }: NavigationItemFilledParams): boolean {
     if (
         (item.type === NavigationPaneItemType.SHORTCUT_FOLDER ||
@@ -99,5 +105,6 @@ export function isNavigationItemFilled({
     }
 
     const hasBackground = 'backgroundColor' in item && Boolean(getSolidBackground(item.backgroundColor));
-    return hasBackground || isNavigationItemSelected(item, selectionState) || Boolean(getNavigationItemSearchMatch(item, searchHighlights));
+    const isSelected = isSelectedOverride ?? isNavigationItemSelected(item, selectionState);
+    return hasBackground || isSelected || Boolean(getNavigationItemSearchMatch(item, searchHighlights));
 }

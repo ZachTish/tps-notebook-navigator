@@ -52,6 +52,7 @@ import {
     toggleNavigationExpansionTarget
 } from '../../utils/navigationExpansion';
 import { useStableHandlerFacade } from '../useStableHandlerFacade';
+import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
 
 interface ExpansionStateLike {
     expandedFolders: Set<string>;
@@ -102,6 +103,7 @@ export interface NavigationPaneTreeInteractionsResult {
     handleTagCollectionClick: (tagCollectionId: string, event: React.MouseEvent<HTMLDivElement>) => void;
     handlePropertyCollectionClick: (event: React.MouseEvent<HTMLDivElement>) => void;
     handlePropertyClick: (propertyNode: PropertyTreeNode, event?: React.MouseEvent, options?: { fromShortcut?: boolean }) => void;
+    handleTypeClick: (typeId: TpsNavigatorTypeId, event?: React.MouseEvent) => void;
 }
 
 export function useNavigationPaneTreeInteractions({
@@ -715,6 +717,15 @@ export function useNavigationPaneTreeInteractions({
         [expansionDispatch, expansionState.expandedVirtualFolders, getAllPropertyNodeIds, getAllTagPaths, handleVirtualFolderToggle]
     );
 
+    const handleTypeClick = useCallback(
+        (typeId: TpsNavigatorTypeId) => {
+            clearActiveShortcut();
+            selectionDispatch({ type: 'SET_SELECTED_TYPE', typeId });
+            uiDispatch({ type: 'ACTIVATE_PANE', target: uiState.singlePane ? 'files' : 'navigation' });
+        },
+        [clearActiveShortcut, selectionDispatch, uiDispatch, uiState.singlePane]
+    );
+
     const interactions: NavigationPaneTreeInteractionsResult = {
         handleFolderToggle,
         handleFolderClick,
@@ -730,7 +741,8 @@ export function useNavigationPaneTreeInteractions({
         handleTagClick,
         handleTagCollectionClick,
         handlePropertyCollectionClick,
-        handlePropertyClick
+        handlePropertyClick,
+        handleTypeClick
     };
 
     // Identity-stable facade; calls forward to the latest handlers through a ref
@@ -749,6 +761,7 @@ export function useNavigationPaneTreeInteractions({
         'handleTagClick',
         'handleTagCollectionClick',
         'handlePropertyCollectionClick',
-        'handlePropertyClick'
+        'handlePropertyClick',
+        'handleTypeClick'
     ]);
 }

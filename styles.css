@@ -4418,6 +4418,12 @@ button.tps-nn-navigation-calendar-day {
     cursor: default;
 }
 
+.tps-notebook-navigator-mobile .tps-nn-provider-row-open {
+    min-height: 44px;
+    align-self: stretch;
+    justify-content: center;
+}
+
 .tps-nn-provider-row-more {
     width: 28px;
     height: 28px;
