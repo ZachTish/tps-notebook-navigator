@@ -34,6 +34,11 @@ Complete TypeScript type definitions for the Notebook Navigator API.
    collection menus. The frozen context contains the opaque current Type id and its immutable current descriptor. Add items
    synchronously and perform asynchronous work inside each item's `onClick` handler; stale or empty menus fail closed, while
    thrown failures and rejected Promises are isolated.
+7. Use `nn.menus.registerRowMenu(...)` to add actions to matching attached, structural, Kind, task, and provider-owned result
+   rows. Its optional synchronous `supports(target)` filter controls which rows show the accessible action affordance. The
+   frozen target contains current file identity, Type scope, optional zero-based line, and checkbox presentation; re-resolve
+   mutable line content before writing. Builders and item initializers must be synchronous; a Promise-returning builder
+   invalidates that attempted menu, so perform asynchronous work only inside an item's `onClick` handler.
 
 ## Public Surface
 
@@ -46,9 +51,8 @@ Complete TypeScript type definitions for the Notebook Navigator API.
   nodes, Type-catalog snapshots and providers, file/folder/tag/property/Type menu extension contexts, transient row
   providers, row context-menu actions, event names, lifecycle request/change payloads, and event payloads
 
-Type menu registrations are runtime-only. They add no settings, persisted callback state, or migration. The complete
-descriptor shape and fail-closed behavior are documented in the
-[Menus API](../../../docs/api-reference.md#type-collection-context-menu).
+Type and row menu registrations are runtime-only. They add no settings, persisted callback state, or migration. The complete
+target shapes and fail-closed behavior are documented in the [Menus API](../../../docs/api-reference.md#menus-api).
 
 **For Maintainers:**
 
@@ -59,7 +63,7 @@ descriptor shape and fail-closed behavior are documented in the
 
 ## Version
 
-Current API Version: **2.9.0**
+Current API Version: **2.10.0**
 
 ## Documentation
 

@@ -5,12 +5,17 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import {
     NavigatorProviderRow,
+    type NavigatorProviderRowMenuHost,
     applyProviderCheckboxChange,
+    consumeProviderRowMenuEvent,
     getProviderCheckboxPresentation,
+    getProviderRowMenuCheckboxState,
     requestProviderRowActivation,
     stopProviderRowKeyboardPropagation
 } from '../../src/components/providerRows/NavigatorProviderRow';
+import type { NavigatorRowMenuTarget } from '../../src/api/types';
 import type { NavigatorProvidedRow } from '../../src/services/rows/types';
+import { createTestTFile } from '../utils/createTestTFile';
 
 function row(
     onChange?: (checked: boolean) => void | Promise<void>,
@@ -28,6 +33,30 @@ function row(
             checked: false,
             onChange
         }
+    };
+}
+
+function extensionTarget(): NavigatorRowMenuTarget {
+    const file = createTestTFile('Inbox/Tasks.md');
+    return Object.freeze({
+        providerId: 'tps/tasks',
+        rowId: 'one',
+        kind: 'tps/task',
+        label: 'Review navigator',
+        file,
+        sourcePath: file.path,
+        typeId: 'structural:task',
+        checkbox: Object.freeze({ checked: false })
+    });
+}
+
+function rowMenuHost(overrides: Partial<NavigatorProviderRowMenuHost> = {}): NavigatorProviderRowMenuHost {
+    return {
+        revision: 1,
+        createTarget: () => extensionTarget(),
+        hasExtensions: () => true,
+        appendExtensions: () => true,
+        ...overrides
     };
 }
 
@@ -83,6 +112,31 @@ describe('NavigatorProviderRow', () => {
         });
 
         expect(events).toEqual(['display:true', 'busy:true', 'display:false', 'error:expected', 'busy:false']);
+    });
+
+    it('exposes the effective visible checkbox state to row-menu integrations', () => {
+        const taskRow: NavigatorProvidedRow = {
+            ...row(vi.fn()),
+            indicator: { type: 'checkbox', checked: false, marker: '/', onChange: vi.fn() }
+        };
+
+        expect(getProviderRowMenuCheckboxState(taskRow, false)).toEqual({ checked: false, marker: '/' });
+        expect(getProviderRowMenuCheckboxState(taskRow, true)).toEqual({ checked: true });
+        expect(getProviderRowMenuCheckboxState({ ...taskRow, indicator: undefined }, false)).toBeNull();
+    });
+
+    it('consumes a context-menu event only after a non-empty menu is shown', () => {
+        const preventDefault = vi.fn();
+        const stopPropagation = vi.fn();
+        const event = { preventDefault, stopPropagation };
+
+        expect(consumeProviderRowMenuEvent(() => false, event)).toBe(false);
+        expect(preventDefault).not.toHaveBeenCalled();
+        expect(stopPropagation).not.toHaveBeenCalled();
+
+        expect(consumeProviderRowMenuEvent(() => true, event)).toBe(true);
+        expect(preventDefault).toHaveBeenCalledOnce();
+        expect(stopPropagation).toHaveBeenCalledOnce();
     });
 
     it('renders a keyboard-focusable checkbox when the provider supplies a mutation', () => {
@@ -170,6 +224,48 @@ describe('NavigatorProviderRow', () => {
         expect(withActions).toContain('title="More actions"');
         expect(withoutActions).not.toContain('tps-nn-provider-row-more');
         expect(withoutActions).not.toContain('data-provider-context-menu');
+    });
+
+    it('renders the same accessible action affordance for matching registered row extensions', () => {
+        const seenTargets: NavigatorRowMenuTarget[] = [];
+        const withRegisteredActions = renderToStaticMarkup(
+            React.createElement(NavigatorProviderRow, {
+                row: row(),
+                rowMenuHost: rowMenuHost({
+                    hasExtensions: target => {
+                        seenTargets.push(target);
+                        return true;
+                    }
+                })
+            })
+        );
+        const unsupported = renderToStaticMarkup(
+            React.createElement(NavigatorProviderRow, {
+                row: row(),
+                rowMenuHost: rowMenuHost({ hasExtensions: () => false })
+            })
+        );
+        const staleSource = renderToStaticMarkup(
+            React.createElement(NavigatorProviderRow, {
+                row: row(),
+                rowMenuHost: rowMenuHost({ createTarget: () => null })
+            })
+        );
+        const staleOwnerSource = renderToStaticMarkup(
+            React.createElement(NavigatorProviderRow, {
+                row: row(undefined, context => context.addItem(() => undefined)),
+                rowMenuHost: rowMenuHost({ createTarget: () => null })
+            })
+        );
+
+        expect(withRegisteredActions).toContain('class="tps-nn-provider-row-more"');
+        expect(withRegisteredActions).toContain('data-provider-context-menu="true"');
+        expect(seenTargets).toHaveLength(1);
+        expect(seenTargets[0]).toMatchObject({ typeId: 'structural:task', sourcePath: 'Inbox/Tasks.md' });
+        expect(unsupported).not.toContain('tps-nn-provider-row-more');
+        expect(staleSource).not.toContain('tps-nn-provider-row-more');
+        expect(staleOwnerSource).not.toContain('tps-nn-provider-row-more');
+        expect(staleOwnerSource).not.toContain('data-provider-context-menu');
     });
 
     it.each(['keydown', 'keyup'])('keeps pane-level keyboard shortcuts from consuming provider control %s events', () => {

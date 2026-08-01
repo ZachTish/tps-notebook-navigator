@@ -4,7 +4,7 @@ Updated: August 1, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 2.9.0
+**Current API Version:** 2.10.0
 
 ## Table of Contents
 
@@ -654,11 +654,12 @@ const { files, focused } = nn.selection.getCurrent();
 
 ## Menus API
 
-Register callbacks that add items to Notebook Navigator's file, folder, tag, property, and selectable Type collection
-context menus.
+Register callbacks that add items to Notebook Navigator's file, folder, tag, property, selectable Type collection, and
+source-backed row context menus.
 
 File and folder menu hooks are available in API version 1.2.0. Tag and property menu hooks are available in API version 2.0.0.
-Type collection menu hooks are available in API version 2.9.0.
+Type collection menu hooks are available in API version 2.9.0. Transient and Type-result row hooks are available in API
+version 2.10.0.
 
 | Method                           | Description                                  | Returns      |
 | -------------------------------- | -------------------------------------------- | ------------ |
@@ -667,6 +668,7 @@ Type collection menu hooks are available in API version 2.9.0.
 | `registerTagMenu(callback)`      | Add items to the tag context menu            | `() => void` |
 | `registerPropertyMenu(callback)` | Add items to the property context menu       | `() => void` |
 | `registerTypeMenu(callback)`     | Add items to a Type collection context menu  | `() => void` |
+| `registerRowMenu(callback, options?)` | Add actions to matching result rows     | `() => void` |
 
 Callbacks run synchronously during menu construction. Add menu items synchronously and do async work in `onClick` handlers.
 
@@ -779,6 +781,60 @@ isolated. The descriptor is a menu-build snapshot, so an action that depends on 
 
 Type menu registrations are runtime-only. They do not add a setting, write `data.json`, persist callback state, or require a
 settings migration.
+
+### Result row context menu
+
+`registerRowMenu(callback, options?)` applies to source-backed transient rows wherever they render: beneath a note in a
+normal file list, in Notes, Checkboxes, Bullets, Headings, or a dynamic Kind collection, and in collections or augmenting
+rows registered by another provider. Loading/error placeholders and rows whose source file no longer exists fail closed.
+
+The callback receives a frozen context with guarded `addItem(...)` and `addSeparator()` functions plus an immutable
+`target` snapshot:
+
+- `providerId`, `rowId`, and `kind` identify the row owner and its provider-local record
+- `label`, `file`, and `sourcePath` describe the current exact source file
+- `sourceLineNumber` is the optional zero-based rendered-row location
+- `typeId` is the opaque selected collection id, or `null` when the row is attached beneath a note
+- `checkbox` is either `null` or the immutable `{ checked, marker? }` state currently presented to the user, including an
+  optimistic checkbox change that is still awaiting its provider refresh
+
+`sourceLineNumber` can become stale after an edit. An action that writes line content must use its owning plugin's current
+locator/index to re-resolve the record when clicked rather than treating the rendered line number as a mutation key.
+
+```typescript
+const dispose = nn?.menus?.registerRowMenu(
+  ({ addItem, target }) => {
+    addItem(item => {
+      item.setTitle('Open source').setIcon('lucide-external-link').onClick(async () => {
+        const currentFile = app.vault.getFileByPath(target.sourcePath);
+        if (currentFile) {
+          await app.workspace.getLeaf(false).openFile(currentFile);
+        }
+      });
+    });
+  },
+  {
+    // Keep the keyboard-accessible More actions affordance off unrelated rows.
+    supports: target => target.kind === 'tps/entity-type/bullet'
+  }
+);
+```
+
+The optional `supports(target)` callback is a synchronous, side-effect-free filter. It is checked both while rendering the
+**More actions** affordance and again when a menu opens. Omit it when the action applies to every source-backed row. A
+throwing or Promise-returning filter is isolated and treated as unsupported; rejected filters are observed and logged.
+
+Row-owner actions run before registered actions. Integrations can call `addSeparator()` when they need a group boundary;
+leading, trailing, and duplicate separators are normalized. Desktop right-click, native mobile long-press, and the
+keyboard-focusable **More actions** button use the same builder. Empty, throwing, rejected, or delayed builders do not open a
+blank menu. A throwing builder is isolated so another synchronous builder can still contribute. A Promise-returning builder
+invalidates the entire attempted menu, including when it adds an item before its first `await`; rejected Promises are
+observed, and delayed additions are ignored. An item initializer receives Obsidian's real `MenuItem` synchronously and
+exactly once; if that initializer fails, the entire attempted menu stays closed so a blank or partially configured host menu
+is never shown. A row whose source or matching registration disappears between render and the gesture does not consume the
+native context-menu event.
+
+Row menu registrations and filters are runtime-only. They do not persist callbacks, write settings, or modify source notes.
 
 ## Events
 
@@ -911,13 +967,21 @@ The type definitions provide:
 - **Template literal types** for short provider frontmatter icon input (`IconString`)
 - **Typed event names and payloads** (`NotebookNavigatorEventType`, `NotebookNavigatorEvents`)
 - **Readonly return types** (selected files arrays, pinned map)
-- **Menu extension context types** (file, folder, tag, property, and Type collection menus)
+- **Menu extension context types** (file, folder, tag, property, Type collection, and source-backed row menus)
 - **Transient row provider types** (scope, rows, checkbox mutation, subscription, and registration handles)
 
 **Note**: These type checks are compile-time only. At runtime, the API is permissive and accepts any values (see Runtime
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 2.10.0 (2026-08-01)
+
+- Added `menus.registerRowMenu(callback, options?)` for attached, structural, Kind, task, and provider-owned result rows
+- Added immutable current-file, Type-scope, line, and checkbox target snapshots without exposing row mutation callbacks or the host menu
+- Added an optional guarded `supports(target)` filter so integrations can keep action affordances off unrelated rows
+- Unified registered actions with row-owner right-click, native long-press, and accessible **More actions** routing
+- Kept stale sources, empty builders, delayed additions, and thrown/rejected integration failures isolated and fail closed
 
 ### Version 2.9.0 (2026-08-01)
 

@@ -3,12 +3,15 @@
 import type { Menu, MenuItem } from 'obsidian';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { NavigatorRowContextMenuContext } from '../../src/api/types';
+import { MenusAPI } from '../../src/api/modules/MenusAPI';
 import type { NavigatorProvidedRow } from '../../src/services/rows/types';
 import {
     buildProviderRowContextMenu,
+    createNavigatorRowMenuTarget,
     showProviderRowContextMenuAtMouseEvent,
     showProviderRowContextMenuAtPosition
 } from '../../src/utils/contextMenu/providerRowContextMenu';
+import { createTestTFile } from '../utils/createTestTFile';
 
 interface MenuHarness {
     menu: Menu;
@@ -52,6 +55,35 @@ afterEach(() => {
 });
 
 describe('provider row context menus', () => {
+    it('creates an immutable exact-file extension target with Type and checkbox state', () => {
+        const file = createTestTFile('Inbox/Tasks.md');
+        const providedRow = row({
+            sourceLineNumber: 7,
+            indicator: { type: 'checkbox', checked: false, marker: '/' }
+        });
+
+        const target = createNavigatorRowMenuTarget(providedRow, file, 'kind:Task');
+
+        expect(target).toMatchObject({
+            providerId: 'example/tasks',
+            rowId: 'one',
+            kind: 'example/task',
+            label: 'Review navigator',
+            file,
+            sourcePath: 'Inbox/Tasks.md',
+            sourceLineNumber: 7,
+            typeId: 'kind:Task',
+            checkbox: { checked: false, marker: '/' }
+        });
+        expect(Object.isFrozen(target)).toBe(true);
+        expect(Object.isFrozen(target?.checkbox)).toBe(true);
+        expect(createNavigatorRowMenuTarget(providedRow, createTestTFile('Moved.md'), null)).toBeNull();
+
+        const optimisticTarget = createNavigatorRowMenuTarget(providedRow, file, 'kind:Task', { checked: true });
+        expect(optimisticTarget?.checkbox).toEqual({ checked: true });
+        expect(Object.isFrozen(optimisticTarget?.checkbox)).toBe(true);
+    });
+
     it('exposes one exact frozen identity and applies synchronous menu items', () => {
         const harness = createMenuHarness();
         const configure = vi.fn();
@@ -82,6 +114,25 @@ describe('provider row context menus', () => {
         expect(configure).toHaveBeenCalledWith(harness.item);
     });
 
+    it('runs the native MenuItem initializer synchronously at addItem time', () => {
+        const harness = createMenuHarness();
+        let captured: MenuItem | undefined;
+
+        expect(
+            buildProviderRowContextMenu(
+                harness.menu,
+                row({
+                    contextMenu: context => {
+                        context.addItem(item => {
+                            captured = item;
+                        });
+                        expect(captured).toBe(harness.item);
+                    }
+                })
+            )
+        ).toBe(1);
+    });
+
     it('preserves item and separator order without exposing the host Menu', () => {
         const calls: string[] = [];
         const harness = createMenuHarness();
@@ -104,6 +155,152 @@ describe('provider row context menus', () => {
 
         expect(buildProviderRowContextMenu(harness.menu, providedRow)).toBe(2);
         expect(calls).toEqual(['item', 'separator', 'item']);
+    });
+
+    it('appends integration-owned actions after row-owner actions through one guarded facade', () => {
+        const calls: string[] = [];
+        const harness = createMenuHarness();
+        harness.addItem.mockImplementation((configure: (menuItem: MenuItem) => void) => {
+            configure(harness.item);
+            return harness.menu;
+        });
+        const providedRow = row({
+            contextMenu: context => {
+                context.addItem(() => calls.push('owner'));
+            }
+        });
+
+        expect(
+            buildProviderRowContextMenu(harness.menu, providedRow, controls => {
+                controls.addItem(() => calls.push('integration'));
+            })
+        ).toBe(2);
+        expect(calls).toEqual(['owner', 'integration']);
+    });
+
+    it('keeps integration actions when the row owner fails and supports extension-only entry points', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const builderHarness = createMenuHarness();
+        const pointerHarness = createMenuHarness();
+        const buttonHarness = createMenuHarness();
+        const appendIntegration = (controls: { addItem: (configure: (item: MenuItem) => void) => void }) => {
+            controls.addItem(() => undefined);
+        };
+
+        expect(
+            buildProviderRowContextMenu(
+                builderHarness.menu,
+                row({
+                    contextMenu: () => {
+                        throw new Error('owner failed');
+                    }
+                }),
+                appendIntegration
+            )
+        ).toBe(1);
+        expect(showProviderRowContextMenuAtMouseEvent(pointerHarness.menu, row(), {} as MouseEvent, appendIntegration)).toBe(true);
+        expect(showProviderRowContextMenuAtPosition(buttonHarness.menu, row(), { x: 10, y: 20 }, appendIntegration)).toBe(true);
+        expect(pointerHarness.showAtMouseEvent).toHaveBeenCalledOnce();
+        expect(buttonHarness.showAtPosition).toHaveBeenCalledOnce();
+        expect(warn).toHaveBeenCalledWith(
+            '[TPS Notebook Navigator] Provider row context-menu builder failed.',
+            expect.objectContaining({ providerId: 'example/tasks', rowId: 'one' })
+        );
+    });
+
+    it('fails the whole attempted menu closed when an item initializer fails', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const leadingHarness = createMenuHarness();
+        const trailingHarness = createMenuHarness();
+        const failedItem = (context: Pick<NavigatorRowContextMenuContext, 'addItem'>) => {
+            context.addItem(() => {
+                throw new Error('item failed');
+            });
+        };
+
+        expect(
+            showProviderRowContextMenuAtMouseEvent(
+                leadingHarness.menu,
+                row({
+                    contextMenu: context => {
+                        failedItem(context);
+                        context.addSeparator();
+                    }
+                }),
+                {} as MouseEvent,
+                controls => controls.addItem(() => undefined)
+            )
+        ).toBe(false);
+        expect(leadingHarness.addItem).toHaveBeenCalledTimes(2);
+        expect(leadingHarness.addSeparator).not.toHaveBeenCalled();
+        expect(leadingHarness.showAtMouseEvent).not.toHaveBeenCalled();
+
+        expect(
+            buildProviderRowContextMenu(
+                trailingHarness.menu,
+                row({
+                    contextMenu: context => {
+                        context.addItem(() => undefined);
+                        context.addSeparator();
+                    }
+                }),
+                controls => failedItem(controls)
+            )
+        ).toBe(0);
+        expect(trailingHarness.addItem).toHaveBeenCalledTimes(2);
+        expect(trailingHarness.addSeparator).toHaveBeenCalledOnce();
+        expect(warn).toHaveBeenCalledTimes(2);
+    });
+
+    it('records and replays nested submenu configuration once', () => {
+        const harness = createMenuHarness();
+        const submenu = {} as Menu;
+        const submenuItem = {} as MenuItem;
+        const setTitle = vi.fn(() => harness.item);
+        const setSubmenu = vi.fn(() => submenu);
+        let onClickHandler: (() => void) | undefined;
+        const onClick = vi.fn((handler: () => void) => {
+            onClickHandler = handler;
+            return harness.item;
+        });
+        const setNestedTitle = vi.fn(() => submenuItem);
+        const submenuAddItem = vi.fn((configure: (item: MenuItem) => void) => {
+            configure(submenuItem);
+            return submenu;
+        });
+        Object.assign(harness.item, { setTitle, setSubmenu, onClick });
+        Object.assign(submenuItem, { setTitle: setNestedTitle });
+        Object.assign(submenu, { addItem: submenuAddItem, addSeparator: vi.fn(() => submenu) });
+
+        expect(
+            buildProviderRowContextMenu(
+                harness.menu,
+                row({
+                    contextMenu: context => {
+                        context.addItem(item => {
+                            item.setTitle('Parent');
+                            const childMenu = (
+                                item as unknown as {
+                                    setSubmenu(): { addItem(callback: (child: MenuItem) => void): unknown };
+                                }
+                            ).setSubmenu();
+                            childMenu.addItem((child: MenuItem) => {
+                                child.setTitle('Child');
+                            });
+                            item.onClick(() => item.setTitle('Updated'));
+                        });
+                    }
+                })
+            )
+        ).toBe(1);
+        expect(setTitle).toHaveBeenCalledOnce();
+        expect(setTitle).toHaveBeenCalledWith('Parent');
+        expect(setSubmenu).toHaveBeenCalledOnce();
+        expect(submenuAddItem).toHaveBeenCalledOnce();
+        expect(setNestedTitle).toHaveBeenCalledWith('Child');
+        expect(onClick).toHaveBeenCalledOnce();
+        onClickHandler?.();
+        expect(setTitle).toHaveBeenLastCalledWith('Updated');
     });
 
     it('drops separator-only, leading, trailing, and duplicate separator entries', () => {
@@ -229,6 +426,85 @@ describe('provider row context menus', () => {
         expect(secondWarning).toBe('[TPS Notebook Navigator] Provider row context-menu builder attempted to add items asynchronously.');
     });
 
+    it('fails Promise-returning builders closed even when they add an item before awaiting', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const ownerHarness = createMenuHarness();
+        const extensionHarness = createMenuHarness();
+        const asynchronousOwner = ((context: NavigatorRowContextMenuContext) => {
+            context.addItem(() => undefined);
+            return Promise.resolve();
+        }) as unknown as NonNullable<NavigatorProvidedRow['contextMenu']>;
+        type ExtensionAppender = NonNullable<Parameters<typeof showProviderRowContextMenuAtPosition>[3]>;
+        const extensionError = new Error('extension rejected');
+        const asynchronousExtension = ((controls: Parameters<ExtensionAppender>[0]) => {
+            controls.addItem(() => undefined);
+            return Promise.reject(extensionError);
+        }) as unknown as ExtensionAppender;
+
+        expect(showProviderRowContextMenuAtMouseEvent(ownerHarness.menu, row({ contextMenu: asynchronousOwner }), {} as MouseEvent)).toBe(
+            false
+        );
+        expect(ownerHarness.addItem).toHaveBeenCalledOnce();
+        expect(ownerHarness.showAtMouseEvent).not.toHaveBeenCalled();
+
+        expect(showProviderRowContextMenuAtPosition(extensionHarness.menu, row(), { x: 1, y: 2 }, asynchronousExtension)).toBe(false);
+        expect(extensionHarness.addItem).toHaveBeenCalledOnce();
+        expect(extensionHarness.showAtPosition).not.toHaveBeenCalled();
+
+        await Promise.resolve();
+        expect(warn).toHaveBeenCalledWith(
+            '[TPS Notebook Navigator] Provider row asynchronous menu extension host failed.',
+            expect.objectContaining({ providerId: 'example/tasks', rowId: 'one', error: extensionError })
+        );
+    });
+
+    it('fails registered Promise-returning extensions closed through the real menu host path', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const resolvedHarness = createMenuHarness();
+        const rejectedHarness = createMenuHarness();
+        const file = createTestTFile('Inbox/Tasks.md');
+        const target = createNavigatorRowMenuTarget(row(), file, 'builtin:checkboxes');
+        expect(target).not.toBeNull();
+        if (!target) {
+            throw new Error('Expected a current row-menu target.');
+        }
+
+        type RegisteredExtension = Parameters<MenusAPI['registerRowMenu']>[0];
+        const resolvedMenus = new MenusAPI();
+        const resolvedExtension = ((context: Parameters<RegisteredExtension>[0]) => {
+            context.addItem(() => undefined);
+            return Promise.resolve();
+        }) as unknown as RegisteredExtension;
+        resolvedMenus.registerRowMenu(resolvedExtension);
+
+        expect(
+            showProviderRowContextMenuAtMouseEvent(resolvedHarness.menu, row(), {} as MouseEvent, controls =>
+                resolvedMenus.applyRowMenuExtensions({ target, ...controls })
+            )
+        ).toBe(false);
+        expect(resolvedHarness.addItem).toHaveBeenCalledOnce();
+        expect(resolvedHarness.showAtMouseEvent).not.toHaveBeenCalled();
+
+        const rejection = new Error('registered extension rejected');
+        const rejectedMenus = new MenusAPI();
+        const rejectedExtension = ((context: Parameters<RegisteredExtension>[0]) => {
+            context.addItem(() => undefined);
+            return Promise.reject(rejection);
+        }) as unknown as RegisteredExtension;
+        rejectedMenus.registerRowMenu(rejectedExtension);
+
+        expect(
+            showProviderRowContextMenuAtPosition(rejectedHarness.menu, row(), { x: 1, y: 2 }, controls =>
+                rejectedMenus.applyRowMenuExtensions({ target, ...controls })
+            )
+        ).toBe(false);
+        expect(rejectedHarness.addItem).toHaveBeenCalledOnce();
+        expect(rejectedHarness.showAtPosition).not.toHaveBeenCalled();
+
+        await Promise.resolve();
+        expect(error).toHaveBeenCalledWith('Notebook Navigator row menu extension failed', rejection);
+    });
+
     it('isolates a provider item callback and does not show its otherwise blank menu', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         const harness = createMenuHarness();
@@ -248,5 +524,40 @@ describe('provider row context menus', () => {
         ).toBe(false);
         expect(harness.showAtMouseEvent).not.toHaveBeenCalled();
         expect(warn).toHaveBeenCalledOnce();
+    });
+
+    it('fails Promise-returning item initializers closed and observes later rejection', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const resolvedHarness = createMenuHarness();
+        const rejectedHarness = createMenuHarness();
+        const resolvedInitializer = (() => Promise.resolve()) as unknown as (item: MenuItem) => void;
+        const initializerError = new Error('async item failed');
+        const rejectedInitializer = (() => Promise.reject(initializerError)) as unknown as (item: MenuItem) => void;
+
+        expect(
+            showProviderRowContextMenuAtMouseEvent(
+                resolvedHarness.menu,
+                row({
+                    contextMenu: context => {
+                        context.addItem(resolvedInitializer);
+                    }
+                }),
+                {} as MouseEvent
+            )
+        ).toBe(false);
+        expect(resolvedHarness.showAtMouseEvent).not.toHaveBeenCalled();
+
+        expect(
+            showProviderRowContextMenuAtPosition(rejectedHarness.menu, row(), { x: 1, y: 2 }, controls => {
+                controls.addItem(rejectedInitializer);
+            })
+        ).toBe(false);
+        expect(rejectedHarness.showAtPosition).not.toHaveBeenCalled();
+
+        await Promise.resolve();
+        expect(warn).toHaveBeenCalledWith(
+            '[TPS Notebook Navigator] Provider row asynchronous context-menu item failed.',
+            expect.objectContaining({ providerId: 'example/tasks', rowId: 'one', error: initializerError })
+        );
     });
 });

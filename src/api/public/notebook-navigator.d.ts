@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 2.9.0
+ * Version: 2.10.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -402,6 +402,39 @@ export interface TypeMenuExtensionContext {
     readonly descriptor: NavigatorTypeDescriptor;
 }
 
+/** Immutable checkbox presentation exposed to row-menu integrations. */
+export interface NavigatorRowMenuCheckboxState {
+    readonly checked: boolean;
+    readonly marker?: string;
+}
+
+/** Current, host-validated transient or Type-backed row target. */
+export interface NavigatorRowMenuTarget {
+    readonly providerId: string;
+    readonly rowId: string;
+    readonly kind: string;
+    readonly label: string;
+    readonly file: TFile;
+    readonly sourcePath: string;
+    /** Zero-based rendered-row snapshot; re-resolve mutable line content before writing. */
+    readonly sourceLineNumber?: number;
+    /** Opaque selected Type id, or null when the row is attached beneath a note. */
+    readonly typeId: string | null;
+    readonly checkbox: NavigatorRowMenuCheckboxState | null;
+}
+
+/** Optional pure filter used to keep row actions off unrelated rows. */
+export interface NavigatorRowMenuExtensionOptions {
+    readonly supports?: (target: NavigatorRowMenuTarget) => boolean;
+}
+
+/** Context passed while registered row-menu items are built synchronously. */
+export interface NavigatorRowMenuExtensionContext {
+    readonly addItem: (cb: (item: MenuItem) => void) => void;
+    readonly addSeparator: () => void;
+    readonly target: NavigatorRowMenuTarget;
+}
+
 /** Dispose function returned by menu registration methods */
 export type MenuExtensionDispose = () => void;
 
@@ -469,7 +502,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 2.9.0
+ * @version 2.10.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */
@@ -598,6 +631,11 @@ export interface NotebookNavigatorAPI {
         registerPropertyMenu(callback: (context: PropertyMenuExtensionContext) => void): MenuExtensionDispose;
         /** Register items for a built-in, Kind, or provider-owned Type collection context menu */
         registerTypeMenu(callback: (context: TypeMenuExtensionContext) => void): MenuExtensionDispose;
+        /** Register actions for matching attached, structural, Kind, task, and provider-owned rows */
+        registerRowMenu(
+            callback: (context: NavigatorRowMenuExtensionContext) => void,
+            options?: NavigatorRowMenuExtensionOptions
+        ): MenuExtensionDispose;
     };
 
     // Event subscription

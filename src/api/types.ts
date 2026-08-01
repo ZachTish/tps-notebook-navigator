@@ -472,6 +472,42 @@ export interface TypeMenuExtensionContext {
     readonly descriptor: NavigatorTypeDescriptor;
 }
 
+/** Immutable checkbox presentation exposed to row-menu integrations. */
+export interface NavigatorRowMenuCheckboxState {
+    readonly checked: boolean;
+    readonly marker?: string;
+}
+
+/**
+ * Current, host-validated target for a transient or Type-backed row menu.
+ * `sourceLineNumber` is zero-based and describes the rendered row snapshot;
+ * integrations must re-resolve mutable line content before writing.
+ */
+export interface NavigatorRowMenuTarget {
+    readonly providerId: string;
+    readonly rowId: string;
+    readonly kind: string;
+    readonly label: string;
+    readonly file: TFile;
+    readonly sourcePath: string;
+    readonly sourceLineNumber?: number;
+    /** Opaque selected Type id, or null when the row is attached beneath a note. */
+    readonly typeId: string | null;
+    readonly checkbox: NavigatorRowMenuCheckboxState | null;
+}
+
+/** Optional pure filter used to keep row actions off unrelated rows. */
+export interface NavigatorRowMenuExtensionOptions {
+    readonly supports?: (target: NavigatorRowMenuTarget) => boolean;
+}
+
+/** Context passed while registered row-menu items are built synchronously. */
+export interface NavigatorRowMenuExtensionContext {
+    readonly addItem: (cb: (item: MenuItem) => void) => void;
+    readonly addSeparator: () => void;
+    readonly target: NavigatorRowMenuTarget;
+}
+
 export type PropertyNodeParts =
     | {
           /** Root node returned for `propertyNodes.rootId` */

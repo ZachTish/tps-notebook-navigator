@@ -17,10 +17,10 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { MenusAPI, type FileMenuExtension, type TypeMenuExtension } from '../../src/api/modules/MenusAPI';
+import { MenusAPI, type FileMenuExtension, type RowMenuExtension, type TypeMenuExtension } from '../../src/api/modules/MenusAPI';
 import { TFolder } from 'obsidian';
 import type { Menu, MenuItem } from 'obsidian';
-import type { NavigatorTypeDescriptor } from '../../src/api/types';
+import type { NavigatorRowMenuTarget, NavigatorTypeDescriptor } from '../../src/api/types';
 import { createTestTFile } from '../utils/createTestTFile';
 
 type MenuStub = {
@@ -32,6 +32,22 @@ function createMenuStub(): { menu: MenuStub; addItem: ReturnType<typeof vi.fn>; 
     const addItem = vi.fn((cb: (item: MenuItem) => void) => cb({} as MenuItem));
     const addSeparator = vi.fn(() => undefined);
     return { menu: { addItem, addSeparator }, addItem, addSeparator };
+}
+
+function createRowMenuTarget(overrides: Partial<NavigatorRowMenuTarget> = {}): NavigatorRowMenuTarget {
+    const file = createTestTFile('Inbox/Tasks.md');
+    return {
+        providerId: 'example/tasks',
+        rowId: 'task-one',
+        kind: 'example/task',
+        label: 'Review navigator',
+        file,
+        sourcePath: file.path,
+        sourceLineNumber: 7,
+        typeId: 'structural:task',
+        checkbox: { checked: false, marker: ' ' },
+        ...overrides
+    };
 }
 
 describe('MenusAPI', () => {
@@ -256,6 +272,151 @@ describe('MenusAPI', () => {
         ).toBe(0);
         expect(addItem).toHaveBeenCalledOnce();
         expect(consoleSpy).toHaveBeenCalledOnce();
+
+        consoleSpy.mockRestore();
+    });
+
+    it('registers filtered row actions with immutable current targets and reactive disposal', () => {
+        const menusAPI = new MenusAPI();
+        const listener = vi.fn();
+        const unsubscribe = menusAPI.subscribeRowMenuExtensions(listener);
+        const supports = vi.fn((target: NavigatorRowMenuTarget) => target.kind === 'example/task');
+        const addItem = vi.fn();
+        const addSeparator = vi.fn();
+        let captured: Parameters<Parameters<MenusAPI['registerRowMenu']>[0]>[0] | undefined;
+
+        const dispose = menusAPI.registerRowMenu(
+            context => {
+                captured = context;
+                context.addItem(() => undefined);
+                context.addSeparator();
+            },
+            { supports }
+        );
+        const target = createRowMenuTarget();
+
+        expect(menusAPI.getRowMenuRevision()).toBe(1);
+        expect(listener).toHaveBeenCalledOnce();
+        expect(menusAPI.hasRowMenuExtensions(target)).toBe(true);
+        expect(menusAPI.applyRowMenuExtensions({ target, addItem, addSeparator })).toBe(true);
+
+        expect(addItem).toHaveBeenCalledOnce();
+        expect(addSeparator).toHaveBeenCalledOnce();
+        expect(captured).toBeDefined();
+        expect(Object.isFrozen(captured)).toBe(true);
+        expect(captured?.target).not.toBe(target);
+        expect(Object.isFrozen(captured?.target)).toBe(true);
+        expect(Object.isFrozen(captured?.target.checkbox)).toBe(true);
+        expect(captured?.target).toMatchObject({
+            providerId: 'example/tasks',
+            rowId: 'task-one',
+            kind: 'example/task',
+            sourcePath: 'Inbox/Tasks.md',
+            sourceLineNumber: 7,
+            typeId: 'structural:task',
+            checkbox: { checked: false, marker: ' ' }
+        });
+        expect(supports.mock.calls.every(([candidate]) => Object.isFrozen(candidate))).toBe(true);
+
+        dispose();
+        dispose();
+        expect(menusAPI.getRowMenuRevision()).toBe(2);
+        expect(listener).toHaveBeenCalledTimes(2);
+        expect(menusAPI.hasRowMenuExtensions(target)).toBe(false);
+        unsubscribe();
+    });
+
+    it('isolates row supports, builders, rejected promises, and delayed additions', async () => {
+        const menusAPI = new MenusAPI();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const addItem = vi.fn();
+        const addSeparator = vi.fn();
+        const target = createRowMenuTarget();
+
+        menusAPI.registerRowMenu(() => {
+            throw new Error('builder failed');
+        });
+        menusAPI.registerRowMenu(() => undefined, {
+            supports: () => {
+                throw new Error('supports failed');
+            }
+        });
+        const promiseReturningExtension = ((context: Parameters<RowMenuExtension>[0]) =>
+            Promise.resolve().then(() => {
+                context.addItem(() => undefined);
+                context.addSeparator();
+                throw new Error('async failed');
+            })) as unknown as RowMenuExtension;
+        menusAPI.registerRowMenu(promiseReturningExtension);
+        menusAPI.registerRowMenu(context => context.addItem(() => undefined), { supports: () => false });
+        menusAPI.registerRowMenu(context => context.addItem(() => undefined), { supports: () => true });
+
+        expect(menusAPI.hasRowMenuExtensions(target)).toBe(true);
+        expect(menusAPI.applyRowMenuExtensions({ target, addItem, addSeparator })).toBe(false);
+        expect(addItem).toHaveBeenCalledOnce();
+
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(addItem).toHaveBeenCalledOnce();
+        expect(addSeparator).not.toHaveBeenCalled();
+        expect(consoleSpy).toHaveBeenCalledWith('Notebook Navigator row menu extension supports check failed', expect.any(Error));
+        expect(consoleSpy).toHaveBeenCalledWith('Notebook Navigator row menu extension failed', expect.any(Error));
+        expect(consoleSpy).toHaveBeenCalledWith(
+            'Notebook Navigator row menu extension returned a Promise. Add menu entries synchronously and do async work in onClick handlers.'
+        );
+        expect(consoleSpy).toHaveBeenCalledWith(
+            'Notebook Navigator row menu extension attempted to add menu items asynchronously. Add menu items synchronously and do async work in onClick handlers.'
+        );
+        expect(consoleSpy).toHaveBeenCalledWith(
+            'Notebook Navigator row menu extension attempted to add a separator asynchronously. Add menu entries synchronously.'
+        );
+
+        consoleSpy.mockRestore();
+    });
+
+    it('treats Promise-returning row filters as unsupported and observes rejected filters', async () => {
+        const menusAPI = new MenusAPI();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const addItem = vi.fn();
+        const addSeparator = vi.fn();
+        const target = createRowMenuTarget();
+        const callback = vi.fn();
+        const resolvedSupports = (async () => true) as unknown as (candidate: NavigatorRowMenuTarget) => boolean;
+        const rejectedSupports = (async () => {
+            throw new Error('async supports failed');
+        }) as unknown as (candidate: NavigatorRowMenuTarget) => boolean;
+
+        menusAPI.registerRowMenu(callback, { supports: resolvedSupports });
+        menusAPI.registerRowMenu(callback, { supports: rejectedSupports });
+
+        expect(menusAPI.hasRowMenuExtensions(target)).toBe(false);
+        menusAPI.applyRowMenuExtensions({ target, addItem, addSeparator });
+        expect(callback).not.toHaveBeenCalled();
+        expect(addItem).not.toHaveBeenCalled();
+        expect(addSeparator).not.toHaveBeenCalled();
+
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(consoleSpy).toHaveBeenCalledWith(
+            'Notebook Navigator row menu extension supports returned a Promise. Filters must be synchronous and side-effect-free.'
+        );
+        expect(consoleSpy).toHaveBeenCalledWith('Notebook Navigator row menu extension supports check failed', expect.any(Error));
+
+        consoleSpy.mockRestore();
+    });
+
+    it('validates row registration inputs and isolates registration listeners', () => {
+        const menusAPI = new MenusAPI();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        menusAPI.subscribeRowMenuExtensions(() => {
+            throw new Error('listener failed');
+        });
+
+        expect(() => menusAPI.registerRowMenu(null as never)).toThrow(/must be a function/u);
+        expect(() => menusAPI.registerRowMenu(() => undefined, null as never)).toThrow(/must be a record/u);
+        expect(() => menusAPI.registerRowMenu(() => undefined, { supports: true } as never)).toThrow(/supports must be a function/u);
+        expect(() => menusAPI.registerRowMenu(() => undefined)).not.toThrow();
+        expect(consoleSpy).toHaveBeenCalledWith('Notebook Navigator row menu extension listener failed', expect.any(Error));
 
         consoleSpy.mockRestore();
     });

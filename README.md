@@ -56,6 +56,15 @@ asynchronous work belongs in the item's `onClick` handler. A removed or otherwis
 adds no synchronous item, leaves the menu closed instead of opening a blank or outdated surface; thrown failures and rejected
 Promises are isolated. Registrations are runtime-only and add no settings, persisted state, or migration.
 
+API 2.10.0 adds `menus.registerRowMenu(...)` so an integration can attach actions to the actual source-backed rows rendered
+beneath notes or inside Notes, Checkboxes, Bullets, Headings, dynamic Kinds, and provider-owned collections. The optional
+pure `supports(target)` filter controls which rows expose the action affordance. A frozen target includes current `TFile`
+identity, provider/row/kind identity, optional zero-based line, selected Type id, and immutable checkbox presentation without
+exposing provider mutation callbacks or the host `Menu`. Row-owner actions remain first; desktop right-click, native mobile
+long-press, and **More actions** use the same guarded builder. Stale files and empty or failing integrations fail closed.
+Promise-returning builders invalidate the whole attempted menu, even if they add an item before their first `await`;
+asynchronous work belongs inside an item's `onClick` handler.
+
 Clicks, back/forward history, and public calls share one validator, ancestor-expansion, focus, and scroll path. Catalog DTOs
 are immutable and intentionally omit GCM records, source paths, task payloads, and counts whose meaning would differ before
 and after Navigator visibility filtering. Readiness and removal authority are tracked per source: a failed provider cannot
@@ -82,6 +91,10 @@ The Types toggle and all three task-row values persist in the TPS plugin's own `
 - Attached GCM task rows and Type-backed task rows expose the same current GCM task actions. Menu construction and source activation re-resolve the live optional API and fail closed with a visible warning when the task or capability is stale.
 - Provider controls own their keyboard and context-menu events, so completing a task cannot accidentally trigger file deletion, selection, or the empty-list menu.
 - A provider may expose synchronous row actions through `contextMenu(context)`. The same actions open from desktop right-click, the native mobile long-press context-menu event, or the keyboard-focusable **More actions** button. Failed, asynchronous, and empty builders are isolated and never open a blank menu.
+- A separate integration may add matching actions to any current source-backed provider or Type row through
+  `menus.registerRowMenu(...)`. Its optional `supports(target)` filter is reevaluated at menu open; loading/error placeholders
+  and deleted source files never receive an extension target. Registered actions compose after row-owner actions through the
+  same right-click, long-press, and accessible-button path.
 - External providers can opt in to a selected Type collection with `supportsTypeScope: true`. They receive the opaque selected Type id and only the exact visible paths represented by the current searched Type rows; providers that do not opt in retain their previous attached-list behavior.
 - A Type provider establishes a new top-level collection through `types.registerProvider(...)`. Its owner-row query receives
   the active search text, an abort signal, and every Markdown path allowed by the current Navigator visibility profile. The
@@ -108,6 +121,23 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 4.9.0 — integration-owned result row actions
+
+- Adds `menus.registerRowMenu(...)` in public API 2.10.0 for attached rows plus Notes, Checkboxes, Bullets, Headings,
+  dynamic Kind entities, tasks, and externally owned or augmenting Type rows.
+- Supplies a frozen, current-file target with provider/row/kind identity, optional zero-based source line, selected Type id,
+  and immutable checkbox state while keeping mutation callbacks and the host `Menu` private.
+- Adds an optional synchronous `supports(target)` filter so unrelated rows do not gain an action affordance; registration and
+  disposal refresh open virtualized lists immediately.
+- Composes row-owner and registered actions through the same desktop right-click, native mobile long-press, and
+  keyboard-accessible **More actions** path. Stale source files, empty builders, failed items, delayed additions, and
+  thrown/rejected integrations are isolated and do not open a blank menu.
+- Requires no settings, persistence, or note-data migration and keeps the minimum supported Obsidian version at 1.11.0.
+- Validated with 208 Vitest files and 2,232 tests plus formatting, ESLint, TypeScript, stylesheet, source-namespace,
+  artifact-identity, and production-build gates. Live Obsidian 1.12.7 QA confirmed the visible Types hierarchy, exact-source
+  checkbox activation, native GCM actions followed by a temporary registered action, immutable current target delivery,
+  and immediate action removal after disposal.
 
 ### 4.8.0 — integration-owned Type collection actions
 

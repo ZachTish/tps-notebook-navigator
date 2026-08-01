@@ -23,15 +23,15 @@ import type {
     TagMenuExtensionContext,
     PropertyMenuExtensionContext,
     TypeMenuExtensionContext,
+    NavigatorRowMenuExtensionContext,
+    NavigatorRowMenuExtensionOptions,
+    NavigatorRowMenuTarget,
     NavigatorTypeDescriptor,
     FileMenuSelectionMode
 } from '../types';
+import { isPromiseLike } from '../../utils/async';
 
 export type MenuExtensionDispose = () => void;
-
-function isPromiseLike(value: unknown): value is Promise<unknown> {
-    return value instanceof Promise;
-}
 
 export type {
     FileMenuExtensionContext,
@@ -39,6 +39,9 @@ export type {
     TagMenuExtensionContext,
     PropertyMenuExtensionContext,
     TypeMenuExtensionContext,
+    NavigatorRowMenuExtensionContext,
+    NavigatorRowMenuExtensionOptions,
+    NavigatorRowMenuTarget,
     FileMenuSelectionMode
 };
 
@@ -47,6 +50,7 @@ export type FolderMenuExtension = (context: FolderMenuExtensionContext) => void;
 export type TagMenuExtension = (context: TagMenuExtensionContext) => void;
 export type PropertyMenuExtension = (context: PropertyMenuExtensionContext) => void;
 export type TypeMenuExtension = (context: TypeMenuExtensionContext) => void;
+export type RowMenuExtension = (context: NavigatorRowMenuExtensionContext) => void;
 
 type FileMenuExtensionApplyContext = {
     menu: Menu;
@@ -78,6 +82,17 @@ type TypeMenuExtensionApplyContext = {
     descriptor: NavigatorTypeDescriptor;
 };
 
+type RowMenuExtensionApplyContext = {
+    target: NavigatorRowMenuTarget;
+    addItem: (cb: (item: MenuItem) => void) => void;
+    addSeparator: () => void;
+};
+
+interface RowMenuExtensionRegistration {
+    readonly callback: RowMenuExtension;
+    readonly supports?: (target: NavigatorRowMenuTarget) => boolean;
+}
+
 type MenuExtensionContextBase = {
     addItem: (cb: (item: MenuItem) => void) => void;
 };
@@ -91,6 +106,9 @@ export class MenusAPI {
     private tagMenuExtensions = new Set<TagMenuExtension>();
     private propertyMenuExtensions = new Set<PropertyMenuExtension>();
     private typeMenuExtensions = new Set<TypeMenuExtension>();
+    private rowMenuExtensions = new Set<RowMenuExtensionRegistration>();
+    private rowMenuListeners = new Set<() => void>();
+    private rowMenuRevision = 0;
 
     registerFileMenu(callback: FileMenuExtension): MenuExtensionDispose {
         return this.registerExtension(this.fileMenuExtensions, callback);
@@ -110,6 +128,36 @@ export class MenusAPI {
 
     registerTypeMenu(callback: TypeMenuExtension): MenuExtensionDispose {
         return this.registerExtension(this.typeMenuExtensions, callback);
+    }
+
+    registerRowMenu(callback: RowMenuExtension, options: NavigatorRowMenuExtensionOptions = {}): MenuExtensionDispose {
+        if (typeof callback !== 'function') {
+            throw new Error('Navigator row menu extension must be a function.');
+        }
+        if (!options || typeof options !== 'object' || Array.isArray(options)) {
+            throw new Error('Navigator row menu extension options must be a record.');
+        }
+        if (options.supports !== undefined && typeof options.supports !== 'function') {
+            throw new Error('Navigator row menu extension supports must be a function.');
+        }
+
+        const registration: RowMenuExtensionRegistration = Object.freeze({
+            callback,
+            ...(options.supports ? { supports: options.supports } : {})
+        });
+        this.rowMenuExtensions.add(registration);
+        this.publishRowMenuChange();
+
+        let active = true;
+        return () => {
+            if (!active) {
+                return;
+            }
+            active = false;
+            if (this.rowMenuExtensions.delete(registration)) {
+                this.publishRowMenuChange();
+            }
+        };
     }
 
     private registerExtension<T>(extensions: Set<T>, callback: T): MenuExtensionDispose {
@@ -165,7 +213,7 @@ export class MenusAPI {
                     console.error(
                         `Notebook Navigator ${errorPrefix} menu extension returned a Promise. Add menu items synchronously and do async work in onClick handlers.`
                     );
-                    void result.catch(error => {
+                    void Promise.resolve(result).catch(error => {
                         console.error(`Notebook Navigator ${errorPrefix} menu extension failed`, error);
                     });
                 }
@@ -246,5 +294,124 @@ export class MenusAPI {
                 descriptor: frozenDescriptor
             })
         );
+    }
+
+    /** @internal Monotonic snapshot used to refresh row action affordances. */
+    getRowMenuRevision(): number {
+        return this.rowMenuRevision;
+    }
+
+    /** @internal Subscribe to row-menu registration changes. */
+    subscribeRowMenuExtensions(listener: () => void): () => void {
+        this.rowMenuListeners.add(listener);
+        return () => this.rowMenuListeners.delete(listener);
+    }
+
+    /** @internal Whether at least one current registration supports this row. */
+    hasRowMenuExtensions(target: NavigatorRowMenuTarget): boolean {
+        return this.getMatchingRowMenuExtensions(this.freezeRowMenuTarget(target)).length > 0;
+    }
+
+    /**
+     * Builds registered row actions through the same restricted item/separator
+     * facade used by row owners. The host menu is never exposed.
+     * @internal
+     */
+    applyRowMenuExtensions({ target, addItem, addSeparator }: RowMenuExtensionApplyContext): boolean {
+        const frozenTarget = this.freezeRowMenuTarget(target);
+        const registrations = this.getMatchingRowMenuExtensions(frozenTarget);
+        if (registrations.length === 0) {
+            return true;
+        }
+
+        let isBuildingMenu = true;
+        let menuValid = true;
+        const guardedAddItem = (cb: (item: MenuItem) => void) => {
+            if (!isBuildingMenu) {
+                console.error(
+                    'Notebook Navigator row menu extension attempted to add menu items asynchronously. Add menu items synchronously and do async work in onClick handlers.'
+                );
+                return;
+            }
+            addItem(cb);
+        };
+        const guardedAddSeparator = () => {
+            if (!isBuildingMenu) {
+                console.error(
+                    'Notebook Navigator row menu extension attempted to add a separator asynchronously. Add menu entries synchronously.'
+                );
+                return;
+            }
+            addSeparator();
+        };
+        const extensionContext = Object.freeze({
+            addItem: guardedAddItem,
+            addSeparator: guardedAddSeparator,
+            target: frozenTarget
+        });
+
+        for (const registration of registrations) {
+            try {
+                const result: unknown = registration.callback(extensionContext);
+                if (isPromiseLike(result)) {
+                    menuValid = false;
+                    console.error(
+                        'Notebook Navigator row menu extension returned a Promise. Add menu entries synchronously and do async work in onClick handlers.'
+                    );
+                    void Promise.resolve(result).catch(error => {
+                        console.error('Notebook Navigator row menu extension failed', error);
+                    });
+                }
+            } catch (error) {
+                console.error('Notebook Navigator row menu extension failed', error);
+            }
+        }
+
+        isBuildingMenu = false;
+        return menuValid;
+    }
+
+    private getMatchingRowMenuExtensions(target: NavigatorRowMenuTarget): RowMenuExtensionRegistration[] {
+        const matches: RowMenuExtensionRegistration[] = [];
+        for (const registration of this.rowMenuExtensions) {
+            if (!registration.supports) {
+                matches.push(registration);
+                continue;
+            }
+            try {
+                const result: unknown = registration.supports(target);
+                if (isPromiseLike(result)) {
+                    console.error(
+                        'Notebook Navigator row menu extension supports returned a Promise. Filters must be synchronous and side-effect-free.'
+                    );
+                    void Promise.resolve(result).catch(error => {
+                        console.error('Notebook Navigator row menu extension supports check failed', error);
+                    });
+                    continue;
+                }
+                if (result === true) {
+                    matches.push(registration);
+                }
+            } catch (error) {
+                console.error('Notebook Navigator row menu extension supports check failed', error);
+            }
+        }
+        return matches;
+    }
+
+    private freezeRowMenuTarget(target: NavigatorRowMenuTarget): NavigatorRowMenuTarget {
+        const checkbox = target.checkbox ? Object.freeze({ ...target.checkbox }) : null;
+        return Object.freeze({ ...target, checkbox });
+    }
+
+    private publishRowMenuChange(): void {
+        this.rowMenuRevision += 1;
+        for (const listener of this.rowMenuListeners) {
+            try {
+                listener();
+            } catch (error) {
+                console.error('Notebook Navigator row menu extension listener failed', error);
+            }
+        }
     }
 }

@@ -48,6 +48,10 @@ export interface NotebookNavigatorInternalAPI {
         | 'applyTagMenuExtensions'
         | 'applyPropertyMenuExtensions'
         | 'applyTypeMenuExtensions'
+        | 'applyRowMenuExtensions'
+        | 'getRowMenuRevision'
+        | 'subscribeRowMenuExtensions'
+        | 'hasRowMenuExtensions'
     >;
     readonly rows: Pick<RowsAPI, 'getSelection' | 'subscribe' | 'dispose'>;
     readonly types: Pick<
@@ -100,7 +104,7 @@ export class NotebookNavigatorAPI {
     public readonly selection: Pick<SelectionAPI, 'getNavItem' | 'getCurrent'>;
     public readonly menus: Pick<
         MenusAPI,
-        'registerFileMenu' | 'registerFolderMenu' | 'registerTagMenu' | 'registerPropertyMenu' | 'registerTypeMenu'
+        'registerFileMenu' | 'registerFolderMenu' | 'registerTagMenu' | 'registerPropertyMenu' | 'registerTypeMenu' | 'registerRowMenu'
     >;
     public readonly tagCollections: {
         readonly taggedId: TagCollectionId;
@@ -189,7 +193,8 @@ export class NotebookNavigatorAPI {
             registerFolderMenu: callback => this.menusController.registerFolderMenu(callback),
             registerTagMenu: callback => this.menusController.registerTagMenu(callback),
             registerPropertyMenu: callback => this.menusController.registerPropertyMenu(callback),
-            registerTypeMenu: callback => this.menusController.registerTypeMenu(callback)
+            registerTypeMenu: callback => this.menusController.registerTypeMenu(callback),
+            registerRowMenu: (callback, options) => this.menusController.registerRowMenu(callback, options)
         });
         const getTagCollectionLabel = (tag: unknown): string => {
             if (typeof tag === 'string' && isVirtualTagCollectionId(tag)) {

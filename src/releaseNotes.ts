@@ -106,6 +106,20 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.9.0',
+        date: '2026-08-01',
+        showOnUpdate: true,
+        info: 'Integrations can now add guarded actions to the actual items rendered inside Navigator result lists.',
+        new: [
+            'Public API `2.10.0` adds `menus.registerRowMenu(...)` for attached rows plus Notes, Checkboxes, Bullets, Headings, dynamic Kinds, and provider-owned Type results.',
+            'Each action receives a frozen current-file target with row identity, optional zero-based source line, selected Type id, and checkbox presentation.'
+        ],
+        improved: [
+            'An optional `supports(target)` filter keeps action affordances off unrelated rows, while stale files, empty builders, delayed additions, and integration failures fail closed.',
+            'Desktop right-click, native mobile long-press, and the keyboard-accessible More actions button now compose row-owner and registered integration actions through one guarded path.'
+        ]
+    },
+    {
         version: '4.8.0',
         date: '2026-08-01',
         showOnUpdate: true,

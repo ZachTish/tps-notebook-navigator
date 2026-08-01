@@ -1890,6 +1890,7 @@ export const ListPane = React.memo(
                             onPinnedGroupHeaderToggle={handlePinnedGroupHeaderToggle}
                             onListGroupHeaderToggle={handleListGroupHeaderToggle}
                             selectionType={selectionType}
+                            selectedType={selectedType}
                             selectedFolderPath={selectedFolderPath}
                             sortOption={effectiveSortOption}
                             searchHighlightTerms={searchHighlightTerms}

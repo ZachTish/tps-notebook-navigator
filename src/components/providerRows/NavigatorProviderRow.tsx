@@ -4,6 +4,7 @@
 
 import { Menu } from 'obsidian';
 import React, { useCallback, useEffect, useState } from 'react';
+import type { NavigatorRowMenuExtensionContext, NavigatorRowMenuTarget } from '../../api/types';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
 import { runAsyncAction } from '../../utils/async';
 import {
@@ -17,6 +18,16 @@ interface NavigatorProviderRowProps {
     row: NavigatorProvidedRow;
     /** Internal first-party hook; omitted for ordinary external provider rows. */
     onActivationRequested?: () => void;
+    /** Current host bridge for public actions supplied by plugins other than the row owner. */
+    rowMenuHost?: NavigatorProviderRowMenuHost;
+}
+
+export interface NavigatorProviderRowMenuHost {
+    /** Changes whenever registrations change so memoized rows refresh their action affordance. */
+    readonly revision: number;
+    createTarget(row: NavigatorProvidedRow, checkboxState: NavigatorRowMenuTarget['checkbox']): NavigatorRowMenuTarget | null;
+    hasExtensions(target: NavigatorRowMenuTarget): boolean;
+    appendExtensions(target: NavigatorRowMenuTarget, controls: Pick<NavigatorRowMenuExtensionContext, 'addItem' | 'addSeparator'>): boolean;
 }
 
 interface ApplyProviderCheckboxChangeOptions {
@@ -83,6 +94,30 @@ export function stopProviderRowKeyboardPropagation(event: Pick<React.KeyboardEve
     event.stopPropagation();
 }
 
+/** Consumes a pointer/keyboard event only after a non-empty menu was shown. */
+export function consumeProviderRowMenuEvent(
+    showMenu: () => boolean,
+    event: Pick<React.SyntheticEvent, 'preventDefault' | 'stopPropagation'>
+): boolean {
+    if (!showMenu()) {
+        return false;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
+}
+
+/** Builds the checkbox snapshot that matches the state currently presented to the user. */
+export function getProviderRowMenuCheckboxState(row: NavigatorProvidedRow, displayedChecked: boolean): NavigatorRowMenuTarget['checkbox'] {
+    if (!row.indicator) {
+        return null;
+    }
+    return {
+        checked: displayedChecked,
+        ...(displayedChecked === row.indicator.checked && row.indicator.marker !== undefined ? { marker: row.indicator.marker } : {})
+    };
+}
+
 export function requestProviderRowActivation(
     row: NavigatorProvidedRow,
     onActivationRequested: (() => void) | undefined,
@@ -97,7 +132,11 @@ export function requestProviderRowActivation(
     return true;
 }
 
-export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ row, onActivationRequested }: NavigatorProviderRowProps) {
+export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
+    row,
+    onActivationRequested,
+    rowMenuHost
+}: NavigatorProviderRowProps) {
     const sourceChecked = row.indicator?.checked ?? false;
     const sourceMarker = row.indicator?.marker;
     const [displayedChecked, setDisplayedChecked] = useState(sourceChecked);
@@ -143,33 +182,68 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
             })
         );
     }, [checkboxBusy, displayedChecked, row]);
+    const createExtensionTarget = useCallback(
+        () => rowMenuHost?.createTarget(row, getProviderRowMenuCheckboxState(row, displayedChecked)) ?? null,
+        [displayedChecked, row, rowMenuHost]
+    );
+    const extensionTarget = createExtensionTarget();
+    const hasRegisteredActions = extensionTarget ? rowMenuHost?.hasExtensions(extensionTarget) === true : false;
+    const sourceIsCurrent = !rowMenuHost || extensionTarget !== null;
+    const hasContextMenu = (Boolean(row.contextMenu) && sourceIsCurrent) || hasRegisteredActions;
+    const resolveExtensionAppender = useCallback(() => {
+        if (!rowMenuHost) {
+            return undefined;
+        }
+        const currentTarget = createExtensionTarget();
+        if (!currentTarget || !rowMenuHost.hasExtensions(currentTarget)) {
+            return undefined;
+        }
+        return (controls: Pick<NavigatorRowMenuExtensionContext, 'addItem' | 'addSeparator'>) => {
+            return rowMenuHost.appendExtensions(currentTarget, controls);
+        };
+    }, [createExtensionTarget, rowMenuHost]);
     const handleContextMenu = useCallback(
         (event: React.MouseEvent<HTMLDivElement>) => {
-            if (!row.contextMenu) {
+            if (rowMenuHost && !createExtensionTarget()) {
+                return;
+            }
+            const extensionAppender = resolveExtensionAppender();
+            if (!row.contextMenu && !extensionAppender) {
                 return;
             }
 
-            event.preventDefault();
-            event.stopPropagation();
-            showProviderRowContextMenuAtMouseEvent(new Menu(), row, event.nativeEvent);
+            consumeProviderRowMenuEvent(
+                () => showProviderRowContextMenuAtMouseEvent(new Menu(), row, event.nativeEvent, extensionAppender),
+                event
+            );
         },
-        [row]
+        [createExtensionTarget, resolveExtensionAppender, row, rowMenuHost]
     );
     const handleMoreActions = useCallback(
         (event: React.MouseEvent<HTMLButtonElement>) => {
-            if (!row.contextMenu) {
+            if (rowMenuHost && !createExtensionTarget()) {
                 return;
             }
-
-            event.preventDefault();
-            event.stopPropagation();
+            const extensionAppender = resolveExtensionAppender();
+            if (!row.contextMenu && !extensionAppender) {
+                return;
+            }
             const rect = event.currentTarget.getBoundingClientRect();
-            showProviderRowContextMenuAtPosition(new Menu(), row, {
-                x: rect.left + rect.width / 2,
-                y: rect.bottom
-            });
+            consumeProviderRowMenuEvent(
+                () =>
+                    showProviderRowContextMenuAtPosition(
+                        new Menu(),
+                        row,
+                        {
+                            x: rect.left + rect.width / 2,
+                            y: rect.bottom
+                        },
+                        extensionAppender
+                    ),
+                event
+            );
         },
-        [row]
+        [createExtensionTarget, resolveExtensionAppender, row, rowMenuHost]
     );
     const lineDescription = row.sourceLineNumber === undefined ? '' : `, line ${row.sourceLineNumber + 1}`;
     const checkboxLabel = displayedChecked ? 'Mark task incomplete' : 'Mark task complete';
@@ -187,7 +261,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
             data-provider-id={row.providerId}
             data-provider-kind={row.kind}
             data-source-path={row.sourcePath}
-            data-provider-context-menu={row.contextMenu ? 'true' : undefined}
+            data-provider-context-menu={hasContextMenu ? 'true' : undefined}
             onContextMenu={handleContextMenu}
             onKeyDown={stopProviderRowKeyboardPropagation}
             onKeyUp={stopProviderRowKeyboardPropagation}
@@ -233,7 +307,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
                 <span className="nn-provider-row-label">{row.label}</span>
                 {row.secondaryLabel ? <span className="nn-provider-row-secondary">{row.secondaryLabel}</span> : null}
             </button>
-            {row.contextMenu ? (
+            {hasContextMenu ? (
                 <button
                     type="button"
                     className="nn-provider-row-more"

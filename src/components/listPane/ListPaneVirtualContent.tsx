@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { App, Menu, TFile, TFolder } from 'obsidian';
 import { Virtualizer } from '@tanstack/react-virtual';
 import { useFileSystemOps, useMetadataService, useServices } from '../../context/ServicesContext';
@@ -46,7 +46,10 @@ import { addManualSortGroupHeaderMenuItems } from '../../utils/contextMenu/manua
 import { addMergeNotesMenuItem } from '../../utils/contextMenu/mergeNotesMenuItems';
 import { getMarkdownFilesInOrder } from '../../utils/noteMerge';
 import { ManualSortGroupHeaderContent, ManualSortGroupHeaderProgress } from './ManualSortGroupHeaderContent';
-import { NavigatorProviderRow } from '../providerRows/NavigatorProviderRow';
+import { INTERNAL_NOTEBOOK_NAVIGATOR_API } from '../../api/NotebookNavigatorAPI';
+import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
+import { createNavigatorRowMenuTarget } from '../../utils/contextMenu/providerRowContextMenu';
+import { NavigatorProviderRow, type NavigatorProviderRowMenuHost } from '../providerRows/NavigatorProviderRow';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
 
 export interface PointerClientPosition {
@@ -125,6 +128,7 @@ interface ListPaneVirtualContentProps {
     onPinnedGroupHeaderToggle: () => void;
     onListGroupHeaderToggle: (collapseKey: string) => void;
     selectionType: NavigationItemType | null;
+    selectedType: TpsNavigatorTypeId | null;
     selectedFolderPath: string | null;
     sortOption?: SortOption;
     searchHighlightTerms?: readonly string[];
@@ -471,6 +475,7 @@ interface ListPaneRowProps {
     onFolderGroupHeaderMouseDown: (event: React.MouseEvent<HTMLSpanElement>, target: FolderGroupHeaderTarget) => void;
     onGroupHeaderContextMenu: (event: React.MouseEvent<HTMLDivElement>, header: HeaderRenderModel) => void;
     onProviderRowActivationRequested?: () => void;
+    rowMenuHost?: NavigatorProviderRowMenuHost;
 }
 
 /**
@@ -510,7 +515,8 @@ const ListPaneRow = React.memo(function ListPaneRow({
     onFolderGroupHeaderClick,
     onFolderGroupHeaderMouseDown,
     onGroupHeaderContextMenu,
-    onProviderRowActivationRequested
+    onProviderRowActivationRequested,
+    rowMenuHost
 }: ListPaneRowProps) {
     const virtualItemStyle: VirtualRowStyle = {
         top,
@@ -594,7 +600,11 @@ const ListPaneRow = React.memo(function ListPaneRow({
                     inlineRename={isInlineRenaming ? inlineRenameHandlers : undefined}
                 />
             ) : item.type === ListPaneItemType.PROVIDER_ROW && typeof item.data === 'object' ? (
-                <NavigatorProviderRow row={item.data as NavigatorProvidedRow} onActivationRequested={onProviderRowActivationRequested} />
+                <NavigatorProviderRow
+                    row={item.data as NavigatorProvidedRow}
+                    onActivationRequested={onProviderRowActivationRequested}
+                    rowMenuHost={rowMenuHost}
+                />
             ) : null}
         </div>
     );
@@ -649,6 +659,7 @@ export function ListPaneVirtualContent({
     onPinnedGroupHeaderToggle,
     onListGroupHeaderToggle,
     selectionType,
+    selectedType,
     selectedFolderPath,
     sortOption,
     searchHighlightTerms,
@@ -684,6 +695,28 @@ export function ListPaneVirtualContent({
     getSolidBackground
 }: ListPaneVirtualContentProps) {
     const { app, commandQueue, plugin } = useServices();
+    const rowMenus = plugin.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].menus ?? null;
+    const subscribeToRowMenus = useCallback(
+        (listener: () => void) => rowMenus?.subscribeRowMenuExtensions(listener) ?? (() => undefined),
+        [rowMenus]
+    );
+    const getRowMenuRevision = useCallback(() => rowMenus?.getRowMenuRevision() ?? 0, [rowMenus]);
+    const rowMenuRevision = useSyncExternalStore(subscribeToRowMenus, getRowMenuRevision, getRowMenuRevision);
+    const rowMenuTypeId = selectionType === ItemType.TYPE ? selectedType : null;
+    const rowMenuHost = useMemo<NavigatorProviderRowMenuHost | undefined>(() => {
+        if (!rowMenus) {
+            return undefined;
+        }
+        return {
+            revision: rowMenuRevision,
+            createTarget: (row, checkboxState) => {
+                const file = app.vault.getFileByPath(row.sourcePath);
+                return file ? createNavigatorRowMenuTarget(row, file, rowMenuTypeId, checkboxState) : null;
+            },
+            hasExtensions: target => rowMenus.hasRowMenuExtensions(target),
+            appendExtensions: (target, controls) => rowMenus.applyRowMenuExtensions({ target, ...controls })
+        };
+    }, [app.vault, rowMenuRevision, rowMenuTypeId, rowMenus]);
     const fileSystemOps = useFileSystemOps();
     const metadataService = useMetadataService();
     const collapseChevronIcons = useMemo(
@@ -1226,6 +1259,7 @@ export function ListPaneVirtualContent({
                                     onFolderGroupHeaderMouseDown={handleFolderGroupHeaderMouseDown}
                                     onGroupHeaderContextMenu={handleGroupHeaderContextMenu}
                                     onProviderRowActivationRequested={onProviderRowActivationRequested}
+                                    rowMenuHost={rowMenuHost}
                                 />
                             );
                         })}

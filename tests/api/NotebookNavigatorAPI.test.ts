@@ -178,7 +178,9 @@ describe('NotebookNavigatorAPI', () => {
         expect('updateNavigationState' in api.selection).toBe(false);
         expect('applyFileMenuExtensions' in api.menus).toBe(false);
         expect('applyTypeMenuExtensions' in api.menus).toBe(false);
+        expect('applyRowMenuExtensions' in api.menus).toBe(false);
         expect(typeof api.menus.registerTypeMenu).toBe('function');
+        expect(typeof api.menus.registerRowMenu).toBe('function');
         expect(typeof api.rows.registerProvider).toBe('function');
         expect(Object.isFrozen(api.types)).toBe(true);
         expect(api.types.notesId).toBe('entity:note');
@@ -195,6 +197,10 @@ describe('NotebookNavigatorAPI', () => {
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].selection.updateNavigationState).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].menus.applyFileMenuExtensions).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].menus.applyTypeMenuExtensions).toBe('function');
+        expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].menus.applyRowMenuExtensions).toBe('function');
+        expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].menus.getRowMenuRevision).toBe('function');
+        expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].menus.subscribeRowMenuExtensions).toBe('function');
+        expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].menus.hasRowMenuExtensions).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].rows.getSelection).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].rows.subscribe).toBe('function');
         expect(typeof api[INTERNAL_NOTEBOOK_NAVIGATOR_API].rows.dispose).toBe('function');
