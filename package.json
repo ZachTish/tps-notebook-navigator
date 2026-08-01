@@ -1,6 +1,6 @@
 {
   "name": "tps-notebook-navigator",
-  "version": "4.3.0",
+  "version": "4.4.0",
   "description": "Experimental, co-installable TPS fork of Notebook Navigator with optional TPS integrations.",
   "main": "main.js",
   "engines": {
@@ -16,6 +16,7 @@
     "tps:namespace": "node scripts/tps-namespace.mjs --write",
     "tps:namespace:check": "node scripts/tps-namespace.mjs --check",
     "tps:artifacts:check": "node scripts/check-tps-artifacts.mjs",
+    "upstream:audit": "node scripts/upstream-merge-audit.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" --fix",

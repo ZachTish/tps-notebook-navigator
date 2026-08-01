@@ -4,6 +4,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TPS_DND_KIT_DESCRIBED_BY_PREFIX, TPS_DND_KIT_LIVE_REGION_PREFIX } from './tps-runtime-namespace.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -68,6 +69,12 @@ if (upstreamMainToken.test(main)) {
 }
 if (!main.includes('tps-notebook-navigator') || !main.includes('tps-nn-')) {
     fail('main.js is missing the TPS runtime identity.');
+}
+if (main.includes('DndDescribedBy') || main.includes('DndLiveRegion')) {
+    fail('main.js contains an upstream dnd-kit accessibility ID prefix.');
+}
+if (!main.includes(TPS_DND_KIT_DESCRIBED_BY_PREFIX) || !main.includes(TPS_DND_KIT_LIVE_REGION_PREFIX)) {
+    fail('main.js is missing a TPS dnd-kit accessibility ID prefix.');
 }
 
 console.log(`[TPS artifact identity] ok version=${manifest.version}`);

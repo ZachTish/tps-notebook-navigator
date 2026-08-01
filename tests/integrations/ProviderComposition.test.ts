@@ -8,7 +8,7 @@ import {
     GCM_TASK_ROW_PROVIDER_ID,
     GcmTaskRowProvider
 } from '../../src/integrations/gcm/GcmTaskRowProvider';
-import type { GcmTaskApiLike, GcmTaskRecordLike } from '../../src/integrations/gcm/gcmTaskApi';
+import type { GcmTaskApiLike, GcmTaskLinesApiLike, GcmTaskRecordLike } from '../../src/integrations/gcm/gcmTaskApi';
 import { NavigatorRowProviderRegistry } from '../../src/services/rows/NavigatorRowProviderRegistry';
 import { composeProviderRows } from '../../src/services/rows/composeProviderRows';
 import { buildStandaloneProviderListItems, mergeProviderRowsIntoList } from '../../src/services/rows/providerListItems';
@@ -21,9 +21,12 @@ import { createTestTFile } from '../utils/createTestTFile';
 const SOURCE_PATH = 'Notes/one.md';
 const EXTERNAL_PROVIDER_ID = 'example/actions';
 
-function createApp(api: GcmTaskApiLike): App {
-    const plugin = { api: { tasks: api } };
+function createApp(api: GcmTaskApiLike, taskLines?: GcmTaskLinesApiLike): App {
+    const plugin = { api: { tasks: api, ...(taskLines ? { taskLines } : {}) } };
     return {
+        vault: {
+            getFileByPath: vi.fn((path: string) => ({ path, extension: 'md' }))
+        },
         plugins: {
             enabledPlugins: new Set([TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]),
             getPlugin: vi.fn(() => plugin),
@@ -61,7 +64,11 @@ describe('built-in and external row provider composition', () => {
             changed: true,
             task: { ...task(), marker: 'x', checkbox: '[x]', status: 'complete', isComplete: true }
         }));
-        const app = createApp({ version: 1, list, focus, setCompletion });
+        const addTaskMenuItems = vi.fn<GcmTaskLinesApiLike['addMenuItems']>();
+        const app = createApp(
+            { version: 1, list, focus, setCompletion, parseLine: vi.fn(() => task()) },
+            { version: 1, addMenuItems: addTaskMenuItems }
+        );
         const contextMenu = vi.fn((_context: NavigatorRowContextMenuContext) => undefined);
         const registry = new NavigatorRowProviderRegistry();
         registry.register(new GcmTaskRowProvider());
@@ -112,6 +119,7 @@ describe('built-in and external row provider composition', () => {
             sourceLineNumber: 4,
             indicator: { type: 'checkbox', checked: false }
         });
+        expect(rows[0]?.contextMenu).toBeTypeOf('function');
         expect(rows[1]).toMatchObject({
             providerId: EXTERNAL_PROVIDER_ID,
             sourcePath: SOURCE_PATH,
@@ -127,6 +135,26 @@ describe('built-in and external row provider composition', () => {
             title: 'Review navigator'
         });
         expect(setCompletion).toHaveBeenCalledWith(expect.objectContaining({ path: SOURCE_PATH, lineNumber: 4 }), true);
+
+        const taskContext = {
+            providerId: GCM_TASK_ROW_PROVIDER_ID,
+            rowId: `${SOURCE_PATH}:4`,
+            kind: 'tps/gcm-task',
+            sourcePath: SOURCE_PATH,
+            sourceLineNumber: 4,
+            addItem: vi.fn((_configure: (item: MenuItem) => void) => undefined),
+            addSeparator: vi.fn(() => undefined)
+        };
+        rows[0]?.contextMenu?.(taskContext);
+        expect(addTaskMenuItems).toHaveBeenCalledOnce();
+        const taskMenuCall = addTaskMenuItems.mock.calls[0];
+        const configureTaskItem = vi.fn();
+        taskMenuCall?.[0].addItem(configureTaskItem);
+        taskMenuCall?.[0].addSeparator();
+        expect(taskContext.addItem).toHaveBeenCalledWith(configureTaskItem);
+        expect(taskContext.addSeparator).toHaveBeenCalledOnce();
+        expect(taskMenuCall?.[1]).toMatchObject({ file: { path: SOURCE_PATH }, lineNumber: 5, lineIndex: 4 });
+        expect(taskMenuCall?.[2]).toEqual({ includeTags: true });
 
         const externalContext = {
             providerId: EXTERNAL_PROVIDER_ID,

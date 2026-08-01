@@ -6,7 +6,22 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyTpsRuntimeNamespace } from '../../scripts/tps-runtime-namespace.mjs';
+import * as runtimeNamespace from '../../scripts/tps-runtime-namespace.mjs';
+
+interface DndKitNamespaceExports {
+    applyTpsDndKitAccessibilityNamespace: (source: string) => string;
+    isDndKitCoreModulePath: (filePath: string) => boolean;
+    TPS_DND_KIT_DESCRIBED_BY_PREFIX: string;
+    TPS_DND_KIT_LIVE_REGION_PREFIX: string;
+}
+
+const {
+    applyTpsDndKitAccessibilityNamespace,
+    applyTpsRuntimeNamespace,
+    isDndKitCoreModulePath,
+    TPS_DND_KIT_DESCRIBED_BY_PREFIX,
+    TPS_DND_KIT_LIVE_REGION_PREFIX
+} = runtimeNamespace as typeof runtimeNamespace & DndKitNamespaceExports;
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const scriptPath = path.resolve(dirname, '../../scripts/tps-namespace.mjs');
@@ -89,5 +104,27 @@ describe('TPS runtime namespace boundary', () => {
         expect(transformed).toContain('tps-nn-file-row');
         expect(transformed).toContain('tps-nn-provider-row');
         expect(applyTpsRuntimeNamespace(transformed)).toBe(transformed);
+    });
+
+    it('isolates bundled dnd-kit accessibility IDs without rewriting other dependencies', () => {
+        const source = [
+            'const describedById = useUniqueId("DndDescribedBy", id);',
+            'const liveRegionId = useUniqueId("DndLiveRegion");'
+        ].join('\n');
+
+        const transformed = applyTpsDndKitAccessibilityNamespace(source);
+
+        expect(transformed).toContain(`useUniqueId("${TPS_DND_KIT_DESCRIBED_BY_PREFIX}", id)`);
+        expect(transformed).toContain(`useUniqueId("${TPS_DND_KIT_LIVE_REGION_PREFIX}")`);
+        expect(transformed).not.toContain('DndDescribedBy');
+        expect(transformed).not.toContain('DndLiveRegion');
+        expect(applyTpsDndKitAccessibilityNamespace(transformed)).toBe(transformed);
+        expect(applyTpsRuntimeNamespace(source)).toBe(source);
+
+        expect(isDndKitCoreModulePath('/workspace/node_modules/@dnd-kit/core/dist/core.esm.js')).toBe(true);
+        expect(isDndKitCoreModulePath('C:\\workspace\\node_modules\\@dnd-kit\\core\\dist\\core.esm.js')).toBe(true);
+        expect(isDndKitCoreModulePath('node_modules/@dnd-kit/core/dist/core.esm.js')).toBe(true);
+        expect(isDndKitCoreModulePath('/workspace/node_modules/@dnd-kit/sortable/dist/sortable.esm.js')).toBe(false);
+        expect(isDndKitCoreModulePath('/workspace/src/vendor/dnd-kit/core.esm.js')).toBe(false);
     });
 });

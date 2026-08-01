@@ -77,7 +77,7 @@ TPS releases are prepared deliberately: align `manifest.json`, `package.json`, t
 
 Standalone GitHub checkouts can run formatting, tests, TypeScript, ESLint, Stylelint, the namespace audit, and the production bundle build. Standalone builds explicitly report `target=none lane=standalone`; only the contained test-vault workspace can load the adjacent atomic runtime deployment helper.
 
-## tps-namespace.mjs
+## tps-namespace.mjs and runtime identity
 
 Keeps inherited source in its merge-friendly upstream CSS/DOM namespace. Runtime JavaScript, tests, and generated CSS use the shared transform in `tps-runtime-namespace.mjs`.
 
@@ -86,7 +86,18 @@ npm run tps:namespace        # Restore accidental TPS prefixes to upstream sourc
 npm run tps:namespace:check  # Report committed runtime-prefix drift without changing files
 ```
 
-The transform is idempotent and intentionally does not change manifest IDs, storage keys, URLs, or integration behavior. Follow [the upstream sync guide](../docs/upstream-sync.md) and review every generated diff.
+The transform is idempotent and intentionally does not change manifest IDs, storage keys, URLs, or integration behavior. At the bundle boundary, the shared runtime helper also gives `@dnd-kit/core` described-by and live-region elements TPS-only ID prefixes so a co-installed upstream instance cannot own the same accessibility DOM IDs. The artifact check enforces both prefixes. Follow [the upstream sync guide](../docs/upstream-sync.md) and review every generated diff.
+
+## upstream-merge-audit.mjs
+
+Builds a read-only worklist before an upstream merge:
+
+```bash
+npm run upstream:audit -- upstream/main
+npm run upstream:audit -- 3.4.0
+```
+
+The command resolves the merge base, compares changed files on both sides, reports overlap, simulates `git merge-tree`, and classifies conflicting files and marker blocks as generated, documentation, source, test, or other work. It never fetches, checks out, merges, updates refs, or writes the worktree; fetch the intended ref separately before auditing it.
 
 ## gitdump.sh
 

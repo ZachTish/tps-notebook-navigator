@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
     NavigatorProviderRow,
     applyProviderCheckboxChange,
+    getProviderCheckboxPresentation,
     requestProviderRowActivation,
     stopProviderRowKeyboardPropagation
 } from '../../src/components/providerRows/NavigatorProviderRow';
@@ -91,9 +92,58 @@ describe('NavigatorProviderRow', () => {
         expect(markup).toContain('role="listitem"');
         expect(markup).toContain('role="checkbox"');
         expect(markup).toContain('aria-checked="false"');
-        expect(markup).toContain('aria-label="Mark task complete"');
+        expect(markup).toContain('aria-label="Open task. Mark task complete"');
         expect(markup).toContain('is-interactive');
         expect(markup).not.toContain('aria-readonly="true"');
+    });
+
+    it('renders the provider marker and exposes its non-binary state accessibly', () => {
+        const customStateRow: NavigatorProvidedRow = {
+            ...row(vi.fn()),
+            indicator: {
+                type: 'checkbox',
+                checked: false,
+                marker: '/',
+                onChange: vi.fn()
+            }
+        };
+        const markup = renderToStaticMarkup(React.createElement(NavigatorProviderRow, { row: customStateRow }));
+
+        expect(markup).toContain('class="tps-nn-provider-row-checkbox has-marker is-interactive"');
+        expect(markup).toContain('aria-label="Task state /. Mark task complete"');
+        expect(markup).toContain('data-task-marker="/"');
+        expect(markup).toContain('<span aria-hidden="true">/</span>');
+        expect(markup).not.toContain('>\u2713</span>');
+    });
+
+    it('keeps the provider completion marker instead of replacing it with a generic checkmark', () => {
+        const completedRow: NavigatorProvidedRow = {
+            ...row(),
+            indicator: {
+                type: 'checkbox',
+                checked: true,
+                marker: 'x'
+            }
+        };
+        const markup = renderToStaticMarkup(React.createElement(NavigatorProviderRow, { row: completedRow }));
+
+        expect(markup).toContain('class="tps-nn-provider-row-checkbox is-checked has-marker"');
+        expect(markup).toContain('aria-label="Completed task (x)"');
+        expect(markup).toContain('data-task-marker="x"');
+        expect(markup).toContain('<span aria-hidden="true">x</span>');
+    });
+
+    it('uses the binary fallback only when a provider omits a marker', () => {
+        expect(getProviderCheckboxPresentation(true)).toEqual({
+            marker: '✓',
+            hasVisibleMarker: true,
+            stateLabel: 'Completed task'
+        });
+        expect(getProviderCheckboxPresentation(false, ' ')).toEqual({
+            marker: ' ',
+            hasVisibleMarker: false,
+            stateLabel: 'Open task'
+        });
     });
 
     it('retains a display-only checkbox for providers without a mutation', () => {

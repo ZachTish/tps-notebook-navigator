@@ -28,6 +28,36 @@ interface ApplyProviderCheckboxChangeOptions {
     onError: (error: unknown) => void;
 }
 
+interface ProviderCheckboxPresentation {
+    marker: string;
+    hasVisibleMarker: boolean;
+    stateLabel: string;
+}
+
+/** Preserves provider-specific task markers while keeping a useful binary fallback. */
+export function getProviderCheckboxPresentation(checked: boolean, marker?: string): ProviderCheckboxPresentation {
+    const displayedMarker = marker ?? (checked ? '✓' : '');
+    const normalizedMarker = displayedMarker.trim();
+    const stateLabel =
+        marker === undefined
+            ? checked
+                ? 'Completed task'
+                : 'Open task'
+            : normalizedMarker
+              ? checked
+                  ? `Completed task (${normalizedMarker})`
+                  : `Task state ${normalizedMarker}`
+              : checked
+                ? 'Completed task'
+                : 'Open task';
+
+    return {
+        marker: displayedMarker,
+        hasVisibleMarker: normalizedMarker.length > 0,
+        stateLabel
+    };
+}
+
 /** Applies an optimistic checkbox mutation and guarantees rollback on failure. */
 export async function applyProviderCheckboxChange({
     previousChecked,
@@ -69,6 +99,7 @@ export function requestProviderRowActivation(
 
 export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ row, onActivationRequested }: NavigatorProviderRowProps) {
     const sourceChecked = row.indicator?.checked ?? false;
+    const sourceMarker = row.indicator?.marker;
     const [displayedChecked, setDisplayedChecked] = useState(sourceChecked);
     const [checkboxBusy, setCheckboxBusy] = useState(false);
 
@@ -142,6 +173,12 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
     );
     const lineDescription = row.sourceLineNumber === undefined ? '' : `, line ${row.sourceLineNumber + 1}`;
     const checkboxLabel = displayedChecked ? 'Mark task incomplete' : 'Mark task complete';
+    const markerForCurrentState = displayedChecked === sourceChecked ? sourceMarker : undefined;
+    const checkboxPresentation = getProviderCheckboxPresentation(displayedChecked, markerForCurrentState);
+    const interactiveCheckboxLabel = `${checkboxPresentation.stateLabel}. ${checkboxLabel}`;
+    const checkboxClassName = `nn-provider-row-checkbox${displayedChecked ? ' is-checked' : ''}${
+        checkboxPresentation.hasVisibleMarker ? ' has-marker' : ''
+    }`;
 
     return (
         <div
@@ -159,27 +196,29 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({ r
                 row.indicator.onChange ? (
                     <button
                         type="button"
-                        className={`nn-provider-row-checkbox is-interactive${displayedChecked ? ' is-checked' : ''}`}
+                        className={`${checkboxClassName} is-interactive`}
                         role="checkbox"
                         aria-checked={displayedChecked}
                         aria-busy={checkboxBusy || undefined}
-                        aria-label={checkboxLabel}
-                        title={checkboxBusy ? 'Updating task…' : checkboxLabel}
+                        aria-label={interactiveCheckboxLabel}
+                        data-task-marker={checkboxPresentation.hasVisibleMarker ? checkboxPresentation.marker : undefined}
+                        title={checkboxBusy ? 'Updating task…' : interactiveCheckboxLabel}
                         disabled={checkboxBusy}
                         onClick={handleCheckboxChange}
                     >
-                        <span aria-hidden="true">{displayedChecked ? '✓' : ''}</span>
+                        <span aria-hidden="true">{checkboxPresentation.marker}</span>
                     </button>
                 ) : (
                     <span
-                        className={`nn-provider-row-checkbox${displayedChecked ? ' is-checked' : ''}`}
+                        className={checkboxClassName}
                         role="checkbox"
                         aria-checked={displayedChecked}
                         aria-readonly="true"
-                        aria-label={displayedChecked ? 'Completed task' : 'Open task'}
+                        aria-label={checkboxPresentation.stateLabel}
+                        data-task-marker={checkboxPresentation.hasVisibleMarker ? checkboxPresentation.marker : undefined}
                         title="Task state is display-only"
                     >
-                        <span aria-hidden="true">{displayedChecked ? '✓' : ''}</span>
+                        <span aria-hidden="true">{checkboxPresentation.marker}</span>
                     </span>
                 )
             ) : null}

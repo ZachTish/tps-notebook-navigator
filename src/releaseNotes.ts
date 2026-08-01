@@ -106,6 +106,23 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.4.0',
+        date: '2026-07-31',
+        showOnUpdate: true,
+        info: 'Attached GCM tasks now have full action and task-state parity, with stronger co-install and upstream-sync safeguards.',
+        new: [
+            'Tasks shown beneath ordinary notes now expose the same guarded GCM task menu as task-backed Type rows on desktop and mobile.',
+            'A read-only upstream merge audit reports changed-file overlap and classifies exact merge conflicts before any Git mutation.'
+        ],
+        improved: [
+            'Provider checkbox markers now preserve working, holding, and other custom GCM states with accessible state labels.',
+            'Task activation and menu construction re-resolve current optional GCM capabilities and fail closed when a task is stale.'
+        ],
+        fixed: [
+            'Bundled dnd-kit described-by and live-region IDs now use TPS-only prefixes, preventing accessibility DOM collisions with a co-installed upstream Navigator.'
+        ]
+    },
+    {
         version: '4.3.0',
         date: '2026-07-31',
         showOnUpdate: true,

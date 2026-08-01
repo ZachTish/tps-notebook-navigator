@@ -16,18 +16,20 @@ Never point `origin` at upstream. Do not rebase or force-push the shared TPS `ma
 ## Update workflow
 
 1. Start from a clean, current TPS `main` and create a short-lived branch such as `sync/upstream-3.4.0`.
-2. Fetch both remotes and merge the desired upstream tag or commit with `--no-commit`. Record that exact upstream ref in the eventual commit and release notes.
-3. Resolve behavioral conflicts before adding new TPS behavior. Keep the TPS manifest ID, view IDs, storage/IndexedDB namespaces, events, drag types, API lookup, settings-transfer ID, and update URL. Keep inherited `nn-` and `.notebook-navigator` CSS/DOM tokens in source; do not hand-prefix them during conflict resolution.
-4. Run `npm run tps:namespace:check`. If it reports a mechanically prefixed source file, run `npm run tps:namespace` to restore the upstream token form and review that narrow repair.
-5. Regenerate `styles.css` rather than hand-merging that generated artifact. The stylesheet builder and esbuild both use `scripts/tps-runtime-namespace.mjs`, and Vitest applies that same transform to imported source.
-6. Run the focused identity, transform, import, and row-provider tests. Then run the full test, type, lint, formatting, style, contained build, deployment, and artifact-identity gates.
-7. Verify both `notebook-navigator` and `tps-notebook-navigator` remain enabled together, use separate settings/storage, and can open their own views. Never automatically import or mutate upstream settings.
+2. Fetch both remotes, then run `npm run upstream:audit -- <upstream-ref>`. The audit is read-only: it resolves the merge base, reports fork/upstream/overlap file counts, simulates `git merge-tree`, and classifies the exact generated, documentation, source, test, and other conflicts. It does not fetch, merge, write refs, or change the worktree.
+3. Merge the audited upstream tag or commit with `--no-commit`. Record that exact upstream ref in the eventual commit and release notes.
+4. Resolve behavioral conflicts before adding new TPS behavior. Keep the TPS manifest ID, view IDs, storage/IndexedDB namespaces, events, drag types, API lookup, settings-transfer ID, and update URL. Keep inherited `nn-` and `.notebook-navigator` CSS/DOM tokens in source; do not hand-prefix them during conflict resolution.
+5. Run `npm run tps:namespace:check`. If it reports a mechanically prefixed source file, run `npm run tps:namespace` to restore the upstream token form and review that narrow repair.
+6. Regenerate `styles.css` rather than hand-merging that generated artifact. The stylesheet builder and esbuild both use `scripts/tps-runtime-namespace.mjs`, and Vitest applies that same transform to imported source.
+7. Run the focused identity, transform, import, and row-provider tests. Then run the full test, type, lint, formatting, style, contained build, deployment, and artifact-identity gates.
+8. Verify both `notebook-navigator` and `tps-notebook-navigator` remain enabled together, use separate settings/storage, and can open their own views. Never automatically import or mutate upstream settings.
 
 ## Conflict map
 
 - `src/constants/tpsIdentity.ts` is the source of truth for host-global fork identifiers.
 - `tests/constants/tpsIdentity.test.ts` detects namespace and storage regressions.
-- `scripts/tps-runtime-namespace.mjs` owns the one-way source-to-runtime CSS/DOM transform shared by esbuild, Vitest, and generated styles.
+- `scripts/upstream-merge-audit.mjs` produces a deterministic read-only conflict worklist before any merge mutation.
+- `scripts/tps-runtime-namespace.mjs` owns the one-way source-to-runtime CSS/DOM transform shared by esbuild, Vitest, and generated styles. It also rewrites only bundled `@dnd-kit/core` accessibility ID prefixes so co-installed upstream and TPS views cannot emit duplicate described-by or live-region IDs.
 - `scripts/tps-namespace.mjs` restores accidentally committed runtime prefixes to merge-friendly upstream source tokens.
 - `src/services/settings/UpstreamSettingsImport.ts` remains explicit, confirmed, read-only toward upstream, and one-way into TPS settings.
 - `src/services/rows` owns generic transient row composition; `src/integrations/gcm` is an optional adapter with no hard dependency.

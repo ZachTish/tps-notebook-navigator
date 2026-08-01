@@ -91,6 +91,7 @@ export interface NavigatorRowProviderContext {
 export interface NavigatorRowCheckboxIndicator {
     readonly type: 'checkbox';
     readonly checked: boolean;
+    /** Source checkbox marker rendered verbatim, including non-binary task states such as `/` or `>`. */
     readonly marker?: string;
     /** Optional mutation. Omit it to render a display-only checkbox. */
     readonly onChange?: (checked: boolean) => void | Promise<void>;

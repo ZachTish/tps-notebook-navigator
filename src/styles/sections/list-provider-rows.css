@@ -76,6 +76,11 @@
     background: var(--interactive-accent);
 }
 
+.nn-provider-row-checkbox.has-marker:not(.is-checked) > span {
+    color: var(--text-muted);
+    font-weight: var(--font-semibold);
+}
+
 .notebook-navigator-mobile .nn-provider-row-checkbox {
     width: 44px;
     height: 44px;

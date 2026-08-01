@@ -13,12 +13,16 @@ import type {
 } from '../../services/rows/types';
 import { NAVIGATOR_ROW_PROVIDER_MAX_ROWS } from '../../services/rows/types';
 import { TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT, TPS_GCM_TASK_ROWS_PER_NOTE_MAX, TPS_GCM_TASK_ROWS_PER_NOTE_MIN } from '../../settings/types';
+import { showNotice } from '../../utils/noticeUtils';
 import {
     isGcmTaskRecord,
     resolveGcmTaskApi,
     resolveGcmTaskCheckboxesApi,
+    resolveGcmTaskLinesApi,
     type GcmTaskApiLike,
     type GcmTaskCheckboxesApiLike,
+    type GcmTaskLinesApiLike,
+    type GcmTaskMenuLike,
     type GcmTaskMutationResultLike,
     type GcmTaskRecordLike,
     type GcmTaskRefLike
@@ -106,6 +110,10 @@ function compareTasks(left: GcmTaskRecordLike, right: GcmTaskRecordLike): number
 
 function canMutateTaskCheckbox(api: GcmTaskApiLike | null, checkboxApi: GcmTaskCheckboxesApiLike | null): boolean {
     return typeof api?.setCompletion === 'function' || (typeof api?.setCheckbox === 'function' && checkboxApi !== null);
+}
+
+function canBuildTaskContextMenu(api: GcmTaskApiLike | null, taskLinesApi: GcmTaskLinesApiLike | null): boolean {
+    return typeof api?.parseLine === 'function' && taskLinesApi !== null;
 }
 
 export function createGcmTaskRowProviderSelection(options: GcmTaskRowProviderOptions): NavigatorRowProviderSelection {
@@ -253,6 +261,7 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
 
         const rows: NavigatorProvidedRowCandidate[] = [];
         const canMutateCheckbox = canMutateTaskCheckbox(api, resolveGcmTaskCheckboxesApi(context.app));
+        const hasContextMenu = canBuildTaskContextMenu(api, resolveGcmTaskLinesApi(context.app));
         // Fill one task depth across every note before taking the next task
         // from any note. This keeps a task-heavy note from consuming the
         // global provider ceiling and making later notes disappear entirely.
@@ -262,7 +271,7 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
                 if (!task) {
                     continue;
                 }
-                rows.push(this.toRow(context.app, task, canMutateCheckbox));
+                rows.push(this.toRow(context.app, task, canMutateCheckbox, hasContextMenu));
                 if (rows.length >= NAVIGATOR_ROW_PROVIDER_MAX_ROWS) {
                     break;
                 }
@@ -295,7 +304,9 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
         const subscriptions: { bus: EventBusLike; ref: unknown }[] = [];
         let observedApi = resolveGcmTaskApi(context.app);
         let observedCheckboxApi = resolveGcmTaskCheckboxesApi(context.app);
+        let observedTaskLinesApi = resolveGcmTaskLinesApi(context.app);
         let observedCanMutate = canMutateTaskCheckbox(observedApi, observedCheckboxApi);
+        let observedHasContextMenu = canBuildTaskContextMenu(observedApi, observedTaskLinesApi);
         this.progressiveInvalidationListeners.add(onInvalidate);
         const subscribe = (bus: EventBusLike, eventName: string, callback: (...args: unknown[]) => void) => {
             const ref = bus.on(eventName, callback);
@@ -314,13 +325,23 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
         subscribe(workspaceEvents, 'layout-change', () => {
             const nextApi = resolveGcmTaskApi(context.app);
             const nextCheckboxApi = resolveGcmTaskCheckboxesApi(context.app);
+            const nextTaskLinesApi = resolveGcmTaskLinesApi(context.app);
             const nextCanMutate = canMutateTaskCheckbox(nextApi, nextCheckboxApi);
-            if (nextApi === observedApi && nextCheckboxApi === observedCheckboxApi && nextCanMutate === observedCanMutate) {
+            const nextHasContextMenu = canBuildTaskContextMenu(nextApi, nextTaskLinesApi);
+            if (
+                nextApi === observedApi &&
+                nextCheckboxApi === observedCheckboxApi &&
+                nextTaskLinesApi === observedTaskLinesApi &&
+                nextCanMutate === observedCanMutate &&
+                nextHasContextMenu === observedHasContextMenu
+            ) {
                 return;
             }
             observedApi = nextApi;
             observedCheckboxApi = nextCheckboxApi;
+            observedTaskLinesApi = nextTaskLinesApi;
             observedCanMutate = nextCanMutate;
+            observedHasContextMenu = nextHasContextMenu;
             this.clearCache();
             onInvalidate();
         });
@@ -361,7 +382,7 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
         };
     }
 
-    private toRow(app: App, task: GcmTaskRecordLike, canMutateCheckbox: boolean): NavigatorProvidedRowCandidate {
+    private toRow(app: App, task: GcmTaskRecordLike, canMutateCheckbox: boolean, hasContextMenu: boolean): NavigatorProvidedRowCandidate {
         const ref: GcmTaskRefLike = {
             path: task.path,
             lineNumber: task.lineNumber,
@@ -411,13 +432,114 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
                 marker: task.marker || task.checkbox,
                 onChange: onCheckboxChange
             },
-            activate: async () => {
-                const currentApi = resolveGcmTaskApi(app);
-                if (currentApi) {
-                    await currentApi.focus(ref);
-                }
-            }
+            ...(hasContextMenu
+                ? {
+                      contextMenu: (menu: GcmTaskMenuLike) => {
+                          this.addTaskContextMenuItems(app, task, {
+                              addItem: callback => menu.addItem(callback),
+                              addSeparator: () => menu.addSeparator()
+                          });
+                      }
+                  }
+                : {}),
+            activate: async () => this.activateTask(app, ref)
         };
+    }
+
+    /** Resolves every foreign capability again when the user opens the menu. */
+    private addTaskContextMenuItems(app: App, task: GcmTaskRecordLike, menu: GcmTaskMenuLike): void {
+        const currentApi = resolveGcmTaskApi(app);
+        const currentTaskLinesApi = resolveGcmTaskLinesApi(app);
+        if (!canBuildTaskContextMenu(currentApi, currentTaskLinesApi) || !currentApi?.parseLine || !currentTaskLinesApi) {
+            return;
+        }
+
+        const normalizedPath = normalizePath(task.path);
+        const latestCachedTasks = this.tasksByPath.get(normalizedPath);
+        const latestKnownTask =
+            latestCachedTasks?.find(candidate => candidate.lineNumber === task.lineNumber) ?? (latestCachedTasks ? null : task);
+        if (!latestKnownTask) {
+            return;
+        }
+
+        let currentTask: GcmTaskRecordLike | null;
+        try {
+            currentTask = currentApi.parseLine(latestKnownTask.path, latestKnownTask.lineNumber, latestKnownTask.rawLine);
+        } catch (error) {
+            console.warn('[TPS Notebook Navigator] GCM task row could not be re-resolved for its context menu', {
+                sourcePath: latestKnownTask.path,
+                lineNumber: latestKnownTask.lineNumber,
+                error
+            });
+            return;
+        }
+        if (
+            !isGcmTaskRecord(currentTask) ||
+            normalizePath(currentTask.path) !== normalizedPath ||
+            currentTask.lineNumber !== latestKnownTask.lineNumber
+        ) {
+            return;
+        }
+
+        const file = app.vault.getFileByPath(normalizePath(currentTask.path));
+        if (!isMarkdownFile(file)) {
+            return;
+        }
+
+        try {
+            currentTaskLinesApi.addMenuItems(
+                menu,
+                {
+                    file,
+                    lineNumber: currentTask.lineNumber + 1,
+                    lineIndex: currentTask.lineNumber,
+                    rawLine: currentTask.rawLine,
+                    title: currentTask.title,
+                    checkboxToken: currentTask.checkbox,
+                    isCalendarTask: false,
+                    calendarAllDay: false
+                },
+                { includeTags: true }
+            );
+        } catch (error) {
+            console.warn('[TPS Notebook Navigator] GCM task row context menu could not be built', {
+                sourcePath: currentTask.path,
+                lineNumber: currentTask.lineNumber,
+                error
+            });
+        }
+    }
+
+    private async activateTask(app: App, ref: GcmTaskRefLike): Promise<void> {
+        try {
+            const currentApi = resolveGcmTaskApi(app);
+            if (!currentApi) {
+                throw new Error('TPS Global Context Menu task navigation is unavailable.');
+            }
+
+            let currentRef = ref;
+            if (typeof currentApi.get === 'function') {
+                const currentTask = await currentApi.get(ref);
+                if (!isGcmTaskRecord(currentTask) || normalizePath(currentTask.path) !== normalizePath(ref.path)) {
+                    throw new Error('The task is no longer available at its current location.');
+                }
+                if (resolveGcmTaskApi(app) !== currentApi) {
+                    throw new Error('TPS Global Context Menu changed while the task was being resolved.');
+                }
+                currentRef = currentTask;
+            }
+
+            if ((await currentApi.focus(currentRef)) !== true) {
+                throw new Error('TPS Global Context Menu could not focus the task.');
+            }
+        } catch (error) {
+            console.warn('[TPS Notebook Navigator] GCM task row activation failed', {
+                sourcePath: ref.path,
+                lineNumber: ref.lineNumber,
+                error
+            });
+            showNotice('Could not open this item at its current location.', { variant: 'warning' });
+        }
     }
 
     private clearCache(): void {

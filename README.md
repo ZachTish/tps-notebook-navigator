@@ -27,7 +27,7 @@ The release assets are `main.js`, `manifest.json`, and `styles.css`. The minimum
 
 The integration surface is intentionally modular. The navigator owns presentation and row composition; a provider owns its data and actions. Provider failures are isolated and never block the normal file list.
 
-The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.15.0 is the tested completion baseline: task checkboxes complete or reopen the exact task through GCM's configured status/checkbox rules, while selecting the title resolves and opens its source line. Generic row providers can also add their own synchronous context-menu actions without granting the navigator access to provider internals. Older structurally compatible APIs without a safe task mutation path remain display-only. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
+The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.15.0 is the tested completion baseline: task checkboxes complete or reopen the exact task through GCM's configured status/checkbox rules, selecting the title re-resolves and opens its source line, and right-click, mobile long-press, or **More actions** opens the same guarded GCM task menu available in Types. Custom checkbox markers remain visible instead of being flattened to a binary checkmark. Generic row providers can also add their own synchronous context-menu actions without granting the navigator access to provider internals. Older structurally compatible APIs without a safe task mutation or menu path degrade only that capability. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
 
 ### Types navigation
 
@@ -58,7 +58,8 @@ The Types toggle and all three task-row values persist in the TPS plugin's own `
 - Rows are transient UI records, never fake `TFile` objects. They do not participate in file selection, multi-select, drag, rename, or file indexes.
 - Providers are queried only for exact paths already present in the current list. Independent providers stream in as they settle, in configured order, without exceeding one global 1,000-row ceiling. During a same-scope refresh, each provider's prior rows remain visible until that provider itself settles, including empty or failed results. Large GCM lists load progressively in bounded 64-note passes, retain completed pass state for the active scope, and cache tasks per path with independent per-note limits and GCM/vault lifecycle invalidation.
 - A provider exception is isolated and logged without replacing or blocking the file list.
-- A mutable GCM checkbox updates optimistically, rolls back with a visible warning on failure, and refreshes from GCM's file event. Older compatible GCM APIs retain a labeled display-only checkbox.
+- A mutable GCM checkbox updates optimistically, rolls back with a visible warning on failure, and refreshes from GCM's file event. Working, holding, and other custom markers render verbatim with an accessible state label. Older compatible GCM APIs retain a labeled display-only checkbox.
+- Attached GCM task rows and Type-backed task rows expose the same current GCM task actions. Menu construction and source activation re-resolve the live optional API and fail closed with a visible warning when the task or capability is stale.
 - Provider controls own their keyboard and context-menu events, so completing a task cannot accidentally trigger file deletion, selection, or the empty-list menu.
 - A provider may expose synchronous row actions through `contextMenu(context)`. The same actions open from desktop right-click, the native mobile long-press context-menu event, or the keyboard-focusable **More actions** button. Failed, asynchronous, and empty builders are isolated and never open a blank menu.
 - External providers can opt in to a selected Type collection with `supportsTypeScope: true`. They receive the opaque selected Type id and only the exact visible paths represented by the current searched Type rows; providers that do not opt in retain their previous attached-list behavior.
@@ -67,7 +68,7 @@ The Types toggle and all three task-row values persist in the TPS plugin's own `
 
 ## Keeping up with Notebook Navigator
 
-Fork-specific integrations live in separate modules and host-global identity is centralized in `src/constants/tpsIdentity.ts`. Inherited source keeps upstream `nn-` CSS/DOM tokens so routine upstream edits merge normally; the test and production build pipelines apply the TPS namespace only at compilation and generated-style boundaries. The merge-friendly source check rejects accidentally committed runtime prefixes, while the final artifact gate proves that upstream tokens cannot ship. Follow [the upstream sync guide](docs/upstream-sync.md) when merging a later Notebook Navigator tag. A public standalone checkout builds in an explicit build-only mode; the contained test-vault workspace still requires and runs its adjacent atomic runtime deployment hook.
+Fork-specific integrations live in separate modules and host-global identity is centralized in `src/constants/tpsIdentity.ts`. Inherited source keeps upstream `nn-` CSS/DOM tokens so routine upstream edits merge normally; the test and production build pipelines apply the TPS namespace only at compilation and generated-style boundaries. The same build boundary isolates bundled dnd-kit described-by and live-region IDs, preventing accessibility DOM collisions when upstream and TPS views are open together. The merge-friendly source check rejects accidentally committed runtime prefixes, while the final artifact gate proves that upstream tokens cannot ship. Run `npm run upstream:audit -- <ref>` for a read-only changed-file/conflict worklist, then follow [the upstream sync guide](docs/upstream-sync.md) when merging a later Notebook Navigator tag. A public standalone checkout builds in an explicit build-only mode; the contained test-vault workspace still requires and runs its adjacent atomic runtime deployment hook.
 
 ### Merge-friendly namespace maintenance
 
@@ -77,6 +78,15 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 4.4.0 — task control and isolation parity
+
+- Gives attached GCM tasks the same guarded right-click, mobile long-press, and **More actions** menu as task-backed Type rows.
+- Re-resolves current GCM task/menu/navigation capabilities at action time, refreshes when `taskLines` is added, replaced, or removed, and fails closed with a visible warning for stale tasks.
+- Preserves custom checkbox markers such as working or holding states instead of replacing every state with blank/✓, including accessible state labels.
+- Gives bundled dnd-kit described-by and live-region elements TPS-only ID prefixes so upstream and TPS Navigator views do not emit duplicate accessibility DOM IDs.
+- Adds `npm run upstream:audit -- <ref>`, a deterministic read-only changed-file and merge-conflict worklist for future upstream syncs.
+- Requires no settings, API, or note-data migration; public API remains 2.5.0 and minimum supported Obsidian remains 1.11.0.
 
 ### 4.3.0 — interactive and extensible Types
 

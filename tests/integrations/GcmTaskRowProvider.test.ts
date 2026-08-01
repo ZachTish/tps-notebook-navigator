@@ -9,8 +9,21 @@ import {
     GcmTaskRowProvider,
     createGcmTaskRowProviderSelection
 } from '../../src/integrations/gcm/GcmTaskRowProvider';
-import { resolveGcmTaskApi, type GcmTaskApiLike, type GcmTaskRecordLike } from '../../src/integrations/gcm/gcmTaskApi';
-import { NAVIGATOR_ROW_PROVIDER_MAX_ROWS } from '../../src/services/rows/types';
+import {
+    resolveGcmTaskApi,
+    type GcmTaskApiLike,
+    type GcmTaskLinesApiLike,
+    type GcmTaskRecordLike
+} from '../../src/integrations/gcm/gcmTaskApi';
+import {
+    NAVIGATOR_ROW_PROVIDER_MAX_ROWS,
+    type NavigatorProvidedRow,
+    type NavigatorRowContextMenuContext
+} from '../../src/services/rows/types';
+
+const { noticeSpy } = vi.hoisted(() => ({ noticeSpy: vi.fn() }));
+
+vi.mock('../../src/utils/noticeUtils', () => ({ showNotice: noticeSpy }));
 
 class EventBus {
     private readonly callbacks = new Map<string, Set<(...args: unknown[]) => void>>();
@@ -33,6 +46,7 @@ class EventBus {
 
 afterEach(() => {
     vi.useRealTimers();
+    noticeSpy.mockReset();
 });
 
 function task(path: string, lineNumber: number, title: string, isComplete = false): GcmTaskRecordLike {
@@ -49,17 +63,25 @@ function task(path: string, lineNumber: number, title: string, isComplete = fals
     };
 }
 
-function createApp(api: GcmTaskApiLike | null, enabled = true): { app: App; workspace: EventBus; vault: EventBus } {
+function createApp(
+    api: GcmTaskApiLike | null,
+    enabled = true,
+    taskLinesApi: GcmTaskLinesApiLike | null = null
+): { app: App; workspace: EventBus; vault: EventBus } {
     const workspace = new EventBus();
     const vault = new EventBus();
     const plugin = api
         ? {
               api: {
                   tasks: api,
-                  taskCheckboxes: { version: 1, stateForStatus: (status: unknown) => (status === 'complete' ? '[x]' : '[ ]') }
+                  taskCheckboxes: { version: 1, stateForStatus: (status: unknown) => (status === 'complete' ? '[x]' : '[ ]') },
+                  ...(taskLinesApi ? { taskLines: taskLinesApi } : {})
               }
           }
         : null;
+    Object.assign(vault, {
+        getFileByPath: vi.fn((path: string) => ({ path, extension: 'md' }))
+    });
     const app = {
         workspace,
         vault,
@@ -72,7 +94,7 @@ function createApp(api: GcmTaskApiLike | null, enabled = true): { app: App; work
     return { app, workspace, vault };
 }
 
-function setGcmApi(app: App, api: GcmTaskApiLike | null, enabled: boolean): void {
+function setGcmApi(app: App, api: GcmTaskApiLike | null, enabled: boolean, taskLinesApi: GcmTaskLinesApiLike | null = null): void {
     const manager = (
         app as App & {
             plugins: {
@@ -86,7 +108,8 @@ function setGcmApi(app: App, api: GcmTaskApiLike | null, enabled: boolean): void
         ? {
               api: {
                   tasks: api,
-                  taskCheckboxes: { version: 1, stateForStatus: (status: unknown) => (status === 'complete' ? '[x]' : '[ ]') }
+                  taskCheckboxes: { version: 1, stateForStatus: (status: unknown) => (status === 'complete' ? '[x]' : '[ ]') },
+                  ...(taskLinesApi ? { taskLines: taskLinesApi } : {})
               }
           }
         : null;
@@ -97,6 +120,36 @@ function setGcmApi(app: App, api: GcmTaskApiLike | null, enabled: boolean): void
     }
     manager.getPlugin.mockImplementation(() => plugin);
     manager.plugins = plugin ? { [TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]: plugin } : {};
+}
+
+function setGcmTaskLinesApi(app: App, taskLinesApi: GcmTaskLinesApiLike | null): void {
+    const plugin = (
+        app as App & {
+            plugins: { plugins: Record<string, { api?: Record<string, unknown> }> };
+        }
+    ).plugins.plugins[TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID];
+    if (!plugin?.api) {
+        return;
+    }
+    if (taskLinesApi) {
+        plugin.api.taskLines = taskLinesApi;
+    } else {
+        delete plugin.api.taskLines;
+    }
+}
+
+function menuContext(
+    row: NavigatorProvidedRow | (Omit<NavigatorProvidedRow, 'providerId'> & { providerId?: string })
+): NavigatorRowContextMenuContext {
+    return {
+        providerId: row.providerId ?? GCM_TASK_ROW_PROVIDER_ID,
+        rowId: row.id,
+        kind: row.kind,
+        sourcePath: row.sourcePath,
+        sourceLineNumber: row.sourceLineNumber,
+        addItem: vi.fn(),
+        addSeparator: vi.fn()
+    };
 }
 
 function context(app: App, visibleFilePaths: string[]) {
@@ -149,6 +202,111 @@ describe('GcmTaskRowProvider', () => {
             rawLine: '- [ ] First',
             title: 'First'
         });
+    });
+
+    it('re-resolves the current task and GCM task-line API when the attached-row menu opens', async () => {
+        const sourceTask = task('Notes/one.md', 4, 'Initial');
+        const currentTask = {
+            ...sourceTask,
+            rawLine: '- [>] Current title',
+            title: 'Current title',
+            checkbox: '[>]',
+            marker: '>',
+            status: 'working'
+        };
+        const initialParseLine = vi.fn(() => sourceTask);
+        const initialTaskLines: GcmTaskLinesApiLike = { version: 1, addMenuItems: vi.fn() };
+        const initialApi: GcmTaskApiLike = {
+            version: 1,
+            list: vi.fn(async () => [sourceTask]),
+            focus: vi.fn(async () => true),
+            parseLine: initialParseLine
+        };
+        const { app } = createApp(initialApi, true, initialTaskLines);
+        const provider = new GcmTaskRowProvider();
+        const providerContext = context(app, [sourceTask.path]);
+        const rows = await provider.getRows(providerContext, { enabled: true });
+        expect(rows[0]?.contextMenu).toBeTypeOf('function');
+
+        const currentParseLine = vi.fn(() => currentTask);
+        const currentAddMenuItems = vi.fn<GcmTaskLinesApiLike['addMenuItems']>();
+        const currentApi: GcmTaskApiLike = {
+            version: 1,
+            list: vi.fn(async () => [currentTask]),
+            focus: vi.fn(async () => true),
+            parseLine: currentParseLine
+        };
+        const currentTaskLines: GcmTaskLinesApiLike = { version: 1, addMenuItems: currentAddMenuItems };
+        setGcmApi(app, currentApi, true, currentTaskLines);
+        await provider.getRows(providerContext, { enabled: true });
+
+        const menu = menuContext({ ...rows[0], providerId: GCM_TASK_ROW_PROVIDER_ID });
+        rows[0]?.contextMenu?.(menu);
+
+        expect(initialParseLine).not.toHaveBeenCalled();
+        expect(currentParseLine).toHaveBeenCalledWith(currentTask.path, currentTask.lineNumber, currentTask.rawLine);
+        expect(currentAddMenuItems).toHaveBeenCalledOnce();
+        const currentMenuCall = currentAddMenuItems.mock.calls[0];
+        expect(currentMenuCall?.[1]).toMatchObject({
+            lineNumber: 5,
+            lineIndex: 4,
+            rawLine: currentTask.rawLine,
+            title: currentTask.title,
+            checkboxToken: '[>]',
+            isCalendarTask: false,
+            calendarAllDay: false
+        });
+        expect(currentMenuCall?.[2]).toEqual({ includeTags: true });
+        const configureItem = vi.fn();
+        currentMenuCall?.[0].addItem(configureItem);
+        currentMenuCall?.[0].addSeparator();
+        expect(menu.addItem).toHaveBeenCalledWith(configureItem);
+        expect(menu.addSeparator).toHaveBeenCalledOnce();
+    });
+
+    it('fails closed when current task parsing is stale or the current task-line menu builder fails', async () => {
+        const sourceTask = task('Notes/one.md', 4, 'Initial');
+        const parseLine = vi.fn<GcmTaskApiLike['parseLine']>(() => null);
+        const addMenuItems = vi.fn();
+        const api: GcmTaskApiLike = {
+            version: 1,
+            list: vi.fn(async () => [sourceTask]),
+            focus: vi.fn(async () => true),
+            parseLine
+        };
+        const taskLines: GcmTaskLinesApiLike = { version: 1, addMenuItems };
+        const { app } = createApp(api, true, taskLines);
+        const provider = new GcmTaskRowProvider();
+        const rows = await provider.getRows(context(app, [sourceTask.path]), { enabled: true });
+        const menu = menuContext({ ...rows[0], providerId: GCM_TASK_ROW_PROVIDER_ID });
+
+        expect(() => rows[0]?.contextMenu?.(menu)).not.toThrow();
+        expect(addMenuItems).not.toHaveBeenCalled();
+
+        parseLine.mockImplementation(() => sourceTask);
+        addMenuItems.mockImplementation(() => {
+            throw new Error('menu failed');
+        });
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        expect(() => rows[0]?.contextMenu?.(menu)).not.toThrow();
+        expect(warn).toHaveBeenCalledWith(
+            '[TPS Notebook Navigator] GCM task row context menu could not be built',
+            expect.objectContaining({ sourcePath: sourceTask.path, lineNumber: sourceTask.lineNumber })
+        );
+        warn.mockRestore();
+    });
+
+    it('shows the same visible warning as Type rows when task activation cannot focus the current task', async () => {
+        const sourceTask = task('Notes/one.md', 4, 'Initial');
+        const focus = vi.fn(async () => false);
+        const api: GcmTaskApiLike = { version: 1, list: vi.fn(async () => [sourceTask]), focus };
+        const { app } = createApp(api);
+        const provider = new GcmTaskRowProvider();
+        const rows = await provider.getRows(context(app, [sourceTask.path]), { enabled: true });
+
+        await expect(rows[0]?.activate?.()).resolves.toBeUndefined();
+        expect(focus).toHaveBeenCalledWith(expect.objectContaining({ path: sourceTask.path, lineNumber: sourceTask.lineNumber }));
+        expect(noticeSpy).toHaveBeenCalledWith('Could not open this item at its current location.', { variant: 'warning' });
     });
 
     it('changes task checkbox state through the canonical GCM completion API', async () => {
@@ -390,6 +548,43 @@ describe('GcmTaskRowProvider', () => {
         workspace.trigger('layout-change');
         expect(invalidate).toHaveBeenCalledTimes(2);
         await expect(provider.getRows(providerContext, { enabled: true })).resolves.toEqual([]);
+        unsubscribe?.();
+    });
+
+    it('refreshes attached rows when the task-line menu capability is added, replaced, or removed', async () => {
+        const sourceTask = task('Notes/one.md', 1, 'Available');
+        const api = {
+            version: 1,
+            list: vi.fn(async () => [sourceTask]),
+            focus: vi.fn(async () => true),
+            parseLine: vi.fn(() => sourceTask)
+        } satisfies GcmTaskApiLike;
+        const { app, workspace } = createApp(api);
+        const provider = new GcmTaskRowProvider();
+        const providerContext = context(app, [sourceTask.path]);
+        const invalidate = vi.fn();
+        const unsubscribe = provider.subscribe(providerContext, { enabled: true }, invalidate);
+
+        expect((await provider.getRows(providerContext, { enabled: true }))[0]?.contextMenu).toBeUndefined();
+
+        const firstTaskLines: GcmTaskLinesApiLike = { version: 1, addMenuItems: vi.fn() };
+        setGcmTaskLinesApi(app, firstTaskLines);
+        workspace.trigger('layout-change');
+        expect(invalidate).toHaveBeenCalledTimes(1);
+        expect((await provider.getRows(providerContext, { enabled: true }))[0]?.contextMenu).toBeTypeOf('function');
+
+        workspace.trigger('layout-change');
+        expect(invalidate).toHaveBeenCalledTimes(1);
+
+        const replacementTaskLines: GcmTaskLinesApiLike = { version: 1, addMenuItems: vi.fn() };
+        setGcmTaskLinesApi(app, replacementTaskLines);
+        workspace.trigger('layout-change');
+        expect(invalidate).toHaveBeenCalledTimes(2);
+
+        setGcmTaskLinesApi(app, null);
+        workspace.trigger('layout-change');
+        expect(invalidate).toHaveBeenCalledTimes(3);
+        expect((await provider.getRows(providerContext, { enabled: true }))[0]?.contextMenu).toBeUndefined();
         unsubscribe?.();
     });
 

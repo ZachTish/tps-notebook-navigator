@@ -4383,6 +4383,11 @@ button.tps-nn-navigation-calendar-day {
     background: var(--interactive-accent);
 }
 
+.tps-nn-provider-row-checkbox.has-marker:not(.is-checked) > span {
+    color: var(--text-muted);
+    font-weight: var(--font-semibold);
+}
+
 .tps-notebook-navigator-mobile .tps-nn-provider-row-checkbox {
     width: 44px;
     height: 44px;

@@ -358,6 +358,7 @@ Provider requirements and safeguards:
 - Row IDs are provider-local. Rows are transient and never enter file selection, drag, rename, persistence, or file indexes.
 - `activate` may open or focus the provider-owned record.
 - A checkbox `indicator.onChange(checked)` is optional. Without it, the checkbox is explicitly display-only.
+- `indicator.marker` preserves the provider's source marker verbatim. Non-binary states such as `/` or `>` remain visible and are included in the checkbox's accessible state label; omitting it uses the normal blank/check fallback.
 - `contextMenu(context)` may synchronously add row actions and separators. It receives an immutable provider/row identity plus guarded `addItem(...)` and `addSeparator()` functions, never the host `Menu` object.
 - Row actions open from right-click, the native mobile long-press `contextmenu` event, or the accessible **More actions** button. Empty, throwing, and Promise-returning builders do not open a menu.
 - A provider can subscribe to its own data source and call `invalidate()` when rows need to be queried again.
