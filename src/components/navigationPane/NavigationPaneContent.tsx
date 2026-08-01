@@ -77,7 +77,7 @@ import { getActiveVaultProfile } from '../../utils/vaultProfiles';
 import { PropertyKeyVisibilityModal } from '../../modals/PropertyKeyVisibilityModal';
 import type { NavigateToFolderOptions, RevealPropertyOptions, RevealTagOptions } from '../../hooks/useNavigatorReveal';
 import { NAVIGATION_PANE_SURFACE_COLOR_MAPPINGS } from '../../constants/surfaceColorMappings';
-import { showNavigationSectionContextMenu } from '../../utils/contextMenu';
+import { showNavigationSectionContextMenu, showTypeCollectionContextMenu } from '../../utils/contextMenu';
 import { verticalAxisOnly } from '../../utils/dndConfig';
 import type { CombinedNavigationItem } from '../../types/virtualization';
 import { NavigationPaneItemRenderer } from './NavigationPaneItemRenderer';
@@ -99,7 +99,11 @@ import {
     expandTypeSelectionAncestors,
     useNavigationPaneTypeSection
 } from '../../hooks/navigationPane/data/useNavigationPaneTypeSection';
-import { filterTpsNavigatorTypesSnapshot, isTpsNavigatorTypeAuthoritativelyMissing } from '../../types/navigatorTypes';
+import {
+    filterTpsNavigatorTypesSnapshot,
+    isTpsNavigatorTypeAuthoritativelyMissing,
+    type TpsNavigatorTypeId
+} from '../../types/navigatorTypes';
 import { getVisibleVaultMarkdownFiles } from '../../utils/selectionUtils';
 import { createTypeSelectionFallbackAction } from '../../utils/navigationTypeHistory';
 
@@ -1124,6 +1128,13 @@ export const NavigationPane = React.memo(
             [app, handleConfigurePropertyKeysFromSectionMenu, metadataService, plugin, settings, uiState.pinShortcuts]
         );
 
+        const handleTypeContextMenu = useCallback(
+            (event: React.MouseEvent<HTMLDivElement>, typeId: TpsNavigatorTypeId) => {
+                showTypeCollectionContextMenu({ event, plugin, typeId });
+            },
+            [plugin]
+        );
+
         const rowContext = useMemo<NavigationPaneRowContext>(
             () => ({
                 app,
@@ -1155,7 +1166,8 @@ export const NavigationPane = React.memo(
                     cancel: handleCancelInlineRename,
                     restoreFocus: restoreNavigationPaneFocus
                 },
-                onSectionContextMenu: handleSectionContextMenu
+                onSectionContextMenu: handleSectionContextMenu,
+                onTypeContextMenu: handleTypeContextMenu
             }),
             [
                 app,
@@ -1170,6 +1182,7 @@ export const NavigationPane = React.memo(
                 getFileWordCount,
                 getSolidBackground,
                 handleSectionContextMenu,
+                handleTypeContextMenu,
                 handleCancelInlineRename,
                 handleCommitInlineRename,
                 handleStartFolderInlineRename,

@@ -50,7 +50,7 @@ function createFixture(): ArtifactInputs {
 describe('TPS generated artifact identity gate', () => {
     it('accepts the current repository artifacts and a minimal isolated fixture', async () => {
         expect(TPS_NOTEBOOK_NAVIGATOR_STYLE_SETTINGS_ID).toBe(RUNTIME_STYLE_SETTINGS_ID);
-        expect(await checkTpsArtifacts(repositoryRoot)).toBe('4.7.1');
+        expect(await checkTpsArtifacts(repositoryRoot)).toBe('4.8.0');
         expect(assertTpsArtifactIdentity(createFixture())).toBe('9.8.7');
     });
 

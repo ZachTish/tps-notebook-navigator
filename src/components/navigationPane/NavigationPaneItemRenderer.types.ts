@@ -23,6 +23,7 @@ import type { FileVisibility } from '../../utils/fileTypeUtils';
 import type { NoteCountInfo } from '../../types/noteCounts';
 import type { CombinedNavigationItem } from '../../types/virtualization';
 import type { NavigationSectionId } from '../../types';
+import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
 import type {
     NavigationPaneShortcutRowHandlers,
     NavigationPaneShortcutUiState
@@ -79,6 +80,7 @@ export interface NavigationPaneRowContext {
         sectionId: NavigationSectionId,
         options?: { allowSeparator?: boolean }
     ) => void;
+    onTypeContextMenu: (event: React.MouseEvent<HTMLDivElement>, typeId: TpsNavigatorTypeId) => void;
 }
 
 export interface NavigationPaneRowProps extends NavigationPaneRowHotState {

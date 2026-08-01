@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 2.8.0
+ * Version: 2.9.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -393,6 +393,15 @@ export interface PropertyMenuExtensionContext {
     nodeId: string;
 }
 
+export interface TypeMenuExtensionContext {
+    /** Add a menu item (must be called synchronously during menu construction) */
+    readonly addItem: (cb: (item: MenuItem) => void) => void;
+    /** Opaque current Type id for the collection the menu was opened on */
+    readonly typeId: string;
+    /** Immutable current descriptor for the collection */
+    readonly descriptor: NavigatorTypeDescriptor;
+}
+
 /** Dispose function returned by menu registration methods */
 export type MenuExtensionDispose = () => void;
 
@@ -460,7 +469,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 2.8.0
+ * @version 2.9.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */
@@ -587,6 +596,8 @@ export interface NotebookNavigatorAPI {
         registerTagMenu(callback: (context: TagMenuExtensionContext) => void): MenuExtensionDispose;
         /** Register items for the property context menu */
         registerPropertyMenu(callback: (context: PropertyMenuExtensionContext) => void): MenuExtensionDispose;
+        /** Register items for a built-in, Kind, or provider-owned Type collection context menu */
+        registerTypeMenu(callback: (context: TypeMenuExtensionContext) => void): MenuExtensionDispose;
     };
 
     // Event subscription

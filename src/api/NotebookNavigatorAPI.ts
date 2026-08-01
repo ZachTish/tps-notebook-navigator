@@ -43,7 +43,11 @@ export interface NotebookNavigatorInternalAPI {
     readonly selection: Pick<SelectionAPI, 'updateNavigationState' | 'updateFileState'>;
     readonly menus: Pick<
         MenusAPI,
-        'applyFileMenuExtensions' | 'applyFolderMenuExtensions' | 'applyTagMenuExtensions' | 'applyPropertyMenuExtensions'
+        | 'applyFileMenuExtensions'
+        | 'applyFolderMenuExtensions'
+        | 'applyTagMenuExtensions'
+        | 'applyPropertyMenuExtensions'
+        | 'applyTypeMenuExtensions'
     >;
     readonly rows: Pick<RowsAPI, 'getSelection' | 'subscribe' | 'dispose'>;
     readonly types: Pick<
@@ -94,7 +98,10 @@ export class NotebookNavigatorAPI {
         | 'unpin'
     >;
     public readonly selection: Pick<SelectionAPI, 'getNavItem' | 'getCurrent'>;
-    public readonly menus: Pick<MenusAPI, 'registerFileMenu' | 'registerFolderMenu' | 'registerTagMenu' | 'registerPropertyMenu'>;
+    public readonly menus: Pick<
+        MenusAPI,
+        'registerFileMenu' | 'registerFolderMenu' | 'registerTagMenu' | 'registerPropertyMenu' | 'registerTypeMenu'
+    >;
     public readonly tagCollections: {
         readonly taggedId: TagCollectionId;
         readonly untaggedId: TagCollectionId;
@@ -181,7 +188,8 @@ export class NotebookNavigatorAPI {
             registerFileMenu: callback => this.menusController.registerFileMenu(callback),
             registerFolderMenu: callback => this.menusController.registerFolderMenu(callback),
             registerTagMenu: callback => this.menusController.registerTagMenu(callback),
-            registerPropertyMenu: callback => this.menusController.registerPropertyMenu(callback)
+            registerPropertyMenu: callback => this.menusController.registerPropertyMenu(callback),
+            registerTypeMenu: callback => this.menusController.registerTypeMenu(callback)
         });
         const getTagCollectionLabel = (tag: unknown): string => {
             if (typeof tag === 'string' && isVirtualTagCollectionId(tag)) {

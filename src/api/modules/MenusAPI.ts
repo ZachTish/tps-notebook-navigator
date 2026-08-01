@@ -22,6 +22,8 @@ import type {
     FolderMenuExtensionContext,
     TagMenuExtensionContext,
     PropertyMenuExtensionContext,
+    TypeMenuExtensionContext,
+    NavigatorTypeDescriptor,
     FileMenuSelectionMode
 } from '../types';
 
@@ -36,6 +38,7 @@ export type {
     FolderMenuExtensionContext,
     TagMenuExtensionContext,
     PropertyMenuExtensionContext,
+    TypeMenuExtensionContext,
     FileMenuSelectionMode
 };
 
@@ -43,6 +46,7 @@ export type FileMenuExtension = (context: FileMenuExtensionContext) => void;
 export type FolderMenuExtension = (context: FolderMenuExtensionContext) => void;
 export type TagMenuExtension = (context: TagMenuExtensionContext) => void;
 export type PropertyMenuExtension = (context: PropertyMenuExtensionContext) => void;
+export type TypeMenuExtension = (context: TypeMenuExtensionContext) => void;
 
 type FileMenuExtensionApplyContext = {
     menu: Menu;
@@ -68,6 +72,12 @@ type PropertyMenuExtensionApplyContext = {
     nodeId: string;
 };
 
+type TypeMenuExtensionApplyContext = {
+    menu: Menu;
+    typeId: string;
+    descriptor: NavigatorTypeDescriptor;
+};
+
 type MenuExtensionContextBase = {
     addItem: (cb: (item: MenuItem) => void) => void;
 };
@@ -80,6 +90,7 @@ export class MenusAPI {
     private folderMenuExtensions = new Set<FolderMenuExtension>();
     private tagMenuExtensions = new Set<TagMenuExtension>();
     private propertyMenuExtensions = new Set<PropertyMenuExtension>();
+    private typeMenuExtensions = new Set<TypeMenuExtension>();
 
     registerFileMenu(callback: FileMenuExtension): MenuExtensionDispose {
         return this.registerExtension(this.fileMenuExtensions, callback);
@@ -95,6 +106,10 @@ export class MenusAPI {
 
     registerPropertyMenu(callback: PropertyMenuExtension): MenuExtensionDispose {
         return this.registerExtension(this.propertyMenuExtensions, callback);
+    }
+
+    registerTypeMenu(callback: TypeMenuExtension): MenuExtensionDispose {
+        return this.registerExtension(this.typeMenuExtensions, callback);
     }
 
     private registerExtension<T>(extensions: Set<T>, callback: T): MenuExtensionDispose {
@@ -125,14 +140,18 @@ export class MenusAPI {
                 return;
             }
             try {
+                let configured = false;
                 menu.addItem(item => {
                     try {
                         cb(item);
+                        configured = true;
                     } catch (error) {
                         console.error(`Notebook Navigator ${errorPrefix} menu extension item failed`, error);
                     }
                 });
-                addedItems += 1;
+                if (configured) {
+                    addedItems += 1;
+                }
             } catch (error) {
                 console.error(`Notebook Navigator ${errorPrefix} menu extension addItem failed`, error);
             }
@@ -211,5 +230,21 @@ export class MenusAPI {
             addItem,
             nodeId
         }));
+    }
+
+    /**
+     * Calls registered Type collection menu extensions and returns number of items added.
+     * @internal
+     */
+    applyTypeMenuExtensions(context: TypeMenuExtensionApplyContext): number {
+        const { menu, typeId, descriptor } = context;
+        const frozenDescriptor = Object.freeze({ ...descriptor });
+        return this.applyExtensions<TypeMenuExtensionContext>(this.typeMenuExtensions, menu, 'type', addItem =>
+            Object.freeze({
+                addItem,
+                typeId,
+                descriptor: frozenDescriptor
+            })
+        );
     }
 }

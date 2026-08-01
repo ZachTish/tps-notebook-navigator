@@ -523,6 +523,7 @@ describe('public API declaration file', () => {
         'NavigatorTypeRowsContext',
         'NavigatorTypeProvider',
         'NavigatorTypeProviderRegistration',
+        'TypeMenuExtensionContext',
         'TpsNotebookNavigatorApiChangedPayload',
         'TpsNotebookNavigatorApiRequestPayload'
     ] as const)('matches public %s members', interfaceName => {
@@ -540,6 +541,7 @@ describe('public API declaration file', () => {
         'NavigatorTypeRowsContext',
         'NavigatorTypeProvider',
         'NavigatorTypeProviderRegistration',
+        'TypeMenuExtensionContext',
         'TpsNotebookNavigatorApiChangedPayload',
         'TpsNotebookNavigatorApiRequestPayload'
     ] as const)('matches every public %s property signature', interfaceName => {

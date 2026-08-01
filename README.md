@@ -50,6 +50,12 @@ or more new top-level Type collections and supplies their rows through the exist
 opaque ids, visible-path enforcement, timeouts, cancellation, validation, and lifecycle cleanup; the provider owns its data,
 search, activation, checkbox changes, and context-menu actions. Provider definitions and options are never persisted.
 
+API 2.9.0 adds `menus.registerTypeMenu(...)` for selectable built-in, dynamic Kind, and provider-owned collection rows. Each
+callback receives the opaque Type id and its current immutable catalog descriptor. Menu items must be added synchronously;
+asynchronous work belongs in the item's `onClick` handler. A removed or otherwise stale collection, or a set of builders that
+adds no synchronous item, leaves the menu closed instead of opening a blank or outdated surface; thrown failures and rejected
+Promises are isolated. Registrations are runtime-only and add no settings, persisted state, or migration.
+
 Clicks, back/forward history, and public calls share one validator, ancestor-expansion, focus, and scroll path. Catalog DTOs
 are immutable and intentionally omit GCM records, source paths, task payloads, and counts whose meaning would differ before
 and after Navigator visibility filtering. Readiness and removal authority are tracked per source: a failed provider cannot
@@ -102,6 +108,20 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 4.8.0 — integration-owned Type collection actions
+
+- Adds `menus.registerTypeMenu(...)` in public API 2.9.0 so another TPS plugin can attach actions to built-in,
+  dynamic Kind, and externally registered Type collection rows without depending on navigation internals.
+- Routes desktop right-click and native mobile long-press through one current descriptor lookup, including collections
+  with no result rows, so providers can expose creation, capture, refresh, or configuration actions where the user is
+  already browsing that Type.
+- Gives each callback a frozen `{ addItem, typeId, descriptor }` context, isolates thrown and rejected failures, ignores
+  delayed additions, and never opens a blank menu when no synchronous item is contributed.
+- Preserves existing provider-row actions and the Types/Kinds container-menu behavior. Registrations remain runtime-only;
+  no settings, persisted state, or migration is added, and minimum supported Obsidian remains 1.11.0.
+- Validated with focused API, declaration, lifecycle, built-in/Kind/external routing, stale-descriptor, empty-menu,
+  desktop/mobile context-event, and section-root regressions plus the full project release gates and test-vault reload.
 
 ### 4.7.1 — complete and discoverable Types navigation
 

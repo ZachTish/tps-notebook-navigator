@@ -30,6 +30,10 @@ Complete TypeScript type definitions for the Notebook Navigator API.
    `tps:notebook-navigator-api-request` after subscribing. The documented
    [lifecycle pattern](../../../docs/api-reference.md#host-api-lifecycle) automatically tears down old registration handles
    and reacquires the new API after a TPS-only reload.
+6. Use `nn.menus.registerTypeMenu(...)` to add synchronous actions to built-in, dynamic Kind, and provider-owned Type
+   collection menus. The frozen context contains the opaque current Type id and its immutable current descriptor. Add items
+   synchronously and perform asynchronous work inside each item's `onClick` handler; stale or empty menus fail closed, while
+   thrown failures and rejected Promises are isolated.
 
 ## Public Surface
 
@@ -39,8 +43,12 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 - Core methods: `getVersion()`, `isStorageReady()`, `whenReady()`, `on(...)`, `once(...)`, `off(...)`
 - Namespaces: `metadata`, `navigation`, `selection`, `menus`, `tagCollections`, `propertyNodes`, `rows`, `types`
 - Exported types: metadata records and updates, navigation and selection state, pin contexts, tag collections, property
-  nodes, Type-catalog snapshots and providers, menu extension contexts, transient row providers, row context-menu actions,
-  event names, lifecycle request/change payloads, and event payloads
+  nodes, Type-catalog snapshots and providers, file/folder/tag/property/Type menu extension contexts, transient row
+  providers, row context-menu actions, event names, lifecycle request/change payloads, and event payloads
+
+Type menu registrations are runtime-only. They add no settings, persisted callback state, or migration. The complete
+descriptor shape and fail-closed behavior are documented in the
+[Menus API](../../../docs/api-reference.md#type-collection-context-menu).
 
 **For Maintainers:**
 
@@ -51,7 +59,7 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 
 ## Version
 
-Current API Version: **2.8.0**
+Current API Version: **2.9.0**
 
 ## Documentation
 

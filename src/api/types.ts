@@ -463,6 +463,15 @@ export interface PropertyMenuExtensionContext {
     nodeId: string;
 }
 
+export interface TypeMenuExtensionContext {
+    /** Add a menu item (must be called synchronously during menu construction) */
+    readonly addItem: (cb: (item: MenuItem) => void) => void;
+    /** Opaque current Type id for the collection the menu was opened on */
+    readonly typeId: string;
+    /** Immutable current descriptor for the collection */
+    readonly descriptor: NavigatorTypeDescriptor;
+}
+
 export type PropertyNodeParts =
     | {
           /** Root node returned for `propertyNodes.rootId` */

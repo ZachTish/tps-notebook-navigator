@@ -17,9 +17,10 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { MenusAPI, type FileMenuExtension } from '../../src/api/modules/MenusAPI';
+import { MenusAPI, type FileMenuExtension, type TypeMenuExtension } from '../../src/api/modules/MenusAPI';
 import { TFolder } from 'obsidian';
 import type { Menu, MenuItem } from 'obsidian';
+import type { NavigatorTypeDescriptor } from '../../src/api/types';
 import { createTestTFile } from '../utils/createTestTFile';
 
 type MenuStub = {
@@ -114,7 +115,7 @@ describe('MenusAPI', () => {
                 menu: menu as unknown as Menu,
                 folder
             });
-            expect(added).toBe(1);
+            expect(added).toBe(0);
         }).not.toThrow();
 
         expect(consoleSpy).toHaveBeenCalled();
@@ -152,6 +153,111 @@ describe('MenusAPI', () => {
 
         disposeTag();
         disposeProperty();
+    });
+
+    it('registers and applies Type menu extensions with an exact immutable descriptor', () => {
+        const menusAPI = new MenusAPI();
+        const { menu, addItem } = createMenuStub();
+        const descriptor = {
+            id: 'provider:example%2Fentities:projects',
+            label: 'Projects',
+            icon: 'lucide-folder-kanban',
+            category: 'structure',
+            providerId: 'example/entities',
+            providerCollectionId: 'projects'
+        } satisfies NavigatorTypeDescriptor;
+
+        const dispose = menusAPI.registerTypeMenu(context => {
+            expect(Object.isFrozen(context)).toBe(true);
+            expect(context.typeId).toBe(descriptor.id);
+            expect(context.descriptor).toEqual(descriptor);
+            expect(context.descriptor).not.toBe(descriptor);
+            expect(Object.isFrozen(context.descriptor)).toBe(true);
+
+            context.addItem(() => undefined);
+            context.addItem(() => undefined);
+        });
+
+        expect(
+            menusAPI.applyTypeMenuExtensions({
+                menu: menu as unknown as Menu,
+                typeId: descriptor.id,
+                descriptor
+            })
+        ).toBe(2);
+        expect(addItem).toHaveBeenCalledTimes(2);
+
+        dispose();
+        dispose();
+        expect(
+            menusAPI.applyTypeMenuExtensions({
+                menu: menu as unknown as Menu,
+                typeId: descriptor.id,
+                descriptor
+            })
+        ).toBe(0);
+    });
+
+    it('isolates throwing and Promise-returning Type menu extensions', () => {
+        const menusAPI = new MenusAPI();
+        const { menu, addItem } = createMenuStub();
+        const descriptor = {
+            id: 'kind:Project',
+            label: 'Project',
+            icon: 'lucide-shapes',
+            category: 'kind'
+        } satisfies NavigatorTypeDescriptor;
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        menusAPI.registerTypeMenu(() => {
+            throw new Error('Type menu failed');
+        });
+        const promiseReturningExtension = (() => Promise.resolve()) as unknown as TypeMenuExtension;
+        menusAPI.registerTypeMenu(promiseReturningExtension);
+        menusAPI.registerTypeMenu(({ addItem: addMenuItem }) => addMenuItem(() => undefined));
+
+        expect(() => {
+            expect(
+                menusAPI.applyTypeMenuExtensions({
+                    menu: menu as unknown as Menu,
+                    typeId: descriptor.id,
+                    descriptor
+                })
+            ).toBe(1);
+        }).not.toThrow();
+        expect(addItem).toHaveBeenCalledOnce();
+        expect(consoleSpy).toHaveBeenCalledTimes(2);
+
+        consoleSpy.mockRestore();
+    });
+
+    it('does not count a Type menu item whose initializer fails', () => {
+        const menusAPI = new MenusAPI();
+        const { menu, addItem } = createMenuStub();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        menusAPI.registerTypeMenu(({ addItem: addMenuItem }) => {
+            addMenuItem(() => {
+                throw new Error('item failed');
+            });
+        });
+
+        expect(
+            menusAPI.applyTypeMenuExtensions({
+                menu: menu as unknown as Menu,
+                typeId: 'kind:Project',
+                descriptor: {
+                    id: 'kind:Project',
+                    label: 'Project',
+                    icon: 'lucide-shapes',
+                    category: 'kind'
+                }
+            })
+        ).toBe(0);
+        expect(addItem).toHaveBeenCalledOnce();
+        expect(consoleSpy).toHaveBeenCalledOnce();
+
+        consoleSpy.mockRestore();
     });
 
     it('warns when a menu extension returns a promise', () => {

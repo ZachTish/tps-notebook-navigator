@@ -4,7 +4,7 @@ Updated: August 1, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 2.8.0
+**Current API Version:** 2.9.0
 
 ## Table of Contents
 
@@ -654,16 +654,19 @@ const { files, focused } = nn.selection.getCurrent();
 
 ## Menus API
 
-Register callbacks that add items to Notebook Navigator's file, folder, tag, and property context menus.
+Register callbacks that add items to Notebook Navigator's file, folder, tag, property, and selectable Type collection
+context menus.
 
 File and folder menu hooks are available in API version 1.2.0. Tag and property menu hooks are available in API version 2.0.0.
+Type collection menu hooks are available in API version 2.9.0.
 
-| Method                      | Description                              | Returns                 |
-| --------------------------- | ---------------------------------------- | ----------------------- |
-| `registerFileMenu(callback)` | Add items to the file context menu      | `() => void`            |
-| `registerFolderMenu(callback)` | Add items to the folder context menu  | `() => void`            |
-| `registerTagMenu(callback)` | Add items to the tag context menu        | `() => void`            |
-| `registerPropertyMenu(callback)` | Add items to the property context menu | `() => void`         |
+| Method                           | Description                                  | Returns      |
+| -------------------------------- | -------------------------------------------- | ------------ |
+| `registerFileMenu(callback)`     | Add items to the file context menu           | `() => void` |
+| `registerFolderMenu(callback)`   | Add items to the folder context menu         | `() => void` |
+| `registerTagMenu(callback)`      | Add items to the tag context menu            | `() => void` |
+| `registerPropertyMenu(callback)` | Add items to the property context menu       | `() => void` |
+| `registerTypeMenu(callback)`     | Add items to a Type collection context menu  | `() => void` |
 
 Callbacks run synchronously during menu construction. Add menu items synchronously and do async work in `onClick` handlers.
 
@@ -740,6 +743,42 @@ const dispose = nn?.menus?.registerFolderMenu(({ addItem, folder }) => {
 - `registerTagMenu(callback)` receives `context.tag`
 - Use `nn.tagCollections.isCollection(context.tag)` to detect aggregate rows
 - `registerPropertyMenu(callback)` receives `context.nodeId`
+
+### Type collection context menu
+
+`registerTypeMenu(callback)` applies to every selectable collection beneath **Types**: the built-in Notes, Checkboxes,
+Bullets, and Headings collections; dynamic Kind collections; and collections registered by an external Type provider. The
+**Types** and **Kinds** container rows are not collections and do not invoke this hook.
+
+The callback receives a frozen context with:
+
+- `context.addItem(...)` - Add a menu item synchronously during this menu build
+- `context.typeId` - The opaque id of the selected collection
+- `context.descriptor` - A current immutable catalog descriptor containing `id`, `label`, `icon`, `category`, and optional
+  `providerId` and `providerCollectionId` ownership fields
+
+```typescript
+const dispose = nn?.menus?.registerTypeMenu(({ addItem, typeId, descriptor }) => {
+  addItem(item => {
+    item.setTitle(`Open ${descriptor.label}`).setIcon(descriptor.icon).onClick(async () => {
+      // The navigation helper revalidates the opaque id when the action runs.
+      await nn.navigation.navigateToType(typeId);
+    });
+  });
+});
+
+// Call dispose() during the owning plugin's unload path. It is idempotent.
+```
+
+The registration callback and `addItem(...)` calls must remain synchronous. Returning a Promise is treated as an invalid
+builder; place asynchronous work inside `onClick` instead. TPS resolves the descriptor from the latest catalog snapshot when
+the menu is requested. If the collection has already disappeared, no callback runs. If the registered builders add no
+synchronous item, TPS does not consume the context-menu event or open a blank menu. Thrown failures and rejected Promises are
+isolated. The descriptor is a menu-build snapshot, so an action that depends on continued existence should revalidate
+`typeId` when clicked.
+
+Type menu registrations are runtime-only. They do not add a setting, write `data.json`, persist callback state, or require a
+settings migration.
 
 ## Events
 
@@ -872,13 +911,20 @@ The type definitions provide:
 - **Template literal types** for short provider frontmatter icon input (`IconString`)
 - **Typed event names and payloads** (`NotebookNavigatorEventType`, `NotebookNavigatorEvents`)
 - **Readonly return types** (selected files arrays, pinned map)
-- **Menu extension context types** (file, folder, tag, and property menus)
+- **Menu extension context types** (file, folder, tag, property, and Type collection menus)
 - **Transient row provider types** (scope, rows, checkbox mutation, subscription, and registration handles)
 
 **Note**: These type checks are compile-time only. At runtime, the API is permissive and accepts any values (see Runtime
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 2.9.0 (2026-08-01)
+
+- Added `menus.registerTypeMenu(callback)` for built-in, dynamic Kind, and provider-owned Type collection rows
+- Added a frozen `TypeMenuExtensionContext` with the opaque current Type id and immutable current catalog descriptor
+- Kept menu construction synchronous, isolated thrown/rejected failures, and failed closed for stale or empty collections
+- Kept registrations runtime-only with no settings, persistence, or migration change
 
 ### Version 2.8.0 (2026-08-01)
 

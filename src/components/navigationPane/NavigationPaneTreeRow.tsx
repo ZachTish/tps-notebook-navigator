@@ -63,7 +63,8 @@ export function NavigationPaneTreeRow({
         tree,
         searchHighlights,
         inlineRename,
-        onSectionContextMenu
+        onSectionContextMenu,
+        onTypeContextMenu
     } = context;
 
     switch (item.type) {
@@ -156,6 +157,10 @@ export function NavigationPaneTreeRow({
                     ? (event: React.MouseEvent<HTMLDivElement>) =>
                           onSectionContextMenu(event, sectionId, { allowSeparator: allowSeparatorActions })
                     : undefined;
+            const typeContextMenu =
+                isTypeCollection && typeCollectionId
+                    ? (event: React.MouseEvent<HTMLDivElement>) => onTypeContextMenu(event, typeCollectionId)
+                    : undefined;
             const isPropertiesGroup = virtualFolder.id === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID;
             const isTagsGroup = virtualFolder.id === TAGS_ROOT_VIRTUAL_FOLDER_ID;
             const trailingAction: VirtualFolderTrailingAction | undefined = isShortcutsGroup
@@ -198,7 +203,7 @@ export function NavigationPaneTreeRow({
                     }
                     onDrop={isShortcutsGroup && shortcutUiState.allowEmptyShortcutDrop ? shortcuts.handleShortcutRootDrop : undefined}
                     dropConfig={dropConfig}
-                    onContextMenu={sectionContextMenu}
+                    onContextMenu={typeContextMenu ?? sectionContextMenu}
                 />
             );
         }

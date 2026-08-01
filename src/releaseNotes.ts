@@ -106,6 +106,19 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '4.8.0',
+        date: '2026-08-01',
+        showOnUpdate: true,
+        info: 'Type collections can now expose integration-owned actions directly from the navigation pane.',
+        new: [
+            'Public API `2.9.0` adds `menus.registerTypeMenu(...)` for built-in, dynamic Kind, and provider-owned Type collections.',
+            'Right-click and native mobile long-press on a Type collection now route the same current Type id and immutable descriptor to registered integrations.'
+        ],
+        improved: [
+            'Removed and empty integrations leave no stale or blank collection menu; thrown and rejected failures are isolated, and delayed additions are ignored.'
+        ]
+    },
+    {
         version: '4.7.1',
         date: '2026-08-01',
         showOnUpdate: true,
