@@ -26,7 +26,7 @@ import { useUIDispatch } from '../context/UIStateContext';
 import { useUXPreferenceActions, useUXPreferences } from '../context/UXPreferencesContext';
 import { strings } from '../i18n';
 import { InputModal } from '../modals/InputModal';
-import { PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
+import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
 import { TIMEOUTS } from '../types/obsidian-extended';
 import {
     ShortcutStartType,
@@ -44,6 +44,7 @@ import {
     updateFilterQueryWithDateToken,
     updateFilterQueryWithProperty,
     updateFilterQueryWithTag,
+    updateFilterQueryWithTypeSelection,
     type InclusionOperator
 } from '../utils/filterSearch';
 import { showNotice } from '../utils/noticeUtils';
@@ -56,6 +57,7 @@ import type { FilterSearchTokens } from '../utils/filterSearch';
 import type { NavigateToFolderOptions, RevealPropertyOptions, RevealTagOptions } from './useNavigatorReveal';
 import type { EnsureSelectionOptions, EnsureSelectionResult } from './useListPaneSelectionCoordinator';
 import type { NavigatorListSearchUpdate } from '../api/types';
+import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
 
 interface ExecuteSearchShortcutParams {
     searchShortcut: SearchShortcut;
@@ -94,6 +96,7 @@ export interface UseListPaneSearchResult {
     handleRemoveSearchShortcut: () => Promise<void>;
     modifySearchWithTag: (tag: string, operator: InclusionOperator, options?: SearchQueryUpdateOptions) => void;
     modifySearchWithProperty: (key: string, value: string | null, operator: InclusionOperator, options?: SearchQueryUpdateOptions) => void;
+    modifySearchWithType: (typeId: TpsNavigatorTypeId, options?: SearchQueryUpdateOptions) => void;
     modifySearchWithDateToken: (dateToken: string, options?: SearchQueryUpdateOptions) => void;
     toggleSearch: () => void;
     executeSearchShortcut: (params: ExecuteSearchShortcutParams) => Promise<void>;
@@ -489,6 +492,20 @@ export function useListPaneSearch({
         [updateSearchQuery]
     );
 
+    const modifySearchWithType = useCallback(
+        (typeId: TpsNavigatorTypeId, options?: SearchQueryUpdateOptions) => {
+            if (searchProvider !== 'internal') {
+                plugin.setSearchProvider('internal');
+            }
+
+            updateSearchQuery(query => {
+                const selectedType = selectionState.selectionType === ItemType.TYPE ? selectionState.selectedType : null;
+                return updateFilterQueryWithTypeSelection(query, typeId, selectedType).query;
+            }, options);
+        },
+        [plugin, searchProvider, selectionState.selectedType, selectionState.selectionType, updateSearchQuery]
+    );
+
     const modifySearchWithDateToken = useCallback(
         (dateToken: string, options?: SearchQueryUpdateOptions) => {
             const normalizedToken = dateToken.trim();
@@ -649,6 +666,7 @@ export function useListPaneSearch({
         handleRemoveSearchShortcut,
         modifySearchWithTag,
         modifySearchWithProperty,
+        modifySearchWithType,
         modifySearchWithDateToken,
         toggleSearch,
         executeSearchShortcut,

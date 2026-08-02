@@ -337,6 +337,9 @@ graph TD
 
 - Desktop header showing breadcrumb title (with optional icon), search toggle, reveal file, descendant toggle, sort menu,
   appearance menu, and new note button.
+- Fixed source-backed Types expose Sort and Group through the same header actions. They deliberately hide file display-mode
+  and appearance controls; externally registered Type collections keep their provider-owned presentation and expose neither
+  host sort nor host grouping.
 - Mobile variant shows a back button to the navigation pane and renders breadcrumb segments horizontally scrollable with
   fade indicators.
 - Uses `useListPaneTitle` to build the breadcrumb segments and `useListActions` for button handlers.
@@ -377,6 +380,12 @@ graph TD
 - Renders the list pane search field and dispatches `UIStateContext` pane activation for keyboard navigation.
 - Initializes `SearchTagInputSuggest` and `SearchDateInputSuggest` when the internal filter-search provider is active,
   and exposes the filter/Omnisearch provider toggle when Omnisearch is available.
+- Internal Filter Search recognizes canonical `type:<fixed-id>` and `-type:<fixed-id>` terms. Positive Type terms form one
+  OR dimension, which is then ANDed with name, tag, property, date, folder, and extension constraints; exclusions remove
+  matching Types.
+- Navigation Shift-click or the configured multi-select modifier appends a tag, property, or fixed Type with AND. The
+  configured modifier plus Shift appends tags and properties with OR; fixed Type terms remain an OR union regardless of the
+  gesture used to add them.
 - Handles search keyboard shortcuts using the configured `settings.keyboardShortcuts`.
 
 ### ListPaneTitleArea
@@ -500,6 +509,19 @@ const { rowVirtualizer, scrollContainerRefCallback, requestScroll } = useNavigat
   guarded row menus. Activation revalidates the current metadata cache; existing block ids follow movement, while stale
   range-only locators fail closed. These rows intentionally do not opt into `TFile` multi-select, pinning, rename, persistence,
   or drag because a safe source-range mutation contract has not been defined yet.
+- All seven fixed source-backed Types pass through `buildStandaloneStructuralTypePresentation`. The selected Type can sort by
+  row title or by the owning note's filename, configured created/modified timestamp, or a configured non-manual frontmatter property.
+  Missing values always sort last, including descending sorts, and missing-value groups remain last. Date grouping is valid
+  only with a date sort; configured non-manual property grouping reads owning-note frontmatter; **Custom** produces an
+  ungrouped source-row list because custom header ownership is file-based. Folder/manual grouping, manual sort, and
+  display-mode/appearance edits remain unsupported for source rows. External provider Types bypass this presentation stage
+  unchanged.
+- A nonempty internal search started from a fixed Type lifts that Type scope and searches every fixed Type. Search from a
+  folder, tag, or property retains its navigation scope. Native file results remain ordinary rows and every matching
+  source-backed Type is appended as a labeled section. Plain-text terms match structural row labels and source paths rather
+  than note contents; tag, property, date, folder, and extension facets filter the owning note, not individual block metadata.
+  Each appended row carries its own `providerTypeId`, so mixed results preserve Type styling,
+  selection, context-menu targeting, height measurement, and public snapshot identity.
 - Task hydration batches up to 64 uncached source paths per GCM call with four batches in flight. A 2,048-path LRU keyed by source mtime/size avoids repeat parsing; per-path generations and explicit GCM/vault/mutation invalidation prevent in-flight or failed reads from becoming stale cache entries.
 - `useListPaneScroll` feeds `listItems` into `useVirtualizer`, calculating heights with `getListPaneMeasurements`,
   preview availability (`hasPreview`), search metadata, and appearance settings. The current implementation uses
@@ -575,6 +597,10 @@ hidden (mobile drawers, dual-pane toggles).
 The navigation and list data hooks memoize derived arrays and lookup maps, while refresh hooks debounce bursty vault,
 metadata, and content-cache updates with `debounce` from Obsidian. `StorageContext` batches diff calculations, content
 provider queues, and tag/property tree rebuilds so UI components only react to finalized updates.
+
+Structural Type search computes the visibility-derived vault path allowlist only for a selected Type scope or a nonempty
+internal query. It then reuses the cached GCM Entity Index and Obsidian metadata-section index; Navigator does not read note
+bodies to aggregate source-backed search results.
 
 ### 3. Memoized Components
 

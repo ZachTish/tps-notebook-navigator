@@ -132,6 +132,7 @@ interface NavigationPaneProps {
     onRevealShortcutFile?: (file: TFile) => void;
     onModifySearchWithTag: (tag: string, operator: InclusionOperator) => void;
     onModifySearchWithProperty: (key: string, value: string | null, operator: InclusionOperator) => void;
+    onModifySearchWithType: (typeId: TpsNavigatorTypeId) => void;
     onModifySearchWithDateFilter: (dateToken: string) => void;
 }
 
@@ -169,6 +170,7 @@ export const NavigationPane = React.memo(
             onRevealShortcutFile,
             onModifySearchWithTag,
             onModifySearchWithProperty,
+            onModifySearchWithType,
             onModifySearchWithDateFilter,
             uiScale
         } = props;
@@ -576,7 +578,8 @@ export const NavigationPane = React.memo(
             clearActiveShortcut: shortcuts.clearActiveShortcut,
             openFolderNoteInRightSidebar: folderNote => plugin.openFolderNoteInRightSidebar(folderNote),
             onModifySearchWithTag,
-            onModifySearchWithProperty
+            onModifySearchWithProperty,
+            onModifySearchWithType
         });
 
         const searchHighlights = useNavigationSearchHighlights({ searchNavFilters });

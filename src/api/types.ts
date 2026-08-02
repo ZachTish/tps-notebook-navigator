@@ -269,7 +269,7 @@ export interface NavigatorRowFocusTarget {
     readonly rowId: string;
     readonly sourcePath: string;
     readonly sourceLineNumber?: number;
-    /** Opaque selected Type id, or null for a row attached beneath a note. */
+    /** Opaque owning/selected Type id, or null for an ordinary row attached beneath a note. */
     readonly typeId?: string | null;
     /** Optional presentation-kind guard for callers retaining a prior selection snapshot. */
     readonly kind?: string;
@@ -395,7 +395,7 @@ export type NavigatorVisibleListRow = NavigatorVisibleFileRow | NavigatorVisible
 export interface NavigatorListSnapshot {
     readonly navItem: NavItem;
     readonly search: NavigatorListSearchState;
-    /** Null for standalone structural/provider Types; file-backed Types expose native file-list presentation. */
+    /** Null only for external provider Type scopes or scopes without presentation controls. */
     readonly presentation: NavigatorListPresentationState | null;
     /** Renderable file/provider order after scope, search, and collapsed-group filtering. */
     readonly rows: readonly NavigatorVisibleListRow[];

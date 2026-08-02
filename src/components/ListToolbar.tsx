@@ -26,7 +26,7 @@ import { runAsyncAction } from '../utils/async';
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
 import { ItemType } from '../types';
-import { supportsNativeListPresentationForSelection } from './listPane/typeModeRuntime';
+import { supportsListSortAndGroupingForSelection, supportsNativeListPresentationForSelection } from './listPane/typeModeRuntime';
 
 interface ListToolbarProps {
     isSearchActive?: boolean;
@@ -77,10 +77,11 @@ export function ListToolbar({
         selectionState.selectionType,
         selectionState.selectedType
     );
+    const supportsListSortAndGrouping = supportsListSortAndGroupingForSelection(selectionState.selectionType, selectionState.selectedType);
     const showSearchButton = listVisibility.search;
     const showDescendantsButton = !isTypeSelection && listVisibility.descendants;
-    const showGroupExpansionButton = supportsNativeListPresentation && listVisibility.groupExpansion;
-    const showSortButton = supportsNativeListPresentation && listVisibility.sort;
+    const showGroupExpansionButton = supportsListSortAndGrouping && listVisibility.groupExpansion;
+    const showSortButton = supportsListSortAndGrouping && listVisibility.sort;
     const showAppearanceButton = supportsNativeListPresentation && listVisibility.appearance;
     const showNewNoteButton = !isTypeSelection && listVisibility.newNote;
     const showEffectiveRevealButton = !isTypeSelection && showRevealButton;

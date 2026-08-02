@@ -37,6 +37,9 @@ export function getNavigationItemSearchMatch(
 ): NavigationItemSearchMatch | undefined {
     switch (item.type) {
         case NavigationPaneItemType.VIRTUAL_FOLDER:
+            if (item.typeCollectionId) {
+                return searchHighlights.getTypeSearchMatch(item.typeCollectionId);
+            }
             return searchHighlights.getTagCollectionSearchMatch(item.tagCollectionId ?? null);
 
         case NavigationPaneItemType.TAG:

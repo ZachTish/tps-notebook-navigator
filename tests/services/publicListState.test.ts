@@ -96,6 +96,40 @@ describe('public list state', () => {
         expect(snapshot.rows[0]).toMatchObject({ file: null, typeId: 'provider:demo/all' });
     });
 
+    it('publishes the owning Type for structural rows mixed into another navigation search', () => {
+        const file = createTestTFile('Projects/Alpha.md');
+        const snapshot = buildNavigatorListSnapshot({
+            navItem: { type: 'tag', folder: null, tag: 'work', property: null },
+            search: {
+                active: true,
+                query: '#work type:structural:task',
+                appliedQuery: '#work type:structural:task',
+                requestedProvider: 'internal',
+                effectiveProvider: 'internal'
+            },
+            presentation: null,
+            listItems: [
+                {
+                    type: ListPaneItemType.PROVIDER_ROW,
+                    key: 'provider:tps/entity-types:task-1',
+                    providerTypeId: 'structural:task',
+                    data: {
+                        providerId: 'tps/entity-types',
+                        id: 'task-1',
+                        kind: 'tps/entity-type/task',
+                        label: 'Ship release',
+                        sourcePath: file.path,
+                        sourceLineNumber: 3
+                    }
+                }
+            ],
+            selectedType: null,
+            resolveFile: path => (path === file.path ? file : null)
+        });
+
+        expect(snapshot.rows[0]).toMatchObject({ type: 'provider', typeId: 'structural:task', file });
+    });
+
     it('publishes native presentation for file-backed Type snapshots', () => {
         const file = createTestTFile('Notes/Project.md');
         const presentation = {

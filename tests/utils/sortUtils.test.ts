@@ -12,6 +12,7 @@ import {
     parsePropertySortKeys,
     pruneUnavailablePropertySortOverrides,
     replacePropertySortKey,
+    resolveSourceBackedTypeListSort,
     resolveFolderChildSortOrder,
     sortFiles,
     shouldRefreshOnFileModifyForSort,
@@ -273,6 +274,26 @@ describe('sort icons', () => {
         expect(getListSortToolbarIconId(settings, { option: 'property-desc', propertyKey: 'status' })).toBe('list-sort-descending');
         expect(getListSortToolbarIconId(settings, { option: 'property-asc', propertyKey: 'status' })).toBe('list-sort-property');
         expect(getListSortToolbarIconId(settings, { option: 'property-desc', propertyKey: 'priority' })).toBe('list-sort-property');
+    });
+});
+
+describe('source-backed Type sort resolution', () => {
+    it('never exposes the file-owned manual rank as the effective structural-row sort', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.defaultFolderSort = 'property-asc';
+        settings.manualSortPropertyKey = 'Rank';
+        settings.propertySortKey = 'Rank, Priority';
+
+        expect(resolveSourceBackedTypeListSort(settings)).toMatchObject({
+            option: 'property-asc',
+            propertyKey: 'Priority'
+        });
+
+        settings.propertySortKey = 'Rank';
+        expect(resolveSourceBackedTypeListSort(settings)).toMatchObject({
+            option: 'title-asc',
+            propertyKey: ''
+        });
     });
 });
 

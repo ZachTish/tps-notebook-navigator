@@ -31,7 +31,7 @@ import { casefold, getMatchingRecordValue } from './recordUtils';
 import { isRecord } from './typeGuards';
 import type { UXIconId } from './uxIcons';
 import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
-import { isTpsNavigatorFileTypeId } from '../types/navigatorTypes';
+import { isTpsNavigatorStructuralTypeId } from '../types/navigatorTypes';
 
 export function isDateSortOption(sortOption: SortOption): boolean {
     return sortOption.startsWith('modified') || sortOption.startsWith('created');
@@ -518,6 +518,36 @@ export function resolveListSort(settings: NotebookNavigatorSettings, sortOverrid
     };
 }
 
+/**
+ * Resolves the effective sort for source-backed structural rows.
+ *
+ * Manual ranks describe file order and cannot safely order multiple transient rows from the
+ * same source file. When a global or stale per-Type override resolves to the manual-rank key,
+ * use the first configured non-manual property instead, then fall back to row title.
+ */
+export function resolveSourceBackedTypeListSort(
+    settings: NotebookNavigatorSettings,
+    sortOverride?: ListSortOverrideValue
+): EffectiveListSort {
+    const resolved = resolveListSort(settings, sortOverride);
+    if (!isManualSortPropertyKey(settings, resolved.propertyKey)) {
+        return resolved;
+    }
+
+    const propertyKey = parsePropertySortKeys(settings.propertySortKey).find(
+        configuredKey => !isManualSortPropertyKey(settings, configuredKey)
+    );
+    if (propertyKey) {
+        return { ...resolved, propertyKey };
+    }
+
+    return {
+        ...resolved,
+        option: resolved.option.endsWith('-desc') ? 'title-desc' : 'title-asc',
+        propertyKey: ''
+    };
+}
+
 export function getListSortOverrideForSelection(
     settings: NotebookNavigatorSettings,
     selectionType: ItemTypeValue | null,
@@ -535,7 +565,7 @@ export function getListSortOverrideForSelection(
     if (selectionType === ItemType.PROPERTY && selectedProperty) {
         return settings.propertySortOverrides?.[selectedProperty];
     }
-    if (selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectedType)) {
+    if (selectionType === ItemType.TYPE && isTpsNavigatorStructuralTypeId(selectedType)) {
         return settings.typeSortOverrides?.[selectedType];
     }
     return undefined;

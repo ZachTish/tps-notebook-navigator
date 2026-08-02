@@ -77,7 +77,7 @@ import {
     shouldShowExtensionBadgeThumbnail,
     shouldShowFeatureImageArea,
     shouldShowFileItemParentFolderLine,
-    usesStandaloneTypeProviderPresentation
+    listItemUsesTypeProviderPresentation
 } from '../utils/listPaneMeasurements';
 import type { NavigatorProvidedRow } from '../services/rows/types';
 import type { PropertySelectionNodeId } from '../utils/propertyTree';
@@ -436,13 +436,15 @@ export function createRemeasureScheduler(measure: () => void): { schedule: () =>
     };
 }
 
-function getStickyHeaderHeightBeforeIndex(
+export function getStickyHeaderHeightBeforeIndex(
     listItems: ListPaneItem[],
     index: number,
     measurements: ReturnType<typeof getListPaneMeasurements>
 ): number {
     const item = listItems[index];
-    if (item?.type !== ListPaneItemType.FILE || !(item.data instanceof TFile)) {
+    const isFileRow = item?.type === ListPaneItemType.FILE && item.data instanceof TFile;
+    const isProviderRow = item?.type === ListPaneItemType.PROVIDER_ROW && item.data !== null && typeof item.data === 'object';
+    if (!isFileRow && !isProviderRow) {
         return 0;
     }
 
@@ -833,7 +835,7 @@ export function useListPaneScroll({
 
             if (
                 item.type === ListPaneItemType.PROVIDER_ROW &&
-                usesStandaloneTypeProviderPresentation(rowSizingConfig.selectionType, rowSizingConfig.selectedType) &&
+                listItemUsesTypeProviderPresentation(item, rowSizingConfig.selectionType, rowSizingConfig.selectedType) &&
                 item.data !== null &&
                 typeof item.data === 'object'
             ) {

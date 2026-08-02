@@ -450,6 +450,8 @@ export const parseTagModeTokens = (
         excludeFolderTokens: [],
         extensionTokens: [],
         excludeExtensionTokens: [],
+        typeTokens: [],
+        excludeTypeTokens: [],
         excludeDateRanges: [],
         excludeTagged: false
     };

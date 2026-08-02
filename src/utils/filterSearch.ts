@@ -18,14 +18,29 @@
 
 import { isDateFilterCandidate, parseDateFilterRange } from './filterSearchDate';
 import { evaluateTagExpression, parseTagModeTokens, propertyTokenMatches, tagMatchesToken } from './filterSearchExpression';
-import type { DateFilterRange, FilterSearchTokens, FolderFilterToken, InclusionOperator, PropertySearchToken } from './filterSearchTypes';
+import type {
+    DateFilterRange,
+    FilterSearchTokens,
+    FolderFilterToken,
+    InclusionOperator,
+    PropertySearchToken,
+    TypeSearchToken
+} from './filterSearchTypes';
 import { EMPTY_SEARCH_NAV_FILTER_STATE, type SearchNavFilterState } from '../types/search';
 import { casefold, foldSearchText, foldSearchTextFromLowercase } from './recordUtils';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId, normalizePropertyTreeValuePath } from './propertyTree';
 import { resolvePropertyDisplayText } from './propertyUtils';
+import { isTpsNavigatorStructuralTypeId, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 
 export { DATE_FILTER_RELATIVE_KEYWORDS, fileMatchesDateFilterTokens, parseDateFieldPrefix } from './filterSearchDate';
-export type { FilterMode, FilterSearchTokens, FolderFilterToken, InclusionOperator, PropertySearchToken } from './filterSearchTypes';
+export type {
+    FilterMode,
+    FilterSearchTokens,
+    FolderFilterToken,
+    InclusionOperator,
+    PropertySearchToken,
+    TypeSearchToken
+} from './filterSearchTypes';
 
 // Default empty token set returned for blank queries
 const EMPTY_TOKENS: FilterSearchTokens = {
@@ -51,6 +66,8 @@ const EMPTY_TOKENS: FilterSearchTokens = {
     excludeFolderTokens: [],
     extensionTokens: [],
     excludeExtensionTokens: [],
+    typeTokens: [],
+    excludeTypeTokens: [],
     excludeDateRanges: [],
     excludeTagged: false
 };
@@ -59,6 +76,7 @@ const EMPTY_PROPERTY_VALUE_MAP = new Map<string, string[]>();
 // Set of recognized connector words in search queries
 const CONNECTOR_TOKEN_SET = new Set(['and', 'or']);
 const UNFINISHED_TASK_FILTER_TOKEN_SET = new Set(['has:task', 'has:tasks']);
+const TYPE_FILTER_PREFIX = 'type:';
 
 const PROPERTY_FILTER_PREFIX = '.';
 
@@ -326,6 +344,14 @@ type ClassifiedToken =
           value: string;
       }
     | {
+          kind: 'type';
+          value: TpsNavigatorTypeId;
+      }
+    | {
+          kind: 'typeNegation';
+          value: TpsNavigatorTypeId;
+      }
+    | {
           kind: 'unfinishedTask';
       }
     | {
@@ -451,6 +477,23 @@ const parseExtensionFilterToken = (token: string): string | null => {
     }
 
     return lastSegment;
+};
+
+const isTypeFilterCandidate = (token: string): boolean => {
+    return token.startsWith(TYPE_FILTER_PREFIX);
+};
+
+/** Accepts only stable fixed ids whose results the host search can render. */
+const parseTypeFilterToken = (token: string): TpsNavigatorTypeId | null => {
+    if (!isTypeFilterCandidate(token)) {
+        return null;
+    }
+    const typeId = token.slice(TYPE_FILTER_PREFIX.length).trim();
+    if (isTpsNavigatorStructuralTypeId(typeId)) {
+        return typeId;
+    }
+
+    return null;
 };
 
 const normalizeFolderPathForMatch = (folderPath: string): string => {
@@ -621,6 +664,16 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
                 continue;
             }
 
+            if (isTypeFilterCandidate(negatedToken)) {
+                const typeValue = parseTypeFilterToken(negatedToken);
+                if (typeValue) {
+                    tokens.push({ kind: 'typeNegation', value: typeValue });
+                }
+                // Type is an orthogonal entity facet. It does not force tag/property
+                // expressions into name-filter mode, so their AND/OR semantics survive.
+                continue;
+            }
+
             if (isPropertyFilterCandidate(negatedToken)) {
                 const propertyValue = parsePropertyFilterToken(negatedToken);
                 if (propertyValue) {
@@ -689,6 +742,15 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
             continue;
         }
 
+        if (isTypeFilterCandidate(lowercaseToken)) {
+            const typeValue = parseTypeFilterToken(lowercaseToken);
+            if (typeValue) {
+                tokens.push({ kind: 'type', value: typeValue });
+            }
+            // Type facets are evaluated separately from the tag/property expression.
+            continue;
+        }
+
         if (isPropertyFilterCandidate(lowercaseToken)) {
             const propertyValue = parsePropertyFilterToken(lowercaseToken);
             if (propertyValue) {
@@ -729,11 +791,13 @@ const parseFilterModeTokens = (
     const propertyTokens: PropertySearchToken[] = [];
     const folderTokens: FolderFilterToken[] = [];
     const extensionTokens: string[] = [];
+    const typeTokens: TypeSearchToken[] = [];
     const dateRanges: DateFilterRange[] = [];
     const connectorCandidates: string[] = [];
     const excludeNameTokens: string[] = [];
     const excludeFolderTokens: FolderFilterToken[] = [];
     const excludeExtensionTokens: string[] = [];
+    const excludeTypeTokens: TypeSearchToken[] = [];
     const excludeDateRanges: DateFilterRange[] = [];
     let requireUnfinishedTasks = false;
     let excludeUnfinishedTasks = false;
@@ -763,6 +827,9 @@ const parseFilterModeTokens = (
             case 'extension':
                 extensionTokens.push(token.value);
                 break;
+            case 'type':
+                typeTokens.push(token.value);
+                break;
             case 'date':
                 dateRanges.push(token.range);
                 break;
@@ -785,6 +852,9 @@ const parseFilterModeTokens = (
             case 'extensionNegation':
                 excludeExtensionTokens.push(token.value);
                 break;
+            case 'typeNegation':
+                excludeTypeTokens.push(token.value);
+                break;
             case 'dateNegation':
                 excludeDateRanges.push(token.range);
                 break;
@@ -804,6 +874,7 @@ const parseFilterModeTokens = (
         propertyTokens.length > 0 ||
         folderTokens.length > 0 ||
         extensionTokens.length > 0 ||
+        typeTokens.length > 0 ||
         dateRanges.length > 0 ||
         requireTagged ||
         requireUnfinishedTasks;
@@ -835,13 +906,15 @@ const parseFilterModeTokens = (
         excludeFolderTokens,
         extensionTokens,
         excludeExtensionTokens,
+        typeTokens: [...new Set(typeTokens)],
+        excludeTypeTokens: [...new Set(excludeTypeTokens)],
         excludeDateRanges,
         excludeTagged: hasUntaggedOperand
     };
 };
 
 /**
- * Parse a filter search query into name, tag, folder, and extension tokens with support for negations.
+ * Parse a filter search query into name, tag, property, Type, folder, and extension tokens with support for negations.
  *
  * Inclusion patterns (must match):
  * - #tag - Include notes with tags containing "tag"
@@ -861,6 +934,7 @@ const parseFilterModeTokens = (
  * - folder:/work/meetings - Include notes whose parent folder path is exactly "work/meetings"
  * - folder:/ - Include notes in the vault root
  * - ext:md - Include notes with extension "md"
+ * - type:structural:task - Include results from the Checkboxes Type
  * - word - Include notes with "word" in their name
  * - "text" - Include notes with "text" in their name, matched literally without filter interpretation
  *
@@ -874,6 +948,7 @@ const parseFilterModeTokens = (
  * - -folder:archive - Exclude notes where any folder segment contains "archive"
  * - -folder:/archive - Exclude notes whose parent folder path is exactly "archive"
  * - -ext:pdf - Exclude notes with extension "pdf"
+ * - -type:structural:heading - Exclude results from the Headings Type
  * - -word - Exclude notes with "word" in their name
  * - -"text" - Exclude notes with "text" in their name, matched literally without filter interpretation
  *
@@ -884,6 +959,7 @@ const parseFilterModeTokens = (
  * - Mixed queries treat AND/OR as literal name tokens
  * - In pure tag queries, AND has higher precedence than OR
  * - Adjacent tokens without connectors implicitly use AND
+ * - Multiple positive Type facets use OR within the Type dimension and remain independent of tag/property connectors
  * - Leading or consecutive connectors are treated as literal text tokens in filter mode
  * - All tokens are normalized with lowercase folding plus Latin diacritic folding
  *
@@ -909,6 +985,8 @@ export function parseFilterSearchTokens(query: string): FilterSearchTokens {
 
     const excludeTagTokens: string[] = [];
     const excludePropertyTokens: PropertySearchToken[] = [];
+    const typeTokens: TypeSearchToken[] = [];
+    const excludeTypeTokens: TypeSearchToken[] = [];
     let hasUntaggedOperand = false;
     for (const token of classifiedTokens) {
         if (token.kind === 'tagNegation') {
@@ -922,6 +1000,16 @@ export function parseFilterSearchTokens(query: string): FilterSearchTokens {
 
         if (token.kind === 'propertyNegation') {
             excludePropertyTokens.push(token.value);
+            continue;
+        }
+
+        if (token.kind === 'type') {
+            typeTokens.push(token.value);
+            continue;
+        }
+
+        if (token.kind === 'typeNegation') {
+            excludeTypeTokens.push(token.value);
         }
     }
 
@@ -930,9 +1018,16 @@ export function parseFilterSearchTokens(query: string): FilterSearchTokens {
         // Once a query includes any non-tag operand (name/date/task),
         // we intentionally stay in filter mode so connector words are
         // evaluated as literal name tokens.
-        const tagTokens = parseTagModeTokens(classifiedTokens, excludeTagTokens, excludePropertyTokens);
-        if (tagTokens) {
-            return tagTokens;
+        const expressionTokens = classifiedTokens.filter(token => token.kind !== 'type' && token.kind !== 'typeNegation');
+        const tagModeTokens = parseTagModeTokens(expressionTokens, excludeTagTokens, excludePropertyTokens);
+        if (tagModeTokens) {
+            const uniqueTypeTokens = [...new Set(typeTokens)];
+            return {
+                ...tagModeTokens,
+                hasInclusions: tagModeTokens.hasInclusions || uniqueTypeTokens.length > 0,
+                typeTokens: uniqueTypeTokens,
+                excludeTypeTokens: [...new Set(excludeTypeTokens)]
+            };
         }
     }
 
@@ -1026,6 +1121,10 @@ export function buildSearchNavFilterState(query: string): SearchNavFilterState {
             include: Array.from(propertyIncludeSet),
             exclude: Array.from(propertyExcludeSet),
             includeOperators: propertyIncludeOperators
+        },
+        types: {
+            include: tokens.typeTokens.slice(),
+            exclude: tokens.excludeTypeTokens.slice()
         }
     };
 }
@@ -1045,6 +1144,15 @@ const isConnectorRawToken = (token: RawSearchToken | undefined): boolean => {
         return false;
     }
     return isConnectorToken(token.text);
+};
+
+const isTypeFacetRawToken = (token: RawSearchToken): boolean => {
+    if (token.literal) {
+        return false;
+    }
+    const normalized = token.text.toLowerCase();
+    const candidate = normalized.startsWith('-') ? normalized.slice(1) : normalized;
+    return parseTypeFilterToken(candidate) !== null;
 };
 
 // Checks whether a query contains only tag/property operands and connector words.
@@ -1080,6 +1188,12 @@ const isTagOnlyMutationQuery = (query: string): boolean => {
 
         if (parsePropertyFilterToken(candidate)) {
             hasTagOperand = true;
+            continue;
+        }
+
+        // Type facets are an orthogonal search dimension. They can coexist with
+        // a tag/property expression without changing how its connectors mutate.
+        if (parseTypeFilterToken(candidate)) {
             continue;
         }
 
@@ -1195,7 +1309,25 @@ export interface UpdateFilterQueryWithPropertyResult {
     changed: boolean;
 }
 
+export interface UpdateFilterQueryWithTypeResult {
+    query: string;
+    action: 'added' | 'removed';
+    changed: boolean;
+}
+
 const removeMutationToken = (tokens: RawSearchToken[], removalIndex: number, expressionMode: boolean): RawSearchToken[] => {
+    if (expressionMode) {
+        // Keep Type facets outside the tag/property expression while cleaning
+        // the connectors around the removed expression operand.
+        const removalToken = tokens[removalIndex];
+        const expressionTokens = tokens.filter(token => !isTypeFacetRawToken(token));
+        const typeFacetTokens = tokens.filter(isTypeFacetRawToken);
+        const expressionRemovalIndex = expressionTokens.indexOf(removalToken);
+        if (typeFacetTokens.length > 0 && expressionRemovalIndex !== -1) {
+            return [...removeMutationToken(expressionTokens, expressionRemovalIndex, true), ...typeFacetTokens];
+        }
+    }
+
     const updatedTokens = tokens.slice();
     updatedTokens.splice(removalIndex, 1);
 
@@ -1232,7 +1364,8 @@ const appendMutationToken = (
     operator: InclusionOperator,
     expressionMode: boolean
 ): RawSearchToken[] => {
-    const nextTokens = tokens.slice();
+    const typeFacetTokens = expressionMode ? tokens.filter(isTypeFacetRawToken) : [];
+    const nextTokens = expressionMode ? tokens.filter(token => !isTypeFacetRawToken(token)) : tokens.slice();
     if (!expressionMode) {
         nextTokens.push(createMutationToken(token));
         return nextTokens;
@@ -1248,7 +1381,7 @@ const appendMutationToken = (
         nextTokens.push(createMutationToken(connector), createMutationToken(token));
     }
 
-    return nextTokens;
+    return [...nextTokens, ...typeFacetTokens];
 };
 
 /**
@@ -1373,6 +1506,70 @@ export function updateFilterQueryWithProperty(
 }
 
 /**
+ * Toggles one canonical Navigator Type facet without inserting or removing
+ * tag/property expression connectors. Type facets are ORed within their own
+ * dimension and ANDed with the remaining search criteria by the search host.
+ */
+export function updateFilterQueryWithType(query: string, typeId: string): UpdateFilterQueryWithTypeResult {
+    const trimmed = query.trim();
+    if (!isTpsNavigatorStructuralTypeId(typeId)) {
+        return {
+            query: trimmed,
+            action: 'removed',
+            changed: false
+        };
+    }
+
+    const formattedType = `${TYPE_FILTER_PREFIX}${typeId}`;
+    const tokens = trimmed.length > 0 ? tokenizeFilterSearchQuery(trimmed) : [];
+    const removalIndex = tokens.findIndex(token => {
+        if (token.literal || token.text.startsWith('-')) {
+            return false;
+        }
+        return parseTypeFilterToken(token.text.toLowerCase()) === typeId;
+    });
+
+    if (removalIndex !== -1) {
+        const updatedTokens = tokens.slice();
+        updatedTokens.splice(removalIndex, 1);
+        const nextQuery = serializeMutationTokens(updatedTokens);
+        return {
+            query: nextQuery,
+            action: 'removed',
+            changed: nextQuery !== trimmed
+        };
+    }
+
+    const nextQuery = serializeMutationTokens([...tokens, createMutationToken(formattedType)]);
+    return {
+        query: nextQuery,
+        action: 'added',
+        changed: nextQuery !== trimmed
+    };
+}
+
+/**
+ * Adds a fixed Type from navigation while preserving a different currently selected fixed Type as
+ * the first member of the Type union. Existing explicit Type facets remain authoritative.
+ */
+export function updateFilterQueryWithTypeSelection(
+    query: string,
+    typeId: string,
+    selectedType: string | null | undefined
+): UpdateFilterQueryWithTypeResult {
+    let nextQuery = query;
+    const tokens = query.trim() ? parseFilterSearchTokens(query) : null;
+    if (
+        selectedType !== typeId &&
+        isTpsNavigatorStructuralTypeId(selectedType) &&
+        (!tokens || (tokens.typeTokens.length === 0 && tokens.excludeTypeTokens.length === 0))
+    ) {
+        nextQuery = updateFilterQueryWithType(nextQuery, selectedType).query;
+    }
+    return updateFilterQueryWithType(nextQuery, typeId);
+}
+
+/**
  * Replaces a raw query string with a date token (for example `@2026-02-08`).
  */
 export function updateFilterQueryWithDateToken(query: string, dateToken: string): UpdateFilterQueryWithDateTokenResult {
@@ -1402,10 +1599,26 @@ export function filterSearchHasActiveCriteria(tokens: FilterSearchTokens): boole
         tokens.excludePropertyTokens.length > 0 ||
         tokens.excludeFolderTokens.length > 0 ||
         tokens.excludeExtensionTokens.length > 0 ||
+        tokens.excludeTypeTokens.length > 0 ||
         tokens.excludeDateRanges.length > 0 ||
         tokens.excludeUnfinishedTasks ||
         tokens.excludeTagged
     );
+}
+
+/**
+ * Matches one result Type against the host-owned Type facet. Positive Types
+ * are alternatives (OR); exclusions always win. Other search dimensions are
+ * evaluated independently by the normal search pipeline.
+ */
+export function filterSearchMatchesTypeFacet(typeId: unknown, tokens: FilterSearchTokens): boolean {
+    if (!isTpsNavigatorStructuralTypeId(typeId)) {
+        return false;
+    }
+    if (tokens.excludeTypeTokens.includes(typeId)) {
+        return false;
+    }
+    return tokens.typeTokens.length === 0 || tokens.typeTokens.includes(typeId);
 }
 
 /**

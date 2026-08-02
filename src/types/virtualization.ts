@@ -80,6 +80,8 @@ export interface ListPaneItem {
     hasTags?: boolean;
     // Marks files that are normally hidden (frontmatter or excluded folders) but shown via "show hidden items"
     isHidden?: boolean;
+    /** Owning built-in Type for mixed structural search rows rendered outside a Type navigation selection. */
+    providerTypeId?: TpsNavigatorTypeId;
 }
 
 export interface FolderTreeItem {

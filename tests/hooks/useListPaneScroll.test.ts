@@ -25,6 +25,7 @@ import { createHiddenTagVisibility } from '../../src/utils/tagPrefixMatcher';
 import type { FileContentChange, IndexedDBStorage } from '../../src/storage/IndexedDBStorage';
 import {
     createRemeasureScheduler,
+    getStickyHeaderHeightBeforeIndex,
     isListRowHeightAffectingContentChange,
     type ListRowHeightAffectingContentChangeConfig,
     resolveListFileRowHeightInputs,
@@ -436,5 +437,38 @@ describe('createRemeasureScheduler', () => {
         expect(animationFrameStub.cancelAnimationFrame).toHaveBeenCalledWith(1);
         expect(animationFrameStub.runNextFrame()).toBe(false);
         expect(measure).not.toHaveBeenCalled();
+    });
+});
+
+describe('getStickyHeaderHeightBeforeIndex', () => {
+    const measurements = getListPaneMeasurements(false);
+    const header: ListPaneItem = {
+        type: ListPaneItemType.HEADER,
+        data: 'High priority',
+        key: 'header-high-priority',
+        headerKind: 'property'
+    };
+    const providerRow: ListPaneItem = {
+        type: ListPaneItemType.PROVIDER_ROW,
+        data: {
+            providerId: 'tps-structural-types',
+            id: 'task:Notes/Daily.md:4',
+            label: 'Grouped task',
+            sourcePath: 'Notes/Daily.md',
+            sourceLineNumber: 4
+        },
+        key: 'provider:tps-structural-types:task:Notes/Daily.md:4'
+    };
+
+    it('reserves the preceding sticky group header for a grouped provider row', () => {
+        const items: ListPaneItem[] = [{ type: ListPaneItemType.TOP_SPACER, data: '', key: 'top-spacer' }, header, providerRow];
+
+        expect(getStickyHeaderHeightBeforeIndex(items, 2, measurements)).toBe(measurements.groupHeaderHeight);
+    });
+
+    it('does not add sticky clearance to an ungrouped provider row', () => {
+        const items: ListPaneItem[] = [{ type: ListPaneItemType.TOP_SPACER, data: '', key: 'top-spacer' }, providerRow];
+
+        expect(getStickyHeaderHeightBeforeIndex(items, 1, measurements)).toBe(0);
     });
 });

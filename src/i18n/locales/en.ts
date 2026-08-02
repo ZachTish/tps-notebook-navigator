@@ -215,7 +215,7 @@ export const STRINGS_EN = {
                         '`#tag1 AND #tag2` Match both tags (explicit AND).',
                         '`#tag1 OR #tag2` Match either tag.',
                         '`#a OR #b AND #c` AND has higher precedence: matches `#a`, or both `#b` and `#c`.',
-                        'Cmd/Ctrl+Click a tag to add with AND. Cmd/Ctrl+Shift+Click to add with OR.'
+                        'Shift+Click or Cmd/Ctrl+Click a tag to add with AND. Cmd/Ctrl+Shift+Click to add with OR.'
                     ]
                 },
                 properties: {
@@ -227,7 +227,7 @@ export const STRINGS_EN = {
                         '`."Reading Status"="In Progress"` Keys and values with whitespace must be double-quoted.',
                         '`-.key` Exclude notes with a property key that starts with `key`.',
                         '`-.key=value` Exclude notes where the property value contains `value`.',
-                        'Cmd/Ctrl+Click a property to add with AND. Cmd/Ctrl+Shift+Click to add with OR.'
+                        'Shift+Click or Cmd/Ctrl+Click a property to add with AND. Cmd/Ctrl+Shift+Click to add with OR.'
                     ]
                 },
                 tasks: {
@@ -242,14 +242,18 @@ export const STRINGS_EN = {
                         '`-folder:/archive` Exclude notes only in `archive` (not subfolders).',
                         '`ext:md` Include notes with extension `md` (`ext:.md` is also supported).',
                         '`-ext:pdf` Exclude notes with extension `pdf`.',
+                        '`type:structural:task` Include Checkbox rows. Other fixed Type IDs work the same way.',
+                        'Multiple `type:` filters include any selected Type; tag, property, date, folder, and extension filters constrain the owning note.',
+                        'Shift+Click a Type in navigation to add or remove it from Filter Search.',
+                        'A nonempty Filter Search started from a built-in Type searches every built-in Type; Omnisearch remains file-only.',
                         'Combine with tags, names, and dates (for example: `folder:/work/meetings ext:md @thisweek`).'
                     ]
                 },
                 connectors: {
                     title: 'AND/OR behavior',
                     items: [
-                        '`AND` and `OR` are operators only in tag/property-only queries.',
-                        'Tag/property-only queries contain only tag and property filters: `#tag`, `-#tag`, `#`, `-#`, `.key`, `-.key`, `.key=value`, `-.key=value`.',
+                        '`AND` and `OR` are operators only in tag/property expressions; orthogonal `type:` facets do not change that expression mode.',
+                        'Tag/property expressions contain tag and property filters: `#tag`, `-#tag`, `#`, `-#`, `.key`, `-.key`, `.key=value`, `-.key=value`.',
                         'If a query includes names, dates (`@...`), task filters (`has:task`), folder filters (`folder:...`), or extension filters (`ext:...`), `AND` and `OR` are matched as words.',
                         'Example operator query: `#work OR .status=started`.',
                         'Example mixed query: `#work OR ext:md` (`OR` is matched in file names).'

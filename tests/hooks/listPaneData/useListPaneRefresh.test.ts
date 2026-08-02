@@ -21,9 +21,11 @@ import { App, TFile } from 'obsidian';
 import {
     getModifiedSortBoundaryRefreshKey,
     hasPropertySearchContentChange,
+    hasStructuralTypeTagSearchContentChange,
     hasTypePresentationContentChange,
     hasTypeVisibilityContentChange,
     shouldRefreshForCustomGroupHeaderMetadataChange,
+    shouldRefreshOnFileModifyForList,
     shouldSkipModifiedSortBoundaryRefresh
 } from '../../../src/hooks/listPaneData/useListPaneRefresh';
 import { ItemType } from '../../../src/types';
@@ -218,31 +220,97 @@ describe('hasTypeVisibilityContentChange', () => {
 });
 
 describe('hasTypePresentationContentChange', () => {
-    it('refreshes file-backed Type ordering/grouping for in-scope property writes', () => {
+    it('refreshes structural Type ordering/grouping for in-scope property writes', () => {
         const changes = [{ path: 'notes/project.md', changes: { properties: [] }, changeType: 'content' as const }];
 
         expect(
             hasTypePresentationContentChange({
                 changes,
                 basePathSet: new Set(['notes/project.md']),
-                isFileBackedTypeSelection: true,
+                isStructuralTypeSelection: true,
                 usesMetadataPresentation: true
             })
         ).toBe(true);
     });
 
-    it('guards standalone Types, metadata-independent presentation, and out-of-scope writes', () => {
+    it('guards external Types, metadata-independent presentation, and out-of-scope writes', () => {
         const changes = [{ path: 'notes/project.md', changes: { properties: [] }, changeType: 'content' as const }];
         const base = {
             changes,
             basePathSet: new Set(['notes/project.md']),
-            isFileBackedTypeSelection: true,
+            isStructuralTypeSelection: true,
             usesMetadataPresentation: true
         };
 
-        expect(hasTypePresentationContentChange({ ...base, isFileBackedTypeSelection: false })).toBe(false);
+        expect(hasTypePresentationContentChange({ ...base, isStructuralTypeSelection: false })).toBe(false);
         expect(hasTypePresentationContentChange({ ...base, usesMetadataPresentation: false })).toBe(false);
         expect(hasTypePresentationContentChange({ ...base, basePathSet: new Set(['notes/other.md']) })).toBe(false);
+    });
+});
+
+describe('fixed-Type search refresh', () => {
+    it('refreshes an active tag search when an owning note changes tags', () => {
+        const changes = [{ path: 'notes/shopping.md', changes: { tags: ['shopping'] }, changeType: 'content' as const }];
+
+        expect(
+            hasStructuralTypeTagSearchContentChange({
+                changes,
+                basePathSet: new Set(['notes/shopping.md']),
+                hasTagSearchFilters: true,
+                isStructuralTypeSelection: true
+            })
+        ).toBe(true);
+        expect(
+            hasStructuralTypeTagSearchContentChange({
+                changes,
+                basePathSet: new Set(['notes/shopping.md']),
+                hasTagSearchFilters: false,
+                isStructuralTypeSelection: true
+            })
+        ).toBe(false);
+        expect(
+            hasStructuralTypeTagSearchContentChange({
+                changes,
+                basePathSet: new Set(['notes/other.md']),
+                hasTagSearchFilters: true,
+                isStructuralTypeSelection: true
+            })
+        ).toBe(false);
+        expect(
+            hasStructuralTypeTagSearchContentChange({
+                changes,
+                basePathSet: new Set(['notes/shopping.md']),
+                hasTagSearchFilters: true,
+                isStructuralTypeSelection: false
+            })
+        ).toBe(false);
+    });
+
+    it('refreshes an active modified-date search under a fixed Type even when its sort ignores mtime', () => {
+        expect(
+            shouldRefreshOnFileModifyForList({
+                hasDateSearchFilters: true,
+                isStructuralTypeSelection: true,
+                propertySortSecondary: 'title',
+                sortOption: 'title-asc'
+            })
+        ).toBe(true);
+        expect(
+            shouldRefreshOnFileModifyForList({
+                hasDateSearchFilters: true,
+                isStructuralTypeSelection: false,
+                propertySortSecondary: 'title',
+                sortOption: 'title-asc'
+            })
+        ).toBe(false);
+        expect(
+            shouldRefreshOnFileModifyForList({
+                hasDateSearchFilters: false,
+                isStructuralTypeSelection: true,
+                propertySortSecondary: 'title',
+                sortOption: 'modified-desc'
+            })
+        ).toBe(true);
     });
 });
 

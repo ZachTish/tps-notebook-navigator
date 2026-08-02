@@ -260,7 +260,7 @@ export function getCachedFileTags(params: {
     return extractFileTagsFromRawTags(rawTags);
 }
 
-interface TagModifierState {
+interface NavigationSearchModifierState {
     altKey: boolean;
     ctrlKey: boolean;
     metaKey: boolean;
@@ -268,10 +268,11 @@ interface TagModifierState {
 }
 
 /**
- * Determines which inclusion operator to use when a modifier-click should mutate tag search filters.
+ * Determines which inclusion operator to use when a navigation-row click should mutate search filters.
+ * Shift alone adds an AND facet; the configured multi-select modifier plus Shift adds an OR facet.
  */
-export function getTagSearchModifierOperator(
-    event: TagModifierState | null | undefined,
+export function getNavigationSearchModifierOperator(
+    event: NavigationSearchModifierState | null | undefined,
     modifierSetting: MultiSelectModifier
 ): InclusionOperator | null {
     // Modifier-driven filter mutation follows pointer-modifier support (desktop and tablets); phones stay touch-only.
@@ -281,12 +282,19 @@ export function getTagSearchModifierOperator(
 
     const modifierPressed = isMultiSelectModifierPressed(event, modifierSetting);
 
+    if (event.shiftKey && !modifierPressed) {
+        return 'AND';
+    }
+
     if (!modifierPressed) {
         return null;
     }
 
     return event.shiftKey ? 'OR' : 'AND';
 }
+
+/** Backward-compatible name for existing tag/property callers. */
+export const getTagSearchModifierOperator = getNavigationSearchModifierOperator;
 
 /**
  * Gets normalized tags for a file (without # prefix and in lowercase)

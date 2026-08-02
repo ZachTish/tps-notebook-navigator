@@ -38,7 +38,7 @@ describe('public list presentation plans', () => {
         });
     });
 
-    it('accepts file-backed Type targets while rejecting standalone Type targets and incompatible grouping', () => {
+    it('accepts fixed Type targets while limiting line-backed Types to compatible sort/group fields', () => {
         const current = settings();
         expect(
             resolveNavigatorListPresentationTarget({
@@ -57,7 +57,7 @@ describe('public list presentation plans', () => {
                 selectedProperty: null,
                 selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
             })
-        ).toBeNull();
+        ).toEqual({ type: ItemType.TYPE, key: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES });
 
         const fileType = { type: ItemType.TYPE, key: TPS_NAVIGATOR_TYPE_IDS.NOTES } as const;
         const typePlan = createNavigatorListPresentationPlan(current, fileType, {
@@ -75,6 +75,28 @@ describe('public list presentation plans', () => {
             groupBy: 'property:Status',
             mode: 'compact'
         });
+
+        const lineType = { type: ItemType.TYPE, key: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES } as const;
+        const linePlan = createNavigatorListPresentationPlan(current, lineType, {
+            sort: { option: 'title-desc' },
+            groupBy: 'property:status'
+        });
+        expect(linePlan).not.toBeNull();
+        applyNavigatorListPresentationPlan(current, linePlan!);
+        expect(current.typeSortOverrides?.[TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]).toBe('title-desc');
+        expect(current.typeAppearances?.[TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]).toEqual({ groupBy: 'property:Status' });
+        expect(createNavigatorListPresentationPlan(current, lineType, { displayMode: 'compact' })).toBeNull();
+        expect(createNavigatorListPresentationPlan(current, lineType, { groupBy: 'folder' })).toBeNull();
+        expect(createNavigatorListPresentationPlan(current, lineType, { groupBy: 'custom' })).not.toBeNull();
+        expect(
+            createNavigatorListPresentationPlan(current, lineType, {
+                sort: { option: 'property-asc', propertyKey: 'Rank' }
+            })
+        ).toBeNull();
+
+        current.defaultFolderSort = 'property-asc';
+        current.propertySortKey = 'Rank, Priority';
+        expect(createNavigatorListPresentationPlan(current, lineType, { groupBy: 'property:priority' })).not.toBeNull();
 
         const tag = { type: ItemType.TAG, key: 'work' } as const;
         expect(createNavigatorListPresentationPlan(current, tag, { groupBy: 'folder' })).toBeNull();

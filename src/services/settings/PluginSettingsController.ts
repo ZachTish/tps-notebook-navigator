@@ -113,7 +113,7 @@ import {
     type UXPreferences
 } from '../../types';
 import type { FolderAppearance } from '../../hooks/useListPaneAppearance';
-import { isTpsNavigatorFileTypeId, isTpsNavigatorTypeId } from '../../types/navigatorTypes';
+import { isTpsNavigatorLineTypeId, isTpsNavigatorStructuralTypeId, isTpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { createSyncModeRegistry, type SyncModeRegistry } from './syncModeRegistry';
 import { getDefaultUXPreferences, isUXPreferencesRecord } from './uxPreferences';
 
@@ -1268,7 +1268,7 @@ export class PluginSettingsController {
         ): NonNullable<NotebookNavigatorSettings['typeSortOverrides']> => {
             const sanitized = sanitizeSortMap(record);
             Object.keys(sanitized).forEach(key => {
-                if (!isTpsNavigatorFileTypeId(key)) {
+                if (!isTpsNavigatorStructuralTypeId(key)) {
                     delete sanitized[key];
                 }
             });
@@ -1279,8 +1279,17 @@ export class PluginSettingsController {
         ): NonNullable<NotebookNavigatorSettings['typeAppearances']> => {
             const sanitized = sanitizeAppearanceMap(record);
             Object.keys(sanitized).forEach(key => {
-                if (!isTpsNavigatorFileTypeId(key)) {
+                if (!isTpsNavigatorStructuralTypeId(key)) {
                     delete sanitized[key];
+                    return;
+                }
+                if (isTpsNavigatorLineTypeId(key)) {
+                    const groupBy = sanitized[key]?.groupBy;
+                    if (groupBy === undefined) {
+                        delete sanitized[key];
+                    } else {
+                        sanitized[key] = { groupBy };
+                    }
                 }
             });
             return sanitized;

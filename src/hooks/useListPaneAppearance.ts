@@ -22,7 +22,7 @@ import { useNavigationSelection } from '../context/SelectionContext';
 import type { ListDisplayMode, ListNoteGroupingOption, NotebookNavigatorSettings } from '../settings/types';
 import { ItemType } from '../types';
 import { resolveListGroupingOverride } from '../utils/listGrouping';
-import { isTpsNavigatorFileTypeId } from '../types/navigatorTypes';
+import { isTpsNavigatorLineTypeId, isTpsNavigatorStructuralTypeId } from '../types/navigatorTypes';
 
 export interface FolderAppearance {
     mode?: ListDisplayMode;
@@ -97,7 +97,8 @@ export function useListPaneAppearance() {
     const selectedFolderPath = selectionType === ItemType.FOLDER ? (selectedFolder?.path ?? null) : null;
     const selectedTagPath = selectionType === ItemType.TAG ? selectedTag : null;
     const selectedPropertyNodeId = selectionType === ItemType.PROPERTY ? selectedProperty : null;
-    const selectedFileTypeId = selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectedType) ? selectedType : null;
+    const selectedStructuralTypeId = selectionType === ItemType.TYPE && isTpsNavigatorStructuralTypeId(selectedType) ? selectedType : null;
+    const isSelectedLineType = isTpsNavigatorLineTypeId(selectedStructuralTypeId);
     const selectedAppearance =
         selectedFolderPath !== null
             ? settings.folderAppearances?.[selectedFolderPath]
@@ -105,12 +106,12 @@ export function useListPaneAppearance() {
               ? settings.tagAppearances?.[selectedTagPath]
               : selectedPropertyNodeId !== null
                 ? settings.propertyAppearances?.[selectedPropertyNodeId]
-                : selectedFileTypeId !== null
-                  ? settings.typeAppearances?.[selectedFileTypeId]
+                : selectedStructuralTypeId !== null
+                  ? settings.typeAppearances?.[selectedStructuralTypeId]
                   : undefined;
-    const selectedMode = selectedAppearance?.mode;
-    const selectedTitleRows = selectedAppearance?.titleRows;
-    const selectedPreviewRows = selectedAppearance?.previewRows;
+    const selectedMode = isSelectedLineType ? undefined : selectedAppearance?.mode;
+    const selectedTitleRows = isSelectedLineType ? undefined : selectedAppearance?.titleRows;
+    const selectedPreviewRows = isSelectedLineType ? undefined : selectedAppearance?.previewRows;
     const selectedGroupBy = selectedAppearance?.groupBy;
     const { defaultListMode, fileNameRows, noteGrouping, previewRows, showFeatureImage, showFileDate, showFilePreview } = settings;
 

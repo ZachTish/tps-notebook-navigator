@@ -27,12 +27,13 @@ import {
     getSelectedTagPillToHide,
     hasVisibleTagPills,
     getPropertyRowCount,
+    listItemUsesTypeProviderPresentation,
     shouldShowExtensionBadgeThumbnail,
     shouldShowFeatureImageArea,
     shouldShowFileItemParentFolderLine,
     usesStandaloneTypeProviderPresentation
 } from '../../src/utils/listPaneMeasurements';
-import { ItemType } from '../../src/types';
+import { ItemType, ListPaneItemType } from '../../src/types';
 import { buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { createHiddenTagVisibility } from '../../src/utils/tagPrefixMatcher';
 import { createTestTFile } from './createTestTFile';
@@ -59,6 +60,24 @@ describe('listPaneMeasurements layout helpers', () => {
         expect(usesStandaloneTypeProviderPresentation(ItemType.TYPE, 'file:base')).toBe(false);
         expect(usesStandaloneTypeProviderPresentation(ItemType.FOLDER, 'structural:task')).toBe(false);
         expect(usesStandaloneTypeProviderPresentation(ItemType.TYPE, null)).toBe(false);
+    });
+
+    it('preserves Type presentation for mixed structural search rows outside a Type selection', () => {
+        const row = {
+            type: ListPaneItemType.PROVIDER_ROW,
+            key: 'provider:tps/entity-types:task-1',
+            providerTypeId: 'structural:task' as const,
+            data: {
+                providerId: 'tps/entity-types',
+                id: 'task-1',
+                label: 'Ship release',
+                sourcePath: 'Projects/Atlas.md'
+            }
+        };
+
+        expect(listItemUsesTypeProviderPresentation(row, ItemType.TAG, null)).toBe(true);
+        expect(listItemUsesTypeProviderPresentation({ ...row, providerTypeId: undefined }, ItemType.TAG, null)).toBe(false);
+        expect(listItemUsesTypeProviderPresentation({ ...row, providerTypeId: undefined }, ItemType.TYPE, 'structural:task')).toBe(true);
     });
 
     it('sizes standard Type results with the native file title and source-line rhythm', () => {

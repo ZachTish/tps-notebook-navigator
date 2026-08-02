@@ -49,6 +49,7 @@ import {
     isDateSortOption,
     parsePropertySortKeys,
     resolveListSort,
+    resolveSourceBackedTypeListSort,
     type SortDirection,
     type SortField
 } from '../utils/sortUtils';
@@ -83,7 +84,7 @@ import {
 import { getErrorMessage } from '../utils/errorUtils';
 import { showNotice } from '../utils/noticeUtils';
 import { registerActiveFileWorkspaceListeners } from '../utils/workspaceActiveFileEvents';
-import { isTpsNavigatorFileTypeId } from '../types/navigatorTypes';
+import { isTpsNavigatorFileTypeId, isTpsNavigatorLineTypeId, isTpsNavigatorStructuralTypeId } from '../types/navigatorTypes';
 import { collectFileBackedTypeFiles } from './listPaneData/typeListItems';
 
 type SelectionSortTarget =
@@ -532,8 +533,11 @@ export function useListActions({
     const hasPropertySelection = selectionState.selectionType === ItemType.PROPERTY && Boolean(selectionState.selectedProperty);
     const hasFileBackedTypeSelection =
         selectionState.selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectionState.selectedType);
+    const hasLineBackedTypeSelection =
+        selectionState.selectionType === ItemType.TYPE && isTpsNavigatorLineTypeId(selectionState.selectedType);
     const hasCreatablePropertySelection = hasPropertySelection && selectionState.selectedProperty !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID;
-    const hasAppearanceOrSortSelection = hasFolderSelection || hasTagSelection || hasPropertySelection || hasFileBackedTypeSelection;
+    const hasAppearanceOrSortSelection =
+        hasFolderSelection || hasTagSelection || hasPropertySelection || hasFileBackedTypeSelection || hasLineBackedTypeSelection;
 
     const openDefaultListSettings = useCallback(() => {
         plugin.openSettings();
@@ -559,7 +563,7 @@ export function useListActions({
         if (selectionState.selectionType === ItemType.PROPERTY && selectionState.selectedProperty) {
             return { type: ItemType.PROPERTY, key: selectionState.selectedProperty };
         }
-        if (selectionState.selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectionState.selectedType)) {
+        if (selectionState.selectionType === ItemType.TYPE && isTpsNavigatorStructuralTypeId(selectionState.selectedType)) {
             return { type: ItemType.TYPE, key: selectionState.selectedType };
         }
         return null;
@@ -652,7 +656,7 @@ export function useListActions({
         if (selectionState.selectionType === ItemType.PROPERTY && selectionState.selectedProperty) {
             return settings.propertyAppearances?.[selectionState.selectedProperty];
         }
-        if (selectionState.selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectionState.selectedType)) {
+        if (selectionState.selectionType === ItemType.TYPE && isTpsNavigatorStructuralTypeId(selectionState.selectedType)) {
             return settings.typeAppearances?.[selectionState.selectedType];
         }
         return undefined;
@@ -737,8 +741,14 @@ export function useListActions({
     const defaultMode = getDefaultListMode(settings);
     const selectionSortTarget = useMemo(() => getSelectionSortTarget(), [getSelectionSortTarget]);
     const selectionSortOverride = useMemo(() => getSelectionSortOverride(), [getSelectionSortOverride]);
-    const selectionSortSpec = useMemo(() => resolveListSort(settings, selectionSortOverride), [settings, selectionSortOverride]);
-    const isSelectionManualSortActive = isManualSortPropertyKey(settings, selectionSortSpec.propertyKey);
+    const selectionSortSpec = useMemo(
+        () =>
+            hasLineBackedTypeSelection
+                ? resolveSourceBackedTypeListSort(settings, selectionSortOverride)
+                : resolveListSort(settings, selectionSortOverride),
+        [hasLineBackedTypeSelection, settings, selectionSortOverride]
+    );
+    const isSelectionManualSortActive = !hasLineBackedTypeSelection && isManualSortPropertyKey(settings, selectionSortSpec.propertyKey);
     const resolvePropertySortIcon = useCallback(
         (propertyKey: string): string | null => {
             const normalizedPropertyKey = casefold(propertyKey);
@@ -1665,8 +1675,10 @@ export function useListActions({
             }
 
             const menu = new Menu();
-            const currentSortSpec = resolveListSort(settings, selectionSortOverride);
-            const defaultSortSpec = resolveListSort(settings);
+            const currentSortSpec = hasLineBackedTypeSelection
+                ? resolveSourceBackedTypeListSort(settings, selectionSortOverride)
+                : resolveListSort(settings, selectionSortOverride);
+            const defaultSortSpec = hasLineBackedTypeSelection ? resolveSourceBackedTypeListSort(settings) : resolveListSort(settings);
             const currentSort = currentSortSpec.option;
             const currentDirection = getSortDirection(currentSort);
             const currentField = getSortField(currentSort);
@@ -1676,13 +1688,15 @@ export function useListActions({
             const propertySortKeys = parsePropertySortKeys(settings.propertySortKey).filter(
                 propertyKey => !isManualSortPropertyKey(settings, propertyKey)
             );
-            const hasManualSortPropertyKey = isValidManualSortPropertyKey(manualSortPropertyKey);
+            const supportsManualSort = !hasLineBackedTypeSelection;
+            const hasManualSortPropertyKey = supportsManualSort && isValidManualSortPropertyKey(manualSortPropertyKey);
             const manualSortPropertyFiles = hasManualSortPropertyKey && selectionSortTarget ? getManualSortPropertyRemovalFiles() : [];
             const manualSortPropertyCount = hasManualSortPropertyKey
                 ? countMarkdownFilesWithManualSortProperty(app, manualSortPropertyFiles, manualSortPropertyKey)
                 : 0;
             const isPropertySortActive = currentField === 'property';
-            const isManualSortActive = isPropertySortActive && isManualSortPropertyKey(settings, currentSortSpec.propertyKey);
+            const isManualSortActive =
+                supportsManualSort && isPropertySortActive && isManualSortPropertyKey(settings, currentSortSpec.propertyKey);
             const sortFieldLabels: Record<SortField, string> = {
                 modified: strings.settings.items.sortNotesBy.fields.modified,
                 created: strings.settings.items.sortNotesBy.fields.created,
@@ -1798,47 +1812,49 @@ export function useListActions({
                 });
             });
 
-            menu.addSeparator();
+            if (supportsManualSort) {
+                menu.addSeparator();
 
-            // The manual sort toggle and its actions sit in their own separated cluster after the
-            // direction entries because those entries apply to the sort fields but not to manual sort.
-            menu.addItem(item => {
-                const isDefaultField = defaultField === 'property' && isManualSortPropertyKey(settings, defaultSortSpec.propertyKey);
-                item.setTitle(withDefaultSuffix(strings.paneHeader.manualSort, isDefaultField))
-                    .setIcon('lucide-list-ordered')
-                    .setDisabled(!hasManualSortPropertyKey)
-                    .setChecked(isManualSortActive)
-                    .onClick(() => {
-                        if (!hasManualSortPropertyKey) {
-                            return;
-                        }
-                        runAsyncAction(applyManualSortMode);
-                    });
-            });
+                // The manual sort toggle and its actions sit in their own separated cluster after the
+                // direction entries because those entries apply to the sort fields but not to manual sort.
+                menu.addItem(item => {
+                    const isDefaultField = defaultField === 'property' && isManualSortPropertyKey(settings, defaultSortSpec.propertyKey);
+                    item.setTitle(withDefaultSuffix(strings.paneHeader.manualSort, isDefaultField))
+                        .setIcon('lucide-list-ordered')
+                        .setDisabled(!hasManualSortPropertyKey)
+                        .setChecked(isManualSortActive)
+                        .onClick(() => {
+                            if (!hasManualSortPropertyKey) {
+                                return;
+                            }
+                            runAsyncAction(applyManualSortMode);
+                        });
+                });
 
-            menu.addItem(item => {
-                item.setTitle(strings.paneHeader.editSortOrder)
-                    .setIcon('lucide-list-ordered')
-                    .setDisabled(!isManualSortActive || !onManualSortStart)
-                    .onClick(() => {
-                        if (!isManualSortActive || !onManualSortStart) {
-                            return;
-                        }
-                        onManualSortStart(currentSortSpec.propertyKey);
-                    });
-            });
+                menu.addItem(item => {
+                    item.setTitle(strings.paneHeader.editSortOrder)
+                        .setIcon('lucide-list-ordered')
+                        .setDisabled(!isManualSortActive || !onManualSortStart)
+                        .onClick(() => {
+                            if (!isManualSortActive || !onManualSortStart) {
+                                return;
+                            }
+                            onManualSortStart(currentSortSpec.propertyKey);
+                        });
+                });
 
-            menu.addItem(item => {
-                item.setTitle(strings.paneHeader.removeSortProperty)
-                    .setIcon('lucide-eraser')
-                    .setDisabled(manualSortPropertyCount === 0)
-                    .onClick(() => {
-                        if (manualSortPropertyCount === 0) {
-                            return;
-                        }
-                        promptRemoveManualSortProperty(manualSortPropertyKey, manualSortPropertyFiles, manualSortPropertyCount);
-                    });
-            });
+                menu.addItem(item => {
+                    item.setTitle(strings.paneHeader.removeSortProperty)
+                        .setIcon('lucide-eraser')
+                        .setDisabled(manualSortPropertyCount === 0)
+                        .onClick(() => {
+                            if (manualSortPropertyCount === 0) {
+                                return;
+                            }
+                            promptRemoveManualSortProperty(manualSortPropertyKey, manualSortPropertyFiles, manualSortPropertyCount);
+                        });
+                });
+            }
 
             menu.addSeparator();
 
@@ -1874,7 +1890,11 @@ export function useListActions({
                 });
             };
 
-            const groupOptions: ListNoteGroupingBaseOption[] = hasFolderSelection ? ['custom', 'date', 'folder'] : ['custom', 'date'];
+            const groupOptions: ListNoteGroupingBaseOption[] = hasLineBackedTypeSelection
+                ? ['custom', 'date']
+                : hasFolderSelection
+                  ? ['custom', 'date', 'folder']
+                  : ['custom', 'date'];
             groupOptions.forEach(option => {
                 addGroupOptionItem(
                     option,
@@ -1977,6 +1997,7 @@ export function useListActions({
             canApplyToDescendants,
             hasAppearanceOrSortSelection,
             hasFolderSelection,
+            hasLineBackedTypeSelection,
             hasSelectionGroupOverride,
             app,
             applyManualSortMode,

@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 3.1.0
+ * Version: 3.2.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -262,6 +262,7 @@ export interface NavigatorRowSelection {
     readonly file: TFile;
     readonly sourcePath: string;
     readonly sourceLineNumber?: number;
+    /** Opaque owning/selected Type id, or null for an ordinary row attached beneath a note. */
     readonly typeId: string | null;
 }
 
@@ -342,7 +343,7 @@ export type NavigatorVisibleListRow = NavigatorVisibleFileRow | NavigatorVisible
 export interface NavigatorListSnapshot {
     readonly navItem: NavItem;
     readonly search: NavigatorListSearchState;
-    /** Null for standalone structural/provider Types; file-backed Types expose native file-list presentation. */
+    /** Null only for external provider Type scopes or scopes without presentation controls. */
     readonly presentation: NavigatorListPresentationState | null;
     readonly rows: readonly NavigatorVisibleListRow[];
 }
@@ -623,7 +624,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 3.1.0
+ * @version 3.2.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */

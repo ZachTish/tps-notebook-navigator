@@ -17,7 +17,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { buildPropertySearchEvidence, resolvePropertyDisplayText } from '../../src/utils/propertyUtils';
+import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
+import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
+import { buildPropertySearchEvidence, hasWordCountTargetPropertyConsumer, resolvePropertyDisplayText } from '../../src/utils/propertyUtils';
 
 describe('propertyUtils', () => {
     it('uses wiki link labels as property display text', () => {
@@ -86,5 +88,18 @@ describe('propertyUtils', () => {
             groups: [{ propertyKey: 'Alpha' }, { propertyKey: 'Beta' }, { propertyKey: 'Gamma' }],
             hiddenGroupCount: 1
         });
+    });
+
+    it('does not activate word-count indexing for source-backed Type presentation alone', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.textCountDisplay = 'none';
+        settings.typeAppearances = {
+            [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { groupBy: 'custom' }
+        };
+        settings.typeSortOverrides = {
+            [TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS]: 'title-asc'
+        };
+
+        expect(hasWordCountTargetPropertyConsumer(settings)).toBe(false);
     });
 });

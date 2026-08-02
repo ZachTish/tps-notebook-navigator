@@ -82,7 +82,7 @@ import { ManualSortListContent } from './listPane/ManualSortListContent';
 import type { FileItemStorageHelpers } from './FileItem';
 import { type SearchShortcut } from '../types/shortcuts';
 import { type SearchNavFilterState } from '../types/search';
-import { isTpsNavigatorFileTypeId } from '../types/navigatorTypes';
+import { isTpsNavigatorFileTypeId, isTpsNavigatorStructuralTypeId, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 import { EMPTY_LIST_MENU_TYPE } from '../utils/contextMenu';
 import { useCollapsedPinnedContexts, useUXPreferences } from '../context/UXPreferencesContext';
 import { type InclusionOperator } from '../utils/filterSearch';
@@ -175,6 +175,7 @@ export interface ListPaneHandle {
     setListPresentation: (update: NavigatorListPresentationUpdate) => Promise<boolean>;
     modifySearchWithTag: (tag: string, operator: InclusionOperator, options?: SearchQueryUpdateOptions) => void;
     modifySearchWithProperty: (key: string, value: string | null, operator: InclusionOperator, options?: SearchQueryUpdateOptions) => void;
+    modifySearchWithType: (typeId: TpsNavigatorTypeId, options?: SearchQueryUpdateOptions) => void;
     modifySearchWithDateToken: (dateToken: string, options?: SearchQueryUpdateOptions) => void;
     toggleSearch: () => void;
     searchWithDescendants: () => void;
@@ -199,9 +200,7 @@ interface ListPaneProps {
     resizeHandleProps?: {
         onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
     };
-    /**
-     * Callback invoked whenever tag-related search tokens change.
-     */
+    /** Callback invoked whenever navigation-highlight search facets change. */
     onSearchTokensChange?: (state: SearchNavFilterState) => void;
     folderDecorationModel: FolderDecorationModel;
     fileItemPillDecorationModel: FileItemPillDecorationModel;
@@ -478,6 +477,7 @@ export const ListPane = React.memo(
             handleRemoveSearchShortcut,
             modifySearchWithTag,
             modifySearchWithProperty,
+            modifySearchWithType,
             modifySearchWithDateToken,
             toggleSearch,
             executeSearchShortcut,
@@ -513,6 +513,7 @@ export const ListPane = React.memo(
         const effectivePropertySortKey = effectiveSortSpec.propertyKey.trim();
         const isPropertySortActive = getSortField(effectiveSortOption) === 'property';
         const isFileBackedTypeSelection = selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectedType);
+        const isStructuralTypeSelection = selectionType === ItemType.TYPE && isTpsNavigatorStructuralTypeId(selectedType);
         const isManualSortActive =
             (selectionType !== ItemType.TYPE || isFileBackedTypeSelection) &&
             isPropertySortActive &&
@@ -829,7 +830,7 @@ export const ListPane = React.memo(
                   ? settings.tagAppearances?.[selectedTag]
                   : selectionType === ItemType.PROPERTY && selectedProperty
                     ? settings.propertyAppearances?.[selectedProperty]
-                    : isFileBackedTypeSelection && selectedType
+                    : isStructuralTypeSelection && selectedType
                       ? settings.typeAppearances?.[selectedType]
                       : undefined;
         const selectedSortOverride = getListSortOverrideForSelection(
@@ -1231,14 +1232,14 @@ export const ListPane = React.memo(
         const currentProviderRowTypeId = selectionType === ItemType.TYPE ? selectedType : null;
         const selectedProviderRowKey = selectionState.selectedRow ? getNavigatorRowSelectionKey(selectionState.selectedRow) : null;
         const selectProviderRow = React.useCallback(
-            (row: NavigatorProvidedRow): boolean => {
+            (row: NavigatorProvidedRow, itemTypeId?: TpsNavigatorTypeId | null): boolean => {
                 if (!app.vault.getFileByPath(row.sourcePath)) {
                     return false;
                 }
 
                 selectionDispatch({
                     type: 'SET_SELECTED_ROW',
-                    row: createSelectedNavigatorRow(row, currentProviderRowTypeId)
+                    row: createSelectedNavigatorRow(row, itemTypeId ?? currentProviderRowTypeId)
                 });
                 uiDispatch({ type: 'ACTIVATE_PANE', target: 'files' });
                 return true;
@@ -1252,7 +1253,11 @@ export const ListPane = React.memo(
                     return (
                         item.type === ListPaneItemType.PROVIDER_ROW &&
                         typeof item.data === 'object' &&
-                        matchesNavigatorRowFocusTarget(item.data as NavigatorProvidedRow, currentProviderRowTypeId, target)
+                        matchesNavigatorRowFocusTarget(
+                            item.data as NavigatorProvidedRow,
+                            item.providerTypeId ?? currentProviderRowTypeId,
+                            target
+                        )
                     );
                 });
                 if (itemIndex < 0) {
@@ -1263,7 +1268,7 @@ export const ListPane = React.memo(
                 if (item.type !== ListPaneItemType.PROVIDER_ROW || typeof item.data !== 'object') {
                     return false;
                 }
-                if (!selectProviderRow(item.data as NavigatorProvidedRow)) {
+                if (!selectProviderRow(item.data as NavigatorProvidedRow, item.providerTypeId)) {
                     return false;
                 }
 
@@ -1299,7 +1304,10 @@ export const ListPane = React.memo(
                 return;
             }
 
-            const currentRow = createSelectedNavigatorRow(matchingItem.data as NavigatorProvidedRow, currentProviderRowTypeId);
+            const currentRow = createSelectedNavigatorRow(
+                matchingItem.data as NavigatorProvidedRow,
+                matchingItem.providerTypeId ?? currentProviderRowTypeId
+            );
             if (!areSelectedNavigatorRowsEqual(selectedRow, currentRow)) {
                 selectionDispatch({ type: 'SET_SELECTED_ROW', row: currentRow });
             }
@@ -1905,6 +1913,14 @@ export const ListPane = React.memo(
             [modifySearchWithProperty]
         );
 
+        const modifySearchWithTypeWithDefaultScope = React.useCallback(
+            (typeId: TpsNavigatorTypeId, options?: SearchQueryUpdateOptions) => {
+                setForceSearchDescendants(false);
+                modifySearchWithType(typeId, options);
+            },
+            [modifySearchWithType]
+        );
+
         const modifySearchWithDateTokenWithDefaultScope = React.useCallback(
             (dateToken: string, options?: SearchQueryUpdateOptions) => {
                 if (!supportsCalendarInteractionsForSelection(selectionType)) {
@@ -2018,6 +2034,8 @@ export const ListPane = React.memo(
                 modifySearchWithTag: modifySearchWithTagWithDefaultScope,
                 // Toggle or modify search query to include/exclude a property with AND/OR operator
                 modifySearchWithProperty: modifySearchWithPropertyWithDefaultScope,
+                // Toggle one structural Type facet (multiple Types are ORed within that dimension)
+                modifySearchWithType: modifySearchWithTypeWithDefaultScope,
                 // Replace the active search query with a date token
                 modifySearchWithDateToken: modifySearchWithDateTokenWithDefaultScope,
                 // Toggle search mode on/off or focus existing search
@@ -2043,6 +2061,7 @@ export const ListPane = React.memo(
                 setListPresentation,
                 modifySearchWithTagWithDefaultScope,
                 modifySearchWithPropertyWithDefaultScope,
+                modifySearchWithTypeWithDefaultScope,
                 modifySearchWithDateTokenWithDefaultScope,
                 getManualSortNewFileContext,
                 toggleGroupExpansion

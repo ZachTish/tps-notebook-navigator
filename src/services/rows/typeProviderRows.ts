@@ -2,6 +2,9 @@
 
 import type { NavigatorProvidedRow } from './types';
 import type { GcmTaskMenuLike } from '../../integrations/gcm/gcmTaskApi';
+import type { FilterSearchTokens } from '../../utils/filterSearch';
+import { filterSearchMatchesTypeFacet, parseFilterSearchTokens } from '../../utils/filterSearch';
+import { foldSearchText } from '../../utils/recordUtils';
 import {
     isTpsNavigatorGcmLineTypeId,
     isTpsNavigatorMarkdownTypeId,
@@ -25,6 +28,12 @@ interface BuildTypeProviderRowsOptions {
     snapshot: TpsNavigatorTypesSnapshot;
     selectedType: TpsNavigatorTypeId;
     searchQuery: string;
+    /** Parsed host search. Type facets are evaluated here; note metadata is scoped by allowedSourcePaths. */
+    searchTokens?: FilterSearchTokens;
+    /** Optional source-note scope after navigation and owning-note metadata filters. */
+    allowedSourcePaths?: ReadonlySet<string>;
+    /** Standalone Type views show source failures; mixed search sections omit them. */
+    includeUnavailableStatus?: boolean;
     activate: (record: TpsNavigatorTypeRecord) => Promise<TypeRecordActivationResult>;
     setTaskCheckbox: (record: TpsNavigatorTypeRecord, checked: boolean) => Promise<TypeTaskMutationResult>;
     addTaskContextMenuItems: (menu: GcmTaskMenuLike, record: TpsNavigatorTypeRecord) => boolean;
@@ -35,13 +44,24 @@ export function buildTypeProviderRows({
     snapshot,
     selectedType,
     searchQuery,
+    searchTokens,
+    allowedSourcePaths,
+    includeUnavailableStatus = true,
     activate,
     setTaskCheckbox,
     addTaskContextMenuItems,
     onActivationFailure
 }: BuildTypeProviderRowsOptions): NavigatorProvidedRow[] {
+    const tokens = searchTokens ?? (searchQuery.trim() ? parseFilterSearchTokens(searchQuery) : null);
+    if (tokens && !filterSearchMatchesTypeFacet(selectedType, tokens)) {
+        return [];
+    }
+
     const lineAvailability = snapshot.lineAvailability ?? snapshot.builtinAvailability ?? snapshot.availability;
     if (isTpsNavigatorGcmLineTypeId(selectedType) && lineAvailability !== 'ready') {
+        if (!includeUnavailableStatus) {
+            return [];
+        }
         return [
             {
                 providerId: 'tps/entity-types',
@@ -54,6 +74,9 @@ export function buildTypeProviderRows({
     }
     const markdownAvailability = snapshot.markdownAvailability ?? snapshot.availability;
     if (isTpsNavigatorMarkdownTypeId(selectedType) && markdownAvailability !== 'ready') {
+        if (!includeUnavailableStatus) {
+            return [];
+        }
         return [
             {
                 providerId: 'tps/markdown-types',
@@ -65,15 +88,16 @@ export function buildTypeProviderRows({
         ];
     }
 
-    const queryTerms = searchQuery.trim().toLocaleLowerCase().split(/\s+/u).filter(Boolean);
+    const queryTerms = tokens ? tokens.nameTokens : searchQuery.trim().split(/\s+/u).map(foldSearchText).filter(Boolean);
+    const excludedQueryTerms = tokens?.excludeNameTokens ?? [];
 
     return (snapshot.recordsByType.get(selectedType) ?? [])
         .filter(record => {
-            if (queryTerms.length === 0) {
-                return true;
+            if (allowedSourcePaths && !allowedSourcePaths.has(record.sourcePath)) {
+                return false;
             }
-            const haystack = `${record.label}\n${record.sourcePath}`.toLocaleLowerCase();
-            return queryTerms.every(term => haystack.includes(term));
+            const haystack = foldSearchText(`${record.label}\n${record.sourcePath}`);
+            return queryTerms.every(term => haystack.includes(term)) && excludedQueryTerms.every(term => !haystack.includes(term));
         })
         .map(record => {
             const task = record.lineKind === 'task' ? record.task : undefined;

@@ -47,11 +47,12 @@ interface UseListPaneRefreshArgs {
     hasDateSearchFilters: boolean;
     hasManualSortWordCountGroupHeaders: boolean;
     hasPropertySearchFilters: boolean;
+    hasTagSearchFilters: boolean;
     hasTaskSearchFilters: boolean;
     hiddenFilePropertyMatcher: ReturnType<typeof createFrontmatterPropertyExclusionMatcher>;
     hiddenFileTags: string[];
     includeDescendantNotes: boolean;
-    isFileBackedTypeSelection: boolean;
+    isStructuralTypeSelection: boolean;
     manualSortGroupHeaderPropertyKey: string | null;
     onRefresh: () => void;
     propertyTreeService: IPropertyTreeProvider | null;
@@ -154,13 +155,39 @@ export function hasTypeVisibilityContentChange(params: {
 export function hasTypePresentationContentChange(params: {
     changes: readonly FileContentChange[];
     basePathSet: ReadonlySet<string>;
-    isFileBackedTypeSelection: boolean;
+    isStructuralTypeSelection: boolean;
     usesMetadataPresentation: boolean;
 }): boolean {
-    if (!params.isFileBackedTypeSelection || !params.usesMetadataPresentation) {
+    if (!params.isStructuralTypeSelection || !params.usesMetadataPresentation) {
         return false;
     }
     return params.changes.some(change => change.changes.properties !== undefined && params.basePathSet.has(change.path));
+}
+
+/** Owning-note tag changes can move rows into or out of an active fixed-Type search. */
+export function hasStructuralTypeTagSearchContentChange(params: {
+    changes: readonly FileContentChange[];
+    basePathSet: ReadonlySet<string>;
+    hasTagSearchFilters: boolean;
+    isStructuralTypeSelection: boolean;
+}): boolean {
+    if (!params.isStructuralTypeSelection || !params.hasTagSearchFilters) {
+        return false;
+    }
+    return params.changes.some(change => change.changes.tags !== undefined && params.basePathSet.has(change.path));
+}
+
+/** A modified-date filter depends on file mtime even when the selected Type uses a title/property sort. */
+export function shouldRefreshOnFileModifyForList(params: {
+    hasDateSearchFilters: boolean;
+    isStructuralTypeSelection: boolean;
+    propertySortSecondary: PropertySortSecondaryOption;
+    sortOption: SortOption;
+}): boolean {
+    return (
+        shouldRefreshOnFileModifyForSort(params.sortOption, params.propertySortSecondary) ||
+        (params.isStructuralTypeSelection && params.hasDateSearchFilters)
+    );
 }
 
 /**
@@ -224,11 +251,12 @@ export function useListPaneRefresh({
     hasDateSearchFilters,
     hasManualSortWordCountGroupHeaders,
     hasPropertySearchFilters,
+    hasTagSearchFilters,
     hasTaskSearchFilters,
     hiddenFilePropertyMatcher,
     hiddenFileTags,
     includeDescendantNotes,
-    isFileBackedTypeSelection,
+    isStructuralTypeSelection,
     manualSortGroupHeaderPropertyKey,
     onRefresh,
     propertyTreeService,
@@ -348,7 +376,12 @@ export function useListPaneRefresh({
             });
         }
 
-        const shouldRefreshOnFileModify = shouldRefreshOnFileModifyForSort(sortOption, propertySortSecondary);
+        const shouldRefreshOnFileModify = shouldRefreshOnFileModifyForList({
+            hasDateSearchFilters,
+            isStructuralTypeSelection,
+            propertySortSecondary,
+            sortOption
+        });
         // Property grouping reads frontmatter at list build time, so an edited grouping value must
         // rebuild group membership even when the active sort ignores metadata changes.
         const shouldRefreshOnMetadataChange =
@@ -481,7 +514,7 @@ export function useListPaneRefresh({
                     queueRefresh();
                     return;
                 }
-                if (isFileBackedTypeSelection && shouldRefreshOnMetadataChange && basePathSet.has(file.path)) {
+                if (isStructuralTypeSelection && shouldRefreshOnMetadataChange && basePathSet.has(file.path)) {
                     queueRefresh();
                 }
                 return;
@@ -536,10 +569,21 @@ export function useListPaneRefresh({
             }
             if (
                 !shouldRefresh &&
+                hasStructuralTypeTagSearchContentChange({
+                    changes,
+                    basePathSet,
+                    hasTagSearchFilters,
+                    isStructuralTypeSelection
+                })
+            ) {
+                shouldRefresh = true;
+            }
+            if (
+                !shouldRefresh &&
                 hasTypePresentationContentChange({
                     changes,
                     basePathSet,
-                    isFileBackedTypeSelection,
+                    isStructuralTypeSelection,
                     usesMetadataPresentation: shouldRefreshOnMetadataChange
                 })
             ) {
@@ -621,11 +665,12 @@ export function useListPaneRefresh({
         hasDateSearchFilters,
         hasManualSortWordCountGroupHeaders,
         hasPropertySearchFilters,
+        hasTagSearchFilters,
         hasTaskSearchFilters,
         hiddenFilePropertyMatcher,
         hiddenFileTags,
         includeDescendantNotes,
-        isFileBackedTypeSelection,
+        isStructuralTypeSelection,
         manualSortGroupHeaderPropertyKey,
         propertyTreeService,
         selectedFolder,

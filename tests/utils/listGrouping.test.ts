@@ -109,8 +109,8 @@ describe('resolveListGrouping property selections', () => {
     });
 });
 
-describe('resolveListGrouping file-backed Type selections', () => {
-    it('uses a per-Type override and normalizes a folder default for a vault-wide Type', () => {
+describe('resolveListGrouping structural Type selections', () => {
+    it('uses a per-Type override and normalizes a folder default for vault-wide Types', () => {
         const settings = createGroupingSettings('folder');
         settings.typeAppearances = {
             [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { groupBy: 'property:status' }
@@ -134,8 +134,8 @@ describe('resolveListGrouping file-backed Type selections', () => {
                 typeId: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
             })
         ).toMatchObject({
-            defaultGrouping: 'folder',
-            effectiveGrouping: 'folder',
+            defaultGrouping: 'date',
+            effectiveGrouping: 'date',
             hasCustomOverride: false
         });
     });
@@ -429,5 +429,33 @@ describe('hasEffectiveCustomListGrouping', () => {
         settings.folderSortOverrides.Projects = 'title-asc';
 
         expect(hasEffectiveCustomListGrouping(settings)).toBe(false);
+    });
+
+    it('ignores custom grouping and sort overrides owned only by source-backed Types', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.typeAppearances = {
+            [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { groupBy: 'custom' },
+            [TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS]: { groupBy: 'custom' }
+        };
+        settings.typeSortOverrides = {
+            [TPS_NAVIGATOR_TYPE_IDS.BULLETS]: 'title-asc',
+            [TPS_NAVIGATOR_TYPE_IDS.TABLES]: 'title-desc'
+        };
+
+        expect(hasEffectiveCustomListGrouping(settings)).toBe(false);
+    });
+
+    it('still detects custom grouping and sort overrides for file-backed Types', () => {
+        const appearanceSettings = structuredClone(DEFAULT_SETTINGS);
+        appearanceSettings.typeAppearances = {
+            [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { groupBy: 'custom' }
+        };
+        expect(hasEffectiveCustomListGrouping(appearanceSettings)).toBe(true);
+
+        const sortSettings = structuredClone(DEFAULT_SETTINGS);
+        sortSettings.typeSortOverrides = {
+            [TPS_NAVIGATOR_TYPE_IDS.BASES]: 'title-asc'
+        };
+        expect(hasEffectiveCustomListGrouping(sortSettings)).toBe(true);
     });
 });

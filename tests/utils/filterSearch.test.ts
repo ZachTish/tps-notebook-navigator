@@ -21,13 +21,18 @@ import {
     parseFilterSearchTokens,
     fileMatchesDateFilterTokens,
     fileMatchesFilterTokens,
+    filterSearchHasActiveCriteria,
+    filterSearchMatchesTypeFacet,
     findFilterSearchNameMatch,
     getFileFilterSearchMatch,
     updateFilterQueryWithTag,
-    updateFilterQueryWithProperty
+    updateFilterQueryWithProperty,
+    updateFilterQueryWithType,
+    updateFilterQueryWithTypeSelection
 } from '../../src/utils/filterSearch';
 import { buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { foldSearchText } from '../../src/utils/recordUtils';
+import { createTpsNavigatorProviderTypeId, TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 const sortTokens = (values: string[]) => [...values].sort();
 
@@ -60,6 +65,8 @@ describe('parseFilterSearchTokens', () => {
         expect(tokens.excludeFolderTokens).toEqual([]);
         expect(tokens.extensionTokens).toEqual([]);
         expect(tokens.excludeExtensionTokens).toEqual([]);
+        expect(tokens.typeTokens).toEqual([]);
+        expect(tokens.excludeTypeTokens).toEqual([]);
         expect(tokens.excludeDateRanges).toEqual([]);
         expect(tokens.excludeTagged).toBe(false);
     });
@@ -615,6 +622,121 @@ describe('buildSearchNavFilterState', () => {
         expect(state.properties.includeOperators).toEqual({
             [buildPropertyValueNodeId('status', 'started')]: 'AND',
             [buildPropertyValueNodeId('status', 'finished')]: 'OR'
+        });
+    });
+
+    it('tracks canonical included and excluded Types', () => {
+        const state = buildSearchNavFilterState(`type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES} -type:${TPS_NAVIGATOR_TYPE_IDS.HEADINGS}`);
+
+        expect(state.types).toEqual({
+            include: [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES],
+            exclude: [TPS_NAVIGATOR_TYPE_IDS.HEADINGS]
+        });
+    });
+});
+
+describe('Type search facets', () => {
+    it('parses canonical built-in Types and ORs multiple positive Types within the dimension', () => {
+        const tokens = parseFilterSearchTokens(
+            `type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES} type:${TPS_NAVIGATOR_TYPE_IDS.BULLETS} type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES}`
+        );
+
+        expect(tokens.mode).toBe('filter');
+        expect(tokens.hasInclusions).toBe(true);
+        expect(tokens.nameTokens).toEqual([]);
+        expect(tokens.typeTokens).toEqual([TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, TPS_NAVIGATOR_TYPE_IDS.BULLETS]);
+        expect(filterSearchMatchesTypeFacet(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, tokens)).toBe(true);
+        expect(filterSearchMatchesTypeFacet(TPS_NAVIGATOR_TYPE_IDS.BULLETS, tokens)).toBe(true);
+        expect(filterSearchMatchesTypeFacet(TPS_NAVIGATOR_TYPE_IDS.HEADINGS, tokens)).toBe(false);
+    });
+
+    it('rejects external provider facets because host search cannot aggregate provider-owned collections', () => {
+        const providerType = createTpsNavigatorProviderTypeId('acme/entities', 'projects');
+        expect(providerType).not.toBeNull();
+        const tokens = parseFilterSearchTokens(`type:${providerType} -type:${providerType}`);
+
+        expect(tokens.typeTokens).toEqual([]);
+        expect(tokens.excludeTypeTokens).toEqual([]);
+        expect(filterSearchHasActiveCriteria(tokens)).toBe(false);
+        expect(updateFilterQueryWithType('#alpha', providerType!)).toEqual({
+            query: '#alpha',
+            action: 'removed',
+            changed: false
+        });
+    });
+
+    it('keeps Type facets orthogonal to tag/property expression semantics', () => {
+        const tokens = parseFilterSearchTokens(`#alpha OR .status=working type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES}`);
+
+        expect(tokens.mode).toBe('tag');
+        expect(tokens.typeTokens).toEqual([TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]);
+        expect(fileMatchesFilterTokens(foldSearchText('Anything'), ['alpha'], tokens)).toBe(true);
+        expect(filterSearchMatchesTypeFacet(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, tokens)).toBe(true);
+        expect(filterSearchMatchesTypeFacet(TPS_NAVIGATOR_TYPE_IDS.BULLETS, tokens)).toBe(false);
+    });
+
+    it('ignores incomplete or noncanonical Type filters while preserving quoted literals', () => {
+        const invalid = parseFilterSearchTokens('type:checkboxes type:');
+        expect(invalid.hasInclusions).toBe(false);
+        expect(invalid.typeTokens).toEqual([]);
+        expect(invalid.nameTokens).toEqual([]);
+
+        const literal = parseFilterSearchTokens('"type:structural:task"');
+        expect(literal.typeTokens).toEqual([]);
+        expect(literal.nameTokens).toEqual(['type:structural:task']);
+    });
+
+    it('toggles Types without changing tag expression connectors', () => {
+        const added = updateFilterQueryWithType('#alpha OR #beta', TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES);
+        expect(added).toEqual({
+            query: `#alpha OR #beta type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES}`,
+            action: 'added',
+            changed: true
+        });
+
+        const secondType = updateFilterQueryWithType(added.query, TPS_NAVIGATOR_TYPE_IDS.BULLETS);
+        expect(secondType.query).toBe(`#alpha OR #beta type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES} type:${TPS_NAVIGATOR_TYPE_IDS.BULLETS}`);
+
+        const removed = updateFilterQueryWithType(secondType.query, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES);
+        expect(removed.query).toBe(`#alpha OR #beta type:${TPS_NAVIGATOR_TYPE_IDS.BULLETS}`);
+        expect(removed.action).toBe('removed');
+    });
+
+    it('builds the requested tag, Checkbox, then tag additive sequence', () => {
+        const firstTag = updateFilterQueryWithTag('', 'shopping', 'AND');
+        const checkbox = updateFilterQueryWithType(firstTag.query, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES);
+        const secondTag = updateFilterQueryWithTag(checkbox.query, 'errands', 'AND');
+
+        expect(secondTag.query).toBe(`#shopping AND #errands type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES}`);
+        const tokens = parseFilterSearchTokens(secondTag.query);
+        expect(tokens.mode).toBe('tag');
+        expect(tokens.includedTagTokens).toEqual(['shopping', 'errands']);
+        expect(tokens.typeTokens).toEqual([TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]);
+    });
+
+    it('preserves the selected fixed Type as the first union member when Shift-adding another Type', () => {
+        const result = updateFilterQueryWithTypeSelection('#shopping', TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, TPS_NAVIGATOR_TYPE_IDS.NOTES);
+
+        expect(result.query).toBe(`#shopping type:${TPS_NAVIGATOR_TYPE_IDS.NOTES} type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES}`);
+        expect(parseFilterSearchTokens(result.query).typeTokens).toEqual([TPS_NAVIGATOR_TYPE_IDS.NOTES, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]);
+    });
+
+    it('keeps Type facets outside connector cleanup when tags are added and removed', () => {
+        const withTag = updateFilterQueryWithTag(`#alpha type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES}`, 'beta', 'AND');
+        expect(withTag.query).toBe(`#alpha AND #beta type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES}`);
+
+        const withoutFirstTag = updateFilterQueryWithTag(withTag.query, 'alpha', 'AND');
+        expect(withoutFirstTag.query).toBe(`#beta type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES}`);
+        const reparsed = parseFilterSearchTokens(withoutFirstTag.query);
+        expect(reparsed.mode).toBe('tag');
+        expect(reparsed.typeTokens).toEqual([TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]);
+    });
+
+    it('does not mutate the query for an invalid Type id', () => {
+        expect(updateFilterQueryWithType('#alpha', 'checkboxes')).toEqual({
+            query: '#alpha',
+            action: 'removed',
+            changed: false
         });
     });
 });

@@ -41,6 +41,7 @@ The first-class **Types** section is enabled by default and has one flat built-i
 - Cached-range collections are **Code blocks**, **Callouts**, **Blockquotes**, and **Tables**. They come directly from Obsidian's root-level `CachedMetadata.sections`, without reading note bodies or depending on GCM. Excalidraw Markdown is excluded. Each row names its owning note and starting line, shows the cached source range, and revalidates that locator before opening the source; an existing block id can follow movement. Nested syntax appears only when Obsidian publishes it as its own root-level section, and unsupported or future parser types are ignored until explicitly added. A fenced block itself therefore appears in **Code blocks**, while task/list/heading examples inside fences stay excluded from the GCM collections.
 - Hydrated task entities in **Checkboxes** use GCM's canonical completion path with optimistic rollback. Right-click, mobile long-press, or **More actions** opens the same guarded GCM task menu. A task that cannot be matched exactly remains open-only rather than inventing state.
 - Task hydration batches cold reads across source files, then reuses a bounded per-path cache keyed by file metadata. Exact GCM and vault update paths invalidate that cache, including failed initial hydration, so unchanged vaults avoid repeated scans without leaving edited checkboxes stale.
+- Every fixed source-backed collection—**Checkboxes**, **Bullets**, **Headings**, **Code blocks**, **Callouts**, **Blockquotes**, and **Tables**—exposes **Sort** and **Group** controls. Rows can sort by their own title or by the owning note's filename, configured created/modified timestamp, or a configured non-manual frontmatter property; missing values and groups stay last. Date grouping is available for a date sort, configured non-manual property groups use the owning note's frontmatter, and **Custom** leaves source rows ungrouped because custom headers belong to files. Folder grouping, manual sorting/grouping, and display-mode/appearance editing remain file-only. External provider Types retain their provider-owned presentation.
 - Counts and rows respect the active Navigator profile, hidden-folder/file/property/tag rules, file visibility, and the hidden-items override. Fenced examples that GCM excludes never become Navigator rows.
 - **Reorder navigation** edits the flat Types list in place. **Type order** offers **Default order**, **Name: A to Z**, **Name: Z to A**, **Most items first**, **Fewest items first**, and **Manual order**. Name and count modes sort automatically as the visible catalog changes; count modes use the same visibility-filtered quantities shown beside the Type rows, while provider collections that do not publish a count stay after counted Types. The editor continues to show those counts so the active ordering is inspectable.
 - Moving a Type with its up/down buttons or drag handle immediately switches the list to **Manual order**. New Types append without disturbing the saved sequence, and temporarily unavailable provider Type ids retain their positions so plugin load order does not erase the user's arrangement. **Default order** returns to the canonical catalog order without changing the public catalog itself.
@@ -52,7 +53,8 @@ The selected type and Types-root expansion state use TPS-namespaced local storag
 
 External integrations can discover fixed built-in and registered-provider descriptors through the provider-neutral public
 `types` catalog, subscribe to its availability/revision changes, and navigate through `navigation.navigateToType(typeId)`.
-Public API 3.1.0 adds stable ids for Code blocks, Callouts, Blockquotes, and Tables. API 3.0.0 removed Kind descriptors from
+Public API 3.2.0 adds bounded presentation controls for fixed source-backed Types and preserves each mixed search row's
+owning Type identity. API 3.1.0 added stable ids for Code blocks, Callouts, Blockquotes, and Tables. API 3.0.0 removed Kind descriptors from
 discovery and navigation while retaining deprecated helpers to construct and parse legacy Kind ids during migration; active
 validation and navigation reject them. The earlier API 2.7.0 also adds
 `types.registerProvider(...)`: one runtime registration defines one
@@ -98,10 +100,12 @@ API 2.13.0 adds a bounded, provider-neutral `list` namespace for integrations th
 looking at. `list.getSnapshot()` pulls the first mounted TPS view's current navigation scope, immediate/applied search,
 requested/effective provider, effective per-scope presentation, and composed file/provider row order without continuously
 cloning large Type collections or exposing provider callbacks. `setSearch(...)` and atomic `setPresentation(...)` never
-open a view and fail closed for stale views, malformed input, standalone structural/provider Type scopes, manual sorting,
-unavailable property keys, or incompatible grouping. Fixed file-backed Types expose the same presentation snapshot and
-per-Type sort, grouping, and display overrides as ordinary file scopes. Null presentation fields reset only that field to
-its inherited default; the optional TPS-owned Type override records require no migration.
+open a view and fail closed for stale views, malformed input, provider-owned Type scopes, unavailable property keys, or
+incompatible presentation requests. Fixed file-backed Types expose the same presentation snapshot and per-Type sort,
+grouping, and display overrides as ordinary file scopes. Fixed source-backed Types expose their effective sort and grouping;
+their mixed-result rows retain a per-row `typeId`, and `setPresentation(...)` accepts their supported sort/group subset while
+rejecting display mode, manual sort, and folder grouping. Null presentation fields reset only that field to its inherited
+default; the optional TPS-owned Type override records require no migration.
 
 Clicks, back/forward history, and public calls share one validator, ancestor-expansion, focus, and scroll path. Catalog DTOs
 are immutable and intentionally omit GCM records, source paths, task payloads, and counts whose meaning would differ before
@@ -151,7 +155,7 @@ viewport.
   without polling, rebroadcasting a request response, or retaining provider state in Navigator. Each loaded host has one
   opaque identity, so a consumer can match teardown to the exact instance instead of ordering hosts by a wall-clock timestamp.
 - TPS settings import is a copy, not synchronization. Later upstream setting changes are not mirrored unless the import is explicitly run again.
-- Built-in exact-line and cached-range Type rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. External Type-provider rows retain the public provider safety ceiling. Plain-text search matches structural row labels and source paths—not block contents; external owners receive the same query before their row ceiling. File-backed Types use the ordinary file search pipeline, while file-only advanced search operators and Omnisearch ranking do not apply to structural/provider-owned collections.
+- Built-in exact-line and cached-range Type rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. External Type-provider rows retain the public provider safety ceiling. Plain-text search matches structural row labels and source paths—not block contents; tag, property, date, folder, and extension facets constrain the owning note. External owners receive the same query before their row ceiling. File-backed Types use the ordinary file search pipeline, while file-only advanced search operators and Omnisearch ranking do not apply to structural/provider-owned collections. The vault-path allowlist is built only for a selected Type scope or a nonempty internal search, then the mixed search reuses the GCM entity and Obsidian metadata indexes without reading note bodies.
 
 ## Keeping up with Notebook Navigator
 
@@ -165,6 +169,27 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 5.3.0 — searchable, sortable structural Types
+
+- Adds Sort and Group controls to Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, and Tables. Source rows
+  support row-title sorting plus owning-note filename, configured created/modified timestamp, and configured non-manual
+  frontmatter property sorting, with missing values last; grouping is intentionally limited to compatible dates and
+  configured non-manual owning-note properties, while Custom means ungrouped because custom headers are file-owned.
+- Makes any nonempty internal Filter Search started from a fixed Type search the complete fixed Type catalog: native file
+  matches remain ordinary rows and matching source-backed Types appear in labeled sections. Search from folders, tags, and
+  properties retains that navigation scope, and every mixed structural row keeps its Type identity.
+- Adds stable `type:<fixed-id>` and `-type:<fixed-id>` facets plus additive Shift-click navigation for tags, properties, and
+  fixed Types. Multiple positive Types form a union while the Type dimension continues to intersect with the other filters.
+- Keeps the bounded scope explicit: source rows do not gain file multi-select, drag, pinning, rename, manual/folder grouping,
+  or display-mode editing; external provider Types keep their existing provider-owned presentation and search behavior.
+- Advances the additive public API to 3.2.0: fixed source-backed Type scopes accept their supported sort/group subset, and
+  mixed structural rows expose the fixed Type id that owns each result.
+- Verification passed 385 focused tests and the complete 226-file, 2,474-test suite, plus TypeScript, formatting, ESLint,
+  stylesheet, namespace, operational-identity, and artifact gates. Obsidian 1.12.7 was reloaded in the isolated test vault;
+  live desktop QA confirmed the bounded structural Sort/Group menu, mixed Notes/Checkboxes/Bullets search, and direct Code
+  blocks filtering. Modifier composition is covered through the exact Tag → Shift-Checkbox → Shift-Tag integration path;
+  mobile interaction remains markup, shared-logic, and responsive-CSS tested rather than physical-device automated.
 
 ### 5.2.0 — customizable Types navigation order
 
@@ -571,7 +596,7 @@ Filters files by display name, alias, tags, properties, dates, folders, extensio
 - `#tag1 AND #tag2` - Match both tags (explicit AND)
 - `#tag1 OR #tag2` - Match either tag
 - `#a OR #b AND #c` - AND has higher precedence: matches `#a`, or both `#b` and `#c`
-- Cmd/Ctrl+Click a tag to add with AND. Cmd/Ctrl+Shift+Click to add with OR
+- Shift+Click or the configured multi-select modifier adds a tag with AND. The configured modifier plus Shift adds it with OR
 
 **Properties**
 
@@ -581,7 +606,25 @@ Filters files by display name, alias, tags, properties, dates, folders, extensio
 - `."Reading Status"="In Progress"` - Keys and values with whitespace must be double-quoted
 - `-.key` - Exclude notes with a property key that starts with `key`
 - `-.key=value` - Exclude notes where the property value contains `value`
-- Cmd/Ctrl+Click a property to add with AND. Cmd/Ctrl+Shift+Click to add with OR
+- Shift+Click or the configured multi-select modifier adds a property with AND. The configured modifier plus Shift adds it
+  with OR
+
+**Types**
+
+- `type:structural:task` - Include Checkboxes; every fixed Type uses its stable catalog id
+- `-type:structural:task` - Exclude Checkboxes
+- Multiple positive Type facets form one union, so `type:structural:task type:structural:heading` includes either Type
+- The Type union is ANDed with tags, properties, dates, folders, extensions, and plain-text terms
+- Shift+Click or the configured multi-select modifier adds a fixed Type to Filter Search. Multiple Types remain OR even when
+  they are added from an AND gesture
+
+Any nonempty internal Filter Search started from a fixed Type searches all fixed Types rather than remaining trapped in the
+selected collection. Native files remain ordinary rows, while Checkboxes, Bullets, Headings, Code blocks, Callouts,
+Blockquotes, and Tables appear in labeled sections. Search from a folder, tag, or property keeps that navigation scope.
+Plain text matches a source row's label or source path, not its note contents; tag, property, date, folder, and extension
+facets apply to the owning note, not an individual block's inline metadata. Mixed results preserve each row's Type identity
+for styling, selection, context menus, and API snapshots. This mixed catalog is an internal Filter Search feature; Omnisearch
+continues to return its own ranked file results. The search consumes cached GCM/Obsidian indexes without reading note bodies.
 
 **Filters**
 

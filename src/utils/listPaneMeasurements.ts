@@ -119,6 +119,18 @@ export function usesStandaloneTypeProviderPresentation(
     );
 }
 
+/** Mixed search rows carry their own Type identity even while the navigation selection is a folder/tag/property. */
+export function listItemUsesTypeProviderPresentation(
+    item: ListPaneItem | null | undefined,
+    selectionType: NavigationItemType | null | undefined,
+    selectedType: TpsNavigatorTypeId | null | undefined
+): boolean {
+    return (
+        item?.type === ListPaneItemType.PROVIDER_ROW &&
+        (item.providerTypeId !== undefined || usesStandaloneTypeProviderPresentation(selectionType, selectedType))
+    );
+}
+
 /**
  * Sizes a standalone Type result with the same title/metadata rhythm as a file row.
  * Mobile reserves a 44px content target for the primary action and optional controls.

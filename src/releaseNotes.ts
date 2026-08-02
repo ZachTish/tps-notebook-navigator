@@ -106,6 +106,28 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.3.0',
+        date: '2026-08-02',
+        showOnUpdate: true,
+        info: 'Built-in Types can now be sorted, grouped, and combined in one Filter Search.',
+        new: [
+            'Sort and Group controls are available for Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, and Tables.',
+            'Filter Search supports stable `type:<fixed-id>` and `-type:<fixed-id>` facets; multiple positive Type facets form a union.',
+            'Shift-click can combine fixed Types with tags and properties while keeping each result tied to its owning Type.'
+        ],
+        improved: [
+            'A nonempty Filter Search started from any built-in Type searches the complete built-in Type catalog and labels each source-backed result section.',
+            'Source-backed rows can sort by row title or owning-note fields and group by compatible owning-note dates or properties.'
+        ],
+        changed: [
+            "Public API 3.2.0 adds bounded presentation updates for fixed source-backed Types and exposes each mixed structural row's fixed Type identity.",
+            'Omnisearch remains a ranked file-only search; mixed file and structural results use Filter Search.'
+        ],
+        fixed: [
+            'Source-backed Types no longer inherit unsupported manual-rank sorting, and structural rows no longer mix into Omnisearch snapshots.'
+        ]
+    },
+    {
         version: '5.2.0',
         date: '2026-08-02',
         showOnUpdate: true,

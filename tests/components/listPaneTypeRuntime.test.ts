@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
     shouldCollapseMobileDrawerForTypeProviderActivation,
     supportsCalendarInteractionsForSelection,
+    supportsListSortAndGroupingForSelection,
     supportsNativeListPresentationForSelection
 } from '../../src/components/listPane/typeModeRuntime';
 import { ItemType } from '../../src/types';
@@ -35,6 +36,17 @@ describe('Type-mode list runtime behavior', () => {
         expect(supportsNativeListPresentationForSelection(ItemType.TYPE, providerType)).toBe(false);
         expect(supportsNativeListPresentationForSelection(ItemType.TYPE, null)).toBe(false);
         expect(supportsNativeListPresentationForSelection(ItemType.FOLDER, null)).toBe(true);
+    });
+
+    it('exposes sort and group controls for every fixed Type but not external providers', () => {
+        const providerType = createTpsNavigatorProviderTypeId('example/entities', 'contexts');
+
+        expect(supportsListSortAndGroupingForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.NOTES)).toBe(true);
+        expect(supportsListSortAndGroupingForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES)).toBe(true);
+        expect(supportsListSortAndGroupingForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS)).toBe(true);
+        expect(supportsListSortAndGroupingForSelection(ItemType.TYPE, providerType)).toBe(false);
+        expect(supportsListSortAndGroupingForSelection(ItemType.TYPE, null)).toBe(false);
+        expect(supportsListSortAndGroupingForSelection(ItemType.TAG, null)).toBe(true);
     });
 
     it('binds provider wrappers to their virtual height and keeps every mobile action target at least 44px', async () => {

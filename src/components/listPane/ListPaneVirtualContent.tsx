@@ -52,7 +52,7 @@ import { createNavigatorRowMenuTarget } from '../../utils/contextMenu/providerRo
 import { NavigatorProviderRow, type NavigatorProviderRowMenuHost } from '../providerRows/NavigatorProviderRow';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
 import { getNavigatorRowSelectionKey } from '../../services/rows/rowSelection';
-import { usesStandaloneTypeProviderPresentation } from '../../utils/listPaneMeasurements';
+import { listItemUsesTypeProviderPresentation } from '../../utils/listPaneMeasurements';
 
 export interface PointerClientPosition {
     clientX: number;
@@ -150,7 +150,7 @@ interface ListPaneVirtualContentProps {
     onHoveredFilePathChange: (path: string | null, pointerClientPosition: PointerClientPosition | null) => void;
     onFileClick: (file: TFile, fileIndex: number | undefined, event: React.MouseEvent) => void;
     selectedProviderRowKey: string | null;
-    onProviderRowSelect: (row: NavigatorProvidedRow) => boolean;
+    onProviderRowSelect: (row: NavigatorProvidedRow, typeId?: TpsNavigatorTypeId | null) => boolean;
     onProviderRowActivationRequested?: () => void;
     onModifySearchWithTag: (tag: string, operator: InclusionOperator) => void;
     onModifySearchWithProperty: (key: string, value: string | null, operator: InclusionOperator) => void;
@@ -487,7 +487,7 @@ interface ListPaneRowProps {
     onFolderGroupHeaderMouseDown: (event: React.MouseEvent<HTMLSpanElement>, target: FolderGroupHeaderTarget) => void;
     onGroupHeaderContextMenu: (event: React.MouseEvent<HTMLDivElement>, header: HeaderRenderModel) => void;
     onProviderRowActivationRequested?: () => void;
-    onProviderRowSelect: (row: NavigatorProvidedRow) => boolean;
+    onProviderRowSelect: (row: NavigatorProvidedRow, typeId?: TpsNavigatorTypeId | null) => boolean;
     isTypePresentation: boolean;
     isCompactMode: boolean;
     titleRows: number;
@@ -634,7 +634,7 @@ const ListPaneRow = React.memo(function ListPaneRow({
                     isCompactMode={isCompactMode}
                     titleRows={titleRows}
                     showTypeIcon={showTypeIcon}
-                    onSelectionRequested={() => onProviderRowSelect(item.data as NavigatorProvidedRow)}
+                    onSelectionRequested={() => onProviderRowSelect(item.data as NavigatorProvidedRow, item.providerTypeId ?? undefined)}
                     onActivationRequested={onProviderRowActivationRequested}
                     rowMenuHost={rowMenuHost}
                 />
@@ -751,7 +751,17 @@ export function ListPaneVirtualContent({
     const getRowMenuRevision = useCallback(() => rowMenus?.getRowMenuRevision() ?? 0, [rowMenus]);
     const rowMenuRevision = useSyncExternalStore(subscribeToRowMenus, getRowMenuRevision, getRowMenuRevision);
     const rowMenuTypeId = selectionType === ItemType.TYPE ? selectedType : null;
-    const isStandaloneTypePresentation = usesStandaloneTypeProviderPresentation(selectionType, selectedType);
+    const providerTypeIdByRowKey = useMemo(() => {
+        const result = new Map<string, TpsNavigatorTypeId>();
+        listItems.forEach(item => {
+            if (!isProviderListItem(item) || item.providerTypeId === undefined) {
+                return;
+            }
+            const row = item.data;
+            result.set(getNavigatorRowSelectionKey({ providerId: row.providerId, rowId: row.id }), item.providerTypeId);
+        });
+        return result;
+    }, [listItems]);
     const rowMenuHost = useMemo<NavigatorProviderRowMenuHost | undefined>(() => {
         if (!rowMenus) {
             return undefined;
@@ -760,12 +770,13 @@ export function ListPaneVirtualContent({
             revision: rowMenuRevision,
             createTarget: (row, checkboxState) => {
                 const file = app.vault.getFileByPath(row.sourcePath);
-                return file ? createNavigatorRowMenuTarget(row, file, rowMenuTypeId, checkboxState) : null;
+                const itemTypeId = providerTypeIdByRowKey.get(getNavigatorRowSelectionKey({ providerId: row.providerId, rowId: row.id }));
+                return file ? createNavigatorRowMenuTarget(row, file, itemTypeId ?? rowMenuTypeId, checkboxState) : null;
             },
             hasExtensions: target => rowMenus.hasRowMenuExtensions(target),
             appendExtensions: (target, controls) => rowMenus.applyRowMenuExtensions({ target, ...controls })
         };
-    }, [app.vault, rowMenuRevision, rowMenuTypeId, rowMenus]);
+    }, [app.vault, providerTypeIdByRowKey, rowMenuRevision, rowMenuTypeId, rowMenus]);
     const fileSystemOps = useFileSystemOps();
     const metadataService = useMetadataService();
     const collapseChevronIcons = useMemo(
@@ -1224,7 +1235,7 @@ export function ListPaneVirtualContent({
                             const nextItem = getItemAt(listItems, virtualItem.index + 1);
                             const previousItem = getItemAt(listItems, virtualItem.index - 1);
                             const isFileRow = isFileListItem(item);
-                            const isTypeProviderRow = isStandaloneTypePresentation && isProviderListItem(item);
+                            const isTypeProviderRow = listItemUsesTypeProviderPresentation(item, selectionType, selectedType);
                             const providerRowKey = getProviderListItemSelectionKey(item);
                             const isSelected =
                                 (isFileRow && isFileVisuallySelected(item.data)) ||
@@ -1232,11 +1243,11 @@ export function ListPaneVirtualContent({
                             const isPreviousFileSelected = isFileListItem(previousItem) && isFileVisuallySelected(previousItem.data);
                             const isNextFileSelected = isFileListItem(nextItem) && isFileVisuallySelected(nextItem.data);
                             const isPreviousTypeProviderSelected =
-                                isStandaloneTypePresentation &&
+                                listItemUsesTypeProviderPresentation(previousItem, selectionType, selectedType) &&
                                 selectedProviderRowKey !== null &&
                                 getProviderListItemSelectionKey(previousItem) === selectedProviderRowKey;
                             const isNextTypeProviderSelected =
-                                isStandaloneTypePresentation &&
+                                listItemUsesTypeProviderPresentation(nextItem, selectionType, selectedType) &&
                                 selectedProviderRowKey !== null &&
                                 getProviderListItemSelectionKey(nextItem) === selectedProviderRowKey;
                             const isPreviousVisualRowSelected = isPreviousFileSelected || isPreviousTypeProviderSelected;
@@ -1323,7 +1334,7 @@ export function ListPaneVirtualContent({
                                     onGroupHeaderContextMenu={handleGroupHeaderContextMenu}
                                     onProviderRowActivationRequested={onProviderRowActivationRequested}
                                     onProviderRowSelect={onProviderRowSelect}
-                                    isTypePresentation={isStandaloneTypePresentation}
+                                    isTypePresentation={isTypeProviderRow}
                                     isCompactMode={isCompactMode}
                                     titleRows={appearanceSettings.titleRows}
                                     showTypeIcon={settings.showFileIcons}

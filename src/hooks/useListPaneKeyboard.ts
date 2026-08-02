@@ -51,6 +51,7 @@ import { supportsKeyboardInteractions } from '../utils/paneLayout';
 import type { Align } from '../types/scroll';
 import type { NavigatorProvidedRow } from '../services/rows/types';
 import { getNavigatorRowSelectionKey } from '../services/rows/rowSelection';
+import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
 
 /**
  * Check if a list item is selectable (file or provider row, not header or spacer)
@@ -123,7 +124,7 @@ interface UseListPaneKeyboardProps {
     /** Starts inline rename for the current file when available */
     onStartRename?: () => boolean;
     selectedProviderRowKey: string | null;
-    onSelectProviderRow: (row: NavigatorProvidedRow) => boolean;
+    onSelectProviderRow: (row: NavigatorProvidedRow, typeId?: TpsNavigatorTypeId | null) => boolean;
 }
 
 /**
@@ -197,7 +198,7 @@ export function useListPaneKeyboard({
 
             if (item.type === ListPaneItemType.PROVIDER_ROW && typeof item.data === 'object') {
                 onCancelKeyboardOpen?.();
-                onSelectProviderRow(item.data as NavigatorProvidedRow);
+                onSelectProviderRow(item.data as NavigatorProvidedRow, item.providerTypeId);
             }
         },
         [onCancelKeyboardOpen, onSelectFile, onSelectProviderRow]

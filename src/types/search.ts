@@ -18,6 +18,7 @@
 
 import type { InclusionOperator, PropertySearchToken } from '../utils/filterSearchTypes';
 import type { PropertyValueKind } from '../storage/IndexedDBStorage';
+import type { TpsNavigatorTypeId } from './navigatorTypes';
 
 /**
  * Search providers supported by Notebook Navigator.
@@ -85,6 +86,10 @@ export interface SearchNavFilterState {
         exclude: string[];
         includeOperators: SearchNavInclusionOperatorMap;
     };
+    types: {
+        include: TpsNavigatorTypeId[];
+        exclude: TpsNavigatorTypeId[];
+    };
 }
 
 export const EMPTY_SEARCH_NAV_FILTER_STATE: SearchNavFilterState = {
@@ -100,5 +105,9 @@ export const EMPTY_SEARCH_NAV_FILTER_STATE: SearchNavFilterState = {
         include: [],
         exclude: [],
         includeOperators: {}
+    },
+    types: {
+        include: [],
+        exclude: []
     }
 };

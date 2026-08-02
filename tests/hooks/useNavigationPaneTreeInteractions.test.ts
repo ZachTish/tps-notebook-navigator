@@ -17,7 +17,7 @@
  */
 
 import React from 'react';
-import { App, TFolder } from 'obsidian';
+import { App, Platform, TFolder } from 'obsidian';
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
@@ -31,6 +31,7 @@ import {
 } from '../../src/hooks/navigationPane/useNavigationPaneTreeInteractions';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { createTestTFile } from '../utils/createTestTFile';
+import { TPS_NAVIGATOR_TYPE_IDS, type TpsNavigatorTypesSnapshot } from '../../src/types/navigatorTypes';
 
 function createPropertyValueNode(key: string, valuePath: string, name: string, notes: string[]): PropertyTreeNode {
     return {
@@ -126,6 +127,93 @@ function addChildFolder(app: App, folder: TFolder, path: string): TFolder {
 }
 
 describe('useNavigationPaneTreeInteractions', () => {
+    it('turns a Shift-clicked structural Type into a search facet without changing navigation selection', () => {
+        const previousIsMobile = Platform.isMobile;
+        const previousIsTablet = Platform.isTablet;
+        Platform.isMobile = false;
+        Platform.isTablet = false;
+
+        const selectionDispatch = vi.fn();
+        const onModifySearchWithType = vi.fn();
+        const preventDefault = vi.fn();
+        const stopPropagation = vi.fn();
+        const typeId = TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES;
+        const typeSnapshot: TpsNavigatorTypesSnapshot = {
+            availability: 'ready',
+            descriptors: [
+                {
+                    id: typeId,
+                    label: 'Checkboxes',
+                    icon: 'lucide-square-check-big',
+                    category: 'structure',
+                    count: 0
+                }
+            ],
+            recordsByType: new Map([[typeId, []]]),
+            revision: 1
+        };
+        let captured: NavigationPaneTreeInteractionsResult | null = null;
+
+        function Harness() {
+            captured = useNavigationPaneTreeInteractions({
+                app: new App(),
+                commandQueue: null,
+                settings: DEFAULT_SETTINGS,
+                uiState: { singlePane: false },
+                expansionState: {
+                    expandedFolders: new Set(),
+                    expandedTags: new Set(),
+                    expandedProperties: new Set(),
+                    expandedVirtualFolders: new Set()
+                },
+                expansionDispatch: vi.fn(),
+                selectionState: createSelectionState(),
+                selectionDispatch,
+                uiDispatch: vi.fn(),
+                propertyTreeService: null,
+                tagTree: new Map(),
+                propertyTree: new Map(),
+                typeSnapshot,
+                tagsVirtualFolderHasChildren: false,
+                setShortcutsExpanded: vi.fn(),
+                setRecentNotesExpanded: vi.fn(),
+                clearActiveShortcut: vi.fn(),
+                openFolderNoteInRightSidebar: vi.fn(),
+                onModifySearchWithTag: vi.fn(),
+                onModifySearchWithProperty: vi.fn(),
+                onModifySearchWithType
+            });
+            return null;
+        }
+
+        try {
+            renderToStaticMarkup(React.createElement(Harness));
+
+            expect(captured).not.toBeNull();
+            if (!captured) {
+                throw new Error('Expected hook result');
+            }
+            const result = captured as NavigationPaneTreeInteractionsResult;
+
+            result.handleTypeClick(typeId, {
+                altKey: false,
+                ctrlKey: false,
+                metaKey: false,
+                shiftKey: true,
+                preventDefault,
+                stopPropagation
+            } as unknown as React.MouseEvent);
+
+            expect(onModifySearchWithType).toHaveBeenCalledWith(typeId);
+            expect(selectionDispatch).not.toHaveBeenCalled();
+            expect(preventDefault).toHaveBeenCalledTimes(1);
+            expect(stopPropagation).toHaveBeenCalledTimes(1);
+        } finally {
+            Platform.isMobile = previousIsMobile;
+            Platform.isTablet = previousIsTablet;
+        }
+    });
+
     it('uses the property tree provider cache for global descendant expansion', () => {
         const childNode = createPropertyValueNode('status', 'open', 'Open', ['notes/a.md']);
         const keyNode = createPropertyKeyNode('status', 'Status', ['notes/a.md'], []);

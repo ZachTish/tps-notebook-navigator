@@ -96,6 +96,7 @@ describe('Type list routing', () => {
         expect(mode).toEqual({
             isTypeSelection: true,
             isFileBackedTypeSelection: true,
+            isLineBackedTypeSelection: false,
             isProviderOwnedTypeSelection: false
         });
         expect(files).toEqual([matching]);
@@ -256,6 +257,7 @@ describe('Type list routing', () => {
         expect(mode).toEqual({
             isTypeSelection: true,
             isFileBackedTypeSelection: false,
+            isLineBackedTypeSelection: true,
             isProviderOwnedTypeSelection: false
         });
         expect(collectFileBackedTypeFiles(app, [nativeFile], typeId)).toEqual([]);
@@ -268,17 +270,62 @@ describe('Type list routing', () => {
         expect(items.some(item => item.type === ListPaneItemType.FILE)).toBe(false);
     });
 
+    it.each([TPS_NAVIGATOR_TYPE_IDS.NOTES, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES] as const)(
+        'composes native files and all seven structural sections during global search from %s',
+        selectedType => {
+            const nativeFile = createTestTFile('Notes/Shopping.md');
+            const coreListItems: ListPaneItem[] = [
+                { type: ListPaneItemType.TOP_SPACER, data: '', key: 'top-spacer' },
+                { type: ListPaneItemType.FILE, data: nativeFile, key: nativeFile.path, fileIndex: 0 },
+                { type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom-spacer' }
+            ];
+            const groups = LINE_TYPE_IDS.map((typeId, index) => ({
+                typeId,
+                label: `Type ${index + 1}`,
+                rows: [
+                    {
+                        providerId: 'tps/entity-types',
+                        id: `${typeId}:${index}`,
+                        kind: `tps/entity-type/${typeId}`,
+                        label: `Match ${index + 1}`,
+                        sourcePath: nativeFile.path,
+                        sourceLineNumber: index
+                    }
+                ] satisfies NavigatorProvidedRow[]
+            }));
+
+            const items = composeTypeListItems({
+                mode: resolveTypeListMode(ItemType.TYPE, selectedType),
+                coreListItems,
+                typeRows: [],
+                providerRows: [],
+                searchTypeGroups: groups,
+                globalTypeSearch: true
+            });
+
+            expect(items.filter(item => item.type === ListPaneItemType.FILE).map(item => item.data)).toEqual([nativeFile]);
+            expect(items.filter(item => item.type === ListPaneItemType.HEADER).map(item => item.data)).toEqual(
+                groups.map(group => group.label)
+            );
+            expect(items.filter(item => item.type === ListPaneItemType.PROVIDER_ROW).map(item => item.providerTypeId)).toEqual(
+                LINE_TYPE_IDS
+            );
+        }
+    );
+
     it('keeps external Type collections in standalone provider mode', () => {
         const providerTypeId = createTpsNavigatorProviderTypeId('example/entities', 'contexts')!;
 
         expect(resolveTypeListMode(ItemType.TYPE, providerTypeId)).toEqual({
             isTypeSelection: true,
             isFileBackedTypeSelection: false,
+            isLineBackedTypeSelection: false,
             isProviderOwnedTypeSelection: true
         });
         expect(resolveTypeListMode(ItemType.FOLDER, TPS_NAVIGATOR_TYPE_IDS.NOTES)).toEqual({
             isTypeSelection: false,
             isFileBackedTypeSelection: false,
+            isLineBackedTypeSelection: false,
             isProviderOwnedTypeSelection: false
         });
     });

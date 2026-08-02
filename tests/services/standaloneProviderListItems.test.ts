@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildStandaloneProviderListItems } from '../../src/services/rows/providerListItems';
+import { appendStructuralTypeSearchGroups, buildStandaloneProviderListItems } from '../../src/services/rows/providerListItems';
 import { NAVIGATOR_ROW_PROVIDER_MAX_ROWS, type NavigatorProvidedRow } from '../../src/services/rows/types';
 import { ListPaneItemType } from '../../src/types';
 
@@ -175,5 +175,69 @@ describe('buildStandaloneProviderListItems', () => {
         expect(renderedRows.slice(builtInRows.length).map(item => item.data)).toEqual(
             externalRows.slice(0, NAVIGATOR_ROW_PROVIDER_MAX_ROWS)
         );
+    });
+});
+
+describe('appendStructuralTypeSearchGroups', () => {
+    it('preserves the original list identity when there are no structural Type groups', () => {
+        const base = buildStandaloneProviderListItems([], []);
+
+        expect(appendStructuralTypeSearchGroups(base, [])).toBe(base);
+    });
+
+    it('keeps native results and appends visibly labelled Type sections in supplied order', () => {
+        const base = buildStandaloneProviderListItems([], []);
+        const task: NavigatorProvidedRow = {
+            providerId: 'tps/entity-types',
+            id: 'task:one',
+            kind: 'tps/entity-type/task',
+            label: 'Buy milk',
+            sourcePath: 'Home.md'
+        };
+        const heading: NavigatorProvidedRow = {
+            providerId: 'tps/entity-types',
+            id: 'heading:one',
+            kind: 'tps/entity-type/heading',
+            label: 'Shopping',
+            sourcePath: 'Home.md'
+        };
+
+        const items = appendStructuralTypeSearchGroups(base, [
+            { typeId: 'structural:task', label: 'Checkboxes', rows: [task] },
+            { typeId: 'structural:heading', label: 'Headings', rows: [heading] }
+        ]);
+
+        expect(items.map(item => item.key)).toEqual([
+            'top-spacer',
+            'search-type-header:structural:task',
+            'provider:tps/entity-types:task:one',
+            'search-type-header:structural:heading:spacer',
+            'search-type-header:structural:heading',
+            'provider:tps/entity-types:heading:one',
+            'bottom-spacer'
+        ]);
+        expect(items.filter(item => item.type === ListPaneItemType.HEADER).map(item => item.data)).toEqual(['Checkboxes', 'Headings']);
+        expect(items.filter(item => item.type === ListPaneItemType.PROVIDER_ROW).map(item => item.providerTypeId)).toEqual([
+            'structural:task',
+            'structural:heading'
+        ]);
+    });
+
+    it('skips empty groups and does not emit a Type header when every row is already present', () => {
+        const row: NavigatorProvidedRow = {
+            providerId: 'tps/entity-types',
+            id: 'task:one',
+            kind: 'tps/entity-type/task',
+            label: 'Buy milk',
+            sourcePath: 'Home.md'
+        };
+        const base = buildStandaloneProviderListItems([row], []);
+        const items = appendStructuralTypeSearchGroups(base, [
+            { typeId: 'structural:bullet', label: 'Bullets', rows: [] },
+            { typeId: 'structural:task', label: 'Checkboxes', rows: [row] }
+        ]);
+
+        expect(items.filter(item => item.type === ListPaneItemType.PROVIDER_ROW)).toHaveLength(1);
+        expect(items.filter(item => item.type === ListPaneItemType.HEADER)).toEqual([]);
     });
 });

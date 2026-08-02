@@ -94,7 +94,7 @@ import { useNavigationPaneTreeSections } from '../hooks/navigationPane/data/useN
 import { useNavigationPaneSourceState } from '../hooks/navigationPane/data/useNavigationPaneSourceState';
 import type { SelectionHistoryEntry } from '../context/selection/types';
 import type { SearchQueryUpdateOptions } from '../hooks/useListPaneSearch';
-import { isTpsNavigatorTypeId } from '../types/navigatorTypes';
+import { isTpsNavigatorTypeId, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 import { resolveTypeSelectionHistoryEntry } from '../utils/navigationTypeHistory';
 import { useNavigatorTypes } from '../hooks/useNavigatorTypes';
 import { navigateToType as navigateToTypeInternal, type NavigateToTypeOptions } from '../utils/typeNavigation';
@@ -307,7 +307,7 @@ export const NotebookNavigatorComponent = React.memo(
         const containerRef = useRef<HTMLDivElement | null>(null);
 
         const [isNavigatorFocused, setIsNavigatorFocused] = useState(false);
-        // Tracks search tokens for highlighting matching tags/properties in navigation pane
+        // Tracks search facets for highlighting matching tags, properties, and Types in navigation pane.
         const [searchNavFilters, setSearchNavFilters] = useState<SearchNavFilterState>(EMPTY_SEARCH_NAV_FILTER_STATE);
         const [isPaneTransitioning, setIsPaneTransitioning] = useState(false);
         const [suppressPaneTransitions, setSuppressPaneTransitions] = useState(false);
@@ -334,7 +334,9 @@ export const NotebookNavigatorComponent = React.memo(
                     stringRecordEqual(prev.tags.includeOperators, next.tags.includeOperators) &&
                     arraysEqual(prev.properties.include, next.properties.include) &&
                     arraysEqual(prev.properties.exclude, next.properties.exclude) &&
-                    stringRecordEqual(prev.properties.includeOperators, next.properties.includeOperators)
+                    stringRecordEqual(prev.properties.includeOperators, next.properties.includeOperators) &&
+                    arraysEqual(prev.types.include, next.types.include) &&
+                    arraysEqual(prev.types.exclude, next.types.exclude)
                 ) {
                     return prev;
                 }
@@ -352,6 +354,10 @@ export const NotebookNavigatorComponent = React.memo(
                         include: next.properties.include.slice(),
                         exclude: next.properties.exclude.slice(),
                         includeOperators: { ...next.properties.includeOperators }
+                    },
+                    types: {
+                        include: next.types.include.slice(),
+                        exclude: next.types.exclude.slice()
                     }
                 };
             });
@@ -382,6 +388,13 @@ export const NotebookNavigatorComponent = React.memo(
         const handleModifySearchWithProperty = useCallback(
             (key: string, value: string | null, operator: InclusionOperator) => {
                 listPaneRef.current?.modifySearchWithProperty(key, value, operator, getNavigationSearchUpdateOptions());
+            },
+            [getNavigationSearchUpdateOptions]
+        );
+
+        const handleModifySearchWithType = useCallback(
+            (typeId: TpsNavigatorTypeId) => {
+                listPaneRef.current?.modifySearchWithType(typeId, getNavigationSearchUpdateOptions());
             },
             [getNavigationSearchUpdateOptions]
         );
@@ -1660,6 +1673,7 @@ export const NotebookNavigatorComponent = React.memo(
                         onRevealShortcutFile={handleShortcutNoteReveal}
                         onModifySearchWithTag={handleModifySearchWithTag}
                         onModifySearchWithProperty={handleModifySearchWithProperty}
+                        onModifySearchWithType={handleModifySearchWithType}
                         onModifySearchWithDateFilter={handleModifySearchWithDateFilter}
                     />
                     <ListPane

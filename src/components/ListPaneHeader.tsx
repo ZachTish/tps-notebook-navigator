@@ -37,7 +37,7 @@ import { normalizeTagPath } from '../utils/tagUtils';
 import { runAsyncAction } from '../utils/async';
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
-import { supportsNativeListPresentationForSelection } from './listPane/typeModeRuntime';
+import { supportsListSortAndGroupingForSelection, supportsNativeListPresentationForSelection } from './listPane/typeModeRuntime';
 
 interface ListPaneHeaderProps {
     onHeaderClick?: () => void;
@@ -114,10 +114,11 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         selectionState.selectionType,
         selectionState.selectedType
     );
+    const supportsListSortAndGrouping = supportsListSortAndGroupingForSelection(selectionState.selectionType, selectionState.selectedType);
     const showSearchButton = listToolbarVisibility.search;
     const showDescendantsButton = !isTypeSelection && listToolbarVisibility.descendants;
-    const showGroupExpansionButton = supportsNativeListPresentation && listToolbarVisibility.groupExpansion;
-    const showSortButton = supportsNativeListPresentation && listToolbarVisibility.sort;
+    const showGroupExpansionButton = supportsListSortAndGrouping && listToolbarVisibility.groupExpansion;
+    const showSortButton = supportsListSortAndGrouping && listToolbarVisibility.sort;
     const showAppearanceButton = supportsNativeListPresentation && listToolbarVisibility.appearance;
     const showNewNoteButton = !isTypeSelection && listToolbarVisibility.newNote;
     const showEffectiveRevealButton = !isTypeSelection && showRevealButton;

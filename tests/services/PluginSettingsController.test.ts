@@ -131,7 +131,7 @@ describe('PluginSettingsController.normalizeNavigationSeparatorSettings', () => 
 });
 
 describe('PluginSettingsController Type presentation persistence', () => {
-    it('round-trips file-backed Type presentation and discards standalone Type keys', async () => {
+    it('round-trips structural Type sort/group settings while discarding unsupported line appearance fields', async () => {
         let storedData: Record<string, unknown> = {
             propertySortKey: 'priority, status',
             typeSortOverrides: {
@@ -140,7 +140,9 @@ describe('PluginSettingsController Type presentation persistence', () => {
             },
             typeAppearances: {
                 [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property:status' },
-                [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { mode: 'compact' }
+                [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { mode: 'compact', titleRows: 4, previewRows: 3, groupBy: 'property:status' },
+                [TPS_NAVIGATOR_TYPE_IDS.CALLOUTS]: { groupBy: 'custom' },
+                [TPS_NAVIGATOR_TYPE_IDS.TABLES]: { groupBy: 'date' }
             }
         };
         const saveData = vi.fn(async data => {
@@ -157,10 +159,14 @@ describe('PluginSettingsController Type presentation persistence', () => {
         const first = createController();
         await first.loadSettings();
         expect(first.settings.typeSortOverrides).toEqual({
-            [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { option: 'property-desc', propertyKey: 'priority' }
+            [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { option: 'property-desc', propertyKey: 'priority' },
+            [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: 'title-asc'
         });
         expect(first.settings.typeAppearances).toEqual({
-            [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property:status' }
+            [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property:status' },
+            [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { groupBy: 'property:status' },
+            [TPS_NAVIGATOR_TYPE_IDS.CALLOUTS]: { groupBy: 'custom' },
+            [TPS_NAVIGATOR_TYPE_IDS.TABLES]: { groupBy: 'date' }
         });
 
         await first.saveSettings();

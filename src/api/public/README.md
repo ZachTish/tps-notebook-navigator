@@ -51,8 +51,9 @@ Complete TypeScript type definitions for the Notebook Navigator API.
    current identity. Focus fails closed when the row is not already rendered and never changes scope or activates the row.
 10. Use `nn.list.getSnapshot()` for a pull-based view of the first mounted TPS Navigator list. `setSearch(...)` and
     `setPresentation(...)` act on that same view, never open one, and return `false` for stale, unsupported, or invalid
-    requests. Presentation updates are atomic; fixed file-backed Types are supported, while structural/provider Types and
-    manual-sort scopes remain provider-owned.
+    requests. Presentation updates are atomic. Fixed file-backed Types support the ordinary file controls; fixed
+    source-backed Types support their bounded sort/group subset and reject display mode, manual sort, and folder grouping.
+    External provider Types remain provider-owned. Mixed structural search rows expose their owning fixed `typeId`.
 
 ## Public Surface
 
@@ -85,7 +86,7 @@ target shapes and fail-closed behavior are documented in the [Menus API](../../.
 
 ## Version
 
-Current API Version: **3.1.0**
+Current API Version: **3.2.0**
 
 ## Documentation
 

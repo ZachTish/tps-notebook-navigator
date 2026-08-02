@@ -198,7 +198,7 @@ export function buildNavigatorListSnapshot({
             continue;
         }
         if (item.type === ListPaneItemType.PROVIDER_ROW && !(item.data instanceof TFile) && typeof item.data === 'object') {
-            rows.push(toVisibleProviderRow(item.data, selectedType, resolveFile));
+            rows.push(toVisibleProviderRow(item.data, item.providerTypeId ?? selectedType, resolveFile));
         }
     }
 

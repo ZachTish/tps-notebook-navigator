@@ -22,6 +22,7 @@ import type { SearchNavFilterState } from '../../types/search';
 import { foldSearchText } from '../../utils/recordUtils';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId, parsePropertyNodeId } from '../../utils/propertyTree';
 import type { InclusionOperator } from '../../utils/filterSearch';
+import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
 
 const EMPTY_TAG_TOKENS: string[] = [];
 const MAX_FOLDED_SEARCH_CACHE_ENTRIES = 2048;
@@ -75,6 +76,7 @@ const normalizePropertyNodeIdForSearchMatch = (propertyNodeId: string): string =
 export interface NavigationSearchHighlightsResult {
     getTagSearchMatch: (tagPath: string) => 'include' | 'exclude' | undefined;
     getPropertySearchMatch: (propertyNodeId: string) => 'include' | 'exclude' | undefined;
+    getTypeSearchMatch: (typeId: TpsNavigatorTypeId) => 'include' | 'exclude' | undefined;
     getTagCollectionSearchMatch: (tagCollectionId: string | null) => 'include' | 'exclude' | undefined;
     getTagInclusionOperator: (tagPath: string) => InclusionOperator | undefined;
     getPropertyInclusionOperator: (propertyNodeId: string) => InclusionOperator | undefined;
@@ -119,6 +121,14 @@ export function useNavigationSearchHighlights({ searchNavFilters }: UseNavigatio
 
     const propertyExcludeTokenSet = useMemo(() => {
         return buildNormalizedSearchTokenSet(searchNavFilters?.properties.exclude, normalizePropertyNodeIdForSearchMatch);
+    }, [searchNavFilters]);
+    const typeIncludeTokenSet = useMemo(() => {
+        const tokens = searchNavFilters?.types.include;
+        return tokens && tokens.length > 0 ? new Set<TpsNavigatorTypeId>(tokens) : null;
+    }, [searchNavFilters]);
+    const typeExcludeTokenSet = useMemo(() => {
+        const tokens = searchNavFilters?.types.exclude;
+        return tokens && tokens.length > 0 ? new Set<TpsNavigatorTypeId>(tokens) : null;
     }, [searchNavFilters]);
     const tagIncludeOperators = useMemo(() => searchNavFilters?.tags.includeOperators ?? EMPTY_INCLUDE_OPERATORS, [searchNavFilters]);
     const propertyIncludeOperators = useMemo(
@@ -229,6 +239,19 @@ export function useNavigationSearchHighlights({ searchNavFilters }: UseNavigatio
         [getFoldedPropertyNodeId, propertyExcludeTokenSet, propertyIncludeTokenSet]
     );
 
+    const getTypeSearchMatch = useCallback(
+        (typeId: TpsNavigatorTypeId): 'include' | 'exclude' | undefined => {
+            if (typeExcludeTokenSet?.has(typeId)) {
+                return 'exclude';
+            }
+            if (typeIncludeTokenSet?.has(typeId)) {
+                return 'include';
+            }
+            return undefined;
+        },
+        [typeExcludeTokenSet, typeIncludeTokenSet]
+    );
+
     const getTagInclusionOperator = useCallback(
         (tagPath: string): InclusionOperator | undefined => {
             const normalizedTagPath = getFoldedTagPath(tagPath);
@@ -253,10 +276,18 @@ export function useNavigationSearchHighlights({ searchNavFilters }: UseNavigatio
         () => ({
             getTagSearchMatch,
             getPropertySearchMatch,
+            getTypeSearchMatch,
             getTagCollectionSearchMatch,
             getTagInclusionOperator,
             getPropertyInclusionOperator
         }),
-        [getPropertyInclusionOperator, getPropertySearchMatch, getTagCollectionSearchMatch, getTagInclusionOperator, getTagSearchMatch]
+        [
+            getPropertyInclusionOperator,
+            getPropertySearchMatch,
+            getTagCollectionSearchMatch,
+            getTagInclusionOperator,
+            getTagSearchMatch,
+            getTypeSearchMatch
+        ]
     );
 }

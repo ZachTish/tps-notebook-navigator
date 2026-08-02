@@ -200,7 +200,7 @@ function createPropertySortValueGetter(app: App, propertySortKey: string): (file
     };
 }
 
-function sortNavigationFiles(files: TFile[], settings: NotebookNavigatorSettings, app: App, sortSpec: EffectiveListSort): void {
+export function sortNavigationFiles(files: TFile[], settings: NotebookNavigatorSettings, app: App, sortSpec: EffectiveListSort): void {
     const sortOption = sortSpec.option;
     const isPropertySort = isPropertySortOption(sortOption);
     const propertySortKey = sortSpec.propertyKey.trim();

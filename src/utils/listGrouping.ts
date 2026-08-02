@@ -19,7 +19,7 @@
 import { ItemType } from '../types';
 import { createPropertyGroupingOption, getPropertyGroupingDirection, getPropertyGroupingKey } from '../settings/types';
 import type { ListNoteGroupingOption, ListSortOverrideValue, NotebookNavigatorSettings, SortOption } from '../settings/types';
-import { isTpsNavigatorFileTypeId, type TpsNavigatorTypeId } from '../types/navigatorTypes';
+import { isTpsNavigatorFileTypeId, isTpsNavigatorStructuralTypeId, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 import { casefold } from './recordUtils';
 import {
     getManualSortPropertyKey,
@@ -254,8 +254,9 @@ function hasEffectiveCustomGroupingForSelection(params: {
     selectionType: ItemType;
     appearances: Record<string, { groupBy?: ListNoteGroupingOption }>;
     sortOverrides: Record<string, ListSortOverrideValue>;
+    includeKey?: (key: string) => boolean;
 }): boolean {
-    const { settings, selectionType, appearances, sortOverrides } = params;
+    const { settings, selectionType, appearances, sortOverrides, includeKey = () => true } = params;
     const usesCustomGrouping = (groupBy: ListNoteGroupingOption | undefined, sortOverride?: ListSortOverrideValue): boolean => {
         const grouping = resolveListGroupingOverride({
             noteGrouping: settings.noteGrouping,
@@ -279,13 +280,20 @@ function hasEffectiveCustomGroupingForSelection(params: {
     }
 
     for (const key of Object.keys(appearances)) {
+        if (!includeKey(key)) {
+            continue;
+        }
         if (usesCustomGrouping(appearances[key]?.groupBy, sortOverrides[key])) {
             return true;
         }
     }
 
     for (const key of Object.keys(sortOverrides)) {
-        if (!Object.prototype.hasOwnProperty.call(appearances, key) && usesCustomGrouping(undefined, sortOverrides[key])) {
+        if (
+            includeKey(key) &&
+            !Object.prototype.hasOwnProperty.call(appearances, key) &&
+            usesCustomGrouping(undefined, sortOverrides[key])
+        ) {
             return true;
         }
     }
@@ -327,7 +335,10 @@ export function hasEffectiveCustomListGrouping(settings: NotebookNavigatorSettin
             settings,
             selectionType: ItemType.TYPE,
             appearances: settings.typeAppearances ?? {},
-            sortOverrides: settings.typeSortOverrides ?? {}
+            sortOverrides: settings.typeSortOverrides ?? {},
+            // Source-backed Type rows intentionally render `custom` as an ungrouped list.
+            // Only file-backed Type contexts can consume manual-sort custom group headers.
+            includeKey: isTpsNavigatorFileTypeId
         });
 
     effectiveCustomListGroupingCache.set(settings, hasEffectiveCustomGrouping);
@@ -374,7 +385,7 @@ export function resolveListGrouping({
         });
     }
 
-    if (selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(typeId)) {
+    if (selectionType === ItemType.TYPE && isTpsNavigatorStructuralTypeId(typeId)) {
         return resolveListGroupingOverride({
             noteGrouping: globalDefault,
             selectionType,

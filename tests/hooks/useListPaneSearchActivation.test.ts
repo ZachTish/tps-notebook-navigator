@@ -24,6 +24,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
     uiDispatch: vi.fn(),
     setSearchActive: vi.fn(),
+    searchProvider: ((): 'internal' | 'omnisearch' => 'internal')(),
     services: {
         app: null as App | null,
         isMobile: false,
@@ -49,7 +50,7 @@ vi.mock('../../src/context/ServicesContext', () => ({
 vi.mock('../../src/context/SettingsContext', () => ({
     useSettingsState: () => ({
         paneTransitionDuration: 0,
-        searchProvider: 'internal',
+        searchProvider: mocks.searchProvider,
         skipAutoScroll: false
     })
 }));
@@ -72,11 +73,14 @@ vi.mock('../../src/context/UXPreferencesContext', () => ({
 }));
 
 import { useListPaneSearch, type UseListPaneSearchResult } from '../../src/hooks/useListPaneSearch';
+import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 describe('useListPaneSearch activation', () => {
     beforeEach(() => {
         mocks.uiDispatch.mockClear();
         mocks.setSearchActive.mockClear();
+        mocks.services.plugin.setSearchProvider.mockClear();
+        mocks.searchProvider = 'internal';
         mocks.services.app = new App();
     });
 
@@ -104,6 +108,36 @@ describe('useListPaneSearch activation', () => {
 
         result.modifySearchWithTag('work', 'AND', { focusSearch: false });
 
+        expect(mocks.setSearchActive).toHaveBeenCalledWith(true);
+        expect(mocks.uiDispatch).not.toHaveBeenCalled();
+    });
+
+    it('activates a Type facet without stealing navigation focus and forces internal search', () => {
+        mocks.searchProvider = 'omnisearch';
+        let captured: UseListPaneSearchResult | null = null;
+
+        function Harness() {
+            captured = useListPaneSearch({
+                rootContainerRef: { current: null },
+                onNavigateToFolder: vi.fn(),
+                onRevealTag: vi.fn(),
+                onRevealProperty: vi.fn(() => true),
+                ensureSelectionForCurrentFilterRef: { current: null }
+            });
+            return null;
+        }
+
+        renderToStaticMarkup(React.createElement(Harness));
+
+        expect(captured).not.toBeNull();
+        if (!captured) {
+            throw new Error('Expected hook result');
+        }
+        const result = captured as UseListPaneSearchResult;
+
+        result.modifySearchWithType(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, { focusSearch: false });
+
+        expect(mocks.services.plugin.setSearchProvider).toHaveBeenCalledWith('internal');
         expect(mocks.setSearchActive).toHaveBeenCalledWith(true);
         expect(mocks.uiDispatch).not.toHaveBeenCalled();
     });

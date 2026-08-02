@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildTypeProviderRows, type TypeRecordActivationResult } from '../../src/services/rows/typeProviderRows';
 import { TPS_NAVIGATOR_TYPE_IDS, type TpsNavigatorTypeRecord, type TpsNavigatorTypesSnapshot } from '../../src/types/navigatorTypes';
+import { parseFilterSearchTokens } from '../../src/utils/filterSearch';
 
 const selectedLineTypeId = TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES;
 
@@ -36,6 +37,9 @@ function buildRows(options?: {
     availability?: TpsNavigatorTypesSnapshot['availability'];
     message?: string;
     searchQuery?: string;
+    searchTokens?: ReturnType<typeof parseFilterSearchTokens>;
+    allowedSourcePaths?: ReadonlySet<string>;
+    includeUnavailableStatus?: boolean;
     activate?: (record: TpsNavigatorTypeRecord) => Promise<TypeRecordActivationResult>;
     setTaskCheckbox?: (record: TpsNavigatorTypeRecord, checked: boolean) => Promise<{ ok: boolean; reason?: string }>;
     addTaskContextMenuItems?: (menu: { addItem: () => unknown; addSeparator: () => unknown }, record: TpsNavigatorTypeRecord) => boolean;
@@ -45,6 +49,9 @@ function buildRows(options?: {
         snapshot: createSnapshot(options?.records ?? [], options?.availability, options?.message),
         selectedType: selectedLineTypeId,
         searchQuery: options?.searchQuery ?? '',
+        searchTokens: options?.searchTokens,
+        allowedSourcePaths: options?.allowedSourcePaths,
+        includeUnavailableStatus: options?.includeUnavailableStatus,
         activate: options?.activate ?? (async () => ({ ok: true })),
         setTaskCheckbox: options?.setTaskCheckbox ?? (async () => ({ ok: true })),
         addTaskContextMenuItems: options?.addTaskContextMenuItems ?? (() => true),
@@ -199,6 +206,44 @@ describe('buildTypeProviderRows', () => {
         const rows = buildRows({ records: [matching, missingTerm], searchQuery: '  BUY   home  ' });
 
         expect(rows.map(row => row.label)).toEqual(['Buy weekly supplies']);
+    });
+
+    it('treats Type and owning-note metadata filters as facets instead of literal row text', () => {
+        const shopping = createRecord({ id: 'shopping', label: 'Buy milk', sourcePath: 'Areas/Home.md' });
+        const work = createRecord({ id: 'work', label: 'Buy servers', sourcePath: 'Areas/Work.md' });
+        const query = '#shopping type:structural:task';
+
+        const rows = buildRows({
+            records: [shopping, work],
+            searchQuery: query,
+            searchTokens: parseFilterSearchTokens(query),
+            allowedSourcePaths: new Set([shopping.sourcePath])
+        });
+
+        expect(rows.map(row => row.label)).toEqual(['Buy milk']);
+    });
+
+    it('applies positive and negative row text terms after folding', () => {
+        const matching = createRecord({ id: 'matching', label: 'Résumé checklist', sourcePath: 'Work/One.md' });
+        const excluded = createRecord({ id: 'excluded', label: 'Résumé archived checklist', sourcePath: 'Work/Two.md' });
+        const query = 'resume -archived';
+
+        const rows = buildRows({ records: [matching, excluded], searchQuery: query, searchTokens: parseFilterSearchTokens(query) });
+
+        expect(rows.map(row => row.label)).toEqual(['Résumé checklist']);
+    });
+
+    it('returns no rows when the selected collection does not match the Type facet', () => {
+        const query = 'type:structural:heading';
+        const rows = buildRows({ records: [createRecord()], searchQuery: query, searchTokens: parseFilterSearchTokens(query) });
+
+        expect(rows).toEqual([]);
+    });
+
+    it('omits unavailable source status rows from mixed search sections', () => {
+        const rows = buildRows({ availability: 'unavailable', includeUnavailableStatus: false });
+
+        expect(rows).toEqual([]);
     });
 
     it('reports failed activation with the exact record and result but ignores successful activation', async () => {

@@ -15,7 +15,12 @@ import {
     type NotebookNavigatorSettings
 } from '../../settings/types';
 import { ItemType } from '../../types';
-import { isTpsNavigatorFileTypeId, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
+import {
+    isTpsNavigatorFileTypeId,
+    isTpsNavigatorLineTypeId,
+    isTpsNavigatorStructuralTypeId,
+    type TpsNavigatorTypeId
+} from '../../types/navigatorTypes';
 import type { PropertySelectionNodeId } from '../../utils/propertyTree';
 import { casefold, ensureRecord, sanitizeRecord } from '../../utils/recordUtils';
 import {
@@ -24,7 +29,8 @@ import {
     isDateSortOption,
     isManualSortPropertyKey,
     parsePropertySortKeys,
-    resolveListSort
+    resolveListSort,
+    resolveSourceBackedTypeListSort
 } from '../../utils/sortUtils';
 import { areListGroupingOptionsEqual, resolveListGroupingOverride } from '../../utils/listGrouping';
 
@@ -79,7 +85,7 @@ export function resolveNavigatorListPresentationTarget({
     if (selectionType === ItemType.PROPERTY && selectedProperty) {
         return Object.freeze({ type: ItemType.PROPERTY, key: selectedProperty });
     }
-    if (selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectedType)) {
+    if (selectionType === ItemType.TYPE && isTpsNavigatorStructuralTypeId(selectedType)) {
         return Object.freeze({ type: ItemType.TYPE, key: selectedType });
     }
     return null;
@@ -228,9 +234,12 @@ export function createNavigatorListPresentationPlan(
     target: NavigatorListPresentationTarget,
     update: NavigatorListPresentationUpdate
 ): NavigatorListPresentationPlan | null {
+    const isSourceBackedTypeTarget = target.type === ItemType.TYPE && isTpsNavigatorLineTypeId(target.key);
+    const resolveTargetSort = (sortOverride?: ListSortOverrideValue) =>
+        isSourceBackedTypeTarget ? resolveSourceBackedTypeListSort(settings, sortOverride) : resolveListSort(settings, sortOverride);
     const currentSortOverride = getCurrentSortOverride(settings, target);
-    const currentSort = resolveListSort(settings, currentSortOverride);
-    if (isManualSortPropertyKey(settings, currentSort.propertyKey)) {
+    const currentSort = resolveTargetSort(currentSortOverride);
+    if (!isSourceBackedTypeTarget && isManualSortPropertyKey(settings, currentSort.propertyKey)) {
         return null;
     }
 
@@ -242,8 +251,8 @@ export function createNavigatorListPresentationPlan(
 
     let plannedSort = requestedSort ?? undefined;
     if (sortIncluded && plannedSort !== undefined) {
-        const defaultSort = resolveListSort(settings, undefined);
-        const requestedEffectiveSort = resolveListSort(settings, plannedSort);
+        const defaultSort = resolveTargetSort(undefined);
+        const requestedEffectiveSort = resolveTargetSort(plannedSort);
         if (
             requestedEffectiveSort.option === defaultSort.option &&
             casefold(requestedEffectiveSort.propertyKey) === casefold(defaultSort.propertyKey)
@@ -269,12 +278,15 @@ export function createNavigatorListPresentationPlan(
         }
     }
 
-    const finalSort = resolveListSort(settings, sortIncluded ? plannedSort : currentSortOverride);
+    const finalSort = resolveTargetSort(sortIncluded ? plannedSort : currentSortOverride);
     if (groupingIncluded && requestedGrouping === 'date' && !isDateSortOption(finalSort.option)) {
         return null;
     }
 
     const displayModeIncluded = Object.prototype.hasOwnProperty.call(update, 'displayMode');
+    if (displayModeIncluded && target.type === ItemType.TYPE && !isTpsNavigatorFileTypeId(target.key)) {
+        return null;
+    }
     const defaultDisplayMode = settings.defaultListMode === 'compact' ? 'compact' : 'standard';
     const plannedDisplayMode = update.displayMode === null || update.displayMode === defaultDisplayMode ? undefined : update.displayMode;
 

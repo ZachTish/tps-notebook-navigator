@@ -43,6 +43,11 @@ export interface PropertySearchToken {
     value: string | null;
 }
 
+import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
+
+/** Canonical Navigator Type id used by the host-owned Type search facet. */
+export type TypeSearchToken = TpsNavigatorTypeId;
+
 // Operands in a tag/property filter expression tree
 export type TagExpressionOperand =
     | {
@@ -102,6 +107,10 @@ export interface FilterSearchTokens {
     excludeFolderTokens: FolderFilterToken[];
     extensionTokens: string[];
     excludeExtensionTokens: string[];
+    /** Positive Type facets use OR semantics within this dimension. */
+    typeTokens: TypeSearchToken[];
+    /** Every matching entity must avoid all excluded Type facets. */
+    excludeTypeTokens: TypeSearchToken[];
     excludeDateRanges: DateFilterRange[];
     excludeTagged: boolean;
 }

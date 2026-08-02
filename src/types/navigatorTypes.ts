@@ -233,6 +233,7 @@ export const TPS_NAVIGATOR_STRUCTURAL_TYPES: readonly Omit<TpsNavigatorTypeDescr
 
 const TPS_NAVIGATOR_FILE_TYPE_ID_SET = new Set<TpsNavigatorTypeId>(TPS_NAVIGATOR_FILE_TYPES.map(type => type.id));
 const TPS_NAVIGATOR_LINE_TYPE_ID_SET = new Set<TpsNavigatorTypeId>(TPS_NAVIGATOR_LINE_TYPES.map(type => type.id));
+const TPS_NAVIGATOR_STRUCTURAL_TYPE_ID_SET = new Set<TpsNavigatorTypeId>(TPS_NAVIGATOR_STRUCTURAL_TYPES.map(type => type.id));
 const TPS_NAVIGATOR_GCM_LINE_TYPE_ID_SET = new Set<TpsNavigatorTypeId>(TPS_NAVIGATOR_GCM_LINE_TYPES.map(type => type.id));
 const TPS_NAVIGATOR_MARKDOWN_TYPE_ID_SET = new Set<TpsNavigatorTypeId>(TPS_NAVIGATOR_MARKDOWN_TYPES.map(type => type.id));
 
@@ -242,6 +243,11 @@ export function isTpsNavigatorFileTypeId(typeId: unknown): typeId is TpsNavigato
 
 export function isTpsNavigatorLineTypeId(typeId: unknown): typeId is TpsNavigatorLineTypeId {
     return typeof typeId === 'string' && TPS_NAVIGATOR_LINE_TYPE_ID_SET.has(typeId as TpsNavigatorTypeId);
+}
+
+/** Returns true for the fixed, Navigator-owned file and Markdown structure Types. */
+export function isTpsNavigatorStructuralTypeId(typeId: unknown): typeId is TpsNavigatorStructuralTypeId {
+    return typeof typeId === 'string' && TPS_NAVIGATOR_STRUCTURAL_TYPE_ID_SET.has(typeId as TpsNavigatorTypeId);
 }
 
 export function isTpsNavigatorGcmLineTypeId(typeId: unknown): typeId is TpsNavigatorGcmLineTypeId {

@@ -42,8 +42,7 @@ import { getFolderNote, openFolderNoteFile, type FolderNoteOpenContext } from '.
 import { runAsyncAction } from '../../utils/async';
 import { resolveFolderNoteClickOpenContext, resolveFolderNoteDefaultOpenContext } from '../../utils/keyboardOpenContext';
 import { findTagNode } from '../../utils/tagTree';
-import { resolveCanonicalTagPath } from '../../utils/tagUtils';
-import { getTagSearchModifierOperator } from '../../utils/tagUtils';
+import { getNavigationSearchModifierOperator, resolveCanonicalTagPath } from '../../utils/tagUtils';
 import { isVirtualTagCollectionId } from '../../utils/virtualTagCollections';
 import {
     getFolderAncestorPaths,
@@ -52,7 +51,7 @@ import {
     toggleNavigationExpansionTarget
 } from '../../utils/navigationExpansion';
 import { useStableHandlerFacade } from '../useStableHandlerFacade';
-import type { TpsNavigatorTypeId, TpsNavigatorTypesSnapshot } from '../../types/navigatorTypes';
+import { isTpsNavigatorStructuralTypeId, type TpsNavigatorTypeId, type TpsNavigatorTypesSnapshot } from '../../types/navigatorTypes';
 import { navigateToType as navigateToTypeInternal } from '../../utils/typeNavigation';
 
 interface ExpansionStateLike {
@@ -87,6 +86,7 @@ interface UseNavigationPaneTreeInteractionsProps {
     openFolderNoteInRightSidebar: (folderNote: TFile) => Promise<void>;
     onModifySearchWithTag: (tag: string, operator: InclusionOperator) => void;
     onModifySearchWithProperty: (key: string, value: string | null, operator: InclusionOperator) => void;
+    onModifySearchWithType: (typeId: TpsNavigatorTypeId) => void;
 }
 
 export interface NavigationPaneTreeInteractionsResult {
@@ -128,7 +128,8 @@ export function useNavigationPaneTreeInteractions({
     clearActiveShortcut,
     openFolderNoteInRightSidebar,
     onModifySearchWithTag,
-    onModifySearchWithProperty
+    onModifySearchWithProperty,
+    onModifySearchWithType
 }: UseNavigationPaneTreeInteractionsProps): NavigationPaneTreeInteractionsResult {
     const focusListPaneAfterRightSidebarFolderNoteSelection = useCallback(
         (openContext: FolderNoteOpenContext) => {
@@ -528,7 +529,7 @@ export function useNavigationPaneTreeInteractions({
             }
 
             const isVirtualCollection = isVirtualTagCollectionId(canonicalPath);
-            const operator = getTagSearchModifierOperator(event ?? null, settings.multiSelectModifier);
+            const operator = getNavigationSearchModifierOperator(event ?? null, settings.multiSelectModifier);
             if (operator && !isVirtualCollection && canonicalPath !== UNTAGGED_TAG_ID) {
                 if (event) {
                     event.preventDefault();
@@ -620,7 +621,7 @@ export function useNavigationPaneTreeInteractions({
 
     const handlePropertyClick = useCallback(
         (propertyNode: PropertyTreeNode, event?: React.MouseEvent, options?: { fromShortcut?: boolean }) => {
-            const operator = getTagSearchModifierOperator(event ?? null, settings.multiSelectModifier);
+            const operator = getNavigationSearchModifierOperator(event ?? null, settings.multiSelectModifier);
             if (operator) {
                 if (event) {
                     event.preventDefault();
@@ -721,7 +722,17 @@ export function useNavigationPaneTreeInteractions({
     );
 
     const handleTypeClick = useCallback(
-        (typeId: TpsNavigatorTypeId) => {
+        (typeId: TpsNavigatorTypeId, event?: React.MouseEvent) => {
+            const operator = getNavigationSearchModifierOperator(event ?? null, settings.multiSelectModifier);
+            if (operator && isTpsNavigatorStructuralTypeId(typeId)) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                onModifySearchWithType(typeId);
+                return;
+            }
+
             const selectedType = navigateToTypeInternal(
                 {
                     enabled: settings.tpsTypesNavigationEnabled,
@@ -742,7 +753,9 @@ export function useNavigationPaneTreeInteractions({
             clearActiveShortcut,
             expansionDispatch,
             expansionState.expandedVirtualFolders,
+            onModifySearchWithType,
             selectionDispatch,
+            settings.multiSelectModifier,
             settings.tpsTypesNavigationEnabled,
             typeSnapshot,
             uiDispatch,

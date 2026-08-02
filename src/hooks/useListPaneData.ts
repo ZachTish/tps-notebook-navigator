@@ -30,6 +30,7 @@
 
 import { useMemo, useState } from 'react';
 import { TFile, TFolder } from 'obsidian';
+import { strings } from '../i18n';
 import { useServices } from '../context/ServicesContext';
 import { useFileCache } from '../context/StorageContext';
 import { useLocalDayKey } from './useLocalDayKey';
@@ -37,7 +38,12 @@ import { ItemType, ListPaneItemType } from '../types';
 import type { VisibilityPreferences } from '../types';
 import type { ListPaneItem } from '../types/virtualization';
 import { createFrontmatterPropertyExclusionMatcher } from '../utils/fileFilters';
-import { parseFilterSearchTokens, filterSearchHasActiveCriteria, filterSearchNeedsPropertyLookup } from '../utils/filterSearch';
+import {
+    parseFilterSearchTokens,
+    filterSearchHasActiveCriteria,
+    filterSearchNeedsPropertyLookup,
+    filterSearchNeedsTagLookup
+} from '../utils/filterSearch';
 import type { ListNoteGroupingOption, NotebookNavigatorSettings } from '../settings/types';
 import type { FilterSearchTokens } from '../utils/filterSearch';
 import type { SearchResultMeta } from '../types/search';
@@ -46,7 +52,13 @@ import type { SearchProvider } from '../types/search';
 import type { PropertySelectionNodeId } from '../utils/propertyTree';
 import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
 import { getFilesForNavigationSelection, getVisibleVaultFiles } from '../utils/selectionUtils';
-import { getListSortOverrideForSelection, isManualSortPropertyKey, resolveListSort } from '../utils/sortUtils';
+import { sortNavigationFiles } from '../utils/fileFinder';
+import {
+    getListSortOverrideForSelection,
+    isManualSortPropertyKey,
+    resolveListSort,
+    resolveSourceBackedTypeListSort
+} from '../utils/sortUtils';
 import { applyManualSortMarkdownOrder, getManualSortGroupHeaderPropertyKey } from '../utils/manualSort';
 import { getPropertyFieldsFromPropertyKeys } from '../utils/vaultProfiles';
 import {
@@ -69,13 +81,21 @@ import { useProviderRows } from './useProviderRows';
 import { navigatorRowProviderRegistry } from '../services/rows/defaultRegistry';
 import type { NavigatorRowProviderSelection, NavigatorRowScope } from '../services/rows/types';
 import { useGcmEntityTypes } from '../integrations/gcm/useGcmEntityTypes';
-import { filterTpsNavigatorTypesSnapshot } from '../types/navigatorTypes';
+import { filterTpsNavigatorTypesSnapshot, isTpsNavigatorStructuralTypeId } from '../types/navigatorTypes';
 import { showNotice } from '../utils/noticeUtils';
 import { buildTypeProviderRows } from '../services/rows/typeProviderRows';
 import { collectTypeScopeVisibleFilePaths } from '../services/rows/providerScope';
 import { useNavigatorTypes } from './useNavigatorTypes';
 import { useNavigatorTypeRows } from './useNavigatorTypeRows';
 import { collectFileBackedTypeFiles, composeTypeListItems, resolveTypeListMode } from './listPaneData/typeListItems';
+import { buildStandaloneStructuralTypePresentation } from './listPaneData/standaloneTypePresentation';
+import { isTpsNavigatorLineTypeId } from '../types/navigatorTypes';
+import {
+    fileMatchesStructuralTypeSearch,
+    getStructuralTypeSearchCollections,
+    getStructuralTypeSourceSearchTokens,
+    shouldUseGlobalTypeSearch
+} from './listPaneData/structuralTypeSearch';
 
 const EMPTY_SEARCH_META = new Map<string, SearchResultMeta>();
 const EMPTY_HIDDEN_FILE_STATE = new Map<string, boolean>();
@@ -180,7 +200,9 @@ export function useListPaneData({
 
     const [updateKey, setUpdateKey] = useState(0);
     const typeListMode = useMemo(() => resolveTypeListMode(selectionType, selectedType), [selectedType, selectionType]);
-    const { isTypeSelection, isFileBackedTypeSelection, isProviderOwnedTypeSelection } = typeListMode;
+    const { isTypeSelection, isFileBackedTypeSelection, isLineBackedTypeSelection, isProviderOwnedTypeSelection } = typeListMode;
+    const trimmedQuery = searchQuery?.trim() ?? '';
+    const hasSearchQuery = trimmedQuery.length > 0;
     const rawTypeSnapshot = useNavigatorTypes(plugin.api);
     const {
         activate: activateTypeRecord,
@@ -189,18 +211,17 @@ export function useListPaneData({
     } = useGcmEntityTypes(app, settings.tpsTypesNavigationEnabled);
     const visibleTypeFiles = useMemo(() => {
         void updateKey;
-        if (!settings.tpsTypesNavigationEnabled || !isTypeSelection) {
+        if (!settings.tpsTypesNavigationEnabled || (!isTypeSelection && !hasSearchQuery)) {
             return [];
         }
         return getVisibleVaultFiles(settings, showHiddenItems, app);
-    }, [app, isTypeSelection, settings, showHiddenItems, updateKey]);
+    }, [app, hasSearchQuery, isTypeSelection, settings, showHiddenItems, updateKey]);
     const visibleTypeSourcePaths = useMemo(() => new Set(visibleTypeFiles.map(file => file.path)), [visibleTypeFiles]);
     const typeSnapshot = useMemo(
         () => filterTpsNavigatorTypesSnapshot(rawTypeSnapshot, visibleTypeSourcePaths),
         [rawTypeSnapshot, visibleTypeSourcePaths]
     );
 
-    const trimmedQuery = searchQuery?.trim() ?? '';
     const allowedTypeSourcePaths = useMemo(() => Object.freeze([...visibleTypeSourcePaths]), [visibleTypeSourcePaths]);
     const providerOwnedTypeRowsResult = useNavigatorTypeRows({
         api: plugin.api,
@@ -234,25 +255,38 @@ export function useListPaneData({
         }
         return providerOwnedTypeRowsResult.rows;
     }, [providerOwnedTypeRowsResult, selectedType]);
-    const hasSearchQuery = trimmedQuery.length > 0;
+    const parsedSearchTokens = useMemo(
+        () => (hasSearchQuery ? (searchTokens ?? parseFilterSearchTokens(trimmedQuery)) : null),
+        [hasSearchQuery, searchTokens, trimmedQuery]
+    );
+    const hasTypeSearchFacets =
+        parsedSearchTokens !== null && (parsedSearchTokens.typeTokens.length > 0 || parsedSearchTokens.excludeTypeTokens.length > 0);
     const isOmnisearchAvailable = omnisearchService?.isAvailable() ?? false;
-    const useOmnisearch = !isTypeSelection && searchProvider === 'omnisearch' && isOmnisearchAvailable && hasSearchQuery;
+    const useOmnisearch =
+        !isTypeSelection && !hasTypeSearchFacets && searchProvider === 'omnisearch' && isOmnisearchAvailable && hasSearchQuery;
+    const useGlobalTypeSearch = shouldUseGlobalTypeSearch({
+        enabled: settings.tpsTypesNavigationEnabled,
+        isTypeSelection,
+        selectedType,
+        hasSearchQuery,
+        useOmnisearch
+    });
     const activeFilterSearchTokens = useMemo(() => {
-        if (!trimmedQuery || useOmnisearch) {
+        if (!parsedSearchTokens || useOmnisearch) {
             return null;
         }
 
-        const tokens = searchTokens ?? parseFilterSearchTokens(trimmedQuery);
-        if (!filterSearchHasActiveCriteria(tokens)) {
+        if (!filterSearchHasActiveCriteria(parsedSearchTokens)) {
             return null;
         }
 
-        return tokens;
-    }, [trimmedQuery, useOmnisearch, searchTokens]);
+        return parsedSearchTokens;
+    }, [parsedSearchTokens, useOmnisearch]);
     const hasTaskSearchFilters =
         activeFilterSearchTokens !== null &&
         (activeFilterSearchTokens.requireUnfinishedTasks || activeFilterSearchTokens.excludeUnfinishedTasks);
     const hasPropertySearchFilters = activeFilterSearchTokens !== null && filterSearchNeedsPropertyLookup(activeFilterSearchTokens);
+    const hasTagSearchFilters = activeFilterSearchTokens !== null && filterSearchNeedsTagLookup(activeFilterSearchTokens);
     const hasDateSearchFilters =
         activeFilterSearchTokens !== null &&
         (activeFilterSearchTokens.dateRanges.length > 0 || activeFilterSearchTokens.excludeDateRanges.length > 0);
@@ -311,16 +345,19 @@ export function useListPaneData({
         ]
     );
 
-    const sortSpec = useMemo(() => resolveListSort(settings, selectedSortOverride), [settings, selectedSortOverride]);
+    const sortSpec = useMemo(
+        () =>
+            isLineBackedTypeSelection
+                ? resolveSourceBackedTypeListSort(settings, selectedSortOverride)
+                : resolveListSort(settings, selectedSortOverride),
+        [isLineBackedTypeSelection, settings, selectedSortOverride]
+    );
     const sortOption = sortSpec.option;
     const activePropertyFields = useMemo(() => getPropertyFieldsFromPropertyKeys(activeProfile.propertyKeys), [activeProfile.propertyKeys]);
 
-    const baseFiles = useMemo(() => {
-        if (isFileBackedTypeSelection && selectedType) {
-            return collectFileBackedTypeFiles(app, visibleTypeFiles, selectedType);
-        }
+    const selectionBaseFiles = useMemo(() => {
         if (isTypeSelection) {
-            return [];
+            return visibleTypeFiles;
         }
         return getFilesForNavigationSelection(
             {
@@ -339,8 +376,6 @@ export function useListPaneData({
     }, [
         selectionType,
         isTypeSelection,
-        isFileBackedTypeSelection,
-        selectedType,
         visibleTypeFiles,
         selectedFolder,
         selectedTag,
@@ -372,12 +407,40 @@ export function useListPaneData({
         activePropertyFields,
         settings.showProperties,
         selectedSortOverride,
+        sortSpec,
         propertyTreeService,
         includeDescendantNotes,
         showHiddenItems,
         app,
         tagTreeService,
         updateKey
+    ]);
+
+    const baseFiles = useMemo(() => {
+        if (isFileBackedTypeSelection && selectedType && !useGlobalTypeSearch) {
+            const files = collectFileBackedTypeFiles(app, visibleTypeFiles, selectedType);
+            sortNavigationFiles(files, settings, app, sortSpec);
+            return files;
+        }
+        if (isTypeSelection && !useGlobalTypeSearch) {
+            return [];
+        }
+        if (!parsedSearchTokens || !hasSearchQuery) {
+            return selectionBaseFiles;
+        }
+        return selectionBaseFiles.filter(file => fileMatchesStructuralTypeSearch(app, file, parsedSearchTokens));
+    }, [
+        app,
+        hasSearchQuery,
+        isFileBackedTypeSelection,
+        isTypeSelection,
+        parsedSearchTokens,
+        selectedType,
+        selectionBaseFiles,
+        settings,
+        sortSpec,
+        useGlobalTypeSearch,
+        visibleTypeFiles
     ]);
 
     const basePathSet = useMemo(() => new Set(baseFiles.map(file => file.path)), [baseFiles]);
@@ -395,6 +458,46 @@ export function useListPaneData({
     });
     const searchableNames = useSearchableNames({ app, baseFiles, getFileDisplayName });
     const filterSettings = useMemo(() => ({ alphabeticalDateMode: settings.alphabeticalDateMode }), [settings.alphabeticalDateMode]);
+
+    const structuralSourceSearchTokens = useMemo(
+        () => (parsedSearchTokens ? getStructuralTypeSourceSearchTokens(parsedSearchTokens) : null),
+        [parsedSearchTokens]
+    );
+    const structuralSourceFilterResult = useMemo(() => {
+        const structuralBaseFiles = isTypeSelection ? visibleTypeFiles : selectionBaseFiles;
+        if (!hasSearchQuery || !structuralSourceSearchTokens || !filterSearchHasActiveCriteria(structuralSourceSearchTokens)) {
+            return structuralBaseFiles;
+        }
+        return filterListPaneFiles({
+            app,
+            baseFiles: structuralBaseFiles,
+            getDB,
+            getFileTimestamps,
+            omnisearchResult: null,
+            searchTokens: structuralSourceSearchTokens,
+            searchableNames: new Map(),
+            settings: filterSettings,
+            sortOption,
+            trimmedQuery,
+            useOmnisearch: false
+        }).files;
+    }, [
+        app,
+        filterSettings,
+        getDB,
+        getFileTimestamps,
+        hasSearchQuery,
+        isTypeSelection,
+        selectionBaseFiles,
+        sortOption,
+        structuralSourceSearchTokens,
+        trimmedQuery,
+        visibleTypeFiles
+    ]);
+    const structuralSourcePathSet = useMemo(
+        () => new Set(structuralSourceFilterResult.map(file => file.path)),
+        [structuralSourceFilterResult]
+    );
 
     const filterResult = useMemo(() => {
         return filterListPaneFiles({
@@ -606,6 +709,8 @@ export function useListPaneData({
             snapshot: typeSnapshot,
             selectedType,
             searchQuery: trimmedQuery,
+            searchTokens: parsedSearchTokens ?? undefined,
+            allowedSourcePaths: structuralSourcePathSet,
             activate: activateTypeRecord,
             setTaskCheckbox: setTypeTaskCheckbox,
             addTaskContextMenuItems: addTypeTaskContextMenuItems,
@@ -626,10 +731,40 @@ export function useListPaneData({
         isTypeSelection,
         selectedType,
         setTypeTaskCheckbox,
+        parsedSearchTokens,
+        structuralSourcePathSet,
         trimmedQuery,
         typeSnapshot
     ]);
     const typeRows = isProviderOwnedTypeSelection ? providerOwnedTypeRows : gcmTypeRows;
+    const presentedTypeListItems = useMemo(() => {
+        if (!isLineBackedTypeSelection || !isTpsNavigatorLineTypeId(selectedType)) {
+            return undefined;
+        }
+        return buildStandaloneStructuralTypePresentation({
+            rows: typeRows,
+            selectedType,
+            sort: sortSpec,
+            groupBy,
+            dayKey,
+            collapsedListGroups,
+            resolveFile: sourcePath => app.vault.getFileByPath(sourcePath),
+            getFrontmatter: file => app.metadataCache.getFileCache(file)?.frontmatter ?? null,
+            getFileTimestamps,
+            noValueLabel: strings.listPane.propertyGroupNoValue
+        });
+    }, [
+        app.metadataCache,
+        app.vault,
+        collapsedListGroups,
+        dayKey,
+        groupBy,
+        getFileTimestamps,
+        isLineBackedTypeSelection,
+        selectedType,
+        sortSpec,
+        typeRows
+    ]);
     const providerScope = useMemo<NavigatorRowScope>(() => {
         let visibleFilePaths: string[];
         if (isTypeSelection && !isFileBackedTypeSelection) {
@@ -672,9 +807,73 @@ export function useListPaneData({
         scope: providerScope,
         selection: rowProviderSelection
     });
+    const searchTypeGroups = useMemo(() => {
+        if (
+            !settings.tpsTypesNavigationEnabled ||
+            (isTypeSelection && !useGlobalTypeSearch) ||
+            useOmnisearch ||
+            !hasSearchQuery ||
+            !parsedSearchTokens
+        ) {
+            return [];
+        }
+
+        const descriptorLabelById = new Map(typeSnapshot.descriptors.map(descriptor => [descriptor.id, descriptor.label] as const));
+        return getStructuralTypeSearchCollections(parsedSearchTokens).flatMap(typeId => {
+            const rows = buildTypeProviderRows({
+                snapshot: typeSnapshot,
+                selectedType: typeId,
+                searchQuery: trimmedQuery,
+                searchTokens: parsedSearchTokens,
+                allowedSourcePaths: structuralSourcePathSet,
+                includeUnavailableStatus: false,
+                activate: activateTypeRecord,
+                setTaskCheckbox: setTypeTaskCheckbox,
+                addTaskContextMenuItems: addTypeTaskContextMenuItems,
+                onActivationFailure: (record, result) => {
+                    console.warn('[TPS Notebook Navigator] Type search result activation failed', {
+                        typeId,
+                        recordId: record.id,
+                        reason: result.reason
+                    });
+                    showNotice('Could not open this item at its current location.', { variant: 'warning' });
+                }
+            });
+            return rows.length === 0
+                ? []
+                : [
+                      {
+                          typeId,
+                          label: descriptorLabelById.get(typeId) ?? typeId,
+                          rows
+                      }
+                  ];
+        });
+    }, [
+        activateTypeRecord,
+        addTypeTaskContextMenuItems,
+        hasSearchQuery,
+        isTypeSelection,
+        parsedSearchTokens,
+        setTypeTaskCheckbox,
+        settings.tpsTypesNavigationEnabled,
+        structuralSourcePathSet,
+        trimmedQuery,
+        typeSnapshot,
+        useGlobalTypeSearch,
+        useOmnisearch
+    ]);
     const listItems = useMemo(() => {
-        return composeTypeListItems({ mode: typeListMode, coreListItems, typeRows, providerRows });
-    }, [coreListItems, providerRows, typeListMode, typeRows]);
+        return composeTypeListItems({
+            mode: typeListMode,
+            coreListItems,
+            typeRows,
+            providerRows,
+            presentedTypeListItems,
+            searchTypeGroups,
+            globalTypeSearch: useGlobalTypeSearch
+        });
+    }, [coreListItems, presentedTypeListItems, providerRows, searchTypeGroups, typeListMode, typeRows, useGlobalTypeSearch]);
 
     const filePathToIndex = useMemo(() => {
         return buildFilePathToIndexMap(listItems);
@@ -711,9 +910,16 @@ export function useListPaneData({
         return { filePaths, hasWordCountGroupHeaders };
     }, [listItems]);
 
+    const refreshBasePathSet = useMemo(() => {
+        if (isLineBackedTypeSelection || hasSearchQuery) {
+            return new Set((isTypeSelection ? visibleTypeFiles : selectionBaseFiles).map(file => file.path));
+        }
+        return basePathSet;
+    }, [basePathSet, hasSearchQuery, isLineBackedTypeSelection, isTypeSelection, selectionBaseFiles, visibleTypeFiles]);
+
     useListPaneRefresh({
         app,
-        basePathSet,
+        basePathSet: refreshBasePathSet,
         cachedCustomGroupHeaderFilePaths,
         commandQueue,
         customGroupHeaderFilePaths: customGroupHeaderState.filePaths,
@@ -724,11 +930,12 @@ export function useListPaneData({
         hasDateSearchFilters,
         hasManualSortWordCountGroupHeaders: customGroupHeaderState.hasWordCountGroupHeaders,
         hasPropertySearchFilters,
+        hasTagSearchFilters,
         hasTaskSearchFilters,
         hiddenFilePropertyMatcher,
         hiddenFileTags,
         includeDescendantNotes,
-        isFileBackedTypeSelection,
+        isStructuralTypeSelection: selectionType === ItemType.TYPE && isTpsNavigatorStructuralTypeId(selectedType),
         manualSortGroupHeaderPropertyKey,
         onRefresh: () => setUpdateKey(current => current + 1),
         propertyTreeService,

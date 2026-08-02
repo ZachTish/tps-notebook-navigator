@@ -69,7 +69,8 @@ function createContext(onTypeContextMenu: NavigationPaneRowContext['onTypeContex
             handleVirtualFolderToggleAllSiblings: vi.fn()
         },
         searchHighlights: {
-            getTagCollectionSearchMatch: () => undefined
+            getTagCollectionSearchMatch: () => undefined,
+            getTypeSearchMatch: () => undefined
         },
         onSectionContextMenu: vi.fn(),
         onTypeContextMenu

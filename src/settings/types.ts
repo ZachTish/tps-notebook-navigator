@@ -24,7 +24,7 @@ import type { KeyboardShortcutConfig } from '../utils/keyboardShortcuts';
 import type { ShortcutEntry } from '../types/shortcuts';
 import type { SearchProvider } from '../types/search';
 import type { FileTypeIconPreset } from '../utils/fileTypeIconPresets';
-import type { TpsNavigatorFileTypeId } from '../types/navigatorTypes';
+import type { TpsNavigatorStructuralTypeId } from '../types/navigatorTypes';
 
 export type SettingSyncMode = 'local' | 'synced';
 
@@ -900,8 +900,8 @@ export interface NotebookNavigatorSettings {
     propertySortOverrides: Record<string, ListSortOverrideValue>;
     propertyTreeSortOverrides: Record<string, AlphaSortOrder>;
     propertyAppearances: Record<string, FolderAppearance>;
-    typeSortOverrides?: Partial<Record<TpsNavigatorFileTypeId, ListSortOverrideValue>>;
-    typeAppearances?: Partial<Record<TpsNavigatorFileTypeId, FolderAppearance>>;
+    typeSortOverrides?: Partial<Record<TpsNavigatorStructuralTypeId, ListSortOverrideValue>>;
+    typeAppearances?: Partial<Record<TpsNavigatorStructuralTypeId, FolderAppearance>>;
     virtualFolderColors: Record<string, string>;
     virtualFolderBackgroundColors: Record<string, string>;
     navigationSeparators: Record<string, boolean>;

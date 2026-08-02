@@ -4,7 +4,7 @@ Updated: August 2, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 3.1.0
+**Current API Version:** 3.2.0
 
 ## Table of Contents
 
@@ -535,6 +535,26 @@ are searchable by their owning-note/line label and source path, selectable with 
 activation against the current cache. They are not `TFile` rows and therefore do not initially support file drag,
 multi-select, pinning, rename, or persistent selection.
 
+All seven fixed source-backed Types—Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, and Tables—support
+host-owned Sort and Group controls. Sort can use the row title or the owning note's filename, configured created/modified
+timestamp, or a configured non-manual frontmatter property. Missing source-note values stay last in both sort directions,
+and missing-value groups stay last. Date grouping is available only with a date sort; configured non-manual property grouping
+reads the owning note's frontmatter; `custom` is the ungrouped source-row presentation because custom header ownership is
+file-based. Manual sort, folder/manual grouping, and display-mode/appearance editing remain unsupported. External provider
+Types keep their existing provider-owned presentation.
+
+Internal Filter Search accepts canonical `type:<fixed-id>` and `-type:<fixed-id>` facets, for example
+`type:structural:task` and `-type:structural:heading`. Multiple positive Types are always OR; that Type dimension is ANDed
+with all other search facets. Any nonempty internal query started from a fixed Type lifts that Type scope and searches the
+complete fixed catalog; search from folders, tags, and properties keeps that navigation scope. Native files remain ordinary
+rows and matching source-backed Types appear in labeled sections. Plain text matches the row label or source path, not note
+contents, while tag, property, date, folder, and extension terms apply to the owning note rather than block-local metadata.
+Shift-click or the configured multi-select modifier adds a tag, property, or fixed Type with AND; the configured modifier
+plus Shift adds a tag or property with OR. Multiple Types remain an OR union regardless of the navigation gesture.
+
+The visibility-derived vault allowlist is computed only for a Type scope or nonempty internal search. Aggregation then uses
+the cached GCM entity and Obsidian metadata indexes without reading note bodies.
+
 ```typescript
 const stop = nn.types.subscribe(snapshot => {
   if (snapshot.availability !== 'ready') {
@@ -716,7 +736,7 @@ the view is not ready, or when that primary leaf changes during the readiness wa
 const snapshot = await nn.list.getSnapshot();
 if (snapshot) {
   for (const row of snapshot.rows) {
-    console.log(row.type === 'file' ? row.path : `${row.providerId}:${row.rowId}`);
+    console.log(row.type === 'file' ? row.path : `${row.typeId ?? 'attached'}:${row.providerId}:${row.rowId}`);
   }
 }
 
@@ -731,24 +751,34 @@ await nn.list.setPresentation({
 `getSnapshot()` returns the current navigation item, immediate and applied search strings, requested and effective search
 providers, effective sort/group/display state, and the renderable file/provider row order after scope, search, and
 collapsed-group filtering. Headers and spacers are omitted. Fixed file-backed Types return their native file-list
-presentation; source-backed structural and provider-owned Type collections return `presentation: null` because their source owns row
-order. The snapshot, nested DTOs, and row array are frozen; referenced `TFile`/`TFolder` instances are native Obsidian
-objects and can become stale. Re-resolve `sourcePath` immediately before a mutation. Provider rows expose identity and
-presentation only—activation, checkbox mutation, context-menu builders, tooltips, and provider records are never returned.
-A provider loading/error placeholder can have `file: null`.
+presentation; fixed source-backed Types return their effective supported sort/group presentation; external provider Type
+collections return `presentation: null` because their owner controls row order. Every provider row exposes `typeId`: mixed
+structural search results carry their own fixed Type id, a row inside one selected Type carries that selected/owning Type,
+and an ordinary row attached beneath a note uses `null`. The snapshot, nested DTOs, and row array are frozen; referenced
+`TFile`/`TFolder` instances are native Obsidian objects and can become stale. Re-resolve `sourcePath` immediately before a
+mutation. Provider rows expose identity and presentation only—activation, checkbox mutation, context-menu builders,
+tooltips, and provider records are never returned. A provider loading/error placeholder can have `file: null`.
 
 `setSearch(update)` applies the query immediately rather than waiting for keyboard debounce. `query` or `focus: true`
 activates search; `null` or `{ active: false }` clears and closes it. Contradictory input such as an inactive non-empty query
 fails closed. Omnisearch can be requested, while the next snapshot's `effectiveProvider` reports whether it actually
-produced the current rows.
+produced the current rows. When the effective provider is `internal`, a nonempty query started from a fixed Type searches all
+fixed Types and appends the matching source-backed sections described above. Omnisearch retains its own ranked file-only
+result contract.
 
 `setPresentation(update)` validates every supplied field before one settings transaction. It works for folder, tag,
-property, and fixed file-backed Type scopes; it rejects source-backed structural/provider Type and none scopes, current or requested
-manual sorting, unconfigured property sort/group keys, folder grouping outside a folder, and an explicitly requested date
-grouping with a non-date sort. Each `null` field removes only that per-scope override and inherits the current default.
-Values equal to inherited defaults are normalized away, unrelated appearance fields are preserved, and any invalid field
-rejects the whole request without a partial write. There is no list subscription: integrations pull snapshots when they
-need them so large provider collections are not cloned continuously.
+property, and every fixed built-in Type scope. Fixed source-backed Types accept title, filename, configured created/modified,
+and configured non-manual frontmatter-property sort plus compatible date/property/ungrouped (`custom`) grouping. They reject
+display mode, manual sort, and folder/manual grouping. External provider Type and none scopes remain unsupported. All scopes
+reject the manual-rank property, unconfigured property sort/group keys, and an explicitly requested date grouping with a
+non-date sort. Each `null` field removes only that per-scope override and inherits the current default. Values equal to
+inherited defaults are normalized away, unrelated appearance fields are preserved, and any invalid field rejects the whole
+request without a partial write. There is no list subscription: integrations pull snapshots when they need them so large
+provider collections are not cloned continuously.
+
+The presentation snapshot keeps its stable three-field shape. For a source-backed Type, `displayMode` reports the inherited
+default for compatibility, but source rows use their fixed native presentation and `setPresentation({ displayMode: ... })`
+is rejected.
 
 ## Selection API
 
@@ -1131,6 +1161,13 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 3.2.0 (2026-08-02)
+
+- Added bounded `list.setPresentation(...)` support for fixed source-backed Type scopes, including row-title and owning-note
+  sort fields plus compatible date/property/ungrouped grouping
+- Added per-row fixed `typeId` identity to mixed structural search snapshots
+- Preserved API 3.x compatibility; display mode, manual/folder grouping, and external provider presentation remain unsupported
 
 ### Version 3.1.0 (2026-08-02)
 

@@ -1,7 +1,7 @@
 /* TPS Notebook Navigator - isolated runtime guards for first-party Type collections. */
 
 import { ItemType, type NavigationItemType } from '../../types';
-import { isTpsNavigatorFileTypeId, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
+import { isTpsNavigatorFileTypeId, isTpsNavigatorLineTypeId, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
 
 export function supportsCalendarInteractionsForSelection(selectionType: NavigationItemType | null): boolean {
     return selectionType !== ItemType.TYPE;
@@ -17,4 +17,12 @@ export function supportsNativeListPresentationForSelection(
     selectedType: TpsNavigatorTypeId | null
 ): boolean {
     return selectionType !== ItemType.TYPE || isTpsNavigatorFileTypeId(selectedType);
+}
+
+/** Sort/group controls also support fixed line-backed Types through owning-note metadata. */
+export function supportsListSortAndGroupingForSelection(
+    selectionType: NavigationItemType | null,
+    selectedType: TpsNavigatorTypeId | null
+): boolean {
+    return selectionType !== ItemType.TYPE || isTpsNavigatorFileTypeId(selectedType) || isTpsNavigatorLineTypeId(selectedType);
 }
