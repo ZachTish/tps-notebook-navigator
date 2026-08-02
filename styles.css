@@ -664,6 +664,14 @@ body {
     contain: layout style;
 }
 
+/* Keep the file pane tied to the complete horizontal viewport. Without an
+   explicit block size, a tall or newly expanded Obsidian leaf can leave the
+   inner scroller at its previous intrinsic height. */
+.tps-nn-split-container.tps-nn-orientation-horizontal .tps-nn-list-pane {
+    height: 100%;
+    min-height: 0;
+}
+
 /* Override backgrounds when desktop background mode is set to primary or secondary */
 /* Primary mode: use list background for navigation pane */
 .tps-nn-split-container.tps-nn-desktop.tps-nn-bg-primary {
@@ -3689,7 +3697,7 @@ button.tps-nn-navigation-calendar-day {
 }
 
 .tps-nn-list-pane-panel {
-    flex: 1;
+    flex: 1 1 0;
     min-height: 0;
     display: flex;
     flex-direction: column;

@@ -170,6 +170,19 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.3.1 — full-height desktop list viewport
+
+- Fixes a desktop horizontal-layout edge case where the list scroller could retain an intrinsic or earlier height after
+  the Obsidian leaf became taller, leaving the bottom of grouped property and Type results unusable.
+- Gives the horizontal list pane an explicit full-height/min-height contract and a zero-basis inner flex panel so its
+  scroller grows and shrinks with the complete pane instead of stopping above the footer.
+- Adds a generated-namespace-aware stylesheet regression for the pane → panel → scroller height chain. This is a
+  backward-compatible patch with no settings, data, public API, or note migration; minimum Obsidian remains 1.11.0.
+- Validation passed the focused 8-test stylesheet suite and the complete 226-file, 2,475-test suite, plus formatting,
+  TypeScript, ESLint, stylesheet, namespace, operational-identity, and artifact gates. Obsidian 1.12.7 was reloaded only
+  in the isolated test vault and the desktop list viewport was inspected after the final build; production was not
+  changed.
+
 ### 5.3.0 — searchable, sortable structural Types
 
 - Adds Sort and Group controls to Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, and Tables. Source rows

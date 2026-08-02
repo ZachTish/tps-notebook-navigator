@@ -106,6 +106,16 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.3.1',
+        date: '2026-08-02',
+        showOnUpdate: true,
+        info: 'The desktop list now uses the full available height in tall and resized Navigator panes.',
+        fixed: [
+            'Horizontal two-pane layouts explicitly keep the list pane, its panel, and the scroll viewport connected from top to bottom.',
+            'Grouped property and Type lists no longer leave an unusable blank region beneath the scrollable results after the leaf grows.'
+        ]
+    },
+    {
         version: '5.3.0',
         date: '2026-08-02',
         showOnUpdate: true,

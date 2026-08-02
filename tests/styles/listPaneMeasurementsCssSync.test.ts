@@ -55,6 +55,24 @@ function extractCalcAddPx(css: string, variableName: string, baseVariableName: s
 }
 
 describe('List pane measurements stay in sync with CSS', () => {
+    test('desktop horizontal list pane keeps its scroller on the full pane height', () => {
+        const paneCss = readTextFile('src/styles/sections/layout-panes.css');
+        const listCss = readTextFile('src/styles/sections/list-files.css');
+        const iosCss = readTextFile('src/styles/sections/platform-ios.css');
+        const horizontalPaneRule = extractRuleBlock(paneCss, '.tps-nn-split-container.tps-nn-orientation-horizontal .tps-nn-list-pane');
+        const panelRule = extractRuleBlock(listCss, '.tps-nn-list-pane-panel');
+        const scrollerRule = extractRuleBlock(listCss, '.tps-nn-list-pane-scroller');
+
+        expect(horizontalPaneRule).toMatch(/(^|\n)\s*height:\s*100%\s*;/m);
+        expect(horizontalPaneRule).toMatch(/(^|\n)\s*min-height:\s*0\s*;/m);
+        expect(panelRule).toMatch(/(^|\n)\s*flex:\s*1 1 0\s*;/m);
+        expect(panelRule).toMatch(/(^|\n)\s*min-height:\s*0\s*;/m);
+        expect(panelRule).not.toMatch(/(^|\n)\s*overflow:\s*hidden\s*;/m);
+        expect(scrollerRule).toMatch(/(^|\n)\s*flex:\s*1\s*;/m);
+        expect(scrollerRule).toMatch(/(^|\n)\s*min-height:\s*0\s*;/m);
+        expect(iosCss).toMatch(/\.tps-nn-list-pane\s*\{\s*overflow:\s*visible\s*;/m);
+    });
+
     test('desktop measurements match core variables', () => {
         const coreVars = readTextFile('src/styles/sections/core-variables.css');
         const desktop = getListPaneMeasurements(false);
