@@ -3,7 +3,8 @@
 import type { NavigatorProvidedRow } from './types';
 import type { GcmTaskMenuLike } from '../../integrations/gcm/gcmTaskApi';
 import {
-    isTpsNavigatorLineTypeId,
+    isTpsNavigatorGcmLineTypeId,
+    isTpsNavigatorMarkdownTypeId,
     type TpsNavigatorTypeId,
     type TpsNavigatorTypeRecord,
     type TpsNavigatorTypesSnapshot
@@ -40,13 +41,25 @@ export function buildTypeProviderRows({
     onActivationFailure
 }: BuildTypeProviderRowsOptions): NavigatorProvidedRow[] {
     const lineAvailability = snapshot.lineAvailability ?? snapshot.builtinAvailability ?? snapshot.availability;
-    if (isTpsNavigatorLineTypeId(selectedType) && lineAvailability !== 'ready') {
+    if (isTpsNavigatorGcmLineTypeId(selectedType) && lineAvailability !== 'ready') {
         return [
             {
                 providerId: 'tps/entity-types',
                 id: `status:${lineAvailability}`,
                 kind: 'tps/entity-type-status',
                 label: snapshot.lineMessage ?? snapshot.builtinMessage ?? snapshot.message ?? 'Exact-line items are unavailable.',
+                sourcePath: 'Types'
+            }
+        ];
+    }
+    const markdownAvailability = snapshot.markdownAvailability ?? snapshot.availability;
+    if (isTpsNavigatorMarkdownTypeId(selectedType) && markdownAvailability !== 'ready') {
+        return [
+            {
+                providerId: 'tps/markdown-types',
+                id: `status:${markdownAvailability}`,
+                kind: 'tps/markdown-type-status',
+                label: snapshot.markdownMessage ?? snapshot.message ?? 'Markdown structures are unavailable.',
                 sourcePath: 'Types'
             }
         ];
@@ -64,13 +77,23 @@ export function buildTypeProviderRows({
         })
         .map(record => {
             const task = record.lineKind === 'task' ? record.task : undefined;
+            const sourceLocation = record.lineNumber
+                ? record.lineEndNumber && record.lineEndNumber > record.lineNumber
+                    ? `${record.sourcePath} · lines ${record.lineNumber}–${record.lineEndNumber}`
+                    : `${record.sourcePath} · line ${record.lineNumber}`
+                : record.sourcePath;
+            const tooltip = record.lineNumber
+                ? record.lineEndNumber && record.lineEndNumber > record.lineNumber
+                    ? `Open ${record.sourcePath} at lines ${record.lineNumber}–${record.lineEndNumber}`
+                    : `Open ${record.sourcePath} at line ${record.lineNumber}`
+                : `Open ${record.sourcePath}`;
             return {
                 providerId: 'tps/entity-types',
                 id: `${selectedType}:${record.locatorKey}`,
                 kind: `tps/entity-type/${record.lineKind ?? record.entityType}`,
                 label: record.label,
-                secondaryLabel: record.lineNumber ? `${record.sourcePath} · line ${record.lineNumber}` : record.sourcePath,
-                tooltip: record.lineNumber ? `Open ${record.sourcePath} at line ${record.lineNumber}` : `Open ${record.sourcePath}`,
+                secondaryLabel: sourceLocation,
+                tooltip,
                 sourcePath: record.sourcePath,
                 ...(record.lineNumber ? { sourceLineNumber: record.lineNumber - 1 } : {}),
                 ...(task

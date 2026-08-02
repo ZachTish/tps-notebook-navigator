@@ -130,8 +130,12 @@ describe('buildStandaloneProviderListItems', () => {
     it.each([
         ['Checkboxes', 'structural:task', 'task'],
         ['Bullets', 'structural:bullet', 'bullet'],
-        ['Headings', 'structural:heading', 'heading']
-    ])('keeps every exact-line %s row above the external-provider ceiling', (_label, typeId, rowKind) => {
+        ['Headings', 'structural:heading', 'heading'],
+        ['Code blocks', 'structural:code-block', 'code'],
+        ['Callouts', 'structural:callout', 'callout'],
+        ['Blockquotes', 'structural:blockquote', 'blockquote'],
+        ['Tables', 'structural:table', 'table']
+    ])('keeps every built-in source-backed %s row above the external-provider ceiling', (_label, typeId, rowKind) => {
         const builtInRows: NavigatorProvidedRow[] = Array.from({ length: NAVIGATOR_ROW_PROVIDER_MAX_ROWS + 1 }, (_, index) => ({
             providerId: 'tps/entity-types',
             id: `${typeId}:${index}`,

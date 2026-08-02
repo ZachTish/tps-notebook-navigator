@@ -1,10 +1,10 @@
 # TPS Notebook Navigator API Reference
 
-Updated: August 1, 2026
+Updated: August 2, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 3.0.0
+**Current API Version:** 3.1.0
 
 ## Table of Contents
 
@@ -70,7 +70,7 @@ The API provides nine main namespaces:
 
 - **`metadata`** - Folder, tag, and property node colors/icons, and pinned files
 - **`navigation`** - Navigate to files in the navigator
-- **`types`** - Discover fixed file and exact-line collections plus registered-provider collections
+- **`types`** - Discover fixed file and Markdown-structure collections plus registered-provider collections
 - **`tagCollections`** - Work with aggregate tag rows such as "Tags" and "Untagged"
 - **`propertyNodes`** - Build and parse property node ids
 - **`rows`** - Register transient rows and actions beneath owning note files
@@ -474,7 +474,7 @@ const root = nn.propertyNodes.parse(nn.propertyNodes.rootId);
 
 ## Types Catalog API
 
-The Types catalog is the provider-neutral view of the fixed flat file and exact-line collections plus every externally
+The Types catalog is the provider-neutral view of the fixed flat file and Markdown-structure collections plus every externally
 registered collection shown in the navigation pane. Kind is frontmatter metadata, so the catalog does not emit or navigate
 Kind descriptors. Reading the catalog does not expose GCM records, task payloads, note paths, internal maps, or ambiguous
 pre-visibility counts. `registerProvider(...)` lets an integration establish a new top-level Type scope and reuse the
@@ -486,6 +486,10 @@ Navigator's guarded row renderer.
 | `checkboxesId` | Stable Checkboxes collection id | `'structural:task'` |
 | `bulletsId` | Stable Bullets collection id | `'structural:bullet'` |
 | `headingsId` | Stable Headings collection id | `'structural:heading'` |
+| `codeBlocksId` | Stable Code blocks collection id | `'structural:code-block'` |
+| `calloutsId` | Stable Callouts collection id | `'structural:callout'` |
+| `blockquotesId` | Stable Blockquotes collection id | `'structural:blockquote'` |
+| `tablesId` | Stable Tables collection id | `'structural:table'` |
 | `basesId` | Stable Bases collection id | `'file:base'` |
 | `canvasId` | Stable Canvas collection id | `'file:canvas'` |
 | `drawingsId` | Stable Drawings collection id | `'file:drawing'` |
@@ -501,17 +505,27 @@ Navigator's guarded row renderer.
 | `subscribe(listener)` | Receive the current state immediately and subsequent changes | `() => void` |
 | `whenReady()` | Wait for any non-loading success or guarded failure state | `Promise<NavigatorTypesSnapshot>` |
 
-The fixed display order is Notes, Checkboxes, Bullets, Headings, Bases, Canvas, Drawings, PDFs, Images, Audio, and Video.
-Notes, Bases, Canvas, Drawings, PDFs, Images, Audio, and Video are file-backed; Checkboxes, Bullets, and Headings are
-exact-line collections.
+The fixed display order is Notes, Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, Bases, Canvas,
+Drawings, PDFs, Images, Audio, and Video. Notes, Bases, Canvas, Drawings, PDFs, Images, Audio, and Video are file-backed;
+Checkboxes, Bullets, and Headings are GCM exact-line collections; Code blocks, Callouts, Blockquotes, and Tables are
+Navigator-owned cached-range collections built from Obsidian's root-level Markdown section metadata.
 
-Availability is `disabled`, `loading`, `ready`, `unavailable`, or `error`. File-backed built-ins keep the aggregate catalog
-ready without TPS Global Context Menu; GCM availability governs only the exact-line rows. Readiness is provider-isolated, so
+Availability is `disabled`, `loading`, `ready`, `unavailable`, or `error`. File-backed and cached-range built-ins keep the
+aggregate catalog ready without TPS Global Context Menu; GCM availability governs only Checkboxes, Bullets, and Headings.
+Readiness is source- and provider-isolated, so
 one failing external provider cannot remove other collections. `subscribe()` shares source subscriptions and returns an
 idempotent disposer. Snapshots, descriptor arrays, and descriptors are frozen; `getSnapshot()` returns the same object while
 its sources are unchanged. Plugin unload resolves pending readiness waits with `unavailable` and closes every provider
 subscription. Deprecated `parseKind(...)` can recognize legacy syntax, but `isType(...)` returns `false` and that id is
 never discoverable, restorable, or navigable.
+
+Code blocks, Callouts, Blockquotes, and Tables are a strict whitelist over Obsidian's root-level
+`CachedMetadata.sections`. The Navigator performs no note-body reads: it builds from the current cache, repeats one full
+cache-only build at the first metadata `resolved` barrier, then updates individual paths on `changed`, `rename`, and
+`delete`. Excalidraw Markdown is excluded. Nested syntax appears only when Obsidian emits it as its own section. These rows
+are searchable by their owning-note/line label and source path, selectable with the transient row cursor, and guarded on
+activation against the current cache. They are not `TFile` rows and therefore do not initially support file drag,
+multi-select, pinning, rename, or persistent selection.
 
 ```typescript
 const stop = nn.types.subscribe(snapshot => {
@@ -709,7 +723,7 @@ await nn.list.setPresentation({
 `getSnapshot()` returns the current navigation item, immediate and applied search strings, requested and effective search
 providers, effective sort/group/display state, and the renderable file/provider row order after scope, search, and
 collapsed-group filtering. Headers and spacers are omitted. Fixed file-backed Types return their native file-list
-presentation; exact-line and provider-owned Type collections return `presentation: null` because their provider owns row
+presentation; source-backed structural and provider-owned Type collections return `presentation: null` because their source owns row
 order. The snapshot, nested DTOs, and row array are frozen; referenced `TFile`/`TFolder` instances are native Obsidian
 objects and can become stale. Re-resolve `sourcePath` immediately before a mutation. Provider rows expose identity and
 presentation only—activation, checkbox mutation, context-menu builders, tooltips, and provider records are never returned.
@@ -721,7 +735,7 @@ fails closed. Omnisearch can be requested, while the next snapshot's `effectiveP
 produced the current rows.
 
 `setPresentation(update)` validates every supplied field before one settings transaction. It works for folder, tag,
-property, and fixed file-backed Type scopes; it rejects exact-line/provider Type and none scopes, current or requested
+property, and fixed file-backed Type scopes; it rejects source-backed structural/provider Type and none scopes, current or requested
 manual sorting, unconfigured property sort/group keys, folder grouping outside a folder, and an explicitly requested date
 grouping with a non-date sort. Each `null` field removes only that per-scope override and inherits the current default.
 Values equal to inherited defaults are normalized away, unrelated appearance fields are preserved, and any invalid field
@@ -739,8 +753,8 @@ reload.
 When `navItem.type === 'tag'`, `navItem.tag` can be either a canonical tag path or an aggregate tag collection id
 (`'__tagged__'` or `'__untagged__'`).
 
-When `navItem.type === 'type'`, `navItem.navigatorType` is a fixed file or exact-line id such as `entity:note`,
-`structural:task`, or `file:pdf`, or a canonical id for an externally registered provider collection. Current snapshots emit
+When `navItem.type === 'type'`, `navItem.navigatorType` is a fixed file or structural id such as `entity:note`,
+`structural:task`, `structural:code-block`, or `file:pdf`, or a canonical id for an externally registered provider collection. Current snapshots emit
 no Kind descriptors, Type menus never invoke for Kind, and navigation does not select Kind ids. Stale legacy `kind:`
 selections are rejected immediately and replaced safely. Existing NavItem variants do not gain extra fields.
 
@@ -879,7 +893,7 @@ const dispose = nn?.menus?.registerFolderMenu(({ addItem, folder }) => {
 ### Type collection context menu
 
 `registerTypeMenu(callback)` applies to every selectable collection beneath **Types**: Notes, Checkboxes, Bullets, Headings,
-Bases, Canvas, Drawings, PDFs, Images, Audio, Video, and collections registered by an external Type provider. The **Types**
+Code blocks, Callouts, Blockquotes, Tables, Bases, Canvas, Drawings, PDFs, Images, Audio, Video, and collections registered by an external Type provider. The **Types**
 root is a container rather than a collection and does not invoke this hook. No Kind collection is emitted.
 
 The callback receives a frozen context with:
@@ -918,7 +932,7 @@ settings migration.
 ### Result row context menu
 
 `registerRowMenu(callback, options?)` applies to source-backed transient rows wherever they render: beneath a native file in
-a normal or file-backed Type list, in the exact-line Checkboxes, Bullets, and Headings collections, and in collections or
+a normal or file-backed Type list, in the Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, and Tables collections, and in collections or
 augmenting rows registered by another provider. Loading/error placeholders and rows whose source file no longer exists fail
 closed.
 
@@ -1109,6 +1123,12 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 3.1.0 (2026-08-02)
+
+- Added stable `codeBlocksId`, `calloutsId`, `blockquotesId`, and `tablesId` getters for the four new built-in collections
+- Kept these Navigator-owned cached-range collections available independently from GCM exact-line readiness
+- Preserved API 3.x compatibility: existing Type ids, provider contracts, menus, navigation, and snapshots are unchanged
 
 ### Version 3.0.0 (2026-08-01)
 

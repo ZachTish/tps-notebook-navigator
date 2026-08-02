@@ -1,18 +1,20 @@
 /*
- * TPS Notebook Navigator - shared React store for the optional GCM entity index.
+ * TPS Notebook Navigator - shared React store for built-in Types.
  *
- * Navigation and list panes share one adapter/query per Obsidian app. This avoids
- * duplicate exact-line index queries while the same store maintains a read-free
- * vault-file catalog for the native file-backed Type collections.
+ * Navigation and list panes share one composite store per Obsidian app: a read-free
+ * vault-file catalog, optional GCM line records, and Navigator-owned Markdown
+ * structure records from the metadata cache.
  */
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import { normalizePath, TFile, type App, type EventRef } from 'obsidian';
+import { normalizePath, TFile, type App, type CachedMetadata, type EventRef } from 'obsidian';
 import {
     TPS_NAVIGATOR_FILE_TYPES,
-    TPS_NAVIGATOR_LINE_TYPES,
+    TPS_NAVIGATOR_GCM_LINE_TYPES,
+    TPS_NAVIGATOR_MARKDOWN_TYPES,
     TPS_NAVIGATOR_STRUCTURAL_TYPES,
     isTpsNavigatorFileTypeId,
+    isTpsNavigatorMarkdownTypeId,
     type TpsNavigatorFileTypeId,
     type TpsNavigatorTypeId,
     type TpsNavigatorTypeRecord,
@@ -32,6 +34,7 @@ import {
     buildVaultFileTypesSnapshotFromFiles,
     getTpsNavigatorFileTypeId
 } from '../../services/types/vaultFileTypes';
+import { MarkdownStructureTypesIndex, type MarkdownStructureActivationResult } from '../../services/types/markdownStructureTypes';
 
 const EMPTY_RECORDS_BY_TYPE = new Map<TpsNavigatorTypeId, readonly TpsNavigatorTypeRecord[]>();
 const LOADING_FILE_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
@@ -43,10 +46,17 @@ const LOADING_FILE_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
 });
 const LOADING_LINE_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
     availability: 'loading',
-    descriptors: Object.freeze(TPS_NAVIGATOR_LINE_TYPES.map(descriptor => Object.freeze({ ...descriptor, count: 0 }))),
+    descriptors: Object.freeze(TPS_NAVIGATOR_GCM_LINE_TYPES.map(descriptor => Object.freeze({ ...descriptor, count: 0 }))),
     recordsByType: EMPTY_RECORDS_BY_TYPE,
     revision: 0,
     message: 'Loading exact-line items…'
+});
+const LOADING_MARKDOWN_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
+    availability: 'loading',
+    descriptors: Object.freeze(TPS_NAVIGATOR_MARKDOWN_TYPES.map(descriptor => Object.freeze({ ...descriptor, count: 0 }))),
+    recordsByType: EMPTY_RECORDS_BY_TYPE,
+    revision: 0,
+    message: 'Loading Markdown structures…'
 });
 const DISABLED_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
     availability: 'unavailable',
@@ -59,11 +69,16 @@ const DISABLED_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
 function composeBuiltinSnapshot(
     fileSnapshot: TpsNavigatorTypesSnapshot,
     lineSnapshot: TpsNavigatorTypesSnapshot,
+    markdownSnapshot: TpsNavigatorTypesSnapshot,
     revision: number
 ): TpsNavigatorTypesSnapshot {
     const recordsByType = new Map<TpsNavigatorTypeId, readonly TpsNavigatorTypeRecord[]>();
     const descriptors = TPS_NAVIGATOR_STRUCTURAL_TYPES.map(descriptor => {
-        const sourceSnapshot = isTpsNavigatorFileTypeId(descriptor.id) ? fileSnapshot : lineSnapshot;
+        const sourceSnapshot = isTpsNavigatorFileTypeId(descriptor.id)
+            ? fileSnapshot
+            : isTpsNavigatorMarkdownTypeId(descriptor.id)
+              ? markdownSnapshot
+              : lineSnapshot;
         const records = sourceSnapshot.recordsByType.get(descriptor.id) ?? Object.freeze([]);
         recordsByType.set(descriptor.id, records);
         return Object.freeze({ ...descriptor, count: records.length });
@@ -78,7 +93,9 @@ function composeBuiltinSnapshot(
         builtinAvailability: availability,
         ...(availability === 'ready' ? {} : { builtinMessage: fileSnapshot.message ?? 'Vault file Types are unavailable.' }),
         lineAvailability: lineSnapshot.availability,
-        ...(lineSnapshot.message ? { lineMessage: lineSnapshot.message } : {})
+        ...(lineSnapshot.message ? { lineMessage: lineSnapshot.message } : {}),
+        markdownAvailability: markdownSnapshot.availability,
+        ...(markdownSnapshot.message ? { markdownMessage: markdownSnapshot.message } : {})
     });
 }
 
@@ -126,8 +143,10 @@ function getIndexedFileTypeId(snapshot: TpsNavigatorTypesSnapshot, sourcePath: s
 
 export class GcmEntityTypesStore {
     private readonly adapter: GcmEntityTypeIndexAdapter;
+    private readonly markdownIndex: MarkdownStructureTypesIndex;
     private fileSnapshot: TpsNavigatorTypesSnapshot = LOADING_FILE_SNAPSHOT;
     private lineSnapshot: TpsNavigatorTypesSnapshot = LOADING_LINE_SNAPSHOT;
+    private markdownSnapshot: TpsNavigatorTypesSnapshot = LOADING_MARKDOWN_SNAPSHOT;
     private snapshot: TpsNavigatorTypesSnapshot;
     private readonly listeners = new Set<SnapshotListener>();
     private stopRevision: (() => void) | null = null;
@@ -139,11 +158,14 @@ export class GcmEntityTypesStore {
     private reloadPending = false;
     private refreshFilesPending = false;
     private refreshLinesPending = false;
+    private refreshMarkdownPending = false;
+    private handledInitialMetadataResolution = false;
     private reloadInFlight: { generation: number; task: Promise<void> } | null = null;
 
     constructor(private readonly app: App) {
         this.adapter = new GcmEntityTypeIndexAdapter(app);
-        this.snapshot = composeBuiltinSnapshot(this.fileSnapshot, this.lineSnapshot, this.publishedRevision);
+        this.markdownIndex = new MarkdownStructureTypesIndex(app);
+        this.snapshot = composeBuiltinSnapshot(this.fileSnapshot, this.lineSnapshot, this.markdownSnapshot, this.publishedRevision);
     }
 
     readonly subscribe = (listener: SnapshotListener): (() => void) => {
@@ -161,8 +183,8 @@ export class GcmEntityTypesStore {
 
     readonly getSnapshot = (): TpsNavigatorTypesSnapshot => this.snapshot;
 
-    activate(record: TpsNavigatorTypeRecord): Promise<GcmEntityActivationResult> {
-        return this.adapter.activate(record);
+    activate(record: TpsNavigatorTypeRecord): Promise<GcmEntityActivationResult | MarkdownStructureActivationResult> {
+        return isTpsNavigatorMarkdownTypeId(record?.typeId) ? this.markdownIndex.activate(record) : this.adapter.activate(record);
     }
 
     async setTaskCheckbox(record: TpsNavigatorTypeRecord, checked: boolean): Promise<GcmEntityTaskMutationResult> {
@@ -238,6 +260,7 @@ export class GcmEntityTypesStore {
                 const markdownPath = getMarkdownPath(file);
                 if (markdownPath) {
                     this.adapter.invalidateTaskPaths([markdownPath]);
+                    this.markdownSnapshot = this.markdownIndex.removePath(markdownPath);
                 }
                 this.requestReload({ refreshFiles: true, refreshLines: markdownPath !== null });
             });
@@ -245,6 +268,9 @@ export class GcmEntityTypesStore {
                 const nextPath = getMarkdownPath(file);
                 const previousPath = typeof oldPath === 'string' ? normalizePath(oldPath.trim()) : '';
                 this.adapter.invalidateTaskPaths([previousPath, nextPath ?? ''].filter(Boolean));
+                if (file instanceof TFile && (nextPath !== null || previousPath.toLocaleLowerCase().endsWith('.md'))) {
+                    this.markdownSnapshot = this.markdownIndex.renameFile(file, previousPath);
+                }
                 this.requestReload({
                     refreshFiles: true,
                     refreshLines: nextPath !== null || previousPath.toLocaleLowerCase().endsWith('.md')
@@ -257,23 +283,43 @@ export class GcmEntityTypesStore {
             offref?(ref: EventRef): void;
         };
         if (typeof metadataCache.on === 'function' && typeof metadataCache.offref === 'function') {
-            const metadataRef = metadataCache.on('changed', file => {
+            const metadataRef = metadataCache.on('changed', (file, _data, cache) => {
                 const path = getMarkdownPath(file);
                 if (!path || !(file instanceof TFile)) {
                     return;
                 }
+                const previousMarkdownSnapshot = this.markdownSnapshot;
+                this.markdownSnapshot = this.markdownIndex.updateFile(file, cache as CachedMetadata);
+                let refreshFiles = false;
                 try {
                     if (getIndexedFileTypeId(this.fileSnapshot, path) !== getTpsNavigatorFileTypeId(this.app, file)) {
-                        this.requestReload({ refreshFiles: true, refreshLines: false });
+                        refreshFiles = true;
                     }
                 } catch (error) {
                     console.warn('[TPS Notebook Navigator] Vault file Type classification failed', { path, error });
                 }
+                if (refreshFiles) {
+                    this.requestReload({ refreshFiles: true, refreshLines: false, refreshMarkdown: false });
+                } else if (this.markdownSnapshot !== previousMarkdownSnapshot) {
+                    this.publish(
+                        composeBuiltinSnapshot(this.fileSnapshot, this.lineSnapshot, this.markdownSnapshot, ++this.publishedRevision)
+                    );
+                }
             });
-            this.stopMetadataEvents = () => metadataCache.offref?.(metadataRef);
+            const resolvedRef = metadataCache.on('resolved', () => {
+                if (this.handledInitialMetadataResolution) {
+                    return;
+                }
+                this.handledInitialMetadataResolution = true;
+                this.requestReload({ refreshFiles: false, refreshLines: false, refreshMarkdown: true });
+            });
+            this.stopMetadataEvents = () => {
+                metadataCache.offref?.(metadataRef);
+                metadataCache.offref?.(resolvedRef);
+            };
         }
         starting = false;
-        this.requestReload({ supersede: true, refreshFiles: true });
+        this.requestReload({ supersede: true, refreshFiles: true, refreshMarkdown: true });
     }
 
     private stop(): void {
@@ -281,6 +327,8 @@ export class GcmEntityTypesStore {
         this.reloadPending = false;
         this.refreshFilesPending = false;
         this.refreshLinesPending = false;
+        this.refreshMarkdownPending = false;
+        this.handledInitialMetadataResolution = false;
         this.reloadInFlight = null;
         this.stopRevision?.();
         this.stopWorkspaceEvents?.();
@@ -292,13 +340,17 @@ export class GcmEntityTypesStore {
         this.stopMetadataEvents = null;
         this.adapter.dispose();
         this.lineSnapshot = LOADING_LINE_SNAPSHOT;
-        this.snapshot = composeBuiltinSnapshot(this.fileSnapshot, this.lineSnapshot, ++this.publishedRevision);
+        this.markdownSnapshot = LOADING_MARKDOWN_SNAPSHOT;
+        this.snapshot = composeBuiltinSnapshot(this.fileSnapshot, this.lineSnapshot, this.markdownSnapshot, ++this.publishedRevision);
     }
 
-    private requestReload(options: { supersede?: boolean; refreshFiles?: boolean; refreshLines?: boolean } = {}): void {
+    private requestReload(
+        options: { supersede?: boolean; refreshFiles?: boolean; refreshLines?: boolean; refreshMarkdown?: boolean } = {}
+    ): void {
         this.reloadPending = true;
         this.refreshFilesPending ||= options.refreshFiles === true;
         this.refreshLinesPending ||= options.refreshLines !== false;
+        this.refreshMarkdownPending ||= options.refreshMarkdown === true;
         if (this.reloadInFlight && !options.supersede) {
             return;
         }
@@ -310,9 +362,11 @@ export class GcmEntityTypesStore {
         this.reloadPending = false;
         const refreshFiles = this.refreshFilesPending;
         const refreshLines = this.refreshLinesPending;
+        const refreshMarkdown = this.refreshMarkdownPending;
         this.refreshFilesPending = false;
         this.refreshLinesPending = false;
-        const task = this.loadAndPublish(generation, refreshFiles, refreshLines);
+        this.refreshMarkdownPending = false;
+        const task = this.loadAndPublish(generation, refreshFiles, refreshLines, refreshMarkdown);
         const activeLoad = { generation, task };
         this.reloadInFlight = activeLoad;
         const finish = () => {
@@ -330,11 +384,18 @@ export class GcmEntityTypesStore {
         });
     }
 
-    private async loadAndPublish(generation: number, refreshFiles: boolean, refreshLines: boolean): Promise<void> {
+    private async loadAndPublish(
+        generation: number,
+        refreshFiles: boolean,
+        refreshLines: boolean,
+        refreshMarkdown: boolean
+    ): Promise<void> {
         const fileSnapshot = refreshFiles ? this.buildFileSnapshotSafely() : this.fileSnapshot;
+        const markdownSnapshot = refreshMarkdown ? this.buildMarkdownSnapshotSafely() : this.markdownSnapshot;
         if (generation === this.loadGeneration && this.listeners.size > 0) {
             this.fileSnapshot = fileSnapshot;
-            this.publish(composeBuiltinSnapshot(fileSnapshot, this.lineSnapshot, ++this.publishedRevision));
+            this.markdownSnapshot = markdownSnapshot;
+            this.publish(composeBuiltinSnapshot(fileSnapshot, this.lineSnapshot, markdownSnapshot, ++this.publishedRevision));
         }
 
         if (!refreshLines) {
@@ -357,9 +418,12 @@ export class GcmEntityTypesStore {
         if (generation !== this.loadGeneration || this.listeners.size === 0) {
             return;
         }
-        this.fileSnapshot = fileSnapshot;
         this.lineSnapshot = lineSnapshot;
-        this.publish(composeBuiltinSnapshot(fileSnapshot, lineSnapshot, ++this.publishedRevision));
+        // A metadata, rename, delete, or file-classification event can publish a
+        // newer local snapshot while the optional GCM query is awaiting I/O.
+        // Compose with the live local snapshots so that late line results cannot
+        // roll either cache-backed catalog back to its pre-await state.
+        this.publish(composeBuiltinSnapshot(this.fileSnapshot, lineSnapshot, this.markdownSnapshot, ++this.publishedRevision));
     }
 
     private buildFileSnapshotSafely(): TpsNavigatorTypesSnapshot {
@@ -374,6 +438,24 @@ export class GcmEntityTypesStore {
                 ...buildVaultFileTypesSnapshotFromFiles(this.app, []),
                 availability: 'error',
                 message: 'Vault file Types could not be loaded.'
+            });
+        }
+    }
+
+    private buildMarkdownSnapshotSafely(): TpsNavigatorTypesSnapshot {
+        try {
+            return this.markdownIndex.rebuild();
+        } catch (error) {
+            console.warn('[TPS Notebook Navigator] Markdown structure Types refresh failed', { error });
+            if (this.markdownSnapshot.availability !== 'loading') {
+                return this.markdownSnapshot;
+            }
+            return Object.freeze({
+                availability: 'error',
+                descriptors: Object.freeze(TPS_NAVIGATOR_MARKDOWN_TYPES.map(descriptor => Object.freeze({ ...descriptor, count: 0 }))),
+                recordsByType: EMPTY_RECORDS_BY_TYPE,
+                revision: 0,
+                message: 'Markdown structure Types could not be loaded.'
             });
         }
     }

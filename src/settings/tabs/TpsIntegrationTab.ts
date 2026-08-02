@@ -38,7 +38,7 @@ const UPSTREAM_IMPORT_COPY = {
 const TYPES_NAVIGATION_COPY = {
     group: 'Types navigation',
     name: 'Show Types in navigation',
-    desc: 'Show a Types section for vault file formats and exact-line checkboxes, bullets, and headings.'
+    desc: 'Show one Types section for vault files, checkboxes, bullets, headings, code blocks, callouts, blockquotes, and tables.'
 } as const;
 
 const TASK_ROWS_COPY = {
@@ -58,7 +58,17 @@ export function createTpsIntegrationSettingDefinitions(context: SettingsTabConte
         createRenderDefinition({
             name: TYPES_NAVIGATION_COPY.name,
             desc: TYPES_NAVIGATION_COPY.desc,
-            aliases: ['Types section', 'file types', 'checkboxes', 'bullets', 'headings'],
+            aliases: [
+                'Types section',
+                'file types',
+                'checkboxes',
+                'bullets',
+                'headings',
+                'code blocks',
+                'callouts',
+                'blockquotes',
+                'tables'
+            ],
             render: setting => renderTpsTypesNavigationEnabledSetting(setting, context)
         })
     ];

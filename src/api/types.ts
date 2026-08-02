@@ -95,7 +95,7 @@ export interface TpsNotebookNavigatorApiRequestPayload {
 /** Availability of the optional first-class Types catalog. */
 export type NavigatorTypesAvailability = 'disabled' | 'loading' | 'ready' | 'unavailable' | 'error';
 
-/** Provider-neutral descriptor for one fixed file/line or registered-provider Type collection. */
+/** Provider-neutral descriptor for one fixed file/structure or registered-provider Type collection. */
 export interface NavigatorTypeDescriptor {
     /** Opaque ID accepted by Type navigation helpers. */
     readonly id: string;
@@ -395,7 +395,7 @@ export type NavigatorVisibleListRow = NavigatorVisibleFileRow | NavigatorVisible
 export interface NavigatorListSnapshot {
     readonly navItem: NavItem;
     readonly search: NavigatorListSearchState;
-    /** Null for standalone exact-line/provider Types; file-backed Types expose native file-list presentation. */
+    /** Null for standalone structural/provider Types; file-backed Types expose native file-list presentation. */
     readonly presentation: NavigatorListPresentationState | null;
     /** Renderable file/provider order after scope, search, and collapsed-group filtering. */
     readonly rows: readonly NavigatorVisibleListRow[];

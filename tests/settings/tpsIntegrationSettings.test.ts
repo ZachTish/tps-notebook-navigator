@@ -42,6 +42,11 @@ describe('TPS integration settings', () => {
 
         const typeItems = definitions[0].items as Array<Record<string, unknown>>;
         expect(typeItems.map(item => item.name)).toEqual(['Show Types in navigation']);
+        expect(typeItems[0].desc).toContain('code blocks');
+        expect(typeItems[0].desc).toContain('callouts');
+        expect(typeItems[0].desc).toContain('blockquotes');
+        expect(typeItems[0].desc).toContain('tables');
+        expect(typeItems[0].aliases).toEqual(expect.arrayContaining(['code blocks', 'callouts', 'blockquotes', 'tables']));
 
         const taskItems = definitions[1].items as Array<Record<string, unknown>>;
         expect(taskItems.map(item => item.name)).toEqual(['Show GCM tasks beneath notes', 'Include completed tasks', 'Tasks per note']);

@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 3.0.0
+ * Version: 3.1.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -95,7 +95,7 @@ export interface TpsNotebookNavigatorApiRequestPayload {
 /** Availability of the optional first-class Types catalog. */
 export type NavigatorTypesAvailability = 'disabled' | 'loading' | 'ready' | 'unavailable' | 'error';
 
-/** Provider-neutral descriptor for one fixed file/line or registered-provider Type collection. */
+/** Provider-neutral descriptor for one fixed file/structure or registered-provider Type collection. */
 export interface NavigatorTypeDescriptor {
     /** Opaque ID accepted by Type navigation helpers. */
     readonly id: string;
@@ -342,7 +342,7 @@ export type NavigatorVisibleListRow = NavigatorVisibleFileRow | NavigatorVisible
 export interface NavigatorListSnapshot {
     readonly navItem: NavItem;
     readonly search: NavigatorListSearchState;
-    /** Null for standalone exact-line/provider Types; file-backed Types expose native file-list presentation. */
+    /** Null for standalone structural/provider Types; file-backed Types expose native file-list presentation. */
     readonly presentation: NavigatorListPresentationState | null;
     readonly rows: readonly NavigatorVisibleListRow[];
 }
@@ -623,7 +623,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 3.0.0
+ * @version 3.1.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */
@@ -675,18 +675,22 @@ export interface NotebookNavigatorAPI {
         navigateToTag(tag: string): Promise<boolean>;
         /** Select a property node in the navigator navigation pane (e.g. 'key:status' or 'key:status=done'). */
         navigateToProperty(nodeId: string): Promise<boolean>;
-        /** Select any built-in file/line or registered-provider collection discovered through `types`. */
+        /** Select any built-in file/structure or registered-provider collection discovered through `types`. */
         navigateToType(typeId: string): Promise<boolean>;
         /** Focus an exact currently rendered row without changing scope or activating it. */
         focusRow(target: NavigatorRowFocusTarget): Promise<boolean>;
     };
 
-    /** Discover and address built-in file/line and registered-provider Type collections. */
+    /** Discover and address built-in file/structure and registered-provider Type collections. */
     types: {
         readonly notesId: 'entity:note';
         readonly checkboxesId: 'structural:task';
         readonly bulletsId: 'structural:bullet';
         readonly headingsId: 'structural:heading';
+        readonly codeBlocksId: 'structural:code-block';
+        readonly calloutsId: 'structural:callout';
+        readonly blockquotesId: 'structural:blockquote';
+        readonly tablesId: 'structural:table';
         readonly basesId: 'file:base';
         readonly canvasId: 'file:canvas';
         readonly drawingsId: 'file:drawing';

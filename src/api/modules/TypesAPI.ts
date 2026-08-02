@@ -121,15 +121,19 @@ function composeRecordsByType(
 }
 
 /**
- * Catalog controller for the fixed vault-file/exact-line Types and externally
- * registered top-level scopes. Exact-line readiness is diagnostic only: the
- * built-in catalog remains available while its file-backed collections work.
+ * Catalog controller for the fixed vault-file/Markdown-structure Types and externally
+ * registered top-level scopes. Source readiness is isolated: the aggregate
+ * catalog remains available while file-backed collections work.
  */
 export class TypesAPI {
     readonly notesId = TPS_NAVIGATOR_TYPE_IDS.NOTES;
     readonly checkboxesId = TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES;
     readonly bulletsId = TPS_NAVIGATOR_TYPE_IDS.BULLETS;
     readonly headingsId = TPS_NAVIGATOR_TYPE_IDS.HEADINGS;
+    readonly codeBlocksId = TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS;
+    readonly calloutsId = TPS_NAVIGATOR_TYPE_IDS.CALLOUTS;
+    readonly blockquotesId = TPS_NAVIGATOR_TYPE_IDS.BLOCKQUOTES;
+    readonly tablesId = TPS_NAVIGATOR_TYPE_IDS.TABLES;
     readonly basesId = TPS_NAVIGATOR_TYPE_IDS.BASES;
     readonly canvasId = TPS_NAVIGATOR_TYPE_IDS.CANVAS;
     readonly drawingsId = TPS_NAVIGATOR_TYPE_IDS.DRAWINGS;
@@ -283,7 +287,9 @@ export class TypesAPI {
             authoritativeSourceKeys,
             builtinAvailability,
             ...(builtinSnapshot.lineAvailability ? { lineAvailability: builtinSnapshot.lineAvailability } : {}),
-            ...(builtinSnapshot.lineMessage ? { lineMessage: builtinSnapshot.lineMessage } : {})
+            ...(builtinSnapshot.lineMessage ? { lineMessage: builtinSnapshot.lineMessage } : {}),
+            ...(builtinSnapshot.markdownAvailability ? { markdownAvailability: builtinSnapshot.markdownAvailability } : {}),
+            ...(builtinSnapshot.markdownMessage ? { markdownMessage: builtinSnapshot.markdownMessage } : {})
         };
         if (message !== undefined || builtinMessage !== undefined) {
             this.cachedInternalSnapshot = Object.freeze({

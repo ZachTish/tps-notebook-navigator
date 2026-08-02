@@ -11,6 +11,10 @@ export const TPS_NAVIGATOR_TYPE_IDS = {
     CHECKBOXES: 'structural:task',
     BULLETS: 'structural:bullet',
     HEADINGS: 'structural:heading',
+    CODE_BLOCKS: 'structural:code-block',
+    CALLOUTS: 'structural:callout',
+    BLOCKQUOTES: 'structural:blockquote',
+    TABLES: 'structural:table',
     BASES: 'file:base',
     CANVAS: 'file:canvas',
     DRAWINGS: 'file:drawing',
@@ -29,8 +33,14 @@ export type TpsNavigatorFileTypeId =
     | typeof TPS_NAVIGATOR_TYPE_IDS.IMAGES
     | typeof TPS_NAVIGATOR_TYPE_IDS.AUDIO
     | typeof TPS_NAVIGATOR_TYPE_IDS.VIDEO;
-export type TpsNavigatorLineTypeId =
+export type TpsNavigatorGcmLineTypeId =
     typeof TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES | typeof TPS_NAVIGATOR_TYPE_IDS.BULLETS | typeof TPS_NAVIGATOR_TYPE_IDS.HEADINGS;
+export type TpsNavigatorMarkdownTypeId =
+    | typeof TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS
+    | typeof TPS_NAVIGATOR_TYPE_IDS.CALLOUTS
+    | typeof TPS_NAVIGATOR_TYPE_IDS.BLOCKQUOTES
+    | typeof TPS_NAVIGATOR_TYPE_IDS.TABLES;
+export type TpsNavigatorLineTypeId = TpsNavigatorGcmLineTypeId | TpsNavigatorMarkdownTypeId;
 export type TpsNavigatorStructuralTypeId = TpsNavigatorFileTypeId | TpsNavigatorLineTypeId;
 /** @deprecated Kind values are metadata, not Navigator Types. Kept only to parse stale IDs safely. */
 export type TpsNavigatorKindTypeId = `kind:${string}`;
@@ -62,9 +72,13 @@ export interface TpsNavigatorTypeRecord {
     label: string;
     sourcePath: string;
     entityType: 'file' | 'note' | 'block';
-    lineKind?: 'task' | 'bullet' | 'heading';
+    lineKind?: 'task' | 'bullet' | 'heading' | 'code' | 'callout' | 'blockquote' | 'table';
     /** One-based source line supplied by the entity index. */
     lineNumber?: number;
+    /** One-based inclusive final source line for a multi-line Markdown structure. */
+    lineEndNumber?: number;
+    /** Existing source block id when Obsidian assigned one; never synthesized by the Navigator. */
+    blockId?: string;
     locatorKey: string;
     referenceTarget: string;
     /** Live task state, present only when GCM can hydrate this task line exactly. */
@@ -101,6 +115,9 @@ export interface TpsNavigatorTypesSnapshot {
     /** Exact-line entity state. File-backed Types remain ready when this source is unavailable. */
     lineAvailability?: TpsNavigatorTypesAvailability;
     lineMessage?: string;
+    /** Navigator-owned Markdown-section state, independent from GCM exact-line records. */
+    markdownAvailability?: TpsNavigatorTypesAvailability;
+    markdownMessage?: string;
 }
 
 export const TPS_NAVIGATOR_FILE_TYPES: readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] = Object.freeze([
@@ -154,7 +171,7 @@ export const TPS_NAVIGATOR_FILE_TYPES: readonly Omit<TpsNavigatorTypeDescriptor,
     }
 ]);
 
-export const TPS_NAVIGATOR_LINE_TYPES: readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] = Object.freeze([
+export const TPS_NAVIGATOR_GCM_LINE_TYPES: readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] = Object.freeze([
     {
         id: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
         label: 'Checkboxes',
@@ -175,6 +192,38 @@ export const TPS_NAVIGATOR_LINE_TYPES: readonly Omit<TpsNavigatorTypeDescriptor,
     }
 ]);
 
+export const TPS_NAVIGATOR_MARKDOWN_TYPES: readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] = Object.freeze([
+    {
+        id: TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS,
+        label: 'Code blocks',
+        icon: 'lucide-code-2',
+        category: 'structure'
+    },
+    {
+        id: TPS_NAVIGATOR_TYPE_IDS.CALLOUTS,
+        label: 'Callouts',
+        icon: 'lucide-message-square-warning',
+        category: 'structure'
+    },
+    {
+        id: TPS_NAVIGATOR_TYPE_IDS.BLOCKQUOTES,
+        label: 'Blockquotes',
+        icon: 'lucide-quote',
+        category: 'structure'
+    },
+    {
+        id: TPS_NAVIGATOR_TYPE_IDS.TABLES,
+        label: 'Tables',
+        icon: 'lucide-table-2',
+        category: 'structure'
+    }
+]);
+
+export const TPS_NAVIGATOR_LINE_TYPES: readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] = Object.freeze([
+    ...TPS_NAVIGATOR_GCM_LINE_TYPES,
+    ...TPS_NAVIGATOR_MARKDOWN_TYPES
+]);
+
 /** Stable flat display order for built-in Types. */
 export const TPS_NAVIGATOR_STRUCTURAL_TYPES: readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] = Object.freeze([
     TPS_NAVIGATOR_FILE_TYPES[0],
@@ -184,6 +233,8 @@ export const TPS_NAVIGATOR_STRUCTURAL_TYPES: readonly Omit<TpsNavigatorTypeDescr
 
 const TPS_NAVIGATOR_FILE_TYPE_ID_SET = new Set<TpsNavigatorTypeId>(TPS_NAVIGATOR_FILE_TYPES.map(type => type.id));
 const TPS_NAVIGATOR_LINE_TYPE_ID_SET = new Set<TpsNavigatorTypeId>(TPS_NAVIGATOR_LINE_TYPES.map(type => type.id));
+const TPS_NAVIGATOR_GCM_LINE_TYPE_ID_SET = new Set<TpsNavigatorTypeId>(TPS_NAVIGATOR_GCM_LINE_TYPES.map(type => type.id));
+const TPS_NAVIGATOR_MARKDOWN_TYPE_ID_SET = new Set<TpsNavigatorTypeId>(TPS_NAVIGATOR_MARKDOWN_TYPES.map(type => type.id));
 
 export function isTpsNavigatorFileTypeId(typeId: unknown): typeId is TpsNavigatorFileTypeId {
     return typeof typeId === 'string' && TPS_NAVIGATOR_FILE_TYPE_ID_SET.has(typeId as TpsNavigatorTypeId);
@@ -191,6 +242,14 @@ export function isTpsNavigatorFileTypeId(typeId: unknown): typeId is TpsNavigato
 
 export function isTpsNavigatorLineTypeId(typeId: unknown): typeId is TpsNavigatorLineTypeId {
     return typeof typeId === 'string' && TPS_NAVIGATOR_LINE_TYPE_ID_SET.has(typeId as TpsNavigatorTypeId);
+}
+
+export function isTpsNavigatorGcmLineTypeId(typeId: unknown): typeId is TpsNavigatorGcmLineTypeId {
+    return typeof typeId === 'string' && TPS_NAVIGATOR_GCM_LINE_TYPE_ID_SET.has(typeId as TpsNavigatorTypeId);
+}
+
+export function isTpsNavigatorMarkdownTypeId(typeId: unknown): typeId is TpsNavigatorMarkdownTypeId {
+    return typeof typeId === 'string' && TPS_NAVIGATOR_MARKDOWN_TYPE_ID_SET.has(typeId as TpsNavigatorTypeId);
 }
 
 /** @deprecated Kind values are metadata, not Navigator Types. */

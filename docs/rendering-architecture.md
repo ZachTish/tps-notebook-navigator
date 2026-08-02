@@ -477,8 +477,17 @@ const { rowVirtualizer, scrollContainerRefCallback, requestScroll } = useNavigat
 - `useListPaneData` emits `ListPaneItem[]` composed of top/bottom spacers, header spacers, group headers (`pinned`,
   `date`, `folder`, `section`, and `manual-sort-custom`), and file items with pinned and hidden flags plus lookup maps
   (`filePathToIndex`, `fileIndexMap`).
-- A Type selection instead builds native entity rows from the GCM Entity Index, followed once by external providers that explicitly set `supportsTypeScope: true`. Its provider scope contains the opaque selected Type id and deduplicated paths from the searched native rows; attached-list providers are excluded to prevent duplicate task rows.
+- A source-backed structural Type selection builds native-styled transient rows from either the GCM Entity Index
+  (Checkboxes, Bullets, and Headings) or the Navigator-owned Markdown section index (Code blocks, Callouts, Blockquotes,
+  and Tables), followed once by external providers that explicitly set `supportsTypeScope: true`. The Markdown index uses
+  only root-level `CachedMetadata.sections`, rebuilds once at startup/resolution, and updates one path per metadata event;
+  it never reads note bodies. The provider scope contains the opaque selected Type id and deduplicated paths from the searched
+  built-in rows; attached-list providers are excluded to prevent duplicate task rows.
 - Hydrated task-backed Type rows reuse `NavigatorProviderRow` for live checkbox state, optimistic rollback, exact-line activation, and guarded GCM task actions. The menu bridge exposes only queued item/separator operations, and task/file events refresh hydration even when the Entity Index identity is unchanged.
+- Cached-range Markdown rows use the same native file-row presentation, transient cursor, search, keyboard activation, and
+  guarded row menus. Activation revalidates the current metadata cache; existing block ids follow movement, while stale
+  range-only locators fail closed. These rows intentionally do not opt into `TFile` multi-select, pinning, rename, persistence,
+  or drag because a safe source-range mutation contract has not been defined yet.
 - Task hydration batches up to 64 uncached source paths per GCM call with four batches in flight. A 2,048-path LRU keyed by source mtime/size avoids repeat parsing; per-path generations and explicit GCM/vault/mutation invalidation prevent in-flight or failed reads from becoming stale cache entries.
 - `useListPaneScroll` feeds `listItems` into `useVirtualizer`, calculating heights with `getListPaneMeasurements`,
   preview availability (`hasPreview`), search metadata, and appearance settings. The current implementation uses

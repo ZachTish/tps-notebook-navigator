@@ -106,6 +106,26 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.1.0',
+        date: '2026-08-02',
+        showOnUpdate: true,
+        info: 'Types now includes additional Markdown structures without requiring TPS Global Context Menu.',
+        new: [
+            'Adds Code blocks, Callouts, Blockquotes, and Tables as flat built-in Type collections.',
+            'Public API `3.1.0` exposes stable ids for all four new collections.'
+        ],
+        improved: [
+            'Markdown structure rows use native file-row presentation, identify their owning note and source line, and open the current cached source location.',
+            'The new collections are built from Obsidian metadata-cache sections, update per changed note, and remain available when GCM is disabled.'
+        ],
+        changed: [
+            'Structure rows are selectable, searchable, and keyboard navigable but intentionally remain outside file multi-select, rename, pinning, and drag until those mutations have a safe source-range contract.'
+        ],
+        fixed: [
+            'Separate availability guards keep a GCM failure from hiding Navigator-owned Code blocks, Callouts, Blockquotes, or Tables.'
+        ]
+    },
+    {
         version: '5.0.0',
         date: '2026-08-01',
         showOnUpdate: true,

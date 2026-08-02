@@ -422,6 +422,13 @@ export type CachedMetadata = {
     frontmatter?: Record<string, unknown>;
     frontmatterPosition?: Pos;
     tags?: TagCache[];
+    sections?: SectionCache[];
+};
+
+export type SectionCache = {
+    id?: string;
+    type: string;
+    position: Pos;
 };
 
 export type FrontMatterCache = Record<string, unknown>;

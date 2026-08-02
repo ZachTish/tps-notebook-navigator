@@ -39,7 +39,7 @@ interface ComposeTypeListItemsArgs {
 }
 
 /**
- * File-backed Types keep the native file pipeline output. Exact-line and
+ * File-backed Types keep the native file pipeline output. Source-backed and
  * provider-owned Types remain standalone provider-row collections.
  */
 export function composeTypeListItems({ mode, coreListItems, typeRows, providerRows }: ComposeTypeListItemsArgs): ListPaneItem[] {

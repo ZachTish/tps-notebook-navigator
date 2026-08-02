@@ -99,6 +99,10 @@ describe('TypesAPI', () => {
         expect(api.checkboxesId).toBe('structural:task');
         expect(api.bulletsId).toBe('structural:bullet');
         expect(api.headingsId).toBe('structural:heading');
+        expect(api.codeBlocksId).toBe('structural:code-block');
+        expect(api.calloutsId).toBe('structural:callout');
+        expect(api.blockquotesId).toBe('structural:blockquote');
+        expect(api.tablesId).toBe('structural:table');
         expect(api.basesId).toBe('file:base');
         expect(api.canvasId).toBe('file:canvas');
         expect(api.drawingsId).toBe('file:drawing');
@@ -176,7 +180,9 @@ describe('TypesAPI', () => {
             ),
             builtinAvailability: 'ready',
             lineAvailability: 'unavailable',
-            lineMessage: 'Exact-line items require TPS Global Context Menu.'
+            lineMessage: 'Exact-line items require TPS Global Context Menu.',
+            markdownAvailability: 'error',
+            markdownMessage: 'Markdown structures could not be indexed.'
         };
         const store = new FakeStore(source);
         const api = new TypesAPI(store);
@@ -196,7 +202,9 @@ describe('TypesAPI', () => {
             availability: 'ready',
             builtinAvailability: 'ready',
             lineAvailability: 'unavailable',
-            lineMessage: 'Exact-line items require TPS Global Context Menu.'
+            lineMessage: 'Exact-line items require TPS Global Context Menu.',
+            markdownAvailability: 'error',
+            markdownMessage: 'Markdown structures could not be indexed.'
         });
         expect(api.getInternalSnapshot().authoritativeSourceKeys).toContain('builtin');
         await expect(api.whenReady()).resolves.toBe(publicSnapshot);

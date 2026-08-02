@@ -314,10 +314,18 @@
                     this.assertEqual(rootParts.kind, 'root', 'Root descriptor should use kind=root');
                 },
 
-                'Should expose the API 2.7 Types catalog and provider registry': async function () {
+                'Should expose the current Types catalog and provider registry': async function () {
                     this.assertExists(this.api.types, 'types catalog not found');
                     this.assertEqual(this.api.types.notesId, 'entity:note', 'notesId should match the stable Type id');
                     this.assertEqual(this.api.types.checkboxesId, 'structural:task', 'checkboxesId should match the stable Type id');
+                    this.assertEqual(this.api.types.codeBlocksId, 'structural:code-block', 'codeBlocksId should match the stable Type id');
+                    this.assertEqual(this.api.types.calloutsId, 'structural:callout', 'calloutsId should match the stable Type id');
+                    this.assertEqual(
+                        this.api.types.blockquotesId,
+                        'structural:blockquote',
+                        'blockquotesId should match the stable Type id'
+                    );
+                    this.assertEqual(this.api.types.tablesId, 'structural:table', 'tablesId should match the stable Type id');
                     this.assertEqual(
                         this.api.types.parseKind(this.api.types.buildKind('project')),
                         'project',

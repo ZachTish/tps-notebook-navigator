@@ -31,25 +31,27 @@ The initial TPS Global Context Menu provider can show task rows belonging to the
 
 ### Types navigation
 
-The first-class **Types** section is enabled by default and now has one flat built-in catalog of file formats and exact-line structures. Frontmatter values such as `kind` belong in **Properties** or a relational entity index; they are not file types and no longer appear beneath **Types**.
+The first-class **Types** section is enabled by default and has one flat built-in catalog of file formats and Markdown structures. Frontmatter values such as `kind` belong in **Properties** or a relational entity index; they are not file types and do not appear beneath **Types**.
 
 - File-backed collections are **Notes**, **Bases**, **Canvas**, **Drawings**, **PDFs**, **Images**, **Audio**, and **Video**. Each supported vault file belongs to exactly one collection. Excalidraw files—including `.excalidraw.md` and Markdown files carrying Excalidraw frontmatter—belong to **Drawings**, not **Notes**.
 - File-backed collections run through the ordinary Navigator file pipeline. Their results use the same `TFile` rows, appearance mode, icons, properties, previews, sort, grouping, search, selection, menus, drag behavior, and opening behavior as the normal file view.
 - Like the normal file view, YAML-backed manual ranking can write only to Markdown files. Non-Markdown Types retain filename,
   title, created, and modified sorting but cannot store a manual rank in frontmatter.
 - Exact-line collections are **Checkboxes**, **Bullets**, and **Headings**. TPS Global Context Menu's generic Entity Index v3 supplies their stable line locators without giving the Navigator a second Markdown parser. These rows use the native file-row visual language with a restrained line-type icon or live task checkbox, then re-resolve and open their current source line.
+- Cached-range collections are **Code blocks**, **Callouts**, **Blockquotes**, and **Tables**. They come directly from Obsidian's root-level `CachedMetadata.sections`, without reading note bodies or depending on GCM. Excalidraw Markdown is excluded. Each row names its owning note and starting line, shows the cached source range, and revalidates that locator before opening the source; an existing block id can follow movement. Nested syntax appears only when Obsidian publishes it as its own root-level section, and unsupported or future parser types are ignored until explicitly added. A fenced block itself therefore appears in **Code blocks**, while task/list/heading examples inside fences stay excluded from the GCM collections.
 - Hydrated task entities in **Checkboxes** use GCM's canonical completion path with optimistic rollback. Right-click, mobile long-press, or **More actions** opens the same guarded GCM task menu. A task that cannot be matched exactly remains open-only rather than inventing state.
 - Task hydration batches cold reads across source files, then reuses a bounded per-path cache keyed by file metadata. Exact GCM and vault update paths invalidate that cache, including failed initial hydration, so unchanged vaults avoid repeated scans without leaving edited checkboxes stale.
 - Counts and rows respect the active Navigator profile, hidden-folder/file/property/tag rules, file visibility, and the hidden-items override. Fenced examples that GCM excludes never become Navigator rows.
-- Exact-line and provider-owned rows have one transient row cursor and remain deliberately excluded from `TFile` multi-select, pinning, drag, rename, and persistence. File-backed Type results retain normal file interactions because they are real `TFile` rows.
-- Missing, disabled, incompatible, or incomplete GCM indexing affects only the three exact-line collections and produces a visible status row there. File-backed collections remain available. TPS Global Context Menu 1.15.0 is the tested Entity Index v3 and canonical task-completion baseline.
+- Exact-line, cached-range, and provider-owned rows have one transient row cursor and remain deliberately excluded from `TFile` multi-select, pinning, drag, rename, and persistence. File-backed Type results retain normal file interactions because they are real `TFile` rows. Dragging cached source ranges is intentionally deferred until it can preserve source syntax and locators safely.
+- Missing, disabled, incompatible, or incomplete GCM indexing affects only Checkboxes, Bullets, and Headings and produces a visible status row there. File-backed and cached-range collections remain available. TPS Global Context Menu 1.15.0 is the tested Entity Index v3 and canonical task-completion baseline.
 
 The selected type and Types-root expansion state use TPS-namespaced local storage, participate in back/forward history and keyboard navigation, and do not alter upstream Notebook Navigator state. A stale saved `kind:*` selection is rejected immediately and safely falls back; no note or settings migration is required.
 
 External integrations can discover fixed built-in and registered-provider descriptors through the provider-neutral public
 `types` catalog, subscribe to its availability/revision changes, and navigate through `navigation.navigateToType(typeId)`.
-Public API 3.0.0 removes Kind descriptors from discovery and navigation while retaining deprecated helpers to construct and
-parse legacy Kind ids during migration; active validation and navigation reject them. The earlier API 2.7.0 also adds
+Public API 3.1.0 adds stable ids for Code blocks, Callouts, Blockquotes, and Tables. API 3.0.0 removed Kind descriptors from
+discovery and navigation while retaining deprecated helpers to construct and parse legacy Kind ids during migration; active
+validation and navigation reject them. The earlier API 2.7.0 also adds
 `types.registerProvider(...)`: one runtime registration defines one
 or more new top-level Type collections and supplies their rows through the existing guarded row DTO. TPS owns collision-free
 opaque ids, visible-path enforcement, timeouts, cancellation, validation, and lifecycle cleanup; the provider owns its data,
@@ -65,7 +67,7 @@ duplicate callback registrations retain independent idempotent disposers. Regist
 persisted state, or migration.
 
 API 2.10.0 adds `menus.registerRowMenu(...)` so an integration can attach actions to the actual source-backed rows rendered
-beneath notes or inside Checkboxes, Bullets, Headings, and provider-owned collections. The optional
+beneath notes or inside Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and provider-owned collections. The optional
 pure `supports(target)` filter controls which rows expose the action affordance. A frozen target includes current `TFile`
 identity, provider/row/kind identity, optional zero-based line, selected Type id, and immutable checkbox presentation without
 exposing provider mutation callbacks or the host `Menu`. Row-owner actions remain first; desktop right-click, native mobile
@@ -93,7 +95,7 @@ API 2.13.0 adds a bounded, provider-neutral `list` namespace for integrations th
 looking at. `list.getSnapshot()` pulls the first mounted TPS view's current navigation scope, immediate/applied search,
 requested/effective provider, effective per-scope presentation, and composed file/provider row order without continuously
 cloning large Type collections or exposing provider callbacks. `setSearch(...)` and atomic `setPresentation(...)` never
-open a view and fail closed for stale views, malformed input, standalone exact-line/provider Type scopes, manual sorting,
+open a view and fail closed for stale views, malformed input, standalone structural/provider Type scopes, manual sorting,
 unavailable property keys, or incompatible grouping. Fixed file-backed Types expose the same presentation snapshot and
 per-Type sort, grouping, and display overrides as ordinary file scopes. Null presentation fields reset only that field to
 its inherited default; the optional TPS-owned Type override records require no migration.
@@ -110,7 +112,7 @@ provider example.
 The default settings surface remains the normal Notebook Navigator landing page. **TPS integration** is a top-level destination under **Configuration**, one click from that landing page.
 
 - **Task rows** — **Show GCM tasks beneath notes** is off by default. When enabled, the same page reveals **Include completed tasks** and **Tasks per note**; there is no nested editor or second configuration page.
-- **Types navigation** — **Show Types in navigation** is on by default and directly controls the flat file-format and exact-line Types catalog. It is one toggle with no nested rule editor.
+- **Types navigation** — **Show Types in navigation** is on by default and directly controls the flat file-format and Markdown-structure Types catalog. It is one toggle with no nested rule editor.
 - **One-way setup** — **Import upstream Notebook Navigator settings** always asks for confirmation. It reads only `.obsidian/plugins/notebook-navigator/data.json`, copies recognized upstream settings into the TPS plugin, preserves TPS-only integration settings, and never writes to upstream state.
 
 The Types toggle, all three task-row values, and any user-created per-Type presentation overrides persist in the TPS plugin's
@@ -144,7 +146,7 @@ disabled so they do not consume the viewport.
   without polling, rebroadcasting a request response, or retaining provider state in Navigator. Each loaded host has one
   opaque identity, so a consumer can match teardown to the exact instance instead of ordering hosts by a wall-clock timestamp.
 - TPS settings import is a copy, not synchronization. Later upstream setting changes are not mirrored unless the import is explicitly run again.
-- Built-in exact-line Type rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. External Type-provider rows retain the public provider safety ceiling. Plain-text search matches exact-line labels and source paths; external owners receive the same query before their row ceiling. File-backed Types use the ordinary file search pipeline, while file-only advanced search operators and Omnisearch ranking do not apply to exact-line/provider-owned collections.
+- Built-in exact-line and cached-range Type rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. External Type-provider rows retain the public provider safety ceiling. Plain-text search matches structural row labels and source paths—not block contents; external owners receive the same query before their row ceiling. File-backed Types use the ordinary file search pipeline, while file-only advanced search operators and Omnisearch ranking do not apply to structural/provider-owned collections.
 
 ## Keeping up with Notebook Navigator
 
@@ -158,6 +160,22 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 5.1.0 — more Markdown structure Types
+
+- Adds **Code blocks**, **Callouts**, **Blockquotes**, and **Tables** directly after Headings in the flat Types catalog.
+- Builds the four collections read-free from Obsidian's root-level section cache, updates only the changed path after metadata
+  events, and removes or rekeys records immediately on delete and rename.
+- Gives each structure row native file-list presentation, owning-note and source-range context, search, single selection,
+  keyboard navigation, and guarded source activation. Rows with an existing block id follow that id when it moves; stale
+  range-only locators fail closed.
+- Keeps the four collections independent from GCM availability. Their transient source-range rows do not yet support drag,
+  file multi-select, pinning, rename, or persistent row selection.
+- Advances the additive public API to 3.1.0 with stable ids for the four collections. Plugin and API compatibility remain
+  backward compatible, no setting or note migration is required, and minimum supported Obsidian remains 1.11.0.
+- Regression validation covers 219 files and 2,410 tests, including parser whitelisting, root-level nesting behavior,
+  read-free indexing, incremental refresh, delete/rename lifecycle, stale-locator protection, block-id movement, independent
+  source availability, native row icons/ranges, API ids, and the existing full suite.
 
 ### 5.0.0 — structural Types with native file presentation
 
@@ -803,7 +821,7 @@ Set custom hotkeys for these commands in Obsidian's Hotkeys settings:
 - **Folder tree** - Expand/collapse navigation with manual root folder ordering
 - **Tag tree** - Hierarchical tags with configurable root tag ordering
 - **Property browser** - Browse file properties organized by key and value with file counts, custom colors, icons, and drag and drop
-- **Types browser** - Browse native file-format collections plus exact-line checkboxes, bullets, and headings in one flat section
+- **Types browser** - Browse native file formats plus checkboxes, bullets, headings, code blocks, callouts, blockquotes, and tables in one flat section
 - **Auto-reveal active file** - Folder expansion and scroll-to-selection
 - **Keyboard and commands** - Configurable hotkeys, selection history back/forward commands, next/previous file commands, open shortcut 1–9 commands
 

@@ -10,8 +10,8 @@ import { NAVIGATOR_ROW_PROVIDER_MAX_ROWS, type NavigatorProvidedRow } from './ty
 /**
  * Builds a complete virtualized Types list from rows that are not attached to file rows.
  *
- * Built-in exact-line rows come from the host's GCM-backed index and are intentionally not subject
- * to the external-provider safety ceiling. Externally owned and augmenting rows continue
+ * Built-in source-backed structural rows are intentionally not subject to the external-provider
+ * safety ceiling. Externally owned and augmenting rows continue
  * to share that ceiling.
  */
 export function buildStandaloneProviderListItems(

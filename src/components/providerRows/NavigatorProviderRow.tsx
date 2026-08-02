@@ -65,6 +65,11 @@ interface ProviderCheckboxPresentation {
 const TYPE_ROW_ICON_BY_KIND: Readonly<Record<string, string>> = Object.freeze({
     base: 'lucide-database',
     bullet: 'lucide-list',
+    'code-block': 'lucide-code-2',
+    code: 'lucide-code-2',
+    callout: 'lucide-message-square-warning',
+    blockquote: 'lucide-quote',
+    table: 'lucide-table-2',
     canvas: 'lucide-layout-dashboard',
     checkbox: 'lucide-square-check-big',
     drawing: 'lucide-brush',

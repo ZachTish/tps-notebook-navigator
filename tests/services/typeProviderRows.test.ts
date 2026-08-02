@@ -89,6 +89,69 @@ describe('buildTypeProviderRows', () => {
         expect(rows[0]).toMatchObject({ id: 'status:unavailable', label: 'GCM is unavailable.' });
     });
 
+    it('keeps Navigator-owned Markdown structures ready when GCM is unavailable', () => {
+        const codeRecord = createRecord({
+            id: 'code',
+            typeId: TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS,
+            label: 'Code block',
+            entityType: 'block',
+            lineKind: 'code',
+            lineNumber: 5,
+            lineEndNumber: 9,
+            locatorKey: 'markdown-section:code',
+            sourcePath: 'Notes/Code.md'
+        });
+        const snapshot = createSnapshot([], 'ready');
+        snapshot.lineAvailability = 'unavailable';
+        snapshot.lineMessage = 'GCM is unavailable.';
+        snapshot.markdownAvailability = 'ready';
+        snapshot.recordsByType = new Map([[TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS, [codeRecord]]]);
+
+        const rows = buildTypeProviderRows({
+            snapshot,
+            selectedType: TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS,
+            searchQuery: '',
+            activate: async () => ({ ok: true }),
+            setTaskCheckbox: async () => ({ ok: true }),
+            addTaskContextMenuItems: () => true,
+            onActivationFailure: () => undefined
+        });
+
+        expect(rows[0]).toMatchObject({
+            kind: 'tps/entity-type/code',
+            secondaryLabel: 'Notes/Code.md · lines 5–9',
+            tooltip: 'Open Notes/Code.md at lines 5–9',
+            sourceLineNumber: 4
+        });
+    });
+
+    it('shows only the Markdown source status for a local structure Type', () => {
+        const snapshot = createSnapshot([], 'ready');
+        snapshot.lineAvailability = 'ready';
+        snapshot.markdownAvailability = 'loading';
+        snapshot.markdownMessage = 'Loading Markdown structures…';
+
+        const rows = buildTypeProviderRows({
+            snapshot,
+            selectedType: TPS_NAVIGATOR_TYPE_IDS.TABLES,
+            searchQuery: '',
+            activate: async () => ({ ok: true }),
+            setTaskCheckbox: async () => ({ ok: true }),
+            addTaskContextMenuItems: () => true,
+            onActivationFailure: () => undefined
+        });
+
+        expect(rows).toEqual([
+            {
+                providerId: 'tps/markdown-types',
+                id: 'status:loading',
+                kind: 'tps/markdown-type-status',
+                label: 'Loading Markdown structures…',
+                sourcePath: 'Types'
+            }
+        ]);
+    });
+
     it('maps note records to path-only rows and one-based line records to zero-based source positions', () => {
         const note = createRecord();
         const checkbox = createRecord({

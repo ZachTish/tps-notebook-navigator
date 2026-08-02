@@ -1,4 +1,4 @@
-import { App, TFile } from 'obsidian';
+import { App, TFile, type CachedMetadata } from 'obsidian';
 import { describe, expect, it, vi } from 'vitest';
 import {
     TPS_FILES_UPDATED_EVENT,
@@ -28,15 +28,20 @@ describe('GcmEntityTypesStore', () => {
     it('keeps file-backed Types ready when the optional GCM line index is unavailable', async () => {
         const app = new App();
         const files = [new TFile('Notes/Alpha.md'), new TFile('Data/Projects.base')];
-        const testVault = app.vault as unknown as { registerFile(file: TFile): void; getFiles(): TFile[] };
+        const testVault = app.vault as unknown as { registerFile(file: TFile): void; getFiles(): TFile[]; getMarkdownFiles(): TFile[] };
         files.forEach(file => testVault.registerFile(file));
         testVault.getFiles = () => files;
+        testVault.getMarkdownFiles = () => files.filter(file => file.extension === 'md');
         const store = new GcmEntityTypesStore(app);
 
         const unsubscribe = store.subscribe(vi.fn());
         await vi.waitFor(() => expect(store.getSnapshot().lineAvailability).toBe('unavailable'));
 
-        expect(store.getSnapshot()).toMatchObject({ availability: 'ready', lineAvailability: 'unavailable' });
+        expect(store.getSnapshot()).toMatchObject({
+            availability: 'ready',
+            lineAvailability: 'unavailable',
+            markdownAvailability: 'ready'
+        });
         expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.NOTES)).toHaveLength(1);
         expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.BASES)).toHaveLength(1);
         expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES)).toHaveLength(0);
@@ -45,6 +50,10 @@ describe('GcmEntityTypesStore', () => {
             TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
             TPS_NAVIGATOR_TYPE_IDS.BULLETS,
             TPS_NAVIGATOR_TYPE_IDS.HEADINGS,
+            TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS,
+            TPS_NAVIGATOR_TYPE_IDS.CALLOUTS,
+            TPS_NAVIGATOR_TYPE_IDS.BLOCKQUOTES,
+            TPS_NAVIGATOR_TYPE_IDS.TABLES,
             TPS_NAVIGATOR_TYPE_IDS.BASES,
             TPS_NAVIGATOR_TYPE_IDS.CANVAS,
             TPS_NAVIGATOR_TYPE_IDS.DRAWINGS,
@@ -198,6 +207,7 @@ describe('GcmEntityTypesStore', () => {
         const files = [file];
         const getFiles = vi.fn(() => files);
         (app.vault as unknown as { getFiles(): TFile[] }).getFiles = getFiles;
+        (app.vault as unknown as { getMarkdownFiles(): TFile[] }).getMarkdownFiles = () => files;
         const entity: GcmEntityIndexRecordLike = {
             id: 'retry-task',
             path: file.path,
@@ -358,7 +368,214 @@ describe('GcmEntityTypesStore', () => {
 
         unsubscribe();
         expect(vaultEvents.offref).toHaveBeenCalledTimes(4);
-        expect(metadataEvents.offref).toHaveBeenCalledOnce();
+        expect(metadataEvents.offref).toHaveBeenCalledTimes(2);
+    });
+
+    it('updates local Markdown structures path-wise and treats resolved as a one-shot rebuild barrier', async () => {
+        const app = new App();
+        const file = new TFile('Notes/Structures.md');
+        const files = [file];
+        const caches = new Map<string, CachedMetadata>([
+            [
+                file.path,
+                {
+                    sections: [
+                        {
+                            type: 'code',
+                            position: {
+                                start: { line: 2, col: 0, offset: 20 },
+                                end: { line: 5, col: 3, offset: 53 }
+                            }
+                        }
+                    ]
+                }
+            ]
+        ]);
+        const getFiles = vi.fn(() => files);
+        const getMarkdownFiles = vi.fn(() => files);
+        Object.assign(app.vault, { getFiles, getMarkdownFiles });
+        (app.vault as unknown as { registerFile(file: TFile): void }).registerFile(file);
+
+        type Listener = (...args: unknown[]) => void;
+        const vaultListeners = new Map<string, Set<Listener>>();
+        const vaultEvents = {
+            on: vi.fn((name: string, callback: Listener) => {
+                const listeners = vaultListeners.get(name) ?? new Set<Listener>();
+                listeners.add(callback);
+                vaultListeners.set(name, listeners);
+                return { name, callback };
+            }),
+            offref: vi.fn((ref: { name: string; callback: Listener }) => vaultListeners.get(ref.name)?.delete(ref.callback)),
+            trigger(name: string, ...args: unknown[]) {
+                vaultListeners.get(name)?.forEach(listener => listener(...args));
+            }
+        };
+        Object.assign(app.vault, vaultEvents);
+
+        const metadataListeners = new Map<string, Set<Listener>>();
+        const metadataEvents = {
+            getFileCache: vi.fn((target: TFile) => caches.get(target.path) ?? null),
+            on: vi.fn((name: string, callback: Listener) => {
+                const listeners = metadataListeners.get(name) ?? new Set<Listener>();
+                listeners.add(callback);
+                metadataListeners.set(name, listeners);
+                return { name, callback };
+            }),
+            offref: vi.fn((ref: { name: string; callback: Listener }) => metadataListeners.get(ref.name)?.delete(ref.callback)),
+            trigger(name: string, ...args: unknown[]) {
+                metadataListeners.get(name)?.forEach(listener => listener(...args));
+            }
+        };
+        Object.assign(app.metadataCache, metadataEvents);
+
+        const store = new GcmEntityTypesStore(app);
+        const unsubscribe = store.subscribe(vi.fn());
+        await vi.waitFor(() => expect(store.getSnapshot().markdownAvailability).toBe('ready'));
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS)).toHaveLength(1);
+        expect(getMarkdownFiles).toHaveBeenCalledOnce();
+
+        const tableCache: CachedMetadata = {
+            sections: [
+                {
+                    type: 'table',
+                    position: {
+                        start: { line: 8, col: 0, offset: 80 },
+                        end: { line: 10, col: 4, offset: 104 }
+                    }
+                }
+            ]
+        };
+        caches.set(file.path, tableCache);
+        metadataEvents.trigger('changed', file, '', tableCache);
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS)).toHaveLength(0);
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.TABLES)).toHaveLength(1);
+        expect(getMarkdownFiles).toHaveBeenCalledOnce();
+
+        const oldPath = file.path;
+        (file as TFile & { setPath(path: string): void }).setPath('Notes/Renamed.md');
+        caches.delete(oldPath);
+        caches.set(file.path, tableCache);
+        vaultEvents.trigger('rename', file, oldPath);
+        await vi.waitFor(() =>
+            expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.TABLES)?.[0]?.sourcePath).toBe(file.path)
+        );
+
+        files.splice(0, 1);
+        vaultEvents.trigger('delete', file);
+        await vi.waitFor(() => expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.TABLES)).toHaveLength(0));
+
+        metadataEvents.trigger('resolved');
+        await vi.waitFor(() => expect(getMarkdownFiles).toHaveBeenCalledTimes(2));
+        metadataEvents.trigger('resolved');
+        await Promise.resolve();
+        expect(getMarkdownFiles).toHaveBeenCalledTimes(2);
+
+        unsubscribe();
+        expect(metadataEvents.offref).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not roll back a Markdown metadata update when an older GCM line refresh finishes later', async () => {
+        const app = new App();
+        const file = new TFile('Notes/Concurrent structures.md');
+        const files = [file];
+        let cache: CachedMetadata = {
+            sections: [
+                {
+                    type: 'code',
+                    position: {
+                        start: { line: 2, col: 0, offset: 20 },
+                        end: { line: 5, col: 3, offset: 53 }
+                    }
+                }
+            ]
+        };
+        Object.assign(app.vault, {
+            getFiles: () => files,
+            getMarkdownFiles: () => files
+        });
+        (app.vault as unknown as { registerFile(file: TFile): void }).registerFile(file);
+
+        type Listener = (...args: unknown[]) => void;
+        const metadataListeners = new Map<string, Set<Listener>>();
+        const metadataEvents = {
+            getFileCache: vi.fn(() => cache),
+            on: vi.fn((name: string, callback: Listener) => {
+                const listeners = metadataListeners.get(name) ?? new Set<Listener>();
+                listeners.add(callback);
+                metadataListeners.set(name, listeners);
+                return { name, callback };
+            }),
+            offref: vi.fn((ref: { name: string; callback: Listener }) => metadataListeners.get(ref.name)?.delete(ref.callback)),
+            trigger(name: string, ...args: unknown[]) {
+                metadataListeners.get(name)?.forEach(listener => listener(...args));
+            }
+        };
+        Object.assign(app.metadataCache, metadataEvents);
+
+        const lineQuery = deferred<readonly unknown[]>();
+        const queryAsync = vi.fn(() => lineQuery.promise);
+        const entityApi = {
+            version: 3,
+            queryAsync,
+            ensureReady: vi.fn(async () => undefined),
+            getByLocator: vi.fn(() => null),
+            getDimensionValues: vi.fn(() => []),
+            getRevision: vi.fn(() => 1),
+            onChanged: vi.fn(() => () => undefined),
+            registerDimension: vi.fn(() => () => undefined)
+        } as GcmEntityIndexApiLike;
+        const changedPayload = {
+            source: 'tps-global-context-menu',
+            sourcePluginId: 'tps-global-context-menu',
+            available: true,
+            api: { entityIndex: entityApi },
+            entityIndexVersion: 3
+        };
+        const workspaceListeners = new Map<string, Set<Listener>>();
+        const workspace = {
+            on: vi.fn((name: string, callback: Listener) => {
+                const listeners = workspaceListeners.get(name) ?? new Set<Listener>();
+                listeners.add(callback);
+                workspaceListeners.set(name, listeners);
+                return { name, callback };
+            }),
+            offref: vi.fn((ref: { name: string; callback: Listener }) => workspaceListeners.get(ref.name)?.delete(ref.callback)),
+            trigger: vi.fn((name: string, payload: unknown) => {
+                if (name === TPS_GCM_API_REQUEST_EVENT) {
+                    workspaceListeners.get(TPS_GCM_API_CHANGED_EVENT)?.forEach(listener => listener(changedPayload));
+                    return;
+                }
+                workspaceListeners.get(name)?.forEach(listener => listener(payload));
+            })
+        };
+        Object.assign(app, { workspace });
+
+        const store = new GcmEntityTypesStore(app);
+        const unsubscribe = store.subscribe(vi.fn());
+        await vi.waitFor(() => expect(queryAsync).toHaveBeenCalledOnce());
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS)).toHaveLength(1);
+
+        cache = {
+            sections: [
+                {
+                    type: 'table',
+                    position: {
+                        start: { line: 8, col: 0, offset: 80 },
+                        end: { line: 10, col: 4, offset: 104 }
+                    }
+                }
+            ]
+        };
+        metadataEvents.trigger('changed', file, '', cache);
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS)).toHaveLength(0);
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.TABLES)).toHaveLength(1);
+
+        lineQuery.resolve([]);
+        await vi.waitFor(() => expect(store.getSnapshot().lineAvailability).toBe('ready'));
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS)).toHaveLength(0);
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.TABLES)).toHaveLength(1);
+
+        unsubscribe();
     });
 
     it('survives an initial vault catalog failure and retries cleanly on the next subscription', async () => {
@@ -371,6 +588,7 @@ describe('GcmEntityTypesStore', () => {
             })
             .mockReturnValue([file]);
         (app.vault as unknown as { getFiles(): TFile[] }).getFiles = getFiles;
+        (app.vault as unknown as { getMarkdownFiles(): TFile[] }).getMarkdownFiles = () => [file];
         const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         const store = new GcmEntityTypesStore(app);
 

@@ -26,18 +26,19 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 4. Call `await nn.whenReady()` before storage-backed reads or tag/property navigation that depends on the storage mirror.
    Call `await nn.types.whenReady()` when you need an available aggregate Type catalog before Type navigation. File-backed
    Types stay ready without TPS Global Context Menu; GCM governs only exact-line Checkboxes, Bullets, and Headings rows.
+   Navigator-owned Code blocks, Callouts, Blockquotes, and Tables use Obsidian's root-level Markdown section cache instead.
    Registered providers publish independently, so subscribe when you need to wait for one provider's descriptor.
 5. Long-lived provider integrations should subscribe to `tps:notebook-navigator-api-changed` and send a point-to-point
    `tps:notebook-navigator-api-request` after subscribing. The documented
    [lifecycle pattern](../../../docs/api-reference.md#host-api-lifecycle) automatically tears down old registration handles
    and reacquires the new API after a TPS-only reload. Match unavailable events by their opaque `hostInstanceId`; timestamps
    are diagnostic only and are not a safe host-ordering key.
-6. Use `nn.menus.registerTypeMenu(...)` to add synchronous actions to fixed built-in file/exact-line and provider-owned Type
+6. Use `nn.menus.registerTypeMenu(...)` to add synchronous actions to fixed built-in file/structure and provider-owned Type
    collection menus. The frozen context contains the opaque current Type id and its immutable current descriptor. Add items
    synchronously and perform asynchronous work inside each item's `onClick` handler. Initializers receive the real native
    item immediately; stale and empty menus fail closed, while any partially built invalid Type menu is suppressed instead of
    being shown. Rejected Promises are observed and delayed additions are ignored.
-7. Use `nn.menus.registerRowMenu(...)` to add actions to matching attached or file-backed, exact-line/task, and provider-owned
+7. Use `nn.menus.registerRowMenu(...)` to add actions to matching attached or file-backed, structural/task, and provider-owned
    result rows. Its optional synchronous `supports(target)` filter controls which rows show the accessible action affordance.
    The frozen target contains current file identity, Type scope, optional zero-based line, and checkbox presentation;
    re-resolve mutable line content before writing. Builders and item initializers must be synchronous; a Promise-returning
@@ -50,7 +51,7 @@ Complete TypeScript type definitions for the Notebook Navigator API.
    current identity. Focus fails closed when the row is not already rendered and never changes scope or activates the row.
 10. Use `nn.list.getSnapshot()` for a pull-based view of the first mounted TPS Navigator list. `setSearch(...)` and
     `setPresentation(...)` act on that same view, never open one, and return `false` for stale, unsupported, or invalid
-    requests. Presentation updates are atomic; fixed file-backed Types are supported, while exact-line/provider Types and
+    requests. Presentation updates are atomic; fixed file-backed Types are supported, while structural/provider Types and
     manual-sort scopes remain provider-owned.
 
 ## Public Surface
@@ -65,8 +66,9 @@ Complete TypeScript type definitions for the Notebook Navigator API.
   providers, query cancellation contexts, row selection/focus identities, row context-menu actions, event names, lifecycle
   request/change payloads, list search/presentation controls and callback-free snapshots, and event payloads
 
-The fixed flat Types catalog uses `entity:note`, `structural:task`, `structural:bullet`, `structural:heading`, `file:base`,
-`file:canvas`, `file:drawing`, `file:pdf`, `file:image`, `file:audio`, and `file:video`. Kind is frontmatter metadata and no
+The fixed flat Types catalog uses `entity:note`, `structural:task`, `structural:bullet`, `structural:heading`,
+`structural:code-block`, `structural:callout`, `structural:blockquote`, `structural:table`, `file:base`, `file:canvas`,
+`file:drawing`, `file:pdf`, `file:image`, `file:audio`, and `file:video`. Kind is frontmatter metadata and no
 Kind descriptor is emitted or navigable. Deprecated `buildKind(...)` constructs a legacy id and `parseKind(...)` recognizes
 one so callers can migrate stale state; `isType(...)` and navigation reject Kind ids. For external Type providers,
 `allowedVaultFilePaths` contains exact visible vault-file paths rather than only Markdown paths.
@@ -83,7 +85,7 @@ target shapes and fail-closed behavior are documented in the [Menus API](../../.
 
 ## Version
 
-Current API Version: **3.0.0**
+Current API Version: **3.1.0**
 
 ## Documentation
 

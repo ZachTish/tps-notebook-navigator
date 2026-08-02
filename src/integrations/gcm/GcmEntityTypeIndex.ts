@@ -9,7 +9,7 @@
 import { normalizePath, type App, type TFile } from 'obsidian';
 import { TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID } from '../../constants/tpsIdentity';
 import {
-    TPS_NAVIGATOR_LINE_TYPES,
+    TPS_NAVIGATOR_GCM_LINE_TYPES,
     TPS_NAVIGATOR_TYPE_IDS,
     isTpsNavigatorTypeId,
     type TpsNavigatorTypeDescriptor,
@@ -17,6 +17,7 @@ import {
     type TpsNavigatorTypeRecord,
     type TpsNavigatorTypesSnapshot
 } from '../../types/navigatorTypes';
+import { openMarkdownSourceLocation } from '../../services/types/sourceLocation';
 import {
     isGcmTaskRecord,
     resolveGcmTaskApiFromPluginApi,
@@ -170,24 +171,12 @@ export interface GcmApiChangedPayloadLike {
     readonly entityIndexVersion?: number | null;
 }
 
-interface EditorLike {
-    setCursor(position: { line: number; ch: number }): void;
-    scrollIntoView?(range: { from: { line: number; ch: number }; to: { line: number; ch: number } }, center?: boolean): void;
-    focus?(): void;
-}
-
 interface WorkspaceLeafLike {
-    view?: {
-        file?: { path?: string } | null;
-        editor?: EditorLike;
-    };
     openFile(file: TFile, options?: { state?: { mode?: string }; active?: boolean }): Promise<void>;
 }
 
 interface WorkspaceLike {
-    activeLeaf?: WorkspaceLeafLike | null;
     getLeaf(newLeaf?: boolean): WorkspaceLeafLike;
-    getLeavesOfType?(viewType: string): WorkspaceLeafLike[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -416,7 +405,7 @@ function buildSnapshot(
         hasContextMenu: false
     }
 ): GcmEntityTypeIndexSnapshot {
-    const descriptorDefinitions = TPS_NAVIGATOR_LINE_TYPES;
+    const descriptorDefinitions = TPS_NAVIGATOR_GCM_LINE_TYPES;
     const mutableRecords = new Map<TpsNavigatorTypeId, TpsNavigatorTypeRecord[]>();
     for (const descriptor of descriptorDefinitions) {
         mutableRecords.set(descriptor.id, []);
@@ -463,33 +452,6 @@ function queryForType(typeId: TpsNavigatorTypeId): GcmEntityIndexQueryLike | nul
 
 function isMarkdownFile(file: TFile | null): file is TFile {
     return Boolean(file && typeof file.path === 'string' && file.path.trim() && file.extension.toLocaleLowerCase() === 'md');
-}
-
-function getLeafEditor(leaf: WorkspaceLeafLike | null | undefined): EditorLike | null {
-    const editor = leaf?.view?.editor;
-    return editor && typeof editor.setCursor === 'function' ? editor : null;
-}
-
-function findEditor(workspace: WorkspaceLike, preferredLeaf: WorkspaceLeafLike, sourcePath: string): EditorLike | null {
-    if (preferredLeaf.view?.file?.path === sourcePath) {
-        const preferredEditor = getLeafEditor(preferredLeaf);
-        if (preferredEditor) {
-            return preferredEditor;
-        }
-    }
-    const activeLeaf = workspace.activeLeaf;
-    if (activeLeaf?.view?.file?.path === sourcePath) {
-        const activeEditor = getLeafEditor(activeLeaf);
-        if (activeEditor) {
-            return activeEditor;
-        }
-    }
-    try {
-        const matchingLeaf = workspace.getLeavesOfType?.('markdown').find(leaf => leaf.view?.file?.path === sourcePath);
-        return getLeafEditor(matchingLeaf);
-    } catch {
-        return null;
-    }
 }
 
 /**
@@ -736,34 +698,23 @@ export class GcmEntityTypeIndexAdapter {
             return { ok: false, reason: 'missing-file' };
         }
 
-        const workspace = (this.app as unknown as { workspace?: WorkspaceLike }).workspace;
-        if (!workspace || typeof workspace.getLeaf !== 'function') {
-            return { ok: false, reason: 'workspace-unavailable' };
-        }
-        let leaf: WorkspaceLeafLike;
-        try {
-            leaf = workspace.getLeaf(false);
-            await leaf.openFile(file, current.entityType === 'block' ? { state: { mode: 'source' }, active: true } : { active: true });
-        } catch (error) {
-            return { ok: false, reason: 'open-failed', error };
-        }
-
         if (current.entityType === 'note') {
+            const workspace = (this.app as unknown as { workspace?: WorkspaceLike }).workspace;
+            if (!workspace || typeof workspace.getLeaf !== 'function') {
+                return { ok: false, reason: 'workspace-unavailable' };
+            }
+            try {
+                await workspace.getLeaf(false).openFile(file, { active: true });
+            } catch (error) {
+                return { ok: false, reason: 'open-failed', error };
+            }
             return { ok: true, sourcePath };
         }
         const lineNumber = current.lineNumber;
         if (!Number.isSafeInteger(lineNumber) || Number(lineNumber) < 1) {
             return { ok: false, reason: 'stale-locator' };
         }
-        const editor = findEditor(workspace, leaf, sourcePath);
-        if (!editor) {
-            return { ok: false, reason: 'editor-unavailable' };
-        }
-        const position = { line: Number(lineNumber) - 1, ch: 0 };
-        editor.setCursor(position);
-        editor.scrollIntoView?.({ from: position, to: position }, true);
-        editor.focus?.();
-        return { ok: true, sourcePath, lineNumber: Number(lineNumber) };
+        return openMarkdownSourceLocation(this.app, file, Number(lineNumber));
     }
 
     /** Re-resolves the entity and current task before changing its checkbox. */

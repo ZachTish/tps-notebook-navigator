@@ -117,13 +117,17 @@ export class NotebookNavigatorAPI {
     public readonly propertyNodes: Pick<PropertyNodesAPI, 'rootId' | 'buildKey' | 'buildValue' | 'parse' | 'normalize'>;
     /** Register active transient rows supplied by another plugin. */
     public readonly rows: Pick<RowsAPI, 'registerProvider'>;
-    /** Discover built-in file/line and registered-provider collections without depending on provider internals. */
+    /** Discover built-in file/structure and registered-provider collections without depending on provider internals. */
     public readonly types: Pick<
         TypesAPI,
         | 'notesId'
         | 'checkboxesId'
         | 'bulletsId'
         | 'headingsId'
+        | 'codeBlocksId'
+        | 'calloutsId'
+        | 'blockquotesId'
+        | 'tablesId'
         | 'basesId'
         | 'canvasId'
         | 'drawingsId'
@@ -238,6 +242,10 @@ export class NotebookNavigatorAPI {
             checkboxesId: this.typesController.checkboxesId,
             bulletsId: this.typesController.bulletsId,
             headingsId: this.typesController.headingsId,
+            codeBlocksId: this.typesController.codeBlocksId,
+            calloutsId: this.typesController.calloutsId,
+            blockquotesId: this.typesController.blockquotesId,
+            tablesId: this.typesController.tablesId,
             basesId: this.typesController.basesId,
             canvasId: this.typesController.canvasId,
             drawingsId: this.typesController.drawingsId,

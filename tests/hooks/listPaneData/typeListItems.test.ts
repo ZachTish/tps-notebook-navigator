@@ -33,7 +33,11 @@ const FILE_TYPE_CASES: readonly [TpsNavigatorFileTypeId, string][] = [
 const LINE_TYPE_IDS: readonly TpsNavigatorLineTypeId[] = [
     TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
     TPS_NAVIGATOR_TYPE_IDS.BULLETS,
-    TPS_NAVIGATOR_TYPE_IDS.HEADINGS
+    TPS_NAVIGATOR_TYPE_IDS.HEADINGS,
+    TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS,
+    TPS_NAVIGATOR_TYPE_IDS.CALLOUTS,
+    TPS_NAVIGATOR_TYPE_IDS.BLOCKQUOTES,
+    TPS_NAVIGATOR_TYPE_IDS.TABLES
 ];
 
 function createDb(): IndexedDBStorage {
@@ -229,7 +233,7 @@ describe('Type list routing', () => {
         ]);
     });
 
-    it.each(LINE_TYPE_IDS)('keeps exact-line %s results as standalone provider rows', typeId => {
+    it.each(LINE_TYPE_IDS)('keeps source-backed %s results as standalone provider rows', typeId => {
         const app = new App();
         const nativeFile = createTestTFile('Tasks/Today.md');
         const coreListItems: ListPaneItem[] = [
