@@ -80,7 +80,7 @@ export function buildNavigationTypeItems(
     return items;
 }
 
-/** Fully expanded child rows used as the non-sortable Types preview in root-section reorder mode. */
+/** Fully expanded child rows used by root-section reorder mode; caller-provided descriptor order is preserved. */
 export function buildNavigationTypeReorderItems(snapshot: TpsNavigatorTypesSnapshot): CombinedNavigationItem[] {
     return buildNavigationTypeItems(snapshot, new Set([TYPES_ROOT_VIRTUAL_FOLDER_ID])).slice(1);
 }

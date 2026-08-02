@@ -42,6 +42,9 @@ The first-class **Types** section is enabled by default and has one flat built-i
 - Hydrated task entities in **Checkboxes** use GCM's canonical completion path with optimistic rollback. Right-click, mobile long-press, or **More actions** opens the same guarded GCM task menu. A task that cannot be matched exactly remains open-only rather than inventing state.
 - Task hydration batches cold reads across source files, then reuses a bounded per-path cache keyed by file metadata. Exact GCM and vault update paths invalidate that cache, including failed initial hydration, so unchanged vaults avoid repeated scans without leaving edited checkboxes stale.
 - Counts and rows respect the active Navigator profile, hidden-folder/file/property/tag rules, file visibility, and the hidden-items override. Fenced examples that GCM excludes never become Navigator rows.
+- **Reorder navigation** edits the flat Types list in place. **Type order** offers **Default order**, **Name: A to Z**, **Name: Z to A**, **Most items first**, **Fewest items first**, and **Manual order**. Name and count modes sort automatically as the visible catalog changes; count modes use the same visibility-filtered quantities shown beside the Type rows, while provider collections that do not publish a count stay after counted Types. The editor continues to show those counts so the active ordering is inspectable.
+- Moving a Type with its up/down buttons or drag handle immediately switches the list to **Manual order**. New Types append without disturbing the saved sequence, and temporarily unavailable provider Type ids retain their positions so plugin load order does not erase the user's arrangement. **Default order** returns to the canonical catalog order without changing the public catalog itself.
+- The order mode and retained manual ids persist in TPS Notebook Navigator's own `data.json`. On mobile, the order selector stacks above the Types list, rows keep touch-sized up/down controls, and the existing handle-only drag interaction avoids turning the full row into a scroll-blocking drag target. Very narrow desktop panes prioritize readable Type names by hiding counts and revealing that row's arrow controls on hover or keyboard focus.
 - Exact-line, cached-range, and provider-owned rows have one transient row cursor and remain deliberately excluded from `TFile` multi-select, pinning, drag, rename, and persistence. File-backed Type results retain normal file interactions because they are real `TFile` rows. Dragging cached source ranges is intentionally deferred until it can preserve source syntax and locators safely.
 - Missing, disabled, incompatible, or incomplete GCM indexing affects only Checkboxes, Bullets, and Headings and produces a visible status row there. File-backed and cached-range collections remain available. TPS Global Context Menu 1.15.0 is the tested Entity Index v3 and canonical task-completion baseline.
 
@@ -112,13 +115,15 @@ provider example.
 The default settings surface remains the normal Notebook Navigator landing page. **TPS integration** is a top-level destination under **Configuration**, one click from that landing page.
 
 - **Task rows** — **Show GCM tasks beneath notes** is off by default. When enabled, the same page reveals **Include completed tasks** and **Tasks per note**; there is no nested editor or second configuration page.
-- **Types navigation** — **Show Types in navigation** is on by default and directly controls the flat file-format and Markdown-structure Types catalog. It is one toggle with no nested rule editor.
+- **Types navigation** — **Show Types in navigation** is on by default and directly controls the flat file-format and Markdown-structure Types catalog. The navigation editor exposes its in-place order selector, counts, up/down buttons, and drag handles without adding a nested settings page.
 - **One-way setup** — **Import upstream Notebook Navigator settings** always asks for confirmation. It reads only `.obsidian/plugins/notebook-navigator/data.json`, copies recognized upstream settings into the TPS plugin, preserves TPS-only integration settings, and never writes to upstream state.
 
-The Types toggle, all three task-row values, and any user-created per-Type presentation overrides persist in the TPS plugin's
-own `data.json`. The importer, active route, disclosures, focus, and scroll position do not create extra persisted schema.
-On mobile, these controls use Obsidian's native stacked setting rows; the optional controls disappear while task rows are
-disabled so they do not consume the viewport.
+The Types toggle, Type order mode and retained manual ids, all three task-row values, and any user-created per-Type
+presentation overrides persist in the TPS plugin's own `data.json`. A one-way upstream import preserves these TPS-only Type
+ordering values. The importer, active route, disclosures, focus, and scroll position do not create extra persisted schema.
+On mobile, settings use Obsidian's native stacked rows and the in-navigation Type order editor stacks its selector while
+retaining touch-sized controls; optional task controls disappear while task rows are disabled so they do not consume the
+viewport.
 
 ### Provider behavior and limits
 
@@ -160,6 +165,29 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 5.2.0 — customizable Types navigation order
+
+- Adds in-place Types ordering to **Reorder navigation**, with **Default order**, **Name: A to Z**, **Name: Z to A**,
+  **Most items first**, **Fewest items first**, and **Manual order** modes.
+- Keeps alphabetical and quantity modes live as the visibility-filtered catalog and counts change. External provider
+  collections without published counts remain after counted Types, and the editor shows current counts beside the rows.
+- Adds per-Type up/down controls and desktop/mobile drag reordering; either manual action switches the active mode to
+  **Manual order**. Mobile stacks the selector and uses touch-sized buttons plus handle-only dragging; very narrow desktop
+  panes prioritize labels and reveal row arrows on hover or keyboard focus.
+- Persists the selected mode and manual Type ids in TPS Notebook Navigator's `data.json`, preserves temporarily unavailable
+  provider ids, appends newly discovered Types without disturbing saved positions, and keeps one-way upstream imports from
+  overwriting the TPS-only order.
+- Leaves the provider-neutral API catalog canonical and unchanged; customization affects only navigation presentation.
+- Remains backward compatible with public API 3.1.0 and Obsidian 1.11.0 or newer. Existing settings need no migration;
+  missing order fields use **Default order** until the user chooses another mode.
+- Validated with 222 Vitest files and 2,425 tests plus TypeScript, ESLint, Prettier, stylesheet, source-namespace,
+  operational-identity, and artifact-identity gates. The final production-mode build was deployed and reloaded only in the
+  isolated test vault; the desktop reorder editor, selector, readable narrow-pane labels, and per-row controls were visually
+  verified without changing the saved order.
+- Mobile behavior is covered by component markup and responsive-style regression checks but was not automated on a real iOS
+  device. Quantity order can move as live counts change, collections without a published count stay after counted Types, and
+  very narrow desktop panes temporarily hide counts to preserve label and arrow space.
 
 ### 5.1.0 — more Markdown structure Types
 

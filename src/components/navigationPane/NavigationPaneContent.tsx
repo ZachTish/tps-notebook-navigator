@@ -102,6 +102,7 @@ import {
 import { filterTpsNavigatorTypesSnapshot, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { getVisibleVaultFiles } from '../../utils/selectionUtils';
 import { createTypeSelectionFallbackAction, isTypeSelectionAuthoritativelyUnavailable } from '../../utils/navigationTypeHistory';
+import { orderTypeNavigationDescriptors } from '../../utils/typeNavigationOrder';
 
 const EMPTY_INDENT_GUIDE_MAP = new Map<string, number[]>();
 
@@ -446,14 +447,25 @@ export const NavigationPane = React.memo(
             () => filterTpsNavigatorTypesSnapshot(rawTypeSnapshot, visibleTypeSourcePaths),
             [rawTypeSnapshot, visibleTypeSourcePaths]
         );
+        const orderedTypeSnapshot = useMemo(
+            () => ({
+                ...typeSnapshot,
+                descriptors: orderTypeNavigationDescriptors(
+                    typeSnapshot.descriptors,
+                    settings.typeNavigationSortOrder,
+                    settings.rootTypeOrder
+                )
+            }),
+            [settings.rootTypeOrder, settings.typeNavigationSortOrder, typeSnapshot]
+        );
         const typeItems = useNavigationPaneTypeSection(
-            typeSnapshot,
+            orderedTypeSnapshot,
             expansionState.expandedVirtualFolders,
             settings.tpsTypesNavigationEnabled
         );
         const typeReorderSourceItems = useMemo(
-            () => (settings.tpsTypesNavigationEnabled ? buildNavigationTypeReorderItems(typeSnapshot) : []),
-            [settings.tpsTypesNavigationEnabled, typeSnapshot]
+            () => (settings.tpsTypesNavigationEnabled ? buildNavigationTypeReorderItems(orderedTypeSnapshot) : []),
+            [orderedTypeSnapshot, settings.tpsTypesNavigationEnabled]
         );
         const revealedTypeSelectionRef = useRef<string | null>(null);
         useEffect(() => {
@@ -712,6 +724,7 @@ export const NavigationPane = React.memo(
             canReorderRootFolders,
             canReorderRootTags,
             canReorderRootProperties,
+            canReorderRootTypes,
             canReorderRootItems,
             showRootFolderSection,
             showRootTagSection,
@@ -725,7 +738,9 @@ export const NavigationPane = React.memo(
             reorderSectionOrder,
             reorderRootFolderOrder,
             reorderRootTagOrder,
-            reorderRootPropertyOrder
+            reorderRootPropertyOrder,
+            reorderRootTypeOrder,
+            setTypeNavigationSortOrder
         } = useNavigationRootReorder({
             app,
             items,
@@ -1309,6 +1324,7 @@ export const NavigationPane = React.memo(
                 showRootFolderReset={settings.rootFolderOrder.length > 0}
                 showRootTagReset={settings.rootTagOrder.length > 0}
                 showRootPropertyReset={settings.rootPropertyOrder.length > 0}
+                typeNavigationSortOrder={settings.typeNavigationSortOrder}
                 resetRootTagOrderLabel={resetRootTagOrderLabel}
                 resetRootPropertyOrderLabel={resetRootPropertyOrderLabel}
                 onResetRootFolderOrder={handleResetRootFolderOrder}
@@ -1318,10 +1334,13 @@ export const NavigationPane = React.memo(
                 onReorderFolders={reorderRootFolderOrder}
                 onReorderTags={reorderRootTagOrder}
                 onReorderProperties={reorderRootPropertyOrder}
+                onReorderTypes={reorderRootTypeOrder}
+                onTypeNavigationSortOrderChange={setTypeNavigationSortOrder}
                 canReorderSections={canReorderSections}
                 canReorderFolders={canReorderRootFolders}
                 canReorderTags={canReorderRootTags}
                 canReorderProperties={canReorderRootProperties}
+                canReorderTypes={canReorderRootTypes}
                 isMobile={isMobile}
             />
         );

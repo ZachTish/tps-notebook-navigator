@@ -26,6 +26,7 @@ import type { SectionReorderRenderItem, RootReorderRenderItem } from '../hooks/u
 import { NavigationSectionId } from '../types';
 import { runAsyncAction } from '../utils/async';
 import { ObsidianIcon } from './ObsidianIcon';
+import type { TypeNavigationSortOrder } from '../settings/types';
 import {
     ROOT_REORDER_MOUSE_CONSTRAINT,
     ROOT_REORDER_TOUCH_CONSTRAINT,
@@ -51,6 +52,7 @@ interface NavigationRootReorderPanelProps {
     showRootFolderReset: boolean;
     showRootTagReset: boolean;
     showRootPropertyReset: boolean;
+    typeNavigationSortOrder: TypeNavigationSortOrder;
     resetRootTagOrderLabel: string;
     resetRootPropertyOrderLabel: string;
     onResetRootFolderOrder: () => Promise<void> | void;
@@ -60,10 +62,13 @@ interface NavigationRootReorderPanelProps {
     onReorderFolders: (orderedKeys: string[]) => Promise<void> | void;
     onReorderTags: (orderedKeys: string[]) => Promise<void> | void;
     onReorderProperties: (orderedKeys: string[]) => Promise<void> | void;
+    onReorderTypes: (orderedKeys: string[]) => Promise<void> | void;
+    onTypeNavigationSortOrderChange: (sortOrder: TypeNavigationSortOrder, visibleOrder: string[]) => Promise<void> | void;
     canReorderSections: boolean;
     canReorderFolders: boolean;
     canReorderTags: boolean;
     canReorderProperties: boolean;
+    canReorderTypes: boolean;
 }
 
 const RESET_FOLDER_LABEL = strings.navigationPane.resetRootToAlpha;
@@ -132,10 +137,6 @@ function SortableList({ entries, canReorder, children, isMobile }: SortableListP
     );
 }
 
-function StaticList({ items }: { items: RootReorderRenderItem[] }) {
-    return items.map(item => <RootFolderReorderItem key={item.key} {...item.props} />);
-}
-
 interface SectionEntry {
     id: NavigationSectionId;
     item: SectionReorderRenderItem;
@@ -159,6 +160,32 @@ function ResetAction({ label, onClick }: ResetActionProps) {
     );
 }
 
+interface TypeOrderControlProps {
+    value: TypeNavigationSortOrder;
+    onChange: (sortOrder: TypeNavigationSortOrder) => void;
+}
+
+function TypeOrderControl({ value, onChange }: TypeOrderControlProps) {
+    return (
+        <label className="nn-root-reorder-type-order">
+            <span className="nn-root-reorder-type-order-label">Type order</span>
+            <select
+                className="dropdown nn-root-reorder-type-order-select"
+                aria-label="Type order"
+                value={value}
+                onChange={event => onChange(event.currentTarget.value as TypeNavigationSortOrder)}
+            >
+                <option value="catalog">Default order</option>
+                <option value="alpha-asc">Name: A to Z</option>
+                <option value="alpha-desc">Name: Z to A</option>
+                <option value="count-desc">Most items first</option>
+                <option value="count-asc">Fewest items first</option>
+                <option value="manual">Manual order</option>
+            </select>
+        </label>
+    );
+}
+
 export function NavigationRootReorderPanel({
     sectionItems,
     folderItems,
@@ -177,6 +204,7 @@ export function NavigationRootReorderPanel({
     showRootFolderReset,
     showRootTagReset,
     showRootPropertyReset,
+    typeNavigationSortOrder,
     resetRootTagOrderLabel,
     resetRootPropertyOrderLabel,
     onResetRootFolderOrder,
@@ -186,10 +214,13 @@ export function NavigationRootReorderPanel({
     onReorderFolders,
     onReorderTags,
     onReorderProperties,
+    onReorderTypes,
+    onTypeNavigationSortOrderChange,
     canReorderSections,
     canReorderFolders,
     canReorderTags,
-    canReorderProperties
+    canReorderProperties,
+    canReorderTypes
 }: NavigationRootReorderPanelProps) {
     const handleResetFolders = useCallback(
         (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -252,8 +283,15 @@ export function NavigationRootReorderPanel({
         }));
     }, [propertyItems]);
 
+    const typeEntries = useMemo<RootSortableEntry[]>(() => {
+        return typeItems.map(item => ({
+            sortableId: `type:${item.key}`,
+            item
+        }));
+    }, [typeItems]);
+
     const sortableRegistry = useMemo(() => {
-        const map = new Map<string, { type: 'folder' | 'tag' | 'property'; key: string }>();
+        const map = new Map<string, { type: 'folder' | 'tag' | 'property' | 'type'; key: string }>();
         folderEntries.forEach(entry => {
             map.set(entry.sortableId, { type: 'folder', key: entry.item.key });
         });
@@ -263,13 +301,17 @@ export function NavigationRootReorderPanel({
         propertyEntries.forEach(entry => {
             map.set(entry.sortableId, { type: 'property', key: entry.item.key });
         });
+        typeEntries.forEach(entry => {
+            map.set(entry.sortableId, { type: 'type', key: entry.item.key });
+        });
         return map;
-    }, [folderEntries, propertyEntries, tagEntries]);
+    }, [folderEntries, propertyEntries, tagEntries, typeEntries]);
 
     const sectionIds = useMemo(() => sectionEntries.map(entry => entry.id), [sectionEntries]);
     const folderIds = useMemo(() => folderEntries.map(entry => entry.item.key), [folderEntries]);
     const tagIds = useMemo(() => tagEntries.map(entry => entry.item.key), [tagEntries]);
     const propertyIds = useMemo(() => propertyEntries.map(entry => entry.item.key), [propertyEntries]);
+    const typeIds = useMemo(() => typeEntries.map(entry => entry.item.key), [typeEntries]);
     const sectionIndexMap = useMemo(() => {
         return new Map<NavigationSectionId, number>(sectionIds.map((id, index) => [id, index]));
     }, [sectionIds]);
@@ -306,6 +348,83 @@ export function NavigationRootReorderPanel({
             };
         },
         [moveSection]
+    );
+
+    const moveType = useCallback(
+        (typeId: string, delta: number) => {
+            if (!canReorderTypes) {
+                return;
+            }
+            const currentIndex = typeIds.indexOf(typeId);
+            const targetIndex = currentIndex + delta;
+            if (currentIndex === -1 || targetIndex < 0 || targetIndex >= typeIds.length) {
+                return;
+            }
+            const next = arrayMove(typeIds, currentIndex, targetIndex);
+            runAsyncAction(async () => {
+                await onReorderTypes(next);
+            });
+        },
+        [canReorderTypes, onReorderTypes, typeIds]
+    );
+
+    const createTypeMoveHandler = useCallback(
+        (typeId: string, delta: number) => {
+            return (event: React.MouseEvent<HTMLButtonElement>) => {
+                event.preventDefault();
+                event.stopPropagation();
+                moveType(typeId, delta);
+            };
+        },
+        [moveType]
+    );
+
+    const typeEntriesWithControls = useMemo<RootSortableEntry[]>(() => {
+        return typeEntries.map((entry, index) => {
+            const label = entry.item.props.label;
+            const trailingAccessory = canReorderTypes ? (
+                <div className="nn-root-reorder-type-controls">
+                    <button
+                        type="button"
+                        className="nn-icon-button nn-root-reorder-type-button"
+                        aria-label={`${strings.settings.items.vaultProfiles.moveUp}: ${label}`}
+                        onClick={createTypeMoveHandler(entry.item.key, -1)}
+                        disabled={index === 0}
+                    >
+                        <ObsidianIcon name="lucide-arrow-up" />
+                    </button>
+                    <button
+                        type="button"
+                        className="nn-icon-button nn-root-reorder-type-button"
+                        aria-label={`${strings.settings.items.vaultProfiles.moveDown}: ${label}`}
+                        onClick={createTypeMoveHandler(entry.item.key, 1)}
+                        disabled={index === typeEntries.length - 1}
+                    >
+                        <ObsidianIcon name="lucide-arrow-down" />
+                    </button>
+                </div>
+            ) : undefined;
+
+            return {
+                ...entry,
+                item: {
+                    ...entry.item,
+                    props: {
+                        ...entry.item.props,
+                        trailingAccessory
+                    }
+                }
+            };
+        });
+    }, [canReorderTypes, createTypeMoveHandler, typeEntries]);
+
+    const handleTypeSortOrderChange = useCallback(
+        (sortOrder: TypeNavigationSortOrder) => {
+            runAsyncAction(async () => {
+                await onTypeNavigationSortOrderChange(sortOrder, typeIds);
+            });
+        },
+        [onTypeNavigationSortOrderChange, typeIds]
     );
 
     const handlePropertyDragEnd = useCallback(
@@ -382,9 +501,37 @@ export function NavigationRootReorderPanel({
                 return;
             }
 
+            if (active.type === 'type') {
+                if (!canReorderTypes) {
+                    return;
+                }
+                const oldIndex = typeIds.indexOf(active.key);
+                const newIndex = typeIds.indexOf(over.key);
+                if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
+                    return;
+                }
+                const next = arrayMove(typeIds, oldIndex, newIndex);
+                runAsyncAction(async () => {
+                    await onReorderTypes(next);
+                });
+                return;
+            }
+
             handlePropertyDragEnd(active.key, over.key);
         },
-        [canReorderFolders, canReorderTags, folderIds, handlePropertyDragEnd, onReorderFolders, onReorderTags, sortableRegistry, tagIds]
+        [
+            canReorderFolders,
+            canReorderTags,
+            canReorderTypes,
+            folderIds,
+            handlePropertyDragEnd,
+            onReorderFolders,
+            onReorderTags,
+            onReorderTypes,
+            sortableRegistry,
+            tagIds,
+            typeIds
+        ]
     );
 
     return (
@@ -472,7 +619,16 @@ export function NavigationRootReorderPanel({
                                             </SortableList>
                                         ) : null}
 
-                                        {shouldRenderTypes && typeItems.length > 0 ? <StaticList items={typeItems} /> : null}
+                                        {shouldRenderTypes && typeEntriesWithControls.length > 0 ? (
+                                            <>
+                                                <TypeOrderControl value={typeNavigationSortOrder} onChange={handleTypeSortOrderChange} />
+                                                <SortableList
+                                                    entries={typeEntriesWithControls}
+                                                    canReorder={canReorderTypes}
+                                                    isMobile={isMobile}
+                                                />
+                                            </>
+                                        ) : null}
                                     </div>
                                 );
                             })
@@ -508,9 +664,10 @@ export function NavigationRootReorderPanel({
                                     </div>
                                 ) : null}
 
-                                {showRootTypeSection && typeItems.length > 0 ? (
+                                {showRootTypeSection && typeEntriesWithControls.length > 0 ? (
                                     <div className="nn-root-reorder-section">
-                                        <StaticList items={typeItems} />
+                                        <TypeOrderControl value={typeNavigationSortOrder} onChange={handleTypeSortOrderChange} />
+                                        <SortableList entries={typeEntriesWithControls} canReorder={canReorderTypes} isMobile={isMobile} />
                                     </div>
                                 ) : null}
                             </>

@@ -226,6 +226,20 @@ export function isTagSortOrder(value: string): value is TagSortOrder {
     return value === 'alpha-asc' || value === 'alpha-desc' || value === 'frequency-asc' || value === 'frequency-desc';
 }
 
+/** Available display orders for the flat Types catalog in the navigation pane. */
+export type TypeNavigationSortOrder = 'catalog' | 'alpha-asc' | 'alpha-desc' | 'count-desc' | 'count-asc' | 'manual';
+
+export function isTypeNavigationSortOrder(value: unknown): value is TypeNavigationSortOrder {
+    return (
+        value === 'catalog' ||
+        value === 'alpha-asc' ||
+        value === 'alpha-desc' ||
+        value === 'count-desc' ||
+        value === 'count-asc' ||
+        value === 'manual'
+    );
+}
+
 /** Scope of items that button actions affect */
 export type ItemScope = 'all' | 'folders-only' | 'tags-only' | 'properties-only';
 
@@ -598,6 +612,7 @@ export interface NotebookNavigatorSettings {
 
     // TPS integration
     tpsTypesNavigationEnabled: boolean;
+    typeNavigationSortOrder: TypeNavigationSortOrder;
     tpsGcmTaskRowsEnabled: boolean;
     tpsGcmTaskRowsIncludeCompleted: boolean;
     tpsGcmTaskRowsPerNote: number;
@@ -895,4 +910,5 @@ export interface NotebookNavigatorSettings {
     rootFolderOrder: string[];
     rootTagOrder: string[];
     rootPropertyOrder: string[];
+    rootTypeOrder: string[];
 }

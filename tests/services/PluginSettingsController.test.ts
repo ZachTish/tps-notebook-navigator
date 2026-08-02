@@ -47,8 +47,18 @@ vi.mock('../../src/utils/localStorage', () => {
     };
 });
 
+vi.mock('../../src/i18n', async () => {
+    const { STRINGS_EN } = await import('../../src/i18n/locales/en');
+    return {
+        getDefaultDateFormat: () => 'YYYY-MM-DD',
+        getDefaultTimeFormat: () => 'HH:mm',
+        strings: STRINGS_EN
+    };
+});
+
 import { PluginSettingsController } from '../../src/services/settings/PluginSettingsController';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
+import { isTypeNavigationSortOrder } from '../../src/settings/types';
 import { STORAGE_KEYS } from '../../src/types';
 import { buildPropertySeparatorKey, buildTagSeparatorKey } from '../../src/utils/navigationSeparators';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
@@ -57,6 +67,14 @@ import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 beforeEach(() => {
     mockLocalStorageStore.clear();
     vi.clearAllMocks();
+});
+
+describe('Type navigation sort settings', () => {
+    it('accepts only the six persisted sort modes', () => {
+        expect(['catalog', 'alpha-asc', 'alpha-desc', 'count-desc', 'count-asc', 'manual'].every(isTypeNavigationSortOrder)).toBe(true);
+        expect(isTypeNavigationSortOrder('frequency-desc')).toBe(false);
+        expect(isTypeNavigationSortOrder(null)).toBe(false);
+    });
 });
 
 describe('PluginSettingsController.normalizeTagSettings', () => {
@@ -587,10 +605,13 @@ describe('PluginSettingsController.applySettingsRecord', () => {
 
     it('persists valid TPS integration settings and rejects malformed values', () => {
         const { controller } = createController();
+        const providerTypeId = 'provider:example%2Frelations:projects';
 
         controller.applySettingsRecord(
             {
                 tpsTypesNavigationEnabled: false,
+                typeNavigationSortOrder: 'count-desc',
+                rootTypeOrder: [TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId, TPS_NAVIGATOR_TYPE_IDS.TABLES, 'kind:project', 'invalid'],
                 tpsGcmTaskRowsEnabled: true,
                 tpsGcmTaskRowsIncludeCompleted: true,
                 tpsGcmTaskRowsPerNote: 12
@@ -599,11 +620,15 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         );
 
         expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
+        expect(controller.settings.typeNavigationSortOrder).toBe('count-desc');
+        expect(controller.settings.rootTypeOrder).toEqual([TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId]);
         expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(true);
         expect(controller.settings.tpsGcmTaskRowsIncludeCompleted).toBe(true);
         expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(12);
         expect(controller.getPersistableSettings()).toMatchObject({
             tpsTypesNavigationEnabled: false,
+            typeNavigationSortOrder: 'count-desc',
+            rootTypeOrder: [TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId],
             tpsGcmTaskRowsEnabled: true,
             tpsGcmTaskRowsIncludeCompleted: true,
             tpsGcmTaskRowsPerNote: 12
@@ -612,6 +637,8 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         controller.applySettingsRecord(
             {
                 tpsTypesNavigationEnabled: 'no',
+                typeNavigationSortOrder: 'frequency-desc',
+                rootTypeOrder: 'not-an-array',
                 tpsGcmTaskRowsEnabled: 'yes',
                 tpsGcmTaskRowsIncludeCompleted: 1,
                 tpsGcmTaskRowsPerNote: 500
@@ -620,6 +647,8 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         );
 
         expect(controller.settings.tpsTypesNavigationEnabled).toBe(DEFAULT_SETTINGS.tpsTypesNavigationEnabled);
+        expect(controller.settings.typeNavigationSortOrder).toBe(DEFAULT_SETTINGS.typeNavigationSortOrder);
+        expect(controller.settings.rootTypeOrder).toEqual(DEFAULT_SETTINGS.rootTypeOrder);
         expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled);
         expect(controller.settings.tpsGcmTaskRowsIncludeCompleted).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsIncludeCompleted);
         expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsPerNote);

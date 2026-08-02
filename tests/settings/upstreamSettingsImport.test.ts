@@ -68,6 +68,8 @@ describe('prepareUpstreamSettingsImport', () => {
         const current = structuredClone(DEFAULT_SETTINGS);
         current.recentNotesCount = 37;
         current.tpsTypesNavigationEnabled = false;
+        current.typeNavigationSortOrder = 'manual';
+        current.rootTypeOrder = ['structural:table', 'entity:note'];
         current.tpsGcmTaskRowsEnabled = true;
         current.tpsGcmTaskRowsIncludeCompleted = true;
         current.tpsGcmTaskRowsPerNote = 17;
@@ -79,6 +81,8 @@ describe('prepareUpstreamSettingsImport', () => {
                 folderSortOrder: 'alpha-desc',
                 toolbarVisibility: { list: { search: false } },
                 tpsTypesNavigationEnabled: true,
+                typeNavigationSortOrder: 'alpha-desc',
+                rootTypeOrder: ['entity:note'],
                 tpsGcmTaskRowsEnabled: false,
                 tpsGcmTaskRowsIncludeCompleted: false,
                 tpsGcmTaskRowsPerNote: 1,
@@ -96,6 +100,8 @@ describe('prepareUpstreamSettingsImport', () => {
         expect(result.settingsRecord.folderSortOrder).toBe('alpha-desc');
         expect(result.settingsRecord.recentNotesCount).toBe(37);
         expect(result.settingsRecord.tpsTypesNavigationEnabled).toBe(false);
+        expect(result.settingsRecord.typeNavigationSortOrder).toBe('manual');
+        expect(result.settingsRecord.rootTypeOrder).toEqual(['structural:table', 'entity:note']);
         expect(result.settingsRecord.tpsGcmTaskRowsEnabled).toBe(true);
         expect(result.settingsRecord.tpsGcmTaskRowsIncludeCompleted).toBe(true);
         expect(result.settingsRecord.tpsGcmTaskRowsPerNote).toBe(17);

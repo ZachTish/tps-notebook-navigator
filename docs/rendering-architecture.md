@@ -289,6 +289,10 @@ graph TD
 - Renders pane chrome outside the scroller (header, vault title, Android toolbar, pinned banner, pinned
   shortcuts/recent), keeps the optional unpinned `NavigationBanner` inside the scroller, and shows either the
   virtualized tree or `NavigationRootReorderPanel`.
+- Filters the canonical Types catalog through the active profile and hidden-item rules, then applies the persisted
+  navigation-only Type order before building both normal and reorder-mode rows. Default, alphabetical, and count modes are
+  live derived presentations; Manual follows retained stable Type ids. This presentation layer never mutates or reorders the
+  public API catalog snapshot.
 - Handles folder/tag/property drag targets and uses dnd-kit sortable contexts for shortcut reordering.
 - Integrates context menus (`buildFolderMenu`, `buildTagMenu`, `buildPropertyMenu`, `buildFileMenu`) and frontmatter exclusion logic for
   hidden items.
@@ -317,8 +321,14 @@ graph TD
 
 **Location**: `src/components/NavigationRootReorderPanel.tsx`
 
-- Displays reorderable sections, folder lists, tag lists, and property lists when root reorder mode is active.
-- Provides drop indicators, drag handle labels, and reset buttons that reset root ordering to alphabetical defaults.
+- Displays reorderable sections plus folder, tag, property, and Type lists when root reorder mode is active.
+- Edits Types in place with a mode selector for canonical default, ascending or descending name, most or fewest visible
+  items, and manual order. Visibility-filtered counts remain visible while editing; provider collections without a published
+  count sort after counted collections.
+- Provides per-Type up/down buttons and dnd-kit reordering. Either action persists the visible sequence, preserves ids for
+  temporarily unavailable providers, and switches the Type display to Manual. On mobile, the selector stacks, buttons use
+  larger touch targets, and dragging binds only to the handle.
+- Provides drop indicators, drag handle labels, and reset buttons for the other root collections.
 - Updates scroll container data attributes to reflect drop targets for visual feedback.
 
 ### ListPaneHeader
@@ -425,8 +435,9 @@ graph TD
 
 **Location**: `src/components/RootFolderReorderItem.tsx`
 
-- Specialized `NavigationListRow` wrapper for root reorder mode with drag handles and reset actions.
-- Supports folders, tags, properties, and section headers, including missing-item styling, inside dnd-kit sortable lists.
+- Specialized `NavigationListRow` wrapper for root reorder mode with drag handles, optional counts, and trailing actions.
+- Supports folders, tags, properties, Types, and section headers, including missing-item styling, inside dnd-kit sortable
+  lists.
 
 ## Virtualization Strategy
 
@@ -445,7 +456,8 @@ graph TD
 - Because `virtualItem.start` includes `scrollMargin`, navigation row wrappers subtract it when positioning inside the
   virtual container (`virtualItem.start - scrollMargin`).
 - Root reorder mode swaps the virtual list for `NavigationRootReorderPanel` (non-virtualized), which renders
-  `RootFolderReorderItem` rows.
+  `RootFolderReorderItem` rows. Its Type rows preserve the same user-selected display order and visibility-filtered counts as
+  normal navigation while exposing the in-place ordering controls.
 - `pathToIndex` is passed to `useNavigationPaneScroll` so scroll targets resolve to indices at execution time.
 
 ```typescript

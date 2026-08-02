@@ -49,6 +49,8 @@ const UNSAFE_RECORD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const TPS_ONLY_SETTING_KEYS = new Set([
     'lastShownVersion',
     'tpsTypesNavigationEnabled',
+    'typeNavigationSortOrder',
+    'rootTypeOrder',
     'tpsGcmTaskRowsEnabled',
     'tpsGcmTaskRowsIncludeCompleted',
     'tpsGcmTaskRowsPerNote'

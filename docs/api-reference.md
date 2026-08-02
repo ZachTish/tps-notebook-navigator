@@ -480,6 +480,12 @@ Kind descriptors. Reading the catalog does not expose GCM records, task payloads
 pre-visibility counts. `registerProvider(...)` lets an integration establish a new top-level Type scope and reuse the
 Navigator's guarded row renderer.
 
+The API catalog remains canonical regardless of the user's navigation presentation. **Reorder navigation** can display
+Types in Default, A–Z, Z–A, Most items, Fewest items, or Manual order, but `getSnapshot()`, `subscribe()`, and `whenReady()`
+continue to return the provider-neutral catalog sequence. Quantity sorting uses internal visibility-filtered counts that the
+public descriptors intentionally omit, and `navigation.navigateToType(typeId)` addresses the stable id rather than a display
+position.
+
 | Member | Description | Returns |
 | ------ | ----------- | ------- |
 | `notesId` | Stable Notes collection id | `'entity:note'` |
@@ -505,10 +511,12 @@ Navigator's guarded row renderer.
 | `subscribe(listener)` | Receive the current state immediately and subsequent changes | `() => void` |
 | `whenReady()` | Wait for any non-loading success or guarded failure state | `Promise<NavigatorTypesSnapshot>` |
 
-The fixed display order is Notes, Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, Bases, Canvas,
-Drawings, PDFs, Images, Audio, and Video. Notes, Bases, Canvas, Drawings, PDFs, Images, Audio, and Video are file-backed;
-Checkboxes, Bullets, and Headings are GCM exact-line collections; Code blocks, Callouts, Blockquotes, and Tables are
-Navigator-owned cached-range collections built from Obsidian's root-level Markdown section metadata.
+The canonical built-in catalog order is Notes, Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables,
+Bases, Canvas, Drawings, PDFs, Images, Audio, and Video. Registered provider descriptors follow the built-ins in registry
+order. A customized navigation order is a display-only projection and does not rewrite this sequence. Notes, Bases, Canvas,
+Drawings, PDFs, Images, Audio, and Video are file-backed; Checkboxes, Bullets, and Headings are GCM exact-line collections;
+Code blocks, Callouts, Blockquotes, and Tables are Navigator-owned cached-range collections built from Obsidian's root-level
+Markdown section metadata.
 
 Availability is `disabled`, `loading`, `ready`, `unavailable`, or `error`. File-backed and cached-range built-ins keep the
 aggregate catalog ready without TPS Global Context Menu; GCM availability governs only Checkboxes, Bullets, and Headings.

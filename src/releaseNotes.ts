@@ -106,6 +106,26 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.2.0',
+        date: '2026-08-02',
+        showOnUpdate: true,
+        info: 'Types can now follow an automatic order or a user-defined sequence in the navigation pane.',
+        new: [
+            'Reorder navigation adds Default, A to Z, Z to A, Most items first, Fewest items first, and Manual order modes for Types.',
+            'Each Type row has accessible up and down controls, retains desktop drag ordering, and uses a handle-only drag target on mobile.'
+        ],
+        improved: [
+            'Automatic quantity ordering follows the same visibility-filtered counts shown by the active profile, while collections without published counts remain after counted Types.',
+            'Narrow desktop panes prioritize readable Type names; mobile keeps a stacked selector and touch-sized ordering controls.'
+        ],
+        changed: [
+            'Moving or dragging a Type switches to Manual order. The selected mode and manual ids persist in TPS settings without changing the public API catalog order.'
+        ],
+        fixed: [
+            'Temporarily unavailable provider Types retain their manual positions, new Types append predictably, and upstream settings imports cannot overwrite the TPS-only order.'
+        ]
+    },
+    {
         version: '5.1.0',
         date: '2026-08-02',
         showOnUpdate: true,

@@ -148,6 +148,7 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
 
     // TPS integration
     tpsTypesNavigationEnabled: true,
+    typeNavigationSortOrder: 'catalog',
     tpsGcmTaskRowsEnabled: false,
     tpsGcmTaskRowsIncludeCompleted: false,
     tpsGcmTaskRowsPerNote: TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT,
@@ -468,5 +469,6 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     lastShownVersion: '',
     rootFolderOrder: [],
     rootTagOrder: [],
-    rootPropertyOrder: []
+    rootPropertyOrder: [],
+    rootTypeOrder: []
 };

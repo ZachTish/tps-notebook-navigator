@@ -61,6 +61,22 @@ describe('createModifiedSettingsTransfer', () => {
             folderSortOrder: 'alpha-desc'
         });
     });
+
+    it('round-trips the Types navigation sort mode and retained manual order', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.typeNavigationSortOrder = 'manual';
+        settings.rootTypeOrder = ['structural:table', 'provider:example%2Frelations:projects'];
+
+        const transferData = createModifiedSettingsTransfer(settings, '5.2.0');
+        expect(transferData.settings).toEqual({
+            typeNavigationSortOrder: 'manual',
+            rootTypeOrder: ['structural:table', 'provider:example%2Frelations:projects']
+        });
+
+        const restored = applyModifiedSettingsTransfer(structuredClone(DEFAULT_SETTINGS), transferData);
+        expect(restored.typeNavigationSortOrder).toBe('manual');
+        expect(restored.rootTypeOrder).toEqual(['structural:table', 'provider:example%2Frelations:projects']);
+    });
 });
 
 describe('applyModifiedSettingsTransfer', () => {

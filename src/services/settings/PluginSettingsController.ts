@@ -69,6 +69,7 @@ import {
     isSettingSyncMode,
     isSortOption,
     isTagSortOrder,
+    isTypeNavigationSortOrder,
     normalizeAppearanceGroupBy,
     normalizeListSortOverride,
     resolveDeleteAttachmentsSetting,
@@ -112,7 +113,7 @@ import {
     type UXPreferences
 } from '../../types';
 import type { FolderAppearance } from '../../hooks/useListPaneAppearance';
-import { isTpsNavigatorFileTypeId } from '../../types/navigatorTypes';
+import { isTpsNavigatorFileTypeId, isTpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { createSyncModeRegistry, type SyncModeRegistry } from './syncModeRegistry';
 import { getDefaultUXPreferences, isUXPreferencesRecord } from './uxPreferences';
 
@@ -552,6 +553,9 @@ export class PluginSettingsController {
             this.currentSettings.tpsTypesNavigationEnabled,
             DEFAULT_SETTINGS.tpsTypesNavigationEnabled
         );
+        if (!isTypeNavigationSortOrder(this.currentSettings.typeNavigationSortOrder)) {
+            this.currentSettings.typeNavigationSortOrder = DEFAULT_SETTINGS.typeNavigationSortOrder;
+        }
         this.currentSettings.tpsGcmTaskRowsEnabled = this.sanitizeBooleanSetting(
             this.currentSettings.tpsGcmTaskRowsEnabled,
             DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled
@@ -635,6 +639,19 @@ export class PluginSettingsController {
 
         if (!Array.isArray(this.currentSettings.rootPropertyOrder)) {
             this.currentSettings.rootPropertyOrder = [];
+        }
+
+        if (!Array.isArray(this.currentSettings.rootTypeOrder)) {
+            this.currentSettings.rootTypeOrder = [];
+        } else {
+            const seenTypeIds = new Set<string>();
+            this.currentSettings.rootTypeOrder = this.currentSettings.rootTypeOrder.filter(typeId => {
+                if (!isTpsNavigatorTypeId(typeId) || seenTypeIds.has(typeId)) {
+                    return false;
+                }
+                seenTypeIds.add(typeId);
+                return true;
+            });
         }
 
         const migratedReleaseState = migrateReleaseCheckState({

@@ -2328,12 +2328,36 @@ button.tps-nn-icon-button.tps-nn-navitem-hover-action-button {
     flex-direction: column;
     margin: 0;
     padding: 0;
+    container-type: inline-size;
 }
 
 .tps-nn-root-reorder-section {
     display: flex;
     flex-direction: column;
     position: relative;
+}
+
+.tps-nn-root-reorder-type-order {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0.35rem 0.75rem 0.45rem 2rem;
+    color: var(--tps-nn-theme-foreground-muted);
+    font-size: var(--tps-nn-setting-nav-font-size);
+}
+
+.tps-nn-root-reorder-type-order-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tps-nn-root-reorder-type-order-select {
+    width: 100%;
+    min-width: 0;
+    height: auto;
 }
 
 .tps-nn-root-reorder-item {
@@ -2398,6 +2422,12 @@ button.tps-nn-icon-button.tps-nn-navitem-hover-action-button {
     gap: 0.25rem;
 }
 
+.tps-nn-root-reorder-type-controls {
+    display: flex;
+    gap: 0.125rem;
+    flex-shrink: 0;
+}
+
 .tps-nn-root-reorder-section-button {
     width: 28px;
     height: 28px;
@@ -2420,6 +2450,59 @@ button.tps-nn-icon-button.tps-nn-navitem-hover-action-button {
     color: var(--tps-nn-theme-header-button-disabled-icon-color);
     opacity: 0.4;
     cursor: not-allowed;
+}
+
+.tps-nn-root-reorder-type-button {
+    width: 26px;
+    height: 28px;
+    padding: 0;
+    border-radius: 6px;
+    color: var(--tps-nn-theme-header-button-icon-color);
+    flex-shrink: 0;
+}
+
+.tps-nn-root-reorder-type-button svg {
+    width: 14px;
+    height: 14px;
+}
+
+.tps-nn-desktop .tps-nn-root-reorder-type-button:hover {
+    background-color: var(--tps-nn-theme-header-button-hover-bg);
+}
+
+.tps-nn-root-reorder-type-button:disabled {
+    color: var(--tps-nn-theme-header-button-disabled-icon-color);
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-root-reorder-type-order {
+    margin-inline: 2.25rem 0.75rem;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-root-reorder-type-button {
+    width: 40px;
+    height: 40px;
+}
+
+@container (max-width: 220px) {
+    .tps-nn-desktop .tps-nn-root-reorder-item.tps-nn-type .tps-nn-navitem-count {
+        display: none;
+    }
+
+    .tps-nn-desktop .tps-nn-root-reorder-item.tps-nn-type .tps-nn-root-reorder-type-controls {
+        width: 0;
+        opacity: 0;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .tps-nn-desktop .tps-nn-root-reorder-item.tps-nn-type:hover .tps-nn-root-reorder-type-controls,
+    .tps-nn-desktop .tps-nn-root-reorder-item.tps-nn-type:focus-within .tps-nn-root-reorder-type-controls {
+        width: auto;
+        opacity: 1;
+        pointer-events: auto;
+    }
 }
 
 .tps-nn-shortcut-disabled {

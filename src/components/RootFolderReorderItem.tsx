@@ -37,6 +37,8 @@ interface RootFolderReorderItemProps {
     color?: string;
     itemType?: 'folder' | 'tag' | 'property' | 'type' | 'section'; // Type of navigation item or section header
     className?: string; // Additional CSS classes to apply to the item
+    showCount?: boolean;
+    count?: number | string;
     dragHandleConfig?: DragHandleConfig;
     trailingAccessory?: ReactNode;
     dragRef?: (node: HTMLDivElement | null) => void;
@@ -63,6 +65,8 @@ export function RootFolderReorderItem({
     color,
     itemType = 'folder',
     className,
+    showCount = false,
+    count,
     dragHandleConfig,
     trailingAccessory,
     dragRef,
@@ -147,7 +151,8 @@ export function RootFolderReorderItem({
             onClick={handleClick}
             dragHandlers={dragHandlers}
             isDragSource={isDragSource}
-            showCount={false}
+            showCount={showCount}
+            count={count}
             className={rowClassName}
             tabIndex={-1}
             dragHandleConfig={handleConfig}

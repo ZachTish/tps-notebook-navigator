@@ -552,12 +552,36 @@ button.nn-icon-button.nn-navitem-hover-action-button {
     flex-direction: column;
     margin: 0;
     padding: 0;
+    container-type: inline-size;
 }
 
 .nn-root-reorder-section {
     display: flex;
     flex-direction: column;
     position: relative;
+}
+
+.nn-root-reorder-type-order {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0.35rem 0.75rem 0.45rem 2rem;
+    color: var(--nn-theme-foreground-muted);
+    font-size: var(--nn-setting-nav-font-size);
+}
+
+.nn-root-reorder-type-order-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nn-root-reorder-type-order-select {
+    width: 100%;
+    min-width: 0;
+    height: auto;
 }
 
 .nn-root-reorder-item {
@@ -622,6 +646,12 @@ button.nn-icon-button.nn-navitem-hover-action-button {
     gap: 0.25rem;
 }
 
+.nn-root-reorder-type-controls {
+    display: flex;
+    gap: 0.125rem;
+    flex-shrink: 0;
+}
+
 .nn-root-reorder-section-button {
     width: 28px;
     height: 28px;
@@ -644,6 +674,59 @@ button.nn-icon-button.nn-navitem-hover-action-button {
     color: var(--nn-theme-header-button-disabled-icon-color);
     opacity: 0.4;
     cursor: not-allowed;
+}
+
+.nn-root-reorder-type-button {
+    width: 26px;
+    height: 28px;
+    padding: 0;
+    border-radius: 6px;
+    color: var(--nn-theme-header-button-icon-color);
+    flex-shrink: 0;
+}
+
+.nn-root-reorder-type-button svg {
+    width: 14px;
+    height: 14px;
+}
+
+.nn-desktop .nn-root-reorder-type-button:hover {
+    background-color: var(--nn-theme-header-button-hover-bg);
+}
+
+.nn-root-reorder-type-button:disabled {
+    color: var(--nn-theme-header-button-disabled-icon-color);
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.notebook-navigator-mobile .nn-root-reorder-type-order {
+    margin-inline: 2.25rem 0.75rem;
+}
+
+.notebook-navigator-mobile .nn-root-reorder-type-button {
+    width: 40px;
+    height: 40px;
+}
+
+@container (max-width: 220px) {
+    .nn-desktop .nn-root-reorder-item.nn-type .nn-navitem-count {
+        display: none;
+    }
+
+    .nn-desktop .nn-root-reorder-item.nn-type .nn-root-reorder-type-controls {
+        width: 0;
+        opacity: 0;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .nn-desktop .nn-root-reorder-item.nn-type:hover .nn-root-reorder-type-controls,
+    .nn-desktop .nn-root-reorder-item.nn-type:focus-within .nn-root-reorder-type-controls {
+        width: auto;
+        opacity: 1;
+        pointer-events: auto;
+    }
 }
 
 .nn-shortcut-disabled {

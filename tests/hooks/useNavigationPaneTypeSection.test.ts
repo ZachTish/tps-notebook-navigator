@@ -90,11 +90,17 @@ describe('buildNavigationTypeItems', () => {
         expect(expandTypeSelectionAncestors(providerExpansion, externalTypeId)).toBe(providerExpansion);
     });
 
-    it('builds a rootless reorder preview for the flat catalog', () => {
+    it('builds a rootless reorder list in caller-provided order with the same visible counts', () => {
         const items = buildNavigationTypeReorderItems(createSnapshot([structuralDescriptor, externalDescriptor]));
 
         expect(items.map(item => item.key)).toEqual([TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, externalTypeId]);
-        expect(items[0]).toMatchObject({ level: 1 });
+        expect(items[0]).toMatchObject({
+            level: 1,
+            showFileCount: true,
+            noteCount: { current: 12, descendants: 0, total: 12 }
+        });
+        expect(items[1]).toMatchObject({ level: 1, showFileCount: false });
+        expect(items[1]).not.toHaveProperty('noteCount');
     });
 
     it('renders external collections directly under Types without a misleading pre-query count', () => {

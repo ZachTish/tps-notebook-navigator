@@ -18,7 +18,7 @@
 
 import React, { useCallback, useMemo } from 'react';
 import { type App, type TFolder } from 'obsidian';
-import type { NotebookNavigatorSettings } from '../settings/types';
+import type { NotebookNavigatorSettings, TypeNavigationSortOrder } from '../settings/types';
 import type { PropertyTreeNode, TagTreeNode } from '../types/storage';
 import type { CombinedNavigationItem } from '../types/virtualization';
 import { NavigationPaneItemType, UNTAGGED_TAG_ID, STORAGE_KEYS, NavigationSectionId } from '../types';
@@ -37,6 +37,7 @@ import { NOTEBOOK_NAVIGATOR_ICON_ID } from '../constants/notebookNavigatorIcon';
 import { resolveUXIcon } from '../utils/uxIcons';
 import { resolveFolderDisplayName } from '../utils/folderDisplayName';
 import { buildPropertyKeyNodeId } from '../utils/propertyTree';
+import { mergeVisibleTypeNavigationOrder } from '../utils/typeNavigationOrder';
 
 export interface RootFolderDescriptor {
     key: string;
@@ -114,6 +115,7 @@ export interface NavigationRootReorderState {
     canReorderRootFolders: boolean;
     canReorderRootTags: boolean;
     canReorderRootProperties: boolean;
+    canReorderRootTypes: boolean;
     canReorderRootItems: boolean;
     showRootFolderSection: boolean;
     showRootTagSection: boolean;
@@ -129,6 +131,8 @@ export interface NavigationRootReorderState {
     reorderRootFolderOrder: (orderedKeys: string[]) => Promise<void>;
     reorderRootTagOrder: (orderedKeys: string[]) => Promise<void>;
     reorderRootPropertyOrder: (orderedKeys: string[]) => Promise<void>;
+    reorderRootTypeOrder: (orderedKeys: string[]) => Promise<void>;
+    setTypeNavigationSortOrder: (sortOrder: TypeNavigationSortOrder, visibleOrder: string[]) => Promise<void>;
 }
 
 export function useNavigationRootReorder(options: UseNavigationRootReorderOptions): NavigationRootReorderState {
@@ -428,7 +432,9 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
     const canReorderRootFolders = reorderableRootFolders.length > 1;
     const canReorderRootTags = reorderableRootTags.length > 1;
     const canReorderRootProperties = reorderableRootProperties.length > 1;
-    const canReorderRootItems = canReorderSections || canReorderRootFolders || canReorderRootTags || canReorderRootProperties;
+    const canReorderRootTypes = typeReorderSourceItems.length > 1;
+    const canReorderRootItems =
+        canReorderSections || canReorderRootFolders || canReorderRootTags || canReorderRootProperties || canReorderRootTypes;
     const showRootFolderSection = reorderableRootFolders.length > 0;
     const showRootTagSection = reorderableRootTags.length > 0;
     const showRootPropertySection = reorderableRootProperties.length > 0;
@@ -544,6 +550,28 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
             await handleRootPropertyOrderChange(orderedKeys);
         },
         [handleRootPropertyOrderChange]
+    );
+
+    const reorderRootTypeOrder = useCallback(
+        async (orderedKeys: string[]) => {
+            await updateSettings(current => {
+                current.rootTypeOrder = mergeVisibleTypeNavigationOrder(orderedKeys, current.rootTypeOrder);
+                current.typeNavigationSortOrder = 'manual';
+            });
+        },
+        [updateSettings]
+    );
+
+    const setTypeNavigationSortOrder = useCallback(
+        async (sortOrder: TypeNavigationSortOrder, visibleOrder: string[]) => {
+            await updateSettings(current => {
+                if (sortOrder === 'manual') {
+                    current.rootTypeOrder = mergeVisibleTypeNavigationOrder(visibleOrder, current.rootTypeOrder);
+                }
+                current.typeNavigationSortOrder = sortOrder;
+            });
+        },
+        [updateSettings]
     );
 
     const handleRemoveMissingRootFolder = useCallback(
@@ -796,7 +824,9 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
                         level: item.level,
                         dragHandlers: undefined,
                         isDragSource: false,
-                        itemType: 'type' as const
+                        itemType: 'type' as const,
+                        showCount: item.showFileCount === true,
+                        count: item.noteCount ? String(item.noteCount.total) : undefined
                     }
                 }
             ];
@@ -939,6 +969,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
         canReorderRootFolders,
         canReorderRootTags,
         canReorderRootProperties,
+        canReorderRootTypes,
         canReorderRootItems,
         showRootFolderSection,
         showRootTagSection,
@@ -953,6 +984,8 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
         reorderSectionOrder,
         reorderRootFolderOrder,
         reorderRootTagOrder,
-        reorderRootPropertyOrder
+        reorderRootPropertyOrder,
+        reorderRootTypeOrder,
+        setTypeNavigationSortOrder
     };
 }
