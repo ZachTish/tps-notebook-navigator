@@ -33,6 +33,8 @@ export interface MoveFilesSelectionContext {
     selectedFile: TFile | null;
     dispatch: SelectionDispatch;
     allFiles: TFile[];
+    /** Keep rename-remapped selection when a moved file remains in a virtual source. */
+    shouldKeepMovedFileSelected?: (file: TFile) => boolean;
 }
 
 export interface MoveFilesOptions {

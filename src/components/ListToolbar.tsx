@@ -26,6 +26,7 @@ import { runAsyncAction } from '../utils/async';
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
 import { ItemType } from '../types';
+import { supportsNativeListPresentationForSelection } from './listPane/typeModeRuntime';
 
 interface ListToolbarProps {
     isSearchActive?: boolean;
@@ -72,11 +73,15 @@ export function ListToolbar({
     } = useListActions({ onManualSortStart, getManualSortNewFileContext, trackRevealFileAvailability: showRevealButton });
 
     const isTypeSelection = selectionState.selectionType === ItemType.TYPE && Boolean(selectionState.selectedType);
+    const supportsNativeListPresentation = supportsNativeListPresentationForSelection(
+        selectionState.selectionType,
+        selectionState.selectedType
+    );
     const showSearchButton = listVisibility.search;
     const showDescendantsButton = !isTypeSelection && listVisibility.descendants;
-    const showGroupExpansionButton = !isTypeSelection && listVisibility.groupExpansion;
-    const showSortButton = !isTypeSelection && listVisibility.sort;
-    const showAppearanceButton = !isTypeSelection && listVisibility.appearance;
+    const showGroupExpansionButton = supportsNativeListPresentation && listVisibility.groupExpansion;
+    const showSortButton = supportsNativeListPresentation && listVisibility.sort;
+    const showAppearanceButton = supportsNativeListPresentation && listVisibility.appearance;
     const showNewNoteButton = !isTypeSelection && listVisibility.newNote;
     const showEffectiveRevealButton = !isTypeSelection && showRevealButton;
     const hasNavigationSelection = Boolean(

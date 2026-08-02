@@ -19,7 +19,11 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { ListPaneGroupHeader, type HeaderRenderModel } from '../../src/components/listPane/ListPaneVirtualContent';
+import {
+    ListPaneGroupHeader,
+    resolveVisibleStickyHeader,
+    type HeaderRenderModel
+} from '../../src/components/listPane/ListPaneVirtualContent';
 
 vi.mock('../../src/components/FileItem', () => ({ FileItem: () => null }));
 
@@ -80,5 +84,20 @@ describe('ListPaneGroupHeader item count', () => {
 
     it('omits the item count when the setting is disabled', () => {
         expect(renderHeader(null)).not.toContain('tps-nn-list-group-header-item-count');
+    });
+});
+
+describe('resolveVisibleStickyHeader', () => {
+    it('suppresses a stale sticky header while the list renders its empty state', () => {
+        const header = createHeader(0);
+
+        expect(resolveVisibleStickyHeader(header, false, true)).toBeNull();
+        expect(resolveVisibleStickyHeader(header, true, false)).toBeNull();
+    });
+
+    it('keeps the active sticky header for a populated selection', () => {
+        const header = createHeader(3);
+
+        expect(resolveVisibleStickyHeader(header, false, false)).toBe(header);
     });
 });

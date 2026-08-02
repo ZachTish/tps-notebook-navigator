@@ -18,7 +18,7 @@
 
 import { TFolder } from 'obsidian';
 import type { ExpansionAction } from '../context/ExpansionContext';
-import { NavigationPaneItemType, TYPES_KINDS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../types';
+import { NavigationPaneItemType, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../types';
 import type { CombinedNavigationItem } from '../types/virtualization';
 import { hasSubfolders } from './fileFilters';
 import { getPropertyKeyNodeIdFromNodeId } from './propertyTree';
@@ -222,8 +222,7 @@ export function getNavigationExpansionTargetForItem(
                 typeof item.tagCollectionId !== 'string' &&
                 typeof item.propertyCollectionId !== 'string' &&
                 typeof item.typeCollectionId !== 'string' &&
-                item.data.id !== TYPES_ROOT_VIRTUAL_FOLDER_ID &&
-                item.data.id !== TYPES_KINDS_VIRTUAL_FOLDER_ID
+                item.data.id !== TYPES_ROOT_VIRTUAL_FOLDER_ID
             ) {
                 return null;
             }

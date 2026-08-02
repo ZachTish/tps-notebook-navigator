@@ -5,13 +5,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NavigationPaneTreeRow } from '../../src/components/navigationPane/NavigationPaneTreeRow';
 import type { NavigationPaneRowContext } from '../../src/components/navigationPane/NavigationPaneItemRenderer.types';
-import { NavigationPaneItemType, NavigationSectionId, TYPES_KINDS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
-import {
-    createTpsNavigatorKindTypeId,
-    createTpsNavigatorProviderTypeId,
-    TPS_NAVIGATOR_TYPE_IDS,
-    type TpsNavigatorTypeId
-} from '../../src/types/navigatorTypes';
+import { NavigationPaneItemType, NavigationSectionId, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
+import { createTpsNavigatorProviderTypeId, TPS_NAVIGATOR_TYPE_IDS, type TpsNavigatorTypeId } from '../../src/types/navigatorTypes';
 import type { VirtualFolderItem } from '../../src/types/virtualization';
 
 interface CapturedVirtualFolderProps {
@@ -30,7 +25,6 @@ vi.mock('../../src/components/FolderItem', () => ({ FolderItem: () => null }));
 vi.mock('../../src/components/PropertyTreeItem', () => ({ PropertyTreeItem: () => null }));
 vi.mock('../../src/components/TagTreeItem', () => ({ TagTreeItem: () => null }));
 
-const kindTypeId = createTpsNavigatorKindTypeId('project')!;
 const externalTypeId = createTpsNavigatorProviderTypeId('example/entities', 'contexts')!;
 
 function createTypeItem(typeId: TpsNavigatorTypeId): VirtualFolderItem {
@@ -45,12 +39,12 @@ function createTypeItem(typeId: TpsNavigatorTypeId): VirtualFolderItem {
     };
 }
 
-function createSectionRoot(id: typeof TYPES_ROOT_VIRTUAL_FOLDER_ID | typeof TYPES_KINDS_VIRTUAL_FOLDER_ID): VirtualFolderItem {
+function createSectionRoot(): VirtualFolderItem {
     return {
         type: NavigationPaneItemType.VIRTUAL_FOLDER,
-        data: { id, name: id === TYPES_ROOT_VIRTUAL_FOLDER_ID ? 'Types' : 'Kinds', icon: 'lucide-boxes' },
-        level: id === TYPES_ROOT_VIRTUAL_FOLDER_ID ? 0 : 1,
-        key: id,
+        data: { id: TYPES_ROOT_VIRTUAL_FOLDER_ID, name: 'Types', icon: 'lucide-shapes' },
+        level: 0,
+        key: TYPES_ROOT_VIRTUAL_FOLDER_ID,
         isSelectable: true,
         hasChildren: true
     };
@@ -104,7 +98,6 @@ describe('NavigationPaneTreeRow Type context menus', () => {
 
     it.each([
         ['built-in', TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES],
-        ['Kind', kindTypeId],
         ['external', externalTypeId]
     ] as const)('routes a %s collection row to the Type-specific callback', (_label, typeId) => {
         const onTypeContextMenu = vi.fn();
@@ -120,19 +113,15 @@ describe('NavigationPaneTreeRow Type context menus', () => {
         expect(context.onSectionContextMenu).not.toHaveBeenCalled();
     });
 
-    it('keeps the Types root on its section menu and the nested Kinds root menu-free', () => {
+    it('keeps the Types root on its section menu', () => {
         const onTypeContextMenu = vi.fn();
         const context = createContext(onTypeContextMenu);
         const event = {} as React.MouseEvent<HTMLDivElement>;
 
-        const typesProps = renderVirtualFolder(createSectionRoot(TYPES_ROOT_VIRTUAL_FOLDER_ID), context);
+        const typesProps = renderVirtualFolder(createSectionRoot(), context);
         expect(typesProps.onContextMenu).toBeTypeOf('function');
         typesProps.onContextMenu?.(event);
         expect(context.onSectionContextMenu).toHaveBeenCalledWith(event, NavigationSectionId.TYPES, { allowSeparator: true });
-        expect(onTypeContextMenu).not.toHaveBeenCalled();
-
-        const kindsProps = renderVirtualFolder(createSectionRoot(TYPES_KINDS_VIRTUAL_FOLDER_ID), context);
-        expect(kindsProps.onContextMenu).toBeUndefined();
         expect(onTypeContextMenu).not.toHaveBeenCalled();
     });
 });

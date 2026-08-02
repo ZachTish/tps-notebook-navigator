@@ -15,9 +15,7 @@ import type {
     GcmTaskLinesApiLike,
     GcmTaskRecordLike
 } from '../../src/integrations/gcm/gcmTaskApi';
-import { createTpsNavigatorKindTypeId, TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
-
-const projectType = createTpsNavigatorKindTypeId('project')!;
+import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 function taskEntity(overrides: Partial<GcmEntityIndexRecordLike> = {}): GcmEntityIndexRecordLike {
     return {
@@ -58,17 +56,14 @@ function taskRecord(overrides: Partial<GcmTaskRecordLike> = {}): GcmTaskRecordLi
 
 function createEntityApi(record: GcmEntityIndexRecordLike) {
     let current: GcmEntityIndexRecordLike | null = record;
-    const unregister = vi.fn();
     const unsubscribe = vi.fn();
     const api: GcmEntityIndexApiLike = {
         version: GCM_ENTITY_INDEX_API_VERSION,
         queryAsync: vi.fn(async () => [record]),
         ensureReady: vi.fn(async () => undefined),
         getByLocator: vi.fn(() => current),
-        getDimensionValues: vi.fn(() => ['project']),
         getRevision: vi.fn(() => 4),
-        onChanged: vi.fn(() => unsubscribe),
-        registerDimension: vi.fn(() => unregister)
+        onChanged: vi.fn(() => unsubscribe)
     };
     return {
         api,
@@ -80,17 +75,14 @@ function createEntityApi(record: GcmEntityIndexRecordLike) {
 
 function createEntityApiForRecords(records: readonly GcmEntityIndexRecordLike[]) {
     const recordsByLocator = new Map(records.map(record => [record.locatorKey, record]));
-    const unregister = vi.fn();
     const unsubscribe = vi.fn();
     const api: GcmEntityIndexApiLike = {
         version: GCM_ENTITY_INDEX_API_VERSION,
         queryAsync: vi.fn(async () => records),
         ensureReady: vi.fn(async () => undefined),
         getByLocator: vi.fn((locator: string) => recordsByLocator.get(locator) ?? null),
-        getDimensionValues: vi.fn(() => ['project']),
         getRevision: vi.fn(() => 4),
-        onChanged: vi.fn(() => unsubscribe),
-        registerDimension: vi.fn(() => unregister)
+        onChanged: vi.fn(() => unsubscribe)
     };
     return { api };
 }
@@ -161,7 +153,7 @@ function createAppWithFiles(paths: readonly string[]): App {
 }
 
 describe('GCM entity Type task integration', () => {
-    it('hydrates exact live task state into structural and dynamic Kind rows', async () => {
+    it('hydrates exact live task state into the Checkboxes collection', async () => {
         const entity = taskEntity();
         const entityApi = createEntityApi(entity);
         const tasks = createTaskApi([taskRecord()]);
@@ -171,7 +163,6 @@ describe('GCM entity Type task integration', () => {
 
         const snapshot = await adapter.loadSnapshot();
         const structural = snapshot.recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES)?.[0];
-        const kind = snapshot.recordsByType.get(projectType)?.[0];
 
         expect(tasks.list).toHaveBeenCalledWith({
             paths: ['Tasks/Today.md'],
@@ -185,7 +176,6 @@ describe('GCM entity Type task integration', () => {
             canMutateCheckbox: true,
             hasContextMenu: true
         });
-        expect(kind?.task).toEqual(structural?.task);
         expect(structural?.checked).toBe(false);
     });
 
@@ -372,7 +362,7 @@ describe('GCM entity Type task integration', () => {
         const tasks = createTaskApi([taskRecord()]);
         const adapter = new GcmEntityTypeIndexAdapter(createAppWithFile());
         adapter.acceptApiPayload(payload(entityApi.api, tasks.api, createTaskLinesApi().api));
-        const record = (await adapter.loadSnapshot()).recordsByType.get(projectType)?.[0];
+        const record = (await adapter.loadSnapshot()).recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES)?.[0];
         expect(record).toBeDefined();
 
         entityApi.setCurrent(taskEntity({ lineKind: 'bullet' }));
@@ -391,7 +381,7 @@ describe('GCM entity Type task integration', () => {
         const taskLines = createTaskLinesApi();
         const adapter = new GcmEntityTypeIndexAdapter(createAppWithFile());
         adapter.acceptApiPayload(payload(entityApi.api, tasks.api, taskLines.api));
-        const record = (await adapter.loadSnapshot()).recordsByType.get(projectType)?.[0];
+        const record = (await adapter.loadSnapshot()).recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES)?.[0];
         expect(record).toBeDefined();
         const menu = { addItem: vi.fn(), addSeparator: vi.fn() };
 

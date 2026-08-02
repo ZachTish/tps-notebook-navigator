@@ -96,6 +96,34 @@ describe('public list state', () => {
         expect(snapshot.rows[0]).toMatchObject({ file: null, typeId: 'provider:demo/all' });
     });
 
+    it('publishes native presentation for file-backed Type snapshots', () => {
+        const file = createTestTFile('Notes/Project.md');
+        const presentation = {
+            sort: { option: 'property-desc' as const, propertyKey: 'priority', source: 'scope' as const },
+            grouping: { configured: 'property:status' as const, effective: 'property:status' as const, source: 'scope' as const },
+            displayMode: { value: 'compact' as const, source: 'scope' as const }
+        };
+        const snapshot = buildNavigatorListSnapshot({
+            navItem: { type: 'type', folder: null, tag: null, property: null, navigatorType: 'entity:note' },
+            search: {
+                active: false,
+                query: '',
+                appliedQuery: '',
+                requestedProvider: 'internal',
+                effectiveProvider: 'internal'
+            },
+            presentation,
+            listItems: [{ type: ListPaneItemType.FILE, data: file, key: file.path }],
+            selectedType: 'entity:note',
+            resolveFile: path => (path === file.path ? file : null)
+        });
+
+        expect(snapshot.presentation).toEqual(presentation);
+        expect(snapshot.rows).toHaveLength(1);
+        expect(snapshot.rows[0]).toMatchObject({ type: 'file', path: file.path });
+        expect(Object.isFrozen(snapshot.presentation)).toBe(true);
+    });
+
     it('guards contradictory, unknown, and malformed updates', () => {
         expect(validateListSearchUpdate(null)).toEqual({ ok: true, value: null });
         expect(validateListSearchUpdate({ active: false, focus: true })).toEqual({ ok: false });

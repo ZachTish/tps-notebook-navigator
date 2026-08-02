@@ -8,15 +8,9 @@
 import type { ExpansionAction } from '../context/ExpansionContext';
 import type { SelectionAction, SelectionRevealSource } from '../context/SelectionContext';
 import type { ContentPane } from '../context/UIStateContext';
-import { ItemType, TYPES_KINDS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../types';
-import {
-    createTpsNavigatorKindTypeId,
-    getTpsNavigatorKindValue,
-    isTpsNavigatorTypeAuthoritativelyMissing,
-    isTpsNavigatorTypeId,
-    type TpsNavigatorTypeId,
-    type TpsNavigatorTypesSnapshot
-} from '../types/navigatorTypes';
+import { ItemType, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../types';
+import { isTpsNavigatorTypeId, type TpsNavigatorTypeId, type TpsNavigatorTypesSnapshot } from '../types/navigatorTypes';
+import { isTypeSelectionAuthoritativelyUnavailable } from './navigationTypeHistory';
 
 type Dispatch<T> = (action: T) => void;
 
@@ -39,18 +33,11 @@ export interface TypeNavigationEnvironment {
 }
 
 function canonicalizeTypeId(value: string): TpsNavigatorTypeId | null {
-    if (!isTpsNavigatorTypeId(value)) {
-        return null;
-    }
-
-    const kind = getTpsNavigatorKindValue(value);
-    return kind ? createTpsNavigatorKindTypeId(kind) : value;
+    return isTpsNavigatorTypeId(value) ? value : null;
 }
 
-function expandTypeAncestors(env: TypeNavigationEnvironment, typeId: TpsNavigatorTypeId): void {
-    const descriptor = env.snapshot.descriptors.find(candidate => candidate.id === typeId);
-    const isKind = descriptor ? descriptor.category === 'kind' : getTpsNavigatorKindValue(typeId) !== null;
-    const ancestorIds = isKind ? [TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID] : [TYPES_ROOT_VIRTUAL_FOLDER_ID];
+function expandTypeAncestors(env: TypeNavigationEnvironment): void {
+    const ancestorIds = [TYPES_ROOT_VIRTUAL_FOLDER_ID];
     if (ancestorIds.every(id => env.expandedVirtualFolders.has(id))) {
         return;
     }
@@ -61,7 +48,7 @@ function expandTypeAncestors(env: TypeNavigationEnvironment, typeId: TpsNavigato
 }
 
 /**
- * Selects a built-in, Kind, or registered-provider Type collection and reveals it in navigation.
+ * Selects a built-in or registered-provider Type collection and reveals it in navigation.
  *
  * A ready snapshot is authoritative, so a missing descriptor is rejected.
  * During loading or an integration outage, syntactically valid IDs remain
@@ -77,11 +64,11 @@ export function navigateToType(env: TypeNavigationEnvironment, typeId: string, o
         return null;
     }
 
-    if (isTpsNavigatorTypeAuthoritativelyMissing(env.snapshot, canonicalTypeId)) {
+    if (isTypeSelectionAuthoritativelyUnavailable(env.snapshot, canonicalTypeId)) {
         return null;
     }
 
-    expandTypeAncestors(env, canonicalTypeId);
+    expandTypeAncestors(env);
     env.selectionDispatch({
         type: 'SET_SELECTED_TYPE',
         typeId: canonicalTypeId,

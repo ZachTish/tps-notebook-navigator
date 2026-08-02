@@ -25,15 +25,8 @@ import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferenceActions, useUXPreferences } from '../context/UXPreferencesContext';
 import { useFileCache } from '../context/StorageContext';
 import type { ItemScope } from '../settings/types';
-import {
-    PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
-    TAGGED_TAG_ID,
-    TAGS_ROOT_VIRTUAL_FOLDER_ID,
-    TYPES_KINDS_VIRTUAL_FOLDER_ID,
-    TYPES_ROOT_VIRTUAL_FOLDER_ID
-} from '../types';
+import { PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, TAGS_ROOT_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../types';
 import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
-import { getTpsNavigatorKindValue } from '../types/navigatorTypes';
 import type { PropertyTreeNode } from '../types/storage';
 import { getPropertyKeyNodeIdFromNodeId } from '../utils/propertyTree';
 import { collectAllTagPaths } from '../utils/tagTree';
@@ -122,7 +115,6 @@ function setVirtualRootExpansion(
         keepTagsRoot?: boolean;
         keepPropertiesRoot?: boolean;
         keepTypesRoot?: boolean;
-        keepTypeKinds?: boolean;
     }
 ): Set<string> {
     const nextExpandedVirtualFolders = new Set(currentExpandedVirtualFolders);
@@ -151,14 +143,6 @@ function setVirtualRootExpansion(
         }
     }
 
-    if (options.keepTypeKinds !== undefined) {
-        if (options.keepTypeKinds) {
-            nextExpandedVirtualFolders.add(TYPES_KINDS_VIRTUAL_FOLDER_ID);
-        } else {
-            nextExpandedVirtualFolders.delete(TYPES_KINDS_VIRTUAL_FOLDER_ID);
-        }
-    }
-
     return nextExpandedVirtualFolders;
 }
 
@@ -171,7 +155,6 @@ export function buildCollapsedExpansionState(params: {
     revealTagsRoot?: boolean;
     revealPropertiesRoot?: boolean;
     revealTypesRoot?: boolean;
-    revealTypeKinds?: boolean;
     preserveRootFolder?: boolean;
     rootFolderExpanded?: boolean;
 }): CollapsedExpansionState {
@@ -208,8 +191,7 @@ export function buildCollapsedExpansionState(params: {
     const virtualFolders = setVirtualRootExpansion(params.currentExpandedVirtualFolders, {
         keepTagsRoot: scope.affectTags ? Boolean(params.revealTagsRoot) : undefined,
         keepPropertiesRoot: scope.affectProperties ? Boolean(params.revealPropertiesRoot) : undefined,
-        keepTypesRoot: scope.affectTypes ? Boolean(params.revealTypesRoot) : undefined,
-        keepTypeKinds: scope.affectTypes ? Boolean(params.revealTypeKinds) : undefined
+        keepTypesRoot: scope.affectTypes ? Boolean(params.revealTypesRoot) : undefined
     });
 
     return {
@@ -237,7 +219,6 @@ function buildCollapsedExpansionStateForSelection(
             ? shouldRevealPropertiesRoot(params.selectedPropertyNodeId ?? null, params.showAllPropertiesFolder)
             : undefined,
         revealTypesRoot: includeSelection ? Boolean(params.selectedType) : undefined,
-        revealTypeKinds: includeSelection ? getTpsNavigatorKindValue(params.selectedType ?? '') !== null : undefined,
         preserveRootFolder: params.preserveRootFolder,
         rootFolderExpanded: params.rootFolderExpanded
     });
@@ -329,10 +310,7 @@ export function useNavigationActions() {
             scope.affectProperties &&
             (expansionState.expandedProperties.size > 0 ||
                 (settings.showAllPropertiesFolder && expansionState.expandedVirtualFolders.has(PROPERTIES_ROOT_VIRTUAL_FOLDER_ID)));
-        const hasTypesExpanded =
-            shouldManageTypes &&
-            (expansionState.expandedVirtualFolders.has(TYPES_ROOT_VIRTUAL_FOLDER_ID) ||
-                expansionState.expandedVirtualFolders.has(TYPES_KINDS_VIRTUAL_FOLDER_ID));
+        const hasTypesExpanded = shouldManageTypes && expansionState.expandedVirtualFolders.has(TYPES_ROOT_VIRTUAL_FOLDER_ID);
         const hasItemsExpanded = hasFoldersExpanded || hasTagsExpanded || hasPropertiesExpanded || hasTypesExpanded;
 
         if (settings.smartCollapse && hasItemsExpanded) {
@@ -364,10 +342,8 @@ export function useNavigationActions() {
                     expectedCollapsedState.virtualFolders.has(PROPERTIES_ROOT_VIRTUAL_FOLDER_ID) ===
                         expansionState.expandedVirtualFolders.has(PROPERTIES_ROOT_VIRTUAL_FOLDER_ID)) &&
                 (!shouldManageTypes ||
-                    (expectedCollapsedState.virtualFolders.has(TYPES_ROOT_VIRTUAL_FOLDER_ID) ===
-                        expansionState.expandedVirtualFolders.has(TYPES_ROOT_VIRTUAL_FOLDER_ID) &&
-                        expectedCollapsedState.virtualFolders.has(TYPES_KINDS_VIRTUAL_FOLDER_ID) ===
-                            expansionState.expandedVirtualFolders.has(TYPES_KINDS_VIRTUAL_FOLDER_ID)));
+                    expectedCollapsedState.virtualFolders.has(TYPES_ROOT_VIRTUAL_FOLDER_ID) ===
+                        expansionState.expandedVirtualFolders.has(TYPES_ROOT_VIRTUAL_FOLDER_ID));
 
             if (foldersMatch && tagsMatch && propertiesMatch && virtualFoldersMatch) {
                 return false;
@@ -500,8 +476,7 @@ export function useNavigationActions() {
                     folders: setVirtualRootExpansion(expansionState.expandedVirtualFolders, {
                         keepTagsRoot: scope.affectTags ? settings.showAllTagsFolder : undefined,
                         keepPropertiesRoot: scope.affectProperties ? settings.showAllPropertiesFolder : undefined,
-                        keepTypesRoot: shouldManageTypes ? true : undefined,
-                        keepTypeKinds: shouldManageTypes ? true : undefined
+                        keepTypesRoot: shouldManageTypes ? true : undefined
                     })
                 });
             }

@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID } from '../../src/constants/tpsIdentity';
 import {
     GCM_ENTITY_INDEX_API_VERSION,
-    GCM_ENTITY_INDEX_KIND_DIMENSION,
     GcmEntityTypeIndexAdapter,
     isGcmEntityIndexApiLike,
     resolveGcmEntityIndexApi,
@@ -11,12 +10,7 @@ import {
     type GcmEntityIndexQueryLike,
     type GcmEntityIndexRecordLike
 } from '../../src/integrations/gcm/GcmEntityTypeIndex';
-import {
-    TPS_NAVIGATOR_TYPE_IDS,
-    createTpsNavigatorKindTypeId,
-    type TpsNavigatorTypeId,
-    type TpsNavigatorTypeRecord
-} from '../../src/types/navigatorTypes';
+import { TPS_NAVIGATOR_TYPE_IDS, type TpsNavigatorTypeId, type TpsNavigatorTypeRecord } from '../../src/types/navigatorTypes';
 
 interface ApiHarness {
     api: GcmEntityIndexApiLike;
@@ -47,7 +41,7 @@ function createApiHarness(records: readonly unknown[] = [], kindValues: readonly
         revisionListener = listener;
         return unsubscribeRevision;
     });
-    const api: GcmEntityIndexApiLike = {
+    const api = {
         version: GCM_ENTITY_INDEX_API_VERSION,
         queryAsync,
         ensureReady,
@@ -56,7 +50,7 @@ function createApiHarness(records: readonly unknown[] = [], kindValues: readonly
         getRevision,
         onChanged,
         registerDimension
-    };
+    } as GcmEntityIndexApiLike;
     return {
         api,
         queryAsync,
@@ -162,15 +156,14 @@ describe('GcmEntityTypeIndexAdapter', () => {
         expect(resolveGcmEntityIndexApi({ source: 'foreign-plugin', available: true, api: { entityIndex: harness.api } })).toBeNull();
     });
 
-    it('owns one kind-dimension registration and relays revisions until disposal', () => {
+    it('relays GCM revisions without registering a metadata dimension', () => {
         const harness = createApiHarness();
         const adapter = new GcmEntityTypeIndexAdapter(createApp());
         const listener = vi.fn();
 
         expect(adapter.acceptApiPayload(createApiPayload(harness.api))).toBe(true);
         expect(adapter.connect(harness.api)).toBe(true);
-        expect(harness.registerDimension).toHaveBeenCalledOnce();
-        expect(harness.registerDimension).toHaveBeenCalledWith({ name: GCM_ENTITY_INDEX_KIND_DIMENSION, propertyKeys: [] });
+        expect(harness.registerDimension).not.toHaveBeenCalled();
         const unsubscribe = adapter.subscribe(listener);
 
         harness.emitRevision(7);
@@ -182,7 +175,7 @@ describe('GcmEntityTypeIndexAdapter', () => {
 
         adapter.dispose();
         expect(harness.unsubscribeRevision).toHaveBeenCalledOnce();
-        expect(harness.unregisterDimension).toHaveBeenCalledOnce();
+        expect(harness.unregisterDimension).not.toHaveBeenCalled();
     });
 
     it('clears the published API when GCM announces that it is unavailable', async () => {
@@ -196,15 +189,11 @@ describe('GcmEntityTypeIndexAdapter', () => {
             issue: { code: 'gcm-unavailable' }
         });
         expect(harness.unsubscribeRevision).toHaveBeenCalledOnce();
-        expect(harness.unregisterDimension).toHaveBeenCalledOnce();
+        expect(harness.unregisterDimension).not.toHaveBeenCalled();
         expect(adapter.acceptApiPayload({ source: 'foreign-plugin', available: false, api: null })).toBe(false);
     });
 
-    it('classifies notes and structural lines while exposing only custom dynamic kinds', async () => {
-        const projectType = createTpsNavigatorKindTypeId('Project');
-        const contextType = createTpsNavigatorKindTypeId('Context');
-        expect(projectType).not.toBeNull();
-        expect(contextType).not.toBeNull();
+    it('classifies exact-line structures without publishing notes or frontmatter kinds', async () => {
         const records = [
             entity({ id: 'project-note', label: 'Atlas', dimensions: { Kind: ['Project'] } }),
             entity({ id: 'task', label: 'Ship it', entityType: 'block', lineKind: 'task', dimensions: { kind: ['task'] } }),
@@ -233,18 +222,18 @@ describe('GcmEntityTypeIndexAdapter', () => {
         expect(snapshot.availability).toBe('ready');
         expect(snapshot.revision).toBe(11);
         expect(snapshot.descriptors.map(descriptor => [descriptor.id, descriptor.count])).toEqual([
-            [TPS_NAVIGATOR_TYPE_IDS.NOTES, 1],
             [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, 1],
             [TPS_NAVIGATOR_TYPE_IDS.BULLETS, 1],
-            [TPS_NAVIGATOR_TYPE_IDS.HEADINGS, 1],
-            [contextType, 1],
-            [projectType, 2]
+            [TPS_NAVIGATOR_TYPE_IDS.HEADINGS, 1]
         ]);
-        expect(snapshot.recordsByType.get(projectType!)?.map(record => record.label)).toEqual(['Atlas', 'Project log']);
-        expect(snapshot.descriptors.some(descriptor => descriptor.id === 'kind:task')).toBe(false);
+        expect(snapshot.recordsByType.has(TPS_NAVIGATOR_TYPE_IDS.NOTES)).toBe(false);
+        expect(snapshot.descriptors.some(descriptor => descriptor.id.startsWith('kind:'))).toBe(false);
         expect(harness.ensureReady).toHaveBeenCalledOnce();
-        expect(harness.queryAsync).toHaveBeenCalledWith({});
-        expect(harness.getDimensionValues).toHaveBeenCalledWith('kind');
+        expect(harness.queryAsync).toHaveBeenCalledWith({
+            entityTypes: 'block',
+            lineKinds: ['task', 'bullet', 'heading']
+        });
+        expect(harness.getDimensionValues).not.toHaveBeenCalled();
         adapter.dispose();
     });
 
@@ -262,13 +251,8 @@ describe('GcmEntityTypeIndexAdapter', () => {
         expect(taskResult).toMatchObject({ ok: true, records: [{ id: 'task' }] });
         expect(harness.queryAsync).toHaveBeenLastCalledWith({ entityTypes: 'block', lineKinds: 'task' });
 
-        const projectType = createTpsNavigatorKindTypeId('Project')!;
-        const projectResult = await adapter.queryType(projectType);
-        expect(projectResult).toMatchObject({ ok: true, records: [{ id: 'bullet' }, { id: 'note' }] });
-        expect(harness.queryAsync).toHaveBeenLastCalledWith({ dimensions: { kind: 'Project' } });
-
-        const syntheticKindResult = await adapter.queryType('kind:task');
-        expect(syntheticKindResult).toMatchObject({ ok: false, issue: { code: 'invalid-type' } });
+        const retiredKindResult = await adapter.queryType('kind:Project');
+        expect(retiredKindResult).toMatchObject({ ok: false, issue: { code: 'invalid-type' } });
         adapter.dispose();
     });
 

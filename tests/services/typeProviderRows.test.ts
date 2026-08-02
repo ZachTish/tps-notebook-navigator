@@ -1,18 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildTypeProviderRows, type TypeRecordActivationResult } from '../../src/services/rows/typeProviderRows';
-import {
-    createTpsNavigatorKindTypeId,
-    TPS_NAVIGATOR_TYPE_IDS,
-    type TpsNavigatorTypeRecord,
-    type TpsNavigatorTypesSnapshot
-} from '../../src/types/navigatorTypes';
+import { TPS_NAVIGATOR_TYPE_IDS, type TpsNavigatorTypeRecord, type TpsNavigatorTypesSnapshot } from '../../src/types/navigatorTypes';
 
-const projectTypeId = createTpsNavigatorKindTypeId('project')!;
+const selectedLineTypeId = TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES;
 
 function createRecord(overrides: Partial<TpsNavigatorTypeRecord> = {}): TpsNavigatorTypeRecord {
     return {
         id: 'project-one',
-        typeId: projectTypeId,
+        typeId: selectedLineTypeId,
         label: 'Project one',
         sourcePath: 'Projects/One.md',
         entityType: 'note',
@@ -30,7 +25,7 @@ function createSnapshot(
     return {
         availability,
         descriptors: [],
-        recordsByType: new Map([[projectTypeId, records]]),
+        recordsByType: new Map([[selectedLineTypeId, records]]),
         revision: 3,
         ...(message ? { message } : {})
     };
@@ -48,7 +43,7 @@ function buildRows(options?: {
 }) {
     return buildTypeProviderRows({
         snapshot: createSnapshot(options?.records ?? [], options?.availability, options?.message),
-        selectedType: projectTypeId,
+        selectedType: selectedLineTypeId,
         searchQuery: options?.searchQuery ?? '',
         activate: options?.activate ?? (async () => ({ ok: true })),
         setTaskCheckbox: options?.setTaskCheckbox ?? (async () => ({ ok: true })),
@@ -110,7 +105,7 @@ describe('buildTypeProviderRows', () => {
         const rows = buildRows({ records: [note, checkbox] });
 
         expect(rows[0]).toMatchObject({
-            id: `${projectTypeId}:${note.locatorKey}`,
+            id: `${selectedLineTypeId}:${note.locatorKey}`,
             kind: 'tps/entity-type/note',
             label: 'Project one',
             secondaryLabel: 'Projects/One.md',
@@ -119,7 +114,7 @@ describe('buildTypeProviderRows', () => {
         });
         expect(rows[0]).not.toHaveProperty('sourceLineNumber');
         expect(rows[1]).toMatchObject({
-            id: `${projectTypeId}:${checkbox.locatorKey}`,
+            id: `${selectedLineTypeId}:${checkbox.locatorKey}`,
             kind: 'tps/entity-type/task',
             label: 'Ship the release',
             secondaryLabel: 'Tasks/Today.md · line 9',
@@ -176,7 +171,7 @@ describe('buildTypeProviderRows', () => {
         expect(rows).toEqual([]);
     });
 
-    it('decorates hydrated task records in structural and dynamic Kind collections with live GCM controls', async () => {
+    it('decorates hydrated checkbox records with live GCM controls', async () => {
         const task = createRecord({
             id: 'task-one',
             label: 'Ship it',

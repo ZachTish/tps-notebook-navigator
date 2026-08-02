@@ -31,26 +31,31 @@ The initial TPS Global Context Menu provider can show task rows belonging to the
 
 ### Types navigation
 
-The first-class **Types** section is enabled by default. It uses TPS Global Context Menu's generic Entity Index v3 rather than maintaining a second Markdown parser.
+The first-class **Types** section is enabled by default and now has one flat built-in catalog of file formats and exact-line structures. Frontmatter values such as `kind` belong in **Properties** or a relational entity index; they are not file types and no longer appear beneath **Types**.
 
-- **Notes**, **Checkboxes**, **Bullets**, and **Headings** are structural collections. **Kinds** is a nested collection built dynamically from every indexed `Kind` value, so note entities and line entities can participate in the same relational model.
-- A selected collection replaces the file list with standalone, virtualized entity rows. Selecting a note opens that note; selecting a checkbox, bullet, or heading re-resolves its stable locator and opens the current source line through direct Obsidian APIs.
-- Hydrated task entities—both in **Checkboxes** and inside any dynamic Kind—show their live checkbox state. Mutable rows use GCM's canonical completion path with optimistic rollback, and right-click, mobile long-press, or **More actions** opens the full GCM task menu. A task that cannot be matched exactly remains open-only rather than inventing state.
+- File-backed collections are **Notes**, **Bases**, **Canvas**, **Drawings**, **PDFs**, **Images**, **Audio**, and **Video**. Each supported vault file belongs to exactly one collection. Excalidraw files—including `.excalidraw.md` and Markdown files carrying Excalidraw frontmatter—belong to **Drawings**, not **Notes**.
+- File-backed collections run through the ordinary Navigator file pipeline. Their results use the same `TFile` rows, appearance mode, icons, properties, previews, sort, grouping, search, selection, menus, drag behavior, and opening behavior as the normal file view.
+- Like the normal file view, YAML-backed manual ranking can write only to Markdown files. Non-Markdown Types retain filename,
+  title, created, and modified sorting but cannot store a manual rank in frontmatter.
+- Exact-line collections are **Checkboxes**, **Bullets**, and **Headings**. TPS Global Context Menu's generic Entity Index v3 supplies their stable line locators without giving the Navigator a second Markdown parser. These rows use the native file-row visual language with a restrained line-type icon or live task checkbox, then re-resolve and open their current source line.
+- Hydrated task entities in **Checkboxes** use GCM's canonical completion path with optimistic rollback. Right-click, mobile long-press, or **More actions** opens the same guarded GCM task menu. A task that cannot be matched exactly remains open-only rather than inventing state.
 - Task hydration batches cold reads across source files, then reuses a bounded per-path cache keyed by file metadata. Exact GCM and vault update paths invalidate that cache, including failed initial hydration, so unchanged vaults avoid repeated scans without leaving edited checkboxes stale.
 - Counts and rows respect the active Navigator profile, hidden-folder/file/property/tag rules, file visibility, and the hidden-items override. Fenced examples that GCM excludes never become Navigator rows.
-- Type rows have one transient row cursor and remain deliberately excluded from `TFile` selection, multi-select, pinning, drag, rename, sort/group editing, and note creation. The Types list keeps its own text search and hides irrelevant file actions on desktop and mobile.
-- Missing, disabled, incompatible, or incomplete GCM indexing fails closed with a visible status row. TPS Global Context Menu 1.15.0 is the tested Entity Index v3 and canonical task-completion baseline. Older GCM builds may populate Types when they expose Entity Index v3, but mutation capabilities are detected independently and fail closed.
+- Exact-line and provider-owned rows have one transient row cursor and remain deliberately excluded from `TFile` multi-select, pinning, drag, rename, and persistence. File-backed Type results retain normal file interactions because they are real `TFile` rows.
+- Missing, disabled, incompatible, or incomplete GCM indexing affects only the three exact-line collections and produces a visible status row there. File-backed collections remain available. TPS Global Context Menu 1.15.0 is the tested Entity Index v3 and canonical task-completion baseline.
 
-The selected type and Types/Kinds expansion state use TPS-namespaced local storage, participate in back/forward history and keyboard navigation, and do not alter upstream Notebook Navigator state. Dynamic Kind collections disappear only after a complete index snapshot confirms that the Kind no longer exists; transient GCM startup does not erase a restored selection.
+The selected type and Types-root expansion state use TPS-namespaced local storage, participate in back/forward history and keyboard navigation, and do not alter upstream Notebook Navigator state. A stale saved `kind:*` selection is rejected immediately and safely falls back; no note or settings migration is required.
 
-External integrations can discover built-in, dynamic Kind, and registered-provider descriptors through the provider-neutral
-public `types` catalog, subscribe to its availability/revision changes, build or parse opaque Kind ids, and navigate through
-`navigation.navigateToType(typeId)`. API 2.7.0 also adds `types.registerProvider(...)`: one runtime registration defines one
+External integrations can discover fixed built-in and registered-provider descriptors through the provider-neutral public
+`types` catalog, subscribe to its availability/revision changes, and navigate through `navigation.navigateToType(typeId)`.
+Public API 3.0.0 removes Kind descriptors from discovery and navigation while retaining deprecated helpers to construct and
+parse legacy Kind ids during migration; active validation and navigation reject them. The earlier API 2.7.0 also adds
+`types.registerProvider(...)`: one runtime registration defines one
 or more new top-level Type collections and supplies their rows through the existing guarded row DTO. TPS owns collision-free
 opaque ids, visible-path enforcement, timeouts, cancellation, validation, and lifecycle cleanup; the provider owns its data,
 search, activation, checkbox changes, and context-menu actions. Provider definitions and options are never persisted.
 
-API 2.9.0 adds `menus.registerTypeMenu(...)` for selectable built-in, dynamic Kind, and provider-owned collection rows. Each
+API 2.9.0 adds `menus.registerTypeMenu(...)` for selectable fixed built-in and provider-owned collection rows. Each
 callback receives the opaque Type id and its current immutable catalog descriptor. Menu items must be added synchronously;
 asynchronous work belongs in the item's `onClick` handler. A removed or otherwise stale collection, or a set of builders that
 adds no synchronous item, leaves the menu closed instead of opening a blank or outdated surface. A Promise-returning builder,
@@ -60,7 +65,7 @@ duplicate callback registrations retain independent idempotent disposers. Regist
 persisted state, or migration.
 
 API 2.10.0 adds `menus.registerRowMenu(...)` so an integration can attach actions to the actual source-backed rows rendered
-beneath notes or inside Notes, Checkboxes, Bullets, Headings, dynamic Kinds, and provider-owned collections. The optional
+beneath notes or inside Checkboxes, Bullets, Headings, and provider-owned collections. The optional
 pure `supports(target)` filter controls which rows expose the action affordance. A frozen target includes current `TFile`
 identity, provider/row/kind identity, optional zero-based line, selected Type id, and immutable checkbox presentation without
 exposing provider mutation callbacks or the host `Menu`. Row-owner actions remain first; desktop right-click, native mobile
@@ -88,9 +93,10 @@ API 2.13.0 adds a bounded, provider-neutral `list` namespace for integrations th
 looking at. `list.getSnapshot()` pulls the first mounted TPS view's current navigation scope, immediate/applied search,
 requested/effective provider, effective per-scope presentation, and composed file/provider row order without continuously
 cloning large Type collections or exposing provider callbacks. `setSearch(...)` and atomic `setPresentation(...)` never
-open a view and fail closed for stale views, malformed input, Type scopes, manual sorting, unavailable property keys, or
-incompatible grouping. Null presentation fields reset only that field to its inherited default; no new persisted schema or
-migration is introduced.
+open a view and fail closed for stale views, malformed input, standalone exact-line/provider Type scopes, manual sorting,
+unavailable property keys, or incompatible grouping. Fixed file-backed Types expose the same presentation snapshot and
+per-Type sort, grouping, and display overrides as ordinary file scopes. Null presentation fields reset only that field to
+its inherited default; the optional TPS-owned Type override records require no migration.
 
 Clicks, back/forward history, and public calls share one validator, ancestor-expansion, focus, and scroll path. Catalog DTOs
 are immutable and intentionally omit GCM records, source paths, task payloads, and counts whose meaning would differ before
@@ -104,14 +110,17 @@ provider example.
 The default settings surface remains the normal Notebook Navigator landing page. **TPS integration** is a top-level destination under **Configuration**, one click from that landing page.
 
 - **Task rows** — **Show GCM tasks beneath notes** is off by default. When enabled, the same page reveals **Include completed tasks** and **Tasks per note**; there is no nested editor or second configuration page.
-- **Types navigation** — **Show Types in navigation** is on by default and directly controls the first-class Types section. It is a single flat toggle; structural and Kind collections require no nested rule editor.
+- **Types navigation** — **Show Types in navigation** is on by default and directly controls the flat file-format and exact-line Types catalog. It is one toggle with no nested rule editor.
 - **One-way setup** — **Import upstream Notebook Navigator settings** always asks for confirmation. It reads only `.obsidian/plugins/notebook-navigator/data.json`, copies recognized upstream settings into the TPS plugin, preserves TPS-only integration settings, and never writes to upstream state.
 
-The Types toggle and all three task-row values persist in the TPS plugin's own `data.json`. The importer, active route, disclosures, focus, and scroll position do not create extra persisted schema. On mobile, these controls use Obsidian's native stacked setting rows; the optional controls disappear while task rows are disabled so they do not consume the viewport.
+The Types toggle, all three task-row values, and any user-created per-Type presentation overrides persist in the TPS plugin's
+own `data.json`. The importer, active route, disclosures, focus, and scroll position do not create extra persisted schema.
+On mobile, these controls use Obsidian's native stacked setting rows; the optional controls disappear while task rows are
+disabled so they do not consume the viewport.
 
 ### Provider behavior and limits
 
-- Rows are transient UI records, never fake `TFile` objects. They have one independent row cursor but do not participate in `TFile` selection, multi-select, drag, rename, persistence, or file indexes.
+- Provider rows are transient UI records, never fake `TFile` objects. They have one independent row cursor but do not participate in `TFile` selection, multi-select, drag, rename, persistence, or file indexes. File-backed Type collections instead use real native `TFile` rows.
 - Providers are queried only for exact paths already present in the current list. Independent providers stream in as they settle, in configured order, without exceeding one global 1,000-row ceiling. During a same-scope refresh, each provider's prior rows remain visible until that provider itself settles, including empty or failed results. Large GCM lists load progressively in bounded 64-note passes, retain completed pass state for the active scope, and cache tasks per path with independent per-note limits and GCM/vault lifecycle invalidation.
 - A provider exception is isolated and logged without replacing or blocking the file list.
 - A mutable GCM checkbox updates optimistically, rolls back with a visible warning on failure, and refreshes from GCM's file event. Working, holding, and other custom markers render verbatim with an accessible state label. Older compatible GCM APIs retain a labeled display-only checkbox.
@@ -124,7 +133,7 @@ The Types toggle and all three task-row values persist in the TPS plugin's own `
   same right-click, long-press, and accessible-button path.
 - External providers can opt in to a selected Type collection with `supportsTypeScope: true`. They receive the opaque selected Type id and only the exact visible paths represented by the current searched Type rows; providers that do not opt in retain their previous attached-list behavior.
 - A Type provider establishes a new top-level collection through `types.registerProvider(...)`. Its owner-row query receives
-  the active search text, an abort signal, and every Markdown path allowed by the current Navigator visibility profile. The
+  the active search text, an abort signal, and every vault-file path allowed by the current Navigator visibility profile. The
   host rejects rows outside that allowlist; ordinary `supportsTypeScope` row providers may then augment only the exact paths
   represented by accepted owner rows. If both registries emit the same `providerId` plus row `id`, the owning Type row wins
   so the virtualized list cannot contain duplicate keys.
@@ -135,7 +144,7 @@ The Types toggle and all three task-row values persist in the TPS plugin's own `
   without polling, rebroadcasting a request response, or retaining provider state in Navigator. Each loaded host has one
   opaque identity, so a consumer can match teardown to the exact instance instead of ordering hosts by a wall-clock timestamp.
 - TPS settings import is a copy, not synchronization. Later upstream setting changes are not mirrored unless the import is explicitly run again.
-- Built-in GCM-backed Types rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. External Type-provider rows retain the public provider safety ceiling. Plain-text search matches built-in entity labels and source paths; external owners receive the same query before their row ceiling. File-only advanced search operators and Omnisearch ranking do not apply in a Types collection.
+- Built-in exact-line Type rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. External Type-provider rows retain the public provider safety ceiling. Plain-text search matches exact-line labels and source paths; external owners receive the same query before their row ceiling. File-backed Types use the ordinary file search pipeline, while file-only advanced search operators and Omnisearch ranking do not apply to exact-line/provider-owned collections.
 
 ## Keeping up with Notebook Navigator
 
@@ -149,6 +158,27 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 5.0.0 — structural Types with native file presentation
+
+- Replaces frontmatter-driven Kind navigation with one flat built-in catalog: Notes, Checkboxes, Bullets, Headings, Bases,
+  Canvas, Drawings, PDFs, Images, Audio, and Video.
+- Sends file-backed Types through the ordinary Navigator file pipeline so they inherit native rows, icons, properties,
+  previews, sorting, grouping, search, selection, menus, drag behavior, and opening behavior.
+- Restyles exact-line Checkboxes, Bullets, and Headings to match ordinary file rows while preserving line-specific icons,
+  task controls, exact-source activation, accessible actions, and mobile touch targets.
+- Keeps every file-backed collection usable without GCM and limits the optional Entity Index dependency to exact-line
+  content. File classification is read-free, single-pass, cached, and refreshed on relevant vault or metadata changes.
+- Advances the public API to 3.0.0. The major versions reflect removal of discoverable/navigable Kind collections;
+  deprecated Kind-id parsers remain only for stale-state compatibility. No settings or note-data migration is required,
+  and minimum supported Obsidian remains 1.11.0.
+- Adds optional per-Type sort and appearance records only when the user changes a fixed file-backed Type's presentation;
+  existing settings inherit the normal defaults without migration.
+- Validated with 218 Vitest files and 2,380 tests plus TypeScript, ESLint, Prettier, stylesheet, source-namespace,
+  operational-identity, and artifact-identity gates. The separate final build deployed to the isolated test vault;
+  Obsidian 1.12.7 was reloaded and live-checked for the complete flat catalog with no Kinds branch, native Notes and Bases,
+  native-styled Checkboxes and Bullets, exact-line activation, zero-result empty state, and side-by-side upstream/TPS use.
+  Production was untouched.
 
 ### 4.11.0 — controllable, selectable TPS rows
 
@@ -773,7 +803,7 @@ Set custom hotkeys for these commands in Obsidian's Hotkeys settings:
 - **Folder tree** - Expand/collapse navigation with manual root folder ordering
 - **Tag tree** - Hierarchical tags with configurable root tag ordering
 - **Property browser** - Browse file properties organized by key and value with file counts, custom colors, icons, and drag and drop
-- **Types browser** - Browse structural notes/checkboxes/bullets/headings and dynamic relational Kind entities, opening notes or exact source lines
+- **Types browser** - Browse native file-format collections plus exact-line checkboxes, bullets, and headings in one flat section
 - **Auto-reveal active file** - Folder expansion and scroll-to-selection
 - **Keyboard and commands** - Configurable hotkeys, selection history back/forward commands, next/previous file commands, open shortcut 1–9 commands
 

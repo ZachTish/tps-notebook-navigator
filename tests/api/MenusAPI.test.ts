@@ -270,10 +270,10 @@ describe('MenusAPI', () => {
         const menusAPI = new MenusAPI();
         const { menu, addItem } = createMenuStub();
         const descriptor = {
-            id: 'kind:Project',
-            label: 'Project',
-            icon: 'lucide-shapes',
-            category: 'kind'
+            id: 'file:drawing',
+            label: 'Drawings',
+            icon: 'lucide-pencil-ruler',
+            category: 'structure'
         } satisfies NavigatorTypeDescriptor;
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
@@ -309,12 +309,12 @@ describe('MenusAPI', () => {
         expect(
             menusAPI.applyTypeMenuExtensions({
                 menu: menu as unknown as Menu,
-                typeId: 'kind:Project',
+                typeId: 'file:drawing',
                 descriptor: {
-                    id: 'kind:Project',
-                    label: 'Project',
-                    icon: 'lucide-shapes',
-                    category: 'kind'
+                    id: 'file:drawing',
+                    label: 'Drawings',
+                    icon: 'lucide-pencil-ruler',
+                    category: 'structure'
                 }
             })
         ).toBe(1);
@@ -328,10 +328,10 @@ describe('MenusAPI', () => {
         const menusAPI = new MenusAPI();
         const { menu, addItem } = createMenuStub();
         const descriptor = {
-            id: 'kind:Project',
-            label: 'Project',
-            icon: 'lucide-shapes',
-            category: 'kind'
+            id: 'file:drawing',
+            label: 'Drawings',
+            icon: 'lucide-pencil-ruler',
+            category: 'structure'
         } satisfies NavigatorTypeDescriptor;
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
@@ -371,12 +371,12 @@ describe('MenusAPI', () => {
         expect(
             menusAPI.applyTypeMenuExtensions({
                 menu: menu as unknown as Menu,
-                typeId: 'kind:Project',
+                typeId: 'file:drawing',
                 descriptor: {
-                    id: 'kind:Project',
-                    label: 'Project',
-                    icon: 'lucide-shapes',
-                    category: 'kind'
+                    id: 'file:drawing',
+                    label: 'Drawings',
+                    icon: 'lucide-pencil-ruler',
+                    category: 'structure'
                 }
             })
         ).toBe(0);
@@ -402,12 +402,12 @@ describe('MenusAPI', () => {
         expect(
             menusAPI.applyTypeMenuExtensions({
                 menu: menu as unknown as Menu,
-                typeId: 'kind:Project',
+                typeId: 'file:drawing',
                 descriptor: {
-                    id: 'kind:Project',
-                    label: 'Project',
-                    icon: 'lucide-shapes',
-                    category: 'kind'
+                    id: 'file:drawing',
+                    label: 'Drawings',
+                    icon: 'lucide-pencil-ruler',
+                    category: 'structure'
                 }
             })
         ).toBe(0);

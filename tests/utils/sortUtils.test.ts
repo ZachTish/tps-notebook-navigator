@@ -21,6 +21,7 @@ import type { AlphaSortOrder } from '../../src/settings';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
+import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 import { createTestTFile } from './createTestTFile';
 
 function createFolderSortSettings(folderSortOrder: AlphaSortOrder, overrides: Record<string, AlphaSortOrder> = {}) {
@@ -558,6 +559,23 @@ describe('property sort keys', () => {
             option: 'property-desc',
             propertyKey: 'downloaded',
             propertySortSecondary: settings.propertySortSecondary
+        });
+    });
+
+    it('uses per-Type sort overrides only for file-backed Types', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.propertySortKey = 'priority';
+        settings.typeSortOverrides = {
+            [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { option: 'property-desc', propertyKey: 'Priority' }
+        };
+
+        expect(getEffectiveListSort(settings, ItemType.TYPE, null, null, null, TPS_NAVIGATOR_TYPE_IDS.NOTES)).toMatchObject({
+            option: 'property-desc',
+            propertyKey: 'priority'
+        });
+        expect(getEffectiveListSort(settings, ItemType.TYPE, null, null, null, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES)).toMatchObject({
+            option: settings.defaultFolderSort,
+            propertyKey: ''
         });
     });
 

@@ -82,6 +82,7 @@ import { ManualSortListContent } from './listPane/ManualSortListContent';
 import type { FileItemStorageHelpers } from './FileItem';
 import { type SearchShortcut } from '../types/shortcuts';
 import { type SearchNavFilterState } from '../types/search';
+import { isTpsNavigatorFileTypeId } from '../types/navigatorTypes';
 import { EMPTY_LIST_MENU_TYPE } from '../utils/contextMenu';
 import { useCollapsedPinnedContexts, useUXPreferences } from '../context/UXPreferencesContext';
 import { type InclusionOperator } from '../utils/filterSearch';
@@ -500,12 +501,22 @@ export const ListPane = React.memo(
         const shouldForceSearchDescendants =
             forceSearchDescendants && isSearchActive && selectionType === ItemType.FOLDER && selectedFolderPath === '/';
         const effectiveIncludeDescendantNotes = includeDescendantNotes || shouldForceSearchDescendants;
-        const effectiveSortSpec = getEffectiveListSort(settings, selectionType, selectedFolder, selectedTag, selectedProperty);
+        const effectiveSortSpec = getEffectiveListSort(
+            settings,
+            selectionType,
+            selectedFolder,
+            selectedTag,
+            selectedProperty,
+            selectedType
+        );
         const effectiveSortOption = effectiveSortSpec.option;
         const effectivePropertySortKey = effectiveSortSpec.propertyKey.trim();
         const isPropertySortActive = getSortField(effectiveSortOption) === 'property';
+        const isFileBackedTypeSelection = selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectedType);
         const isManualSortActive =
-            selectionType !== ItemType.TYPE && isPropertySortActive && isManualSortPropertyKey(settings, effectivePropertySortKey);
+            (selectionType !== ItemType.TYPE || isFileBackedTypeSelection) &&
+            isPropertySortActive &&
+            isManualSortPropertyKey(settings, effectivePropertySortKey);
         const manualSortGroupHeaderPropertyKey = getManualSortGroupHeaderPropertyKey(settings);
         const manualSortSelectionKey = useMemo(() => {
             if (selectionType === ItemType.FOLDER && selectedFolder) {
@@ -517,8 +528,11 @@ export const ListPane = React.memo(
             if (selectionType === ItemType.PROPERTY && selectedProperty) {
                 return `${selectionType}:${selectedProperty}`;
             }
+            if (isFileBackedTypeSelection && selectedType) {
+                return `${selectionType}:${selectedType}`;
+            }
             return 'none';
-        }, [selectedFolder, selectedProperty, selectedTag, selectionType]);
+        }, [isFileBackedTypeSelection, selectedFolder, selectedProperty, selectedTag, selectedType, selectionType]);
         const isManualSortEditActive = manualSortEditState !== null;
         useLayoutEffect(() => {
             const wasManualSortEditActive = wasManualSortEditActiveRef.current;
@@ -815,13 +829,16 @@ export const ListPane = React.memo(
                   ? settings.tagAppearances?.[selectedTag]
                   : selectionType === ItemType.PROPERTY && selectedProperty
                     ? settings.propertyAppearances?.[selectedProperty]
-                    : undefined;
+                    : isFileBackedTypeSelection && selectedType
+                      ? settings.typeAppearances?.[selectedType]
+                      : undefined;
         const selectedSortOverride = getListSortOverrideForSelection(
             settings,
             selectionType,
             selectedFolder,
             selectedTag,
-            selectedProperty
+            selectedProperty,
+            selectedType
         );
         const groupingResolution = resolveListGroupingOverride({
             noteGrouping: settings.noteGrouping,
@@ -830,12 +847,12 @@ export const ListPane = React.memo(
         });
         const listPresentation = useMemo<NavigatorListPresentationState | null>(() => {
             if (
-                selectionType === ItemType.TYPE ||
                 !resolveNavigatorListPresentationTarget({
                     selectionType,
                     selectedFolder,
                     selectedTag,
-                    selectedProperty
+                    selectedProperty,
+                    selectedType
                 })
             ) {
                 return null;
@@ -870,6 +887,7 @@ export const ListPane = React.memo(
             selectedProperty,
             selectedSortOverride,
             selectedTag,
+            selectedType,
             selectionType
         ]);
         const currentNavItem = useMemo<NavItem>(() => {
@@ -940,7 +958,8 @@ export const ListPane = React.memo(
                     selectionType,
                     selectedFolder,
                     selectedTag,
-                    selectedProperty
+                    selectedProperty,
+                    selectedType
                 });
                 if (!target) {
                     return false;
@@ -959,7 +978,7 @@ export const ListPane = React.memo(
                 await waitForListRender();
                 return true;
             },
-            [app.workspace, plugin, selectedFolder, selectedProperty, selectedTag, selectionType, waitForListRender]
+            [app.workspace, plugin, selectedFolder, selectedProperty, selectedTag, selectedType, selectionType, waitForListRender]
         );
         const listGroupCollapseKeyPrefix = useMemo(
             () =>
@@ -968,9 +987,10 @@ export const ListPane = React.memo(
                     selectedFolderPath,
                     selectedTag,
                     selectedProperty,
+                    selectedType,
                     groupingMode: effectiveAppearanceSettings.groupBy
                 }),
-            [effectiveAppearanceSettings.groupBy, selectedFolderPath, selectedProperty, selectedTag, selectionType]
+            [effectiveAppearanceSettings.groupBy, selectedFolderPath, selectedProperty, selectedTag, selectedType, selectionType]
         );
         const listGroupExpansionToggleState = useMemo(
             () => resolveListGroupExpansionToggleState(listItems, pinnedGroupExpanded, collapsedListGroups, listGroupCollapseKeyPrefix),

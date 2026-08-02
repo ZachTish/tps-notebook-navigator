@@ -5,16 +5,14 @@ import {
     expandTypeSelectionAncestors,
     getTypeSelectionAncestorIds
 } from '../../src/hooks/navigationPane/data/useNavigationPaneTypeSection';
-import { TYPES_KINDS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
+import { TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
 import {
-    createTpsNavigatorKindTypeId,
     createTpsNavigatorProviderTypeId,
     TPS_NAVIGATOR_TYPE_IDS,
     type TpsNavigatorTypeDescriptor,
     type TpsNavigatorTypesSnapshot
 } from '../../src/types/navigatorTypes';
 
-const projectTypeId = createTpsNavigatorKindTypeId('project')!;
 const externalTypeId = createTpsNavigatorProviderTypeId('example/entities', 'contexts')!;
 
 function createSnapshot(descriptors: readonly TpsNavigatorTypeDescriptor[]): TpsNavigatorTypesSnapshot {
@@ -34,14 +32,6 @@ const structuralDescriptor: TpsNavigatorTypeDescriptor = {
     count: 12
 };
 
-const kindDescriptor: TpsNavigatorTypeDescriptor = {
-    id: projectTypeId,
-    label: 'Project',
-    icon: 'lucide-box',
-    category: 'kind',
-    count: 3
-};
-
 const externalDescriptor: TpsNavigatorTypeDescriptor = {
     id: externalTypeId,
     label: 'Contexts',
@@ -55,7 +45,7 @@ const externalDescriptor: TpsNavigatorTypeDescriptor = {
 
 describe('buildNavigationTypeItems', () => {
     it('returns only the collapsed Types root and advertises its children', () => {
-        const items = buildNavigationTypeItems(createSnapshot([structuralDescriptor, kindDescriptor]), new Set());
+        const items = buildNavigationTypeItems(createSnapshot([structuralDescriptor, externalDescriptor]), new Set());
 
         expect(items).toHaveLength(1);
         expect(items[0]).toMatchObject({
@@ -71,17 +61,13 @@ describe('buildNavigationTypeItems', () => {
         });
     });
 
-    it('shows structural leaves and the collapsed Kinds group when only Types is expanded', () => {
+    it('shows every catalog descriptor directly under Types', () => {
         const items = buildNavigationTypeItems(
-            createSnapshot([structuralDescriptor, kindDescriptor]),
+            createSnapshot([structuralDescriptor, externalDescriptor]),
             new Set([TYPES_ROOT_VIRTUAL_FOLDER_ID])
         );
 
-        expect(items.map(item => item.key)).toEqual([
-            TYPES_ROOT_VIRTUAL_FOLDER_ID,
-            TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
-            TYPES_KINDS_VIRTUAL_FOLDER_ID
-        ]);
+        expect(items.map(item => item.key)).toEqual([TYPES_ROOT_VIRTUAL_FOLDER_ID, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, externalTypeId]);
         expect(items[1]).toMatchObject({
             level: 1,
             typeCollectionId: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
@@ -90,77 +76,34 @@ describe('buildNavigationTypeItems', () => {
             showFileCount: true,
             noteCount: { current: 12, descendants: 0, total: 12 }
         });
-        expect(items[2]).toMatchObject({
-            level: 1,
-            key: TYPES_KINDS_VIRTUAL_FOLDER_ID,
-            isSelectable: true,
-            hasChildren: true,
-            data: { name: 'Kinds', icon: 'lucide-boxes' }
-        });
     });
 
-    it('identifies and expands the virtual ancestors required to reveal restored selections', () => {
+    it('uses only the Types root as the virtual ancestor for built-in and provider IDs', () => {
         expect(getTypeSelectionAncestorIds(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES)).toEqual([TYPES_ROOT_VIRTUAL_FOLDER_ID]);
-        expect(getTypeSelectionAncestorIds(projectTypeId)).toEqual([TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID]);
+        expect(getTypeSelectionAncestorIds(externalTypeId)).toEqual([TYPES_ROOT_VIRTUAL_FOLDER_ID]);
 
         const structuralExpansion = expandTypeSelectionAncestors(new Set(), TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES);
         expect(structuralExpansion).toEqual(new Set([TYPES_ROOT_VIRTUAL_FOLDER_ID]));
 
-        const kindExpansion = expandTypeSelectionAncestors(new Set(['unrelated']), projectTypeId);
-        expect(kindExpansion).toEqual(new Set(['unrelated', TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID]));
-        expect(expandTypeSelectionAncestors(kindExpansion, projectTypeId)).toBe(kindExpansion);
+        const providerExpansion = expandTypeSelectionAncestors(new Set(['unrelated']), externalTypeId);
+        expect(providerExpansion).toEqual(new Set(['unrelated', TYPES_ROOT_VIRTUAL_FOLDER_ID]));
+        expect(expandTypeSelectionAncestors(providerExpansion, externalTypeId)).toBe(providerExpansion);
     });
 
-    it('builds a fully expanded, rootless preview for root-section reorder mode', () => {
-        const items = buildNavigationTypeReorderItems(createSnapshot([structuralDescriptor, kindDescriptor]));
+    it('builds a rootless reorder preview for the flat catalog', () => {
+        const items = buildNavigationTypeReorderItems(createSnapshot([structuralDescriptor, externalDescriptor]));
 
-        expect(items.map(item => item.key)).toEqual([TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, TYPES_KINDS_VIRTUAL_FOLDER_ID, projectTypeId]);
+        expect(items.map(item => item.key)).toEqual([TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, externalTypeId]);
         expect(items[0]).toMatchObject({ level: 1 });
-        expect(items[1]).toMatchObject({ level: 1 });
-        expect(items[2]).toMatchObject({ level: 2 });
-    });
-
-    it('shows kind leaves at level two with descriptor identity and counts when both groups are expanded', () => {
-        const items = buildNavigationTypeItems(
-            createSnapshot([structuralDescriptor, kindDescriptor]),
-            new Set([TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID])
-        );
-
-        expect(items.map(item => item.key)).toEqual([
-            TYPES_ROOT_VIRTUAL_FOLDER_ID,
-            TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
-            TYPES_KINDS_VIRTUAL_FOLDER_ID,
-            projectTypeId
-        ]);
-        expect(items[3]).toMatchObject({
-            level: 2,
-            key: projectTypeId,
-            typeCollectionId: projectTypeId,
-            isSelectable: true,
-            hasChildren: false,
-            showFileCount: true,
-            noteCount: { current: 3, descendants: 0, total: 3 },
-            data: {
-                id: `tps-type:${projectTypeId}`,
-                name: 'Project',
-                icon: 'lucide-box'
-            }
-        });
     });
 
     it('renders external collections directly under Types without a misleading pre-query count', () => {
         const items = buildNavigationTypeItems(
-            createSnapshot([structuralDescriptor, externalDescriptor, kindDescriptor]),
-            new Set([TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID])
+            createSnapshot([structuralDescriptor, externalDescriptor]),
+            new Set([TYPES_ROOT_VIRTUAL_FOLDER_ID])
         );
 
-        expect(items.map(item => item.key)).toEqual([
-            TYPES_ROOT_VIRTUAL_FOLDER_ID,
-            TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
-            externalTypeId,
-            TYPES_KINDS_VIRTUAL_FOLDER_ID,
-            projectTypeId
-        ]);
+        expect(items.map(item => item.key)).toEqual([TYPES_ROOT_VIRTUAL_FOLDER_ID, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, externalTypeId]);
         expect(items[2]).toMatchObject({
             level: 1,
             key: externalTypeId,
@@ -172,11 +115,8 @@ describe('buildNavigationTypeItems', () => {
         expect(getTypeSelectionAncestorIds(externalTypeId, [externalDescriptor])).toEqual([TYPES_ROOT_VIRTUAL_FOLDER_ID]);
     });
 
-    it('omits the Kinds group when no kind descriptors exist and marks an empty root as childless', () => {
-        const structuralItems = buildNavigationTypeItems(
-            createSnapshot([structuralDescriptor]),
-            new Set([TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID])
-        );
+    it('marks an empty root as childless', () => {
+        const structuralItems = buildNavigationTypeItems(createSnapshot([structuralDescriptor]), new Set([TYPES_ROOT_VIRTUAL_FOLDER_ID]));
         const emptyItems = buildNavigationTypeItems(createSnapshot([]), new Set());
 
         expect(structuralItems.map(item => item.key)).toEqual([TYPES_ROOT_VIRTUAL_FOLDER_ID, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]);

@@ -37,12 +37,7 @@ import { resolveUXIcon } from '../utils/uxIcons';
 import { buildPropertyKeyNodeId, parsePropertyNodeId, type PropertySelectionNodeId } from '../utils/propertyTree';
 import { resolveFolderDisplayName, resolveFolderDisplayPathSegments } from '../utils/folderDisplayName';
 import { resolveRootFolderNoteSourceName } from '../utils/folderNoteLookup';
-import {
-    getTpsNavigatorKindValue,
-    TPS_NAVIGATOR_STRUCTURAL_TYPES,
-    type TpsNavigatorTypeDescriptor,
-    type TpsNavigatorTypeId
-} from '../types/navigatorTypes';
+import { TPS_NAVIGATOR_STRUCTURAL_TYPES, type TpsNavigatorTypeDescriptor, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 import { useNavigatorTypes } from './useNavigatorTypes';
 
 const FOLDER_NOTE_EXTENSIONS = Object.values(FOLDER_NOTE_TYPE_EXTENSIONS);
@@ -124,7 +119,7 @@ export function getTpsNavigatorTypeTitleData(
     }
 
     return {
-        label: getTpsNavigatorKindValue(typeId) ?? 'Types',
+        label: 'Types',
         icon: 'lucide-box'
     };
 }

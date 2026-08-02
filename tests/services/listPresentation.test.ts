@@ -8,6 +8,7 @@ import {
     resolveNavigatorListPresentationTarget
 } from '../../src/services/listViewState/listPresentation';
 import { ItemType } from '../../src/types';
+import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 function settings() {
     const value = structuredClone(DEFAULT_SETTINGS);
@@ -37,16 +38,43 @@ describe('public list presentation plans', () => {
         });
     });
 
-    it('rejects Type/none targets, current manual sort, manual keys, and incompatible grouping', () => {
+    it('accepts file-backed Type targets while rejecting standalone Type targets and incompatible grouping', () => {
         const current = settings();
         expect(
             resolveNavigatorListPresentationTarget({
                 selectionType: ItemType.TYPE,
                 selectedFolder: null,
                 selectedTag: null,
-                selectedProperty: null
+                selectedProperty: null,
+                selectedType: TPS_NAVIGATOR_TYPE_IDS.NOTES
+            })
+        ).toEqual({ type: ItemType.TYPE, key: TPS_NAVIGATOR_TYPE_IDS.NOTES });
+        expect(
+            resolveNavigatorListPresentationTarget({
+                selectionType: ItemType.TYPE,
+                selectedFolder: null,
+                selectedTag: null,
+                selectedProperty: null,
+                selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
             })
         ).toBeNull();
+
+        const fileType = { type: ItemType.TYPE, key: TPS_NAVIGATOR_TYPE_IDS.NOTES } as const;
+        const typePlan = createNavigatorListPresentationPlan(current, fileType, {
+            sort: { option: 'property-desc', propertyKey: 'priority' },
+            groupBy: 'property:status',
+            displayMode: 'compact'
+        });
+        expect(typePlan).not.toBeNull();
+        applyNavigatorListPresentationPlan(current, typePlan!);
+        expect(current.typeSortOverrides?.[TPS_NAVIGATOR_TYPE_IDS.NOTES]).toEqual({
+            option: 'property-desc',
+            propertyKey: 'Priority'
+        });
+        expect(current.typeAppearances?.[TPS_NAVIGATOR_TYPE_IDS.NOTES]).toEqual({
+            groupBy: 'property:Status',
+            mode: 'compact'
+        });
 
         const tag = { type: ItemType.TAG, key: 'work' } as const;
         expect(createNavigatorListPresentationPlan(current, tag, { groupBy: 'folder' })).toBeNull();

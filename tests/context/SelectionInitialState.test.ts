@@ -158,6 +158,19 @@ describe('loadInitialSelectionState', () => {
         expect(state.navigationHistory).toEqual([{ type: 'type', value: 'structural:task' }]);
     });
 
+    it('rejects a stale Kind selection and falls back to the stored folder', () => {
+        storage.set(STORAGE_KEYS.selectedTypeKey, 'kind:Project');
+        storage.set(STORAGE_KEYS.selectedFolderKey, '/');
+
+        const { app } = createAppWithRoot();
+        const state = loadInitialSelectionState({ app, settings: { ...DEFAULT_SETTINGS } });
+
+        expect(state.selectionType).toBe('folder');
+        expect(state.selectedType).toBeNull();
+        expect(state.selectedFolder?.path).toBe('/');
+        expect(state.navigationHistory).toEqual([{ type: 'folder', value: '/' }]);
+    });
+
     it('ignores a stored TPS type when Types navigation is disabled', () => {
         storage.set(STORAGE_KEYS.selectedTypeKey, 'structural:task');
         storage.set(STORAGE_KEYS.selectedFolderKey, '/');

@@ -18,7 +18,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import type { ExpansionAction } from '../../src/context/ExpansionContext';
-import { NavigationPaneItemType, TYPES_KINDS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
+import { NavigationPaneItemType, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
 import type { VirtualFolderItem } from '../../src/types/virtualization';
 import { getNavigationExpansionTargetForItem, toggleNavigationExpansionTarget } from '../../src/utils/navigationExpansion';
 
@@ -75,23 +75,20 @@ describe('navigationExpansion', () => {
         expect(dispatch).toHaveBeenCalledWith({ type: 'TOGGLE_PROPERTY_EXPANDED', propertyNodeId: 'key:status' });
     });
 
-    it.each([TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID])(
-        'exposes the %s Type group as a keyboard expansion target',
-        folderId => {
-            const item: VirtualFolderItem = {
-                type: NavigationPaneItemType.VIRTUAL_FOLDER,
-                data: { id: folderId, name: folderId },
-                key: folderId,
-                level: 0,
-                isSelectable: true,
-                hasChildren: true
-            };
+    it('exposes the Types root as a keyboard expansion target', () => {
+        const item: VirtualFolderItem = {
+            type: NavigationPaneItemType.VIRTUAL_FOLDER,
+            data: { id: TYPES_ROOT_VIRTUAL_FOLDER_ID, name: TYPES_ROOT_VIRTUAL_FOLDER_ID },
+            key: TYPES_ROOT_VIRTUAL_FOLDER_ID,
+            level: 0,
+            isSelectable: true,
+            hasChildren: true
+        };
 
-            expect(getNavigationExpansionTargetForItem(item, { showHiddenItems: false })).toEqual({
-                type: 'virtual-folder',
-                id: folderId,
-                hasChildren: true
-            });
-        }
-    );
+        expect(getNavigationExpansionTargetForItem(item, { showHiddenItems: false })).toEqual({
+            type: 'virtual-folder',
+            id: TYPES_ROOT_VIRTUAL_FOLDER_ID,
+            hasChildren: true
+        });
+    });
 });

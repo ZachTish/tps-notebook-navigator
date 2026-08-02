@@ -45,7 +45,7 @@ import type { ActiveProfileState } from '../context/SettingsContext';
 import type { SearchProvider } from '../types/search';
 import type { PropertySelectionNodeId } from '../utils/propertyTree';
 import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
-import { getFilesForNavigationSelection, getVisibleVaultMarkdownFiles } from '../utils/selectionUtils';
+import { getFilesForNavigationSelection, getVisibleVaultFiles } from '../utils/selectionUtils';
 import { getListSortOverrideForSelection, isManualSortPropertyKey, resolveListSort } from '../utils/sortUtils';
 import { applyManualSortMarkdownOrder, getManualSortGroupHeaderPropertyKey } from '../utils/manualSort';
 import { getPropertyFieldsFromPropertyKeys } from '../utils/vaultProfiles';
@@ -67,15 +67,15 @@ import {
 import { useListPaneRefresh } from './listPaneData/useListPaneRefresh';
 import { useProviderRows } from './useProviderRows';
 import { navigatorRowProviderRegistry } from '../services/rows/defaultRegistry';
-import { buildStandaloneProviderListItems, mergeProviderRowsIntoList } from '../services/rows/providerListItems';
 import type { NavigatorRowProviderSelection, NavigatorRowScope } from '../services/rows/types';
 import { useGcmEntityTypes } from '../integrations/gcm/useGcmEntityTypes';
-import { filterTpsNavigatorTypesSnapshot, parseTpsNavigatorProviderTypeId } from '../types/navigatorTypes';
+import { filterTpsNavigatorTypesSnapshot } from '../types/navigatorTypes';
 import { showNotice } from '../utils/noticeUtils';
 import { buildTypeProviderRows } from '../services/rows/typeProviderRows';
 import { collectTypeScopeVisibleFilePaths } from '../services/rows/providerScope';
 import { useNavigatorTypes } from './useNavigatorTypes';
 import { useNavigatorTypeRows } from './useNavigatorTypeRows';
+import { collectFileBackedTypeFiles, composeTypeListItems, resolveTypeListMode } from './listPaneData/typeListItems';
 
 const EMPTY_SEARCH_META = new Map<string, SearchResultMeta>();
 const EMPTY_HIDDEN_FILE_STATE = new Map<string, boolean>();
@@ -179,20 +179,22 @@ export function useListPaneData({
     const dayKey = useLocalDayKey();
 
     const [updateKey, setUpdateKey] = useState(0);
-    const isTypeSelection = selectionType === ItemType.TYPE && selectedType !== null;
+    const typeListMode = useMemo(() => resolveTypeListMode(selectionType, selectedType), [selectedType, selectionType]);
+    const { isTypeSelection, isFileBackedTypeSelection, isProviderOwnedTypeSelection } = typeListMode;
     const rawTypeSnapshot = useNavigatorTypes(plugin.api);
     const {
         activate: activateTypeRecord,
         setTaskCheckbox: setTypeTaskCheckbox,
         addTaskContextMenuItems: addTypeTaskContextMenuItems
     } = useGcmEntityTypes(app, settings.tpsTypesNavigationEnabled);
-    const visibleTypeSourcePaths = useMemo(() => {
+    const visibleTypeFiles = useMemo(() => {
         void updateKey;
         if (!settings.tpsTypesNavigationEnabled || !isTypeSelection) {
-            return new Set<string>();
+            return [];
         }
-        return new Set(getVisibleVaultMarkdownFiles(settings, showHiddenItems, app).map(file => file.path));
+        return getVisibleVaultFiles(settings, showHiddenItems, app);
     }, [app, isTypeSelection, settings, showHiddenItems, updateKey]);
+    const visibleTypeSourcePaths = useMemo(() => new Set(visibleTypeFiles.map(file => file.path)), [visibleTypeFiles]);
     const typeSnapshot = useMemo(
         () => filterTpsNavigatorTypesSnapshot(rawTypeSnapshot, visibleTypeSourcePaths),
         [rawTypeSnapshot, visibleTypeSourcePaths]
@@ -275,7 +277,14 @@ export function useListPaneData({
         [hiddenFileProperties]
     );
     const selectedFolderPath = selectionType === ItemType.FOLDER ? (selectedFolder?.path ?? null) : null;
-    const selectedSortOverride = getListSortOverrideForSelection(settings, selectionType, selectedFolder, selectedTag, selectedProperty);
+    const selectedSortOverride = getListSortOverrideForSelection(
+        settings,
+        selectionType,
+        selectedFolder,
+        selectedTag,
+        selectedProperty,
+        selectedType
+    );
     const selectedFolderGroupSortOrder = settings.folderTreeSortOverrides?.[selectedFolderPath ?? '/'] ?? settings.folderSortOrder;
     const listConfig = useMemo<ListPaneConfig>(
         () => ({
@@ -307,6 +316,9 @@ export function useListPaneData({
     const activePropertyFields = useMemo(() => getPropertyFieldsFromPropertyKeys(activeProfile.propertyKeys), [activeProfile.propertyKeys]);
 
     const baseFiles = useMemo(() => {
+        if (isFileBackedTypeSelection && selectedType) {
+            return collectFileBackedTypeFiles(app, visibleTypeFiles, selectedType);
+        }
         if (isTypeSelection) {
             return [];
         }
@@ -327,6 +339,9 @@ export function useListPaneData({
     }, [
         selectionType,
         isTypeSelection,
+        isFileBackedTypeSelection,
+        selectedType,
+        visibleTypeFiles,
         selectedFolder,
         selectedTag,
         selectedProperty,
@@ -486,6 +501,7 @@ export function useListPaneData({
             selectedFolder,
             selectedTag,
             selectedProperty,
+            selectedType,
             selectionType,
             showHiddenItems: false,
             sortOption,
@@ -506,6 +522,7 @@ export function useListPaneData({
         manualSortGroupHeaderPropertyKey,
         selectedFolder,
         selectedProperty,
+        selectedType,
         selectedTag,
         selectionType,
         sortOption,
@@ -543,6 +560,7 @@ export function useListPaneData({
             selectedFolder,
             selectedTag,
             selectedProperty,
+            selectedType,
             selectionType,
             showHiddenItems,
             sortOption,
@@ -568,6 +586,7 @@ export function useListPaneData({
         selectedFolder,
         selectedTag,
         selectedProperty,
+        selectedType,
         selectionType,
         searchMetaMap,
         showHiddenItems,
@@ -579,9 +598,8 @@ export function useListPaneData({
         groupItemCountData
     ]);
 
-    const isProviderOwnedTypeSelection = parseTpsNavigatorProviderTypeId(selectedType ?? '') !== null;
     const gcmTypeRows = useMemo(() => {
-        if (!isTypeSelection || !selectedType || isProviderOwnedTypeSelection) {
+        if (!isTypeSelection || !selectedType || isProviderOwnedTypeSelection || isFileBackedTypeSelection) {
             return [];
         }
         return buildTypeProviderRows({
@@ -604,6 +622,7 @@ export function useListPaneData({
         activateTypeRecord,
         addTypeTaskContextMenuItems,
         isProviderOwnedTypeSelection,
+        isFileBackedTypeSelection,
         isTypeSelection,
         selectedType,
         setTypeTaskCheckbox,
@@ -613,7 +632,7 @@ export function useListPaneData({
     const typeRows = isProviderOwnedTypeSelection ? providerOwnedTypeRows : gcmTypeRows;
     const providerScope = useMemo<NavigatorRowScope>(() => {
         let visibleFilePaths: string[];
-        if (isTypeSelection) {
+        if (isTypeSelection && !isFileBackedTypeSelection) {
             visibleFilePaths = collectTypeScopeVisibleFilePaths(typeRows, visibleTypeSourcePaths);
         } else {
             const seen = new Set<string>();
@@ -637,6 +656,7 @@ export function useListPaneData({
         };
     }, [
         coreListItems,
+        isFileBackedTypeSelection,
         isTypeSelection,
         selectedFolder,
         selectedProperty,
@@ -653,13 +673,8 @@ export function useListPaneData({
         selection: rowProviderSelection
     });
     const listItems = useMemo(() => {
-        if (!isTypeSelection) {
-            return mergeProviderRowsIntoList(coreListItems, providerRows);
-        }
-        return isProviderOwnedTypeSelection
-            ? buildStandaloneProviderListItems([], [...typeRows, ...providerRows])
-            : buildStandaloneProviderListItems(typeRows, providerRows);
-    }, [coreListItems, isProviderOwnedTypeSelection, isTypeSelection, providerRows, typeRows]);
+        return composeTypeListItems({ mode: typeListMode, coreListItems, typeRows, providerRows });
+    }, [coreListItems, providerRows, typeListMode, typeRows]);
 
     const filePathToIndex = useMemo(() => {
         return buildFilePathToIndexMap(listItems);
@@ -713,6 +728,7 @@ export function useListPaneData({
         hiddenFilePropertyMatcher,
         hiddenFileTags,
         includeDescendantNotes,
+        isFileBackedTypeSelection,
         manualSortGroupHeaderPropertyKey,
         onRefresh: () => setUpdateKey(current => current + 1),
         propertyTreeService,

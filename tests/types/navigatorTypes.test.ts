@@ -17,7 +17,7 @@ function createDescriptor(id: TpsNavigatorTypeDescriptor['id'], label: string, c
         id,
         label,
         icon: 'lucide-shapes',
-        category: id.startsWith('kind:') ? 'kind' : 'structure',
+        category: 'structure',
         count
     };
 }
@@ -35,12 +35,12 @@ function createRecord(id: string, typeId: TpsNavigatorTypeRecord['typeId'], sour
 }
 
 describe('TPS navigator type ids', () => {
-    it('round-trips trimmed kind names without exposing delimiter-sensitive characters', () => {
+    it('round-trips deprecated Kind syntax without treating it as an active Type id', () => {
         const typeId = createTpsNavigatorKindTypeId('  Project / Client #1  ');
 
         expect(typeId).toBe('kind:Project%20%2F%20Client%20%231');
         expect(getTpsNavigatorKindValue(typeId!)).toBe('Project / Client #1');
-        expect(isTpsNavigatorTypeId(typeId)).toBe(true);
+        expect(isTpsNavigatorTypeId(typeId)).toBe(false);
     });
 
     it('rejects empty, malformed, and unrelated ids while accepting every structural id', () => {
@@ -73,7 +73,7 @@ describe('TPS navigator type ids', () => {
 
 describe('filterTpsNavigatorTypesSnapshot', () => {
     it('filters every descriptor to visible sources and recomputes its count without mutating the input', () => {
-        const projectTypeId = createTpsNavigatorKindTypeId('project')!;
+        const projectTypeId = createTpsNavigatorProviderTypeId('example/entities', 'projects')!;
         const taskRecords = [
             createRecord('visible-task', TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, 'Visible.md'),
             createRecord('hidden-task', TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, 'Hidden.md')

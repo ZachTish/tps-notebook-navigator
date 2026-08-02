@@ -29,6 +29,8 @@ import type { NotebookNavigatorSettings } from '../settings/types';
 import type { IPropertyTreeProvider } from '../interfaces/IPropertyTreeProvider';
 import type { ITagTreeProvider } from '../interfaces/ITagTreeProvider';
 import { getFilesForFolder, getFilesForProperty, getFilesForTag } from './fileFinder';
+import { isTpsNavigatorFileTypeId } from '../types/navigatorTypes';
+import { isFileInTpsNavigatorType } from '../services/types/vaultFileTypes';
 
 /**
  * Utilities for managing file selection operations
@@ -103,6 +105,49 @@ export interface NavigationSelectionScope {
     selectedType?: SelectionState['selectedType'];
 }
 
+/**
+ * Resolves the ordered file scope used to choose the next selection after a
+ * move or delete. File-backed Types are assembled by the list pane, so their
+ * live ordered rows are authoritative; line and provider Types retain their
+ * existing fallback behavior.
+ */
+export function resolveFileOperationCurrentFiles(
+    selectionScope: NavigationSelectionScope,
+    currentOrderedFiles: readonly TFile[] | undefined,
+    getFallbackFiles: () => readonly TFile[]
+): readonly TFile[] {
+    if (selectionScope.selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectionScope.selectedType)) {
+        return currentOrderedFiles ?? [];
+    }
+
+    return getFallbackFiles();
+}
+
+/**
+ * Creates the post-move membership check used only by file-backed Types.
+ * Returning `undefined` for every other navigation source keeps their existing
+ * adjacent-row move behavior intact.
+ */
+export function createFileBackedTypeMoveSelectionGuard(
+    selectionScope: NavigationSelectionScope,
+    settings: NotebookNavigatorSettings,
+    showHiddenItems: boolean,
+    app: App
+): ((file: TFile) => boolean) | undefined {
+    if (selectionScope.selectionType !== ItemType.TYPE || !isTpsNavigatorFileTypeId(selectionScope.selectedType)) {
+        return undefined;
+    }
+
+    const selectedType = selectionScope.selectedType;
+    return file => {
+        if (!isFileInTpsNavigatorType(app, file, selectedType)) {
+            return false;
+        }
+
+        return getVisibleVaultFiles(settings, showHiddenItems, app).some(visibleFile => visibleFile.path === file.path);
+    };
+}
+
 interface NavigationSelectionOptions {
     orderResults?: boolean;
 }
@@ -152,8 +197,8 @@ export function getFilesForNavigationSelection(
     return [];
 }
 
-/** Returns the complete visible Markdown scope used by vault-wide virtual sources. */
-export function getVisibleVaultMarkdownFiles(settings: NotebookNavigatorSettings, showHiddenItems: boolean, app: App): TFile[] {
+/** Returns the complete visible file scope used by vault-wide virtual sources. */
+export function getVisibleVaultFiles(settings: NotebookNavigatorSettings, showHiddenItems: boolean, app: App): TFile[] {
     return getFilesForNavigationSelection(
         {
             selectionType: ItemType.FOLDER,
@@ -165,7 +210,12 @@ export function getVisibleVaultMarkdownFiles(settings: NotebookNavigatorSettings
         null,
         null,
         { orderResults: false }
-    ).filter(file => file.extension === 'md');
+    );
+}
+
+/** Backward-compatible Markdown-only scope for integrations that index note content. */
+export function getVisibleVaultMarkdownFiles(settings: NotebookNavigatorSettings, showHiddenItems: boolean, app: App): TFile[] {
+    return getVisibleVaultFiles(settings, showHiddenItems, app).filter(file => file.extension.toLocaleLowerCase() === 'md');
 }
 
 /**
@@ -174,13 +224,19 @@ export function getVisibleVaultMarkdownFiles(settings: NotebookNavigatorSettings
  * @param removedPaths - Set of paths that are being removed (deleted or moved)
  * @returns The file to select after removal, or null if none
  */
-export function findNextFileAfterRemoval(allFiles: readonly TFile[], removedPaths: Set<string>): TFile | null {
+export function findNextFileAfterRemoval(
+    allFiles: readonly TFile[],
+    removedPaths: Set<string>,
+    originalPaths?: ReadonlyMap<TFile, string>
+): TFile | null {
     if (allFiles.length === 0) return null;
+
+    const getFilePath = (file: TFile): string => originalPaths?.get(file) ?? file.path;
 
     // Find the first removed file's index
     let firstRemovedIndex = -1;
     for (let i = 0; i < allFiles.length; i++) {
-        if (removedPaths.has(allFiles[i].path)) {
+        if (removedPaths.has(getFilePath(allFiles[i]))) {
             firstRemovedIndex = i;
             break;
         }
@@ -190,7 +246,7 @@ export function findNextFileAfterRemoval(allFiles: readonly TFile[], removedPath
 
     // Strategy 1: Find first unselected file starting from first removed position
     for (let i = firstRemovedIndex; i < allFiles.length; i++) {
-        if (!removedPaths.has(allFiles[i].path)) {
+        if (!removedPaths.has(getFilePath(allFiles[i]))) {
             return allFiles[i];
         }
     }
@@ -198,7 +254,7 @@ export function findNextFileAfterRemoval(allFiles: readonly TFile[], removedPath
     // Strategy 2: If no file found after, look for first file before the selection
     if (firstRemovedIndex > 0) {
         for (let i = firstRemovedIndex - 1; i >= 0; i--) {
-            if (!removedPaths.has(allFiles[i].path)) {
+            if (!removedPaths.has(getFilePath(allFiles[i]))) {
                 return allFiles[i];
             }
         }

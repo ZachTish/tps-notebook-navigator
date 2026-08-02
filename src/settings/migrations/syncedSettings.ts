@@ -197,6 +197,7 @@ export function migrateLegacySyncedSettings(params: {
     normalizeAppearanceGrouping(settings.folderAppearances);
     normalizeAppearanceGrouping(settings.tagAppearances);
     normalizeAppearanceGrouping(settings.propertyAppearances);
+    normalizeAppearanceGrouping(settings.typeAppearances);
 
     if (typeof settings.showSelectedNavigationPills !== 'boolean') {
         settings.showSelectedNavigationPills = defaultSettings.showSelectedNavigationPills;

@@ -28,7 +28,6 @@ import {
     PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
     SHORTCUTS_VIRTUAL_FOLDER_ID,
     TAGS_ROOT_VIRTUAL_FOLDER_ID,
-    TYPES_KINDS_VIRTUAL_FOLDER_ID,
     TYPES_ROOT_VIRTUAL_FOLDER_ID
 } from '../../src/types';
 
@@ -107,28 +106,14 @@ describe('useNavigationActions helpers', () => {
         );
     });
 
-    it('keeps the Types branch visible for structural selections and the Kinds branch for kind selections', () => {
-        const structuralState = buildCollapsedExpansionState({
+    it('keeps the Types root visible for a selected Type', () => {
+        const typeState = buildCollapsedExpansionState({
             behavior: 'all',
-            currentExpandedVirtualFolders: new Set([
-                SHORTCUTS_VIRTUAL_FOLDER_ID,
-                TYPES_ROOT_VIRTUAL_FOLDER_ID,
-                TYPES_KINDS_VIRTUAL_FOLDER_ID
-            ]),
-            revealTypesRoot: true,
-            revealTypeKinds: false
-        });
-        const kindState = buildCollapsedExpansionState({
-            behavior: 'all',
-            currentExpandedVirtualFolders: structuralState.virtualFolders,
-            revealTypesRoot: true,
-            revealTypeKinds: true
+            currentExpandedVirtualFolders: new Set([SHORTCUTS_VIRTUAL_FOLDER_ID]),
+            revealTypesRoot: true
         });
 
-        expect(structuralState.virtualFolders).toEqual(new Set([SHORTCUTS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID]));
-        expect(kindState.virtualFolders).toEqual(
-            new Set([SHORTCUTS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID])
-        );
+        expect(typeState.virtualFolders).toEqual(new Set([SHORTCUTS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID]));
     });
 
     it('preserves the expanded vault root when root skipping is enabled', () => {

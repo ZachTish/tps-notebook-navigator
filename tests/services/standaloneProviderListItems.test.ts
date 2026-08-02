@@ -128,12 +128,10 @@ describe('buildStandaloneProviderListItems', () => {
     });
 
     it.each([
-        ['Notes', 'structural:note', 'note'],
         ['Checkboxes', 'structural:task', 'task'],
         ['Bullets', 'structural:bullet', 'bullet'],
-        ['Headings', 'structural:heading', 'heading'],
-        ['GCM Kinds', 'kind:project', 'note']
-    ])('keeps every built-in %s row above the external-provider ceiling', (_label, typeId, rowKind) => {
+        ['Headings', 'structural:heading', 'heading']
+    ])('keeps every exact-line %s row above the external-provider ceiling', (_label, typeId, rowKind) => {
         const builtInRows: NavigatorProvidedRow[] = Array.from({ length: NAVIGATOR_ROW_PROVIDER_MAX_ROWS + 1 }, (_, index) => ({
             providerId: 'tps/entity-types',
             id: `${typeId}:${index}`,

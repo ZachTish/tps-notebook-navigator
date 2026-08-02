@@ -106,6 +106,28 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.0.0',
+        date: '2026-08-01',
+        showOnUpdate: true,
+        info: 'Types is now a clean, flat catalog of real file formats and exact-line structures instead of frontmatter Kind values.',
+        new: [
+            'Adds Bases, Canvas, Drawings, PDFs, Images, Audio, and Video alongside Notes, Checkboxes, Bullets, and Headings.',
+            'File-backed Type collections use the ordinary Navigator file pipeline, including native rows, search, sort, grouping, selection, menus, drag, and opening behavior.'
+        ],
+        improved: [
+            'Exact-line Checkboxes, Bullets, and Headings now use the native file-row visual language with restrained type-specific controls and mobile-safe touch targets.',
+            'The fixed file catalog stays available without TPS Global Context Menu; only exact-line collections depend on its Entity Index.',
+            'Sort, grouping, and appearance controls now work and persist per file-backed Type, including immediate refresh after relevant property changes.'
+        ],
+        changed: [
+            'Frontmatter Kind collections no longer appear, restore, validate, or navigate beneath Types. Deprecated helpers can construct or parse legacy ids only so callers can migrate stale state safely.',
+            'Public API `3.0.0` publishes the fixed catalog and broadens Type-provider visibility inputs to all visible vault-file paths.'
+        ],
+        fixed: [
+            'File-backed Type pinning now uses one consistent context, and selection follows files that remain visible after a move instead of jumping to an adjacent row.'
+        ]
+    },
+    {
         version: '4.11.0',
         date: '2026-08-01',
         showOnUpdate: true,

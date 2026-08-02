@@ -23,6 +23,7 @@ import {
     buildListGroupCollapseKeyPrefix,
     normalizeStoredCollapsedListGroupKeys
 } from '../../src/utils/listGroupCollapse';
+import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 describe('normalizeStoredCollapsedListGroupKeys', () => {
     it('keeps string keys, trims empty entries, and deduplicates', () => {
@@ -65,5 +66,18 @@ describe('buildListGroupCollapseKey', () => {
                 groupingMode: 'date'
             })
         ).toBe('scope=tag:work%2Fclient%20a;group=date;id=');
+    });
+
+    it('keeps file-backed Type group state isolated per Type', () => {
+        expect(
+            buildListGroupCollapseKeyPrefix({
+                selectionType: ItemType.TYPE,
+                selectedFolderPath: null,
+                selectedTag: null,
+                selectedProperty: null,
+                selectedType: TPS_NAVIGATOR_TYPE_IDS.NOTES,
+                groupingMode: 'property:status'
+            })
+        ).toBe('scope=type:entity%3Anote;group=property%3Astatus;id=');
     });
 });

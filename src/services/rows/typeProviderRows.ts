@@ -2,7 +2,12 @@
 
 import type { NavigatorProvidedRow } from './types';
 import type { GcmTaskMenuLike } from '../../integrations/gcm/gcmTaskApi';
-import type { TpsNavigatorTypeId, TpsNavigatorTypeRecord, TpsNavigatorTypesSnapshot } from '../../types/navigatorTypes';
+import {
+    isTpsNavigatorLineTypeId,
+    type TpsNavigatorTypeId,
+    type TpsNavigatorTypeRecord,
+    type TpsNavigatorTypesSnapshot
+} from '../../types/navigatorTypes';
 
 export interface TypeRecordActivationResult {
     readonly ok: boolean;
@@ -34,14 +39,14 @@ export function buildTypeProviderRows({
     addTaskContextMenuItems,
     onActivationFailure
 }: BuildTypeProviderRowsOptions): NavigatorProvidedRow[] {
-    const builtinAvailability = snapshot.builtinAvailability ?? snapshot.availability;
-    if (builtinAvailability !== 'ready') {
+    const lineAvailability = snapshot.lineAvailability ?? snapshot.builtinAvailability ?? snapshot.availability;
+    if (isTpsNavigatorLineTypeId(selectedType) && lineAvailability !== 'ready') {
         return [
             {
                 providerId: 'tps/entity-types',
-                id: `status:${builtinAvailability}`,
+                id: `status:${lineAvailability}`,
                 kind: 'tps/entity-type-status',
-                label: snapshot.builtinMessage ?? snapshot.message ?? 'Types are unavailable.',
+                label: snapshot.lineMessage ?? snapshot.builtinMessage ?? snapshot.message ?? 'Exact-line items are unavailable.',
                 sourcePath: 'Types'
             }
         ];

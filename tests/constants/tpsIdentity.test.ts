@@ -161,7 +161,7 @@ describe('TPS Notebook Navigator identity isolation', () => {
         expect(TPS_NOTEBOOK_NAVIGATOR_DATABASE_NAMESPACE).not.toBe('notebooknavigator');
     });
 
-    it('keeps every public API contract surface on the same additive version', async () => {
+    it('keeps every public API contract surface on the same version', async () => {
         const [publicApi, publicApiReadme, apiReference] = await Promise.all([
             readFile(path.join(repoRoot, 'src/api/public/notebook-navigator.d.ts'), 'utf8'),
             readFile(path.join(repoRoot, 'src/api/public/README.md'), 'utf8'),
@@ -169,7 +169,7 @@ describe('TPS Notebook Navigator identity isolation', () => {
         ]);
         const version = API_VERSION.toString();
 
-        expect(version).toBe('2.13.0');
+        expect(version).toBe('3.0.0');
         expect(publicApi).toContain(`Version: ${version}`);
         expect(publicApiReadme).toContain(`Current API Version: **${version}**`);
         expect(apiReference).toContain(`**Current API Version:** ${version}`);

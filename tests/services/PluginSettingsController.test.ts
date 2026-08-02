@@ -52,6 +52,7 @@ import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import { STORAGE_KEYS } from '../../src/types';
 import { buildPropertySeparatorKey, buildTagSeparatorKey } from '../../src/utils/navigationSeparators';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
+import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 beforeEach(() => {
     mockLocalStorageStore.clear();
@@ -108,6 +109,47 @@ describe('PluginSettingsController.normalizeNavigationSeparatorSettings', () => 
             [buildTagSeparatorKey('réunion')]: true,
             [normalizedPropertyKey]: true
         });
+    });
+});
+
+describe('PluginSettingsController Type presentation persistence', () => {
+    it('round-trips file-backed Type presentation and discards standalone Type keys', async () => {
+        let storedData: Record<string, unknown> = {
+            propertySortKey: 'priority, status',
+            typeSortOverrides: {
+                [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { option: 'property-desc', propertyKey: 'priority' },
+                [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: 'title-asc'
+            },
+            typeAppearances: {
+                [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property:status' },
+                [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { mode: 'compact' }
+            }
+        };
+        const saveData = vi.fn(async data => {
+            storedData = structuredClone(data) as Record<string, unknown>;
+        });
+        const createController = () =>
+            new PluginSettingsController({
+                keys: STORAGE_KEYS,
+                loadData: vi.fn(async () => structuredClone(storedData)),
+                saveData,
+                mirrorUXPreferences: vi.fn()
+            });
+
+        const first = createController();
+        await first.loadSettings();
+        expect(first.settings.typeSortOverrides).toEqual({
+            [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { option: 'property-desc', propertyKey: 'priority' }
+        });
+        expect(first.settings.typeAppearances).toEqual({
+            [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property:status' }
+        });
+
+        await first.saveSettings();
+        const reloaded = createController();
+        await reloaded.loadSettings();
+        expect(reloaded.settings.typeSortOverrides).toEqual(first.settings.typeSortOverrides);
+        expect(reloaded.settings.typeAppearances).toEqual(first.settings.typeAppearances);
     });
 });
 

@@ -10,6 +10,7 @@ import {
     isTpsNavigatorTypeId,
     type TpsNavigatorTypeDescriptor,
     type TpsNavigatorTypeId,
+    type TpsNavigatorTypeRecord,
     type TpsNavigatorTypesSnapshot
 } from '../../types/navigatorTypes';
 import type {
@@ -108,20 +109,34 @@ function composeDescriptors(
     builtinDescriptors: readonly TpsNavigatorTypeDescriptor[],
     providerDescriptors: readonly TpsNavigatorTypeDescriptor[]
 ): readonly TpsNavigatorTypeDescriptor[] {
-    const structural = builtinDescriptors.filter(descriptor => descriptor.category === 'structure');
-    const kinds = builtinDescriptors.filter(descriptor => descriptor.category === 'kind');
-    return Object.freeze([...structural, ...providerDescriptors, ...kinds]);
+    return Object.freeze([...builtinDescriptors, ...providerDescriptors].filter(descriptor => isTpsNavigatorTypeId(descriptor.id)));
+}
+
+function composeRecordsByType(
+    recordsByType: ReadonlyMap<TpsNavigatorTypeId, readonly TpsNavigatorTypeRecord[]>,
+    descriptors: readonly TpsNavigatorTypeDescriptor[]
+): ReadonlyMap<TpsNavigatorTypeId, readonly TpsNavigatorTypeRecord[]> {
+    const activeTypeIds = new Set(descriptors.map(descriptor => descriptor.id));
+    return new Map([...recordsByType].filter(([typeId]) => isTpsNavigatorTypeId(typeId) && activeTypeIds.has(typeId)));
 }
 
 /**
- * Catalog controller for built-in GCM-backed Types and externally registered
- * top-level Type scopes. External providers never share GCM readiness state.
+ * Catalog controller for the fixed vault-file/exact-line Types and externally
+ * registered top-level scopes. Exact-line readiness is diagnostic only: the
+ * built-in catalog remains available while its file-backed collections work.
  */
 export class TypesAPI {
     readonly notesId = TPS_NAVIGATOR_TYPE_IDS.NOTES;
     readonly checkboxesId = TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES;
     readonly bulletsId = TPS_NAVIGATOR_TYPE_IDS.BULLETS;
     readonly headingsId = TPS_NAVIGATOR_TYPE_IDS.HEADINGS;
+    readonly basesId = TPS_NAVIGATOR_TYPE_IDS.BASES;
+    readonly canvasId = TPS_NAVIGATOR_TYPE_IDS.CANVAS;
+    readonly drawingsId = TPS_NAVIGATOR_TYPE_IDS.DRAWINGS;
+    readonly pdfsId = TPS_NAVIGATOR_TYPE_IDS.PDFS;
+    readonly imagesId = TPS_NAVIGATOR_TYPE_IDS.IMAGES;
+    readonly audioId = TPS_NAVIGATOR_TYPE_IDS.AUDIO;
+    readonly videoId = TPS_NAVIGATOR_TYPE_IDS.VIDEO;
 
     private readonly listeners = new Set<NavigatorTypesListener>();
     private readonly internalListeners = new Set<() => void>();
@@ -145,17 +160,17 @@ export class TypesAPI {
         this.enabled = enabled;
     }
 
-    /** Build an opaque Kind Type id from a configured Kind value. */
+    /** @deprecated Kind is frontmatter metadata and is no longer published in Types. */
     buildKind(kind: string): string | null {
         return createTpsNavigatorKindTypeId(kind);
     }
 
-    /** Parse the Kind value from an opaque Kind Type id. */
+    /** @deprecated Parses stale Kind Type ids for compatibility only. */
     parseKind(typeId: string): string | null {
         return typeof typeId === 'string' ? getTpsNavigatorKindValue(typeId) : null;
     }
 
-    /** Return whether a runtime value is a syntactically valid Type id. */
+    /** Return whether a runtime value is a fixed or canonical provider Type id. */
     isType(typeId: unknown): boolean {
         return isTpsNavigatorTypeId(typeId);
     }
@@ -257,19 +272,24 @@ export class TypesAPI {
         const hasReadyExternalProvider = providerSnapshot.hasReadyProvider;
         const availability = builtinSnapshot.availability === 'ready' || hasReadyExternalProvider ? 'ready' : builtinSnapshot.availability;
         const message = availability === 'ready' ? undefined : builtinSnapshot.message;
+        const builtinAvailability = builtinSnapshot.builtinAvailability ?? builtinSnapshot.availability;
+        const builtinMessage = builtinSnapshot.builtinMessage ?? builtinSnapshot.message;
+        const descriptors = composeDescriptors(builtinSnapshot.descriptors, providerSnapshot.descriptors);
         const snapshot: TpsNavigatorTypesSnapshot = {
             availability,
-            descriptors: composeDescriptors(builtinSnapshot.descriptors, providerSnapshot.descriptors),
-            recordsByType: builtinSnapshot.recordsByType,
+            descriptors,
+            recordsByType: composeRecordsByType(builtinSnapshot.recordsByType, descriptors),
             revision: this.providerRegistry ? this.compositeRevision : builtinSnapshot.revision,
             authoritativeSourceKeys,
-            builtinAvailability: builtinSnapshot.availability
+            builtinAvailability,
+            ...(builtinSnapshot.lineAvailability ? { lineAvailability: builtinSnapshot.lineAvailability } : {}),
+            ...(builtinSnapshot.lineMessage ? { lineMessage: builtinSnapshot.lineMessage } : {})
         };
-        if (message !== undefined || builtinSnapshot.message !== undefined) {
+        if (message !== undefined || builtinMessage !== undefined) {
             this.cachedInternalSnapshot = Object.freeze({
                 ...snapshot,
                 ...(message !== undefined ? { message } : {}),
-                ...(builtinSnapshot.message !== undefined ? { builtinMessage: builtinSnapshot.message } : {})
+                ...(builtinMessage !== undefined ? { builtinMessage } : {})
             });
         } else {
             this.cachedInternalSnapshot = Object.freeze(snapshot);

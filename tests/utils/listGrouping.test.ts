@@ -28,6 +28,7 @@ import {
 } from '../../src/settings/types';
 import { ItemType } from '../../src/types';
 import { buildPropertyKeyNodeId } from '../../src/utils/propertyTree';
+import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 import {
     areListGroupingOptionsEqual,
     areListGroupingOptionsSameKind,
@@ -38,14 +39,18 @@ import {
     updatePropertyGroupingOverrideKeys
 } from '../../src/utils/listGrouping';
 
-type GroupingSettings = Pick<NotebookNavigatorSettings, 'noteGrouping' | 'folderAppearances' | 'tagAppearances' | 'propertyAppearances'>;
+type GroupingSettings = Pick<
+    NotebookNavigatorSettings,
+    'noteGrouping' | 'folderAppearances' | 'tagAppearances' | 'propertyAppearances' | 'typeAppearances'
+>;
 
 function createGroupingSettings(noteGrouping: GroupingSettings['noteGrouping']): GroupingSettings {
     return {
         noteGrouping,
         folderAppearances: {},
         tagAppearances: {},
-        propertyAppearances: {}
+        propertyAppearances: {},
+        typeAppearances: {}
     };
 }
 
@@ -101,6 +106,38 @@ describe('resolveListGrouping property selections', () => {
         expect(result.effectiveGrouping).toBe('date');
         expect(result.normalizedOverride).toBeUndefined();
         expect(result.hasCustomOverride).toBe(false);
+    });
+});
+
+describe('resolveListGrouping file-backed Type selections', () => {
+    it('uses a per-Type override and normalizes a folder default for a vault-wide Type', () => {
+        const settings = createGroupingSettings('folder');
+        settings.typeAppearances = {
+            [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { groupBy: 'property:status' }
+        };
+
+        expect(
+            resolveListGrouping({
+                settings,
+                selectionType: ItemType.TYPE,
+                typeId: TPS_NAVIGATOR_TYPE_IDS.NOTES
+            })
+        ).toMatchObject({
+            defaultGrouping: 'date',
+            effectiveGrouping: 'property:status',
+            hasCustomOverride: true
+        });
+        expect(
+            resolveListGrouping({
+                settings,
+                selectionType: ItemType.TYPE,
+                typeId: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
+            })
+        ).toMatchObject({
+            defaultGrouping: 'folder',
+            effectiveGrouping: 'folder',
+            hasCustomOverride: false
+        });
     });
 });
 

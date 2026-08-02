@@ -20,12 +20,14 @@ import { ItemType, type NavigationItemType } from '../types';
 import { createPropertyGroupingOption, getPropertyGroupingKey } from '../settings/types';
 import type { ListNoteGroupingOption } from '../settings/types';
 import type { PropertySelectionNodeId } from './propertyTree';
+import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
 
 interface ListGroupCollapseKeyParams {
     selectionType: NavigationItemType | ItemType | null;
     selectedFolderPath: string | null;
     selectedTag: string | null;
     selectedProperty: PropertySelectionNodeId | null;
+    selectedType?: TpsNavigatorTypeId | null;
     groupingMode: ListNoteGroupingOption;
     groupId: string;
 }
@@ -74,6 +76,7 @@ export function buildListGroupCollapseKeyPrefix({
     selectedFolderPath,
     selectedTag,
     selectedProperty,
+    selectedType,
     groupingMode
 }: ListGroupCollapseScopeParams): string {
     let scope: string;
@@ -81,6 +84,8 @@ export function buildListGroupCollapseKeyPrefix({
         scope = `tag:${encodeKeyPart(selectedTag)}`;
     } else if (selectionType === ItemType.PROPERTY && selectedProperty) {
         scope = `property:${encodeKeyPart(selectedProperty)}`;
+    } else if (selectionType === ItemType.TYPE && selectedType) {
+        scope = `type:${encodeKeyPart(selectedType)}`;
     } else {
         scope = `folder:${encodeKeyPart(selectedFolderPath ?? '/')}`;
     }

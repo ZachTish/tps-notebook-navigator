@@ -18,6 +18,7 @@
 
 import type { TFile } from 'obsidian';
 import { ItemType, ListPaneItemType, type NavigationItemType } from '../types';
+import { isTpsNavigatorFileTypeId, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 import type { FeatureImageStatus, FileData } from '../storage/IndexedDBStorage';
 import { type FeatureImageSizeSetting } from '../settings/types';
 import type { ListPaneItem } from '../types/virtualization';
@@ -106,6 +107,45 @@ export function getFeatureImageDisplayMeasurements(featureImageSize: FeatureImag
 
 export function getListPaneMeasurements(isMobile: boolean): ListPaneMeasurements {
     return isMobile ? MOBILE_MEASUREMENTS : DESKTOP_MEASUREMENTS;
+}
+
+/** File-backed Types keep ordinary file rows and any externally attached provider-row chrome. */
+export function usesStandaloneTypeProviderPresentation(
+    selectionType: NavigationItemType | null | undefined,
+    selectedType: TpsNavigatorTypeId | null | undefined
+): boolean {
+    return (
+        selectionType === ItemType.TYPE && selectedType !== null && selectedType !== undefined && !isTpsNavigatorFileTypeId(selectedType)
+    );
+}
+
+/**
+ * Sizes a standalone Type result with the same title/metadata rhythm as a file row.
+ * Mobile reserves a 44px content target for the primary action and optional controls.
+ */
+export function estimateTypeProviderRowHeight({
+    heights,
+    compactPaddingTotal,
+    isCompactMode,
+    isMobile,
+    titleRows,
+    hasSecondaryLabel
+}: {
+    heights: ListPaneMeasurements;
+    compactPaddingTotal: number;
+    isCompactMode: boolean;
+    isMobile: boolean;
+    titleRows: number;
+    hasSecondaryLabel: boolean;
+}): number {
+    const normalizedTitleRows = Number.isFinite(titleRows) ? Math.max(1, Math.trunc(titleRows)) : 1;
+    const titleHeight = heights.titleLineHeight * normalizedTitleRows;
+    const metadataHeight = !isCompactMode && hasSecondaryLabel ? heights.singleTextLineHeight : 0;
+    const contentHeight = titleHeight + metadataHeight;
+    const touchSafeContentHeight = isMobile ? Math.max(44, contentHeight) : contentHeight;
+    const paddingTotal = isCompactMode ? compactPaddingTotal : heights.basePadding;
+
+    return paddingTotal + touchSafeContentHeight;
 }
 
 export function getListPaneHeaderHeight(item: ListPaneItem | undefined, measurements: ListPaneMeasurements): number {

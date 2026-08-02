@@ -3,7 +3,12 @@ import type { App } from 'obsidian';
 import { TypesAPI, type NavigatorTypesStore } from '../../src/api/modules/TypesAPI';
 import { NavigatorTypeProviderRegistry } from '../../src/services/types/NavigatorTypeProviderRegistry';
 import { getTpsNavigatorProviderSourceKey } from '../../src/types/navigatorTypes';
-import type { TpsNavigatorTypeDescriptor, TpsNavigatorTypeId, TpsNavigatorTypesSnapshot } from '../../src/types/navigatorTypes';
+import type {
+    TpsNavigatorTypeDescriptor,
+    TpsNavigatorTypeId,
+    TpsNavigatorTypeRecord,
+    TpsNavigatorTypesSnapshot
+} from '../../src/types/navigatorTypes';
 
 const EMPTY_RECORDS = new Map<TpsNavigatorTypeId, readonly never[]>();
 
@@ -16,6 +21,28 @@ function descriptor(overrides: Partial<TpsNavigatorTypeDescriptor> = {}): TpsNav
         count: 12,
         ...overrides
     };
+}
+
+function legacyKindDescriptor(id = 'kind:project'): TpsNavigatorTypeDescriptor {
+    return {
+        id,
+        label: 'Projects',
+        icon: 'lucide-box',
+        category: 'structure',
+        count: 4
+    } as unknown as TpsNavigatorTypeDescriptor;
+}
+
+function legacyKindRecord(typeId = 'kind:project'): TpsNavigatorTypeRecord {
+    return {
+        id: 'legacy-project',
+        typeId,
+        label: 'Legacy project',
+        sourcePath: 'Projects/Legacy.md',
+        entityType: 'note',
+        locatorKey: 'note:Projects/Legacy.md',
+        referenceTarget: 'Projects/Legacy.md'
+    } as unknown as TpsNavigatorTypeRecord;
 }
 
 function snapshot(
@@ -65,29 +92,54 @@ class FakeStore implements NavigatorTypesStore {
 }
 
 describe('TypesAPI', () => {
-    it('provides stable structural ids and opaque Kind helpers', () => {
+    it('provides stable fixed ids while retaining deprecated Kind syntax helpers', () => {
         const api = new TypesAPI(new FakeStore(snapshot('loading')));
 
         expect(api.notesId).toBe('entity:note');
         expect(api.checkboxesId).toBe('structural:task');
         expect(api.bulletsId).toBe('structural:bullet');
         expect(api.headingsId).toBe('structural:heading');
+        expect(api.basesId).toBe('file:base');
+        expect(api.canvasId).toBe('file:canvas');
+        expect(api.drawingsId).toBe('file:drawing');
+        expect(api.pdfsId).toBe('file:pdf');
+        expect(api.imagesId).toBe('file:image');
+        expect(api.audioId).toBe('file:audio');
+        expect(api.videoId).toBe('file:video');
         expect(api.buildKind('Project objective')).toBe('kind:Project%20objective');
         expect(api.buildKind('   ')).toBeNull();
         expect(api.parseKind('kind:Project%20objective')).toBe('Project objective');
         expect(api.parseKind('structural:task')).toBeNull();
         expect(api.parseKind(null as never)).toBeNull();
-        expect(api.isType('kind:Project%20objective')).toBe(true);
+        expect(api.isType('file:drawing')).toBe(true);
+        expect(api.isType('kind:Project%20objective')).toBe(false);
         expect(api.isType('kind:')).toBe(false);
         expect(api.isType(null)).toBe(false);
     });
 
-    it('returns cached, deeply immutable DTOs without exposing records or provider counts', () => {
-        const source = snapshot(
-            'ready',
-            [descriptor(), descriptor({ id: 'kind:project', label: 'Projects', category: 'kind', count: 4 })],
-            8
-        );
+    it('returns cached immutable DTOs without records, counts, or legacy Kind descriptors', () => {
+        const activeRecord: TpsNavigatorTypeRecord = {
+            id: 'active-task',
+            typeId: 'structural:task',
+            label: 'Active task',
+            sourcePath: 'Tasks/Active.md',
+            entityType: 'block',
+            lineKind: 'task',
+            lineNumber: 1,
+            locatorKey: 'task:Tasks/Active.md:1',
+            referenceTarget: 'Tasks/Active.md'
+        };
+        const source = {
+            ...snapshot(
+                'ready',
+                [descriptor(), legacyKindDescriptor(), descriptor({ id: 'file:base', label: 'Bases', icon: 'lucide-table-2', count: 2 })],
+                8
+            ),
+            recordsByType: new Map([
+                ['structural:task', [activeRecord]],
+                ['kind:project', [legacyKindRecord()]]
+            ]) as unknown as TpsNavigatorTypesSnapshot['recordsByType']
+        };
         const store = new FakeStore(source);
         const api = new TypesAPI(store);
 
@@ -99,7 +151,7 @@ describe('TypesAPI', () => {
             availability: 'ready',
             descriptors: [
                 { id: 'structural:task', label: 'Checkboxes', icon: 'lucide-square-check-big', category: 'structure' },
-                { id: 'kind:project', label: 'Projects', icon: 'lucide-square-check-big', category: 'kind' }
+                { id: 'file:base', label: 'Bases', icon: 'lucide-table-2', category: 'structure' }
             ],
             revision: 8
         });
@@ -108,10 +160,47 @@ describe('TypesAPI', () => {
         expect(first.descriptors.every(item => Object.isFrozen(item))).toBe(true);
         expect('recordsByType' in first).toBe(false);
         expect('count' in first.descriptors[0]).toBe(false);
+        expect([...api.getInternalSnapshot().recordsByType]).toEqual([['structural:task', [activeRecord]]]);
 
         store.publish(snapshot('error', [], 8, 'Index failed.'));
         expect(api.getSnapshot()).toEqual({ availability: 'error', descriptors: [], revision: 8, message: 'Index failed.' });
         expect(api.getSnapshot()).not.toBe(first);
+    });
+
+    it('keeps the fixed catalog ready while exact-line availability is guarded independently', async () => {
+        const source: TpsNavigatorTypesSnapshot = {
+            ...snapshot(
+                'ready',
+                [descriptor({ id: 'entity:note', label: 'Notes', icon: 'lucide-file-text', count: 3 }), descriptor({ count: 0 })],
+                12
+            ),
+            builtinAvailability: 'ready',
+            lineAvailability: 'unavailable',
+            lineMessage: 'Exact-line items require TPS Global Context Menu.'
+        };
+        const store = new FakeStore(source);
+        const api = new TypesAPI(store);
+
+        const publicSnapshot = api.getSnapshot();
+
+        expect(publicSnapshot).toEqual({
+            availability: 'ready',
+            descriptors: [
+                { id: 'entity:note', label: 'Notes', icon: 'lucide-file-text', category: 'structure' },
+                { id: 'structural:task', label: 'Checkboxes', icon: 'lucide-square-check-big', category: 'structure' }
+            ],
+            revision: 12
+        });
+        expect('lineAvailability' in publicSnapshot).toBe(false);
+        expect(api.getInternalSnapshot()).toMatchObject({
+            availability: 'ready',
+            builtinAvailability: 'ready',
+            lineAvailability: 'unavailable',
+            lineMessage: 'Exact-line items require TPS Global Context Menu.'
+        });
+        expect(api.getInternalSnapshot().authoritativeSourceKeys).toContain('builtin');
+        await expect(api.whenReady()).resolves.toBe(publicSnapshot);
+        expect(store.subscribeCalls).not.toHaveBeenCalled();
     });
 
     it('immediately emits to subscribers while sharing one underlying subscription', () => {
@@ -243,15 +332,8 @@ describe('TypesAPI', () => {
         expect(store.subscribeCalls).toHaveBeenCalledTimes(2);
     });
 
-    it('composes external top-level collections independently from GCM readiness and tracks owner authority', async () => {
-        const store = new FakeStore(
-            snapshot(
-                'unavailable',
-                [descriptor(), descriptor({ id: 'kind:project', label: 'Project', category: 'kind', count: 2 })],
-                3,
-                'GCM is unavailable.'
-            )
-        );
+    it('composes external collections independently from built-in readiness without emitting legacy Kinds', async () => {
+        const store = new FakeStore(snapshot('unavailable', [descriptor(), legacyKindDescriptor()], 3, 'GCM is unavailable.'));
         const registry = new NavigatorTypeProviderRegistry({} as App);
         const api = new TypesAPI(store, true, registry);
         const registration = api.registerProvider({
@@ -260,7 +342,7 @@ describe('TypesAPI', () => {
             getRows: async () => []
         });
 
-        await vi.waitFor(() => expect(api.getSnapshot().descriptors).toHaveLength(3));
+        await vi.waitFor(() => expect(api.getSnapshot().descriptors).toHaveLength(2));
         expect(api.getSnapshot()).toMatchObject({
             availability: 'ready',
             descriptors: [
@@ -271,8 +353,7 @@ describe('TypesAPI', () => {
                     category: 'structure',
                     providerId: 'example/entities',
                     providerCollectionId: 'events'
-                },
-                { id: 'kind:project' }
+                }
             ]
         });
         const internal = api.getInternalSnapshot();
@@ -281,7 +362,7 @@ describe('TypesAPI', () => {
         expect(internal.authoritativeSourceKeys).toContain(getTpsNavigatorProviderSourceKey('example/entities'));
 
         registration.unregister();
-        expect(api.getSnapshot().descriptors.map(item => item.id)).toEqual(['structural:task', 'kind:project']);
+        expect(api.getSnapshot().descriptors.map(item => item.id)).toEqual(['structural:task']);
         expect(api.getInternalSnapshot().authoritativeSourceKeys).toContain(getTpsNavigatorProviderSourceKey('example/entities'));
     });
 });

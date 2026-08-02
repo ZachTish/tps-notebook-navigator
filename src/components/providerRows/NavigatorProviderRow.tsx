@@ -17,6 +17,16 @@ import { ObsidianIcon } from '../ObsidianIcon';
 interface NavigatorProviderRowProps {
     row: NavigatorProvidedRow;
     isSelected?: boolean;
+    hasSelectedAbove?: boolean;
+    hasSelectedBelow?: boolean;
+    /** Uses the native file-list chrome for standalone rows rendered inside a Type collection. */
+    presentation?: 'attached' | 'type';
+    /** Mirrors the active file-list density when `presentation` is `type`. */
+    isCompactMode?: boolean;
+    /** Mirrors the active file-list title clamp when `presentation` is `type`. */
+    titleRows?: number;
+    /** Type icons follow the ordinary file-icon visibility setting; task controls always remain visible. */
+    showTypeIcon?: boolean;
     /** Returns false when the source-backed row is no longer selectable. */
     onSelectionRequested?: () => boolean;
     /** Internal first-party hook; omitted for ordinary external provider rows. */
@@ -50,6 +60,27 @@ interface ProviderCheckboxPresentation {
     marker: string;
     hasVisibleMarker: boolean;
     stateLabel: string;
+}
+
+const TYPE_ROW_ICON_BY_KIND: Readonly<Record<string, string>> = Object.freeze({
+    base: 'lucide-database',
+    bullet: 'lucide-list',
+    canvas: 'lucide-layout-dashboard',
+    checkbox: 'lucide-square-check-big',
+    drawing: 'lucide-brush',
+    excalidraw: 'lucide-brush',
+    heading: 'lucide-heading',
+    image: 'lucide-image',
+    note: 'lucide-file-text',
+    pdf: 'lucide-file-text',
+    task: 'lucide-square-check-big'
+});
+
+/** Resolves the restrained leading-icon twist for a file-styled Type result. */
+export function getProviderTypeRowIcon(kind: string): string {
+    const normalizedKind = kind.trim().toLocaleLowerCase();
+    const kindTail = normalizedKind.split('/').pop() ?? '';
+    return TYPE_ROW_ICON_BY_KIND[kindTail] ?? 'lucide-file-text';
 }
 
 /** Preserves provider-specific task markers while keeping a useful binary fallback. */
@@ -181,6 +212,12 @@ export function requestSelectedProviderRowActivation(
 export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
     row,
     isSelected = false,
+    hasSelectedAbove = false,
+    hasSelectedBelow = false,
+    presentation = 'attached',
+    isCompactMode = false,
+    titleRows = 1,
+    showTypeIcon = true,
     onSelectionRequested,
     onActivationRequested,
     rowMenuHost
@@ -312,6 +349,120 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
         checkboxPresentation.hasVisibleMarker ? ' has-marker' : ''
     }`;
 
+    const checkboxControl =
+        row.indicator?.type === 'checkbox' ? (
+            row.indicator.onChange ? (
+                <button
+                    type="button"
+                    className={`${checkboxClassName} is-interactive`}
+                    role="checkbox"
+                    aria-checked={displayedChecked}
+                    aria-busy={checkboxBusy || undefined}
+                    aria-label={interactiveCheckboxLabel}
+                    data-task-marker={checkboxPresentation.hasVisibleMarker ? checkboxPresentation.marker : undefined}
+                    title={checkboxBusy ? 'Updating task…' : interactiveCheckboxLabel}
+                    disabled={checkboxBusy}
+                    onClick={handleCheckboxChange}
+                    onKeyDown={event => routeProviderRowKeyboardPropagation('checkbox', event)}
+                    onKeyUp={event => routeProviderRowKeyboardPropagation('checkbox', event)}
+                >
+                    <span aria-hidden="true">{checkboxPresentation.marker}</span>
+                </button>
+            ) : (
+                <span
+                    className={checkboxClassName}
+                    role="checkbox"
+                    aria-checked={displayedChecked}
+                    aria-readonly="true"
+                    aria-label={checkboxPresentation.stateLabel}
+                    data-task-marker={checkboxPresentation.hasVisibleMarker ? checkboxPresentation.marker : undefined}
+                    title="Task state is display-only"
+                >
+                    <span aria-hidden="true">{checkboxPresentation.marker}</span>
+                </span>
+            )
+        ) : null;
+    const moreActionsControl = hasContextMenu ? (
+        <button
+            type="button"
+            className="nn-provider-row-more"
+            aria-label={`More actions for ${row.label}`}
+            aria-haspopup="menu"
+            title="More actions"
+            onClick={handleMoreActions}
+            onKeyDown={event => routeProviderRowKeyboardPropagation('menu', event)}
+            onKeyUp={event => routeProviderRowKeyboardPropagation('menu', event)}
+        >
+            <ObsidianIcon name="lucide-ellipsis-vertical" aria-hidden={true} />
+        </button>
+    ) : null;
+
+    if (presentation === 'type') {
+        const effectiveTitleRows = Number.isFinite(titleRows) ? Math.max(1, Math.trunc(titleRows)) : 1;
+        const fileClasses = [
+            'nn-provider-row',
+            'nn-provider-row--type',
+            'nn-file',
+            ...(isCompactMode ? ['nn-compact'] : []),
+            ...(isSelected ? ['nn-selected'] : []),
+            ...(isSelected && hasSelectedAbove ? ['nn-has-selected-above'] : []),
+            ...(isSelected && hasSelectedBelow ? ['nn-has-selected-below'] : [])
+        ];
+        const titleStyle = {
+            '--filename-rows': effectiveTitleRows
+        } as React.CSSProperties;
+        const textContentClassName = isCompactMode ? 'nn-compact-file-text-content' : 'nn-file-text-content';
+        const title = (
+            <span className="nn-file-name" data-title-rows={effectiveTitleRows} style={titleStyle}>
+                {row.label}
+            </span>
+        );
+
+        return (
+            <div
+                className={fileClasses.join(' ')}
+                role="listitem"
+                aria-current={isSelected ? 'true' : undefined}
+                data-provider-id={row.providerId}
+                data-provider-kind={row.kind}
+                data-source-path={row.sourcePath}
+                data-provider-context-menu={hasContextMenu ? 'true' : undefined}
+                onContextMenu={handleContextMenu}
+            >
+                <div className="nn-file-content">
+                    <div className="nn-file-inner-content">
+                        {checkboxControl || showTypeIcon ? (
+                            <div className={`nn-file-icon-slot${checkboxControl ? ' nn-provider-row-checkbox-slot' : ''}`}>
+                                {checkboxControl ?? (
+                                    <span className="nn-file-icon nn-provider-row-type-icon" data-has-color="false" aria-hidden="true">
+                                        <ObsidianIcon name={getProviderTypeRowIcon(row.kind)} aria-hidden={true} />
+                                    </span>
+                                )}
+                            </div>
+                        ) : null}
+                        <button
+                            type="button"
+                            className={`nn-provider-row-open ${textContentClassName}`}
+                            title={row.tooltip}
+                            aria-label={primaryActionLabel}
+                            onClick={handleActivate}
+                            onKeyDown={event => routeProviderRowKeyboardPropagation('primary', event)}
+                            onKeyUp={event => routeProviderRowKeyboardPropagation('primary', event)}
+                        >
+                            {isCompactMode ? <span className="nn-compact-file-header">{title}</span> : title}
+                            {!isCompactMode && row.secondaryLabel ? (
+                                <span className="nn-file-second-line">
+                                    <span className="nn-provider-row-secondary">{row.secondaryLabel}</span>
+                                </span>
+                            ) : null}
+                        </button>
+                        {moreActionsControl}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div
             className={`nn-provider-row${isSelected ? ' is-selected' : ''}`}
@@ -323,38 +474,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
             data-provider-context-menu={hasContextMenu ? 'true' : undefined}
             onContextMenu={handleContextMenu}
         >
-            {row.indicator?.type === 'checkbox' ? (
-                row.indicator.onChange ? (
-                    <button
-                        type="button"
-                        className={`${checkboxClassName} is-interactive`}
-                        role="checkbox"
-                        aria-checked={displayedChecked}
-                        aria-busy={checkboxBusy || undefined}
-                        aria-label={interactiveCheckboxLabel}
-                        data-task-marker={checkboxPresentation.hasVisibleMarker ? checkboxPresentation.marker : undefined}
-                        title={checkboxBusy ? 'Updating task…' : interactiveCheckboxLabel}
-                        disabled={checkboxBusy}
-                        onClick={handleCheckboxChange}
-                        onKeyDown={event => routeProviderRowKeyboardPropagation('checkbox', event)}
-                        onKeyUp={event => routeProviderRowKeyboardPropagation('checkbox', event)}
-                    >
-                        <span aria-hidden="true">{checkboxPresentation.marker}</span>
-                    </button>
-                ) : (
-                    <span
-                        className={checkboxClassName}
-                        role="checkbox"
-                        aria-checked={displayedChecked}
-                        aria-readonly="true"
-                        aria-label={checkboxPresentation.stateLabel}
-                        data-task-marker={checkboxPresentation.hasVisibleMarker ? checkboxPresentation.marker : undefined}
-                        title="Task state is display-only"
-                    >
-                        <span aria-hidden="true">{checkboxPresentation.marker}</span>
-                    </span>
-                )
-            ) : null}
+            {checkboxControl}
             <button
                 type="button"
                 className="nn-provider-row-open"
@@ -367,20 +487,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                 <span className="nn-provider-row-label">{row.label}</span>
                 {row.secondaryLabel ? <span className="nn-provider-row-secondary">{row.secondaryLabel}</span> : null}
             </button>
-            {hasContextMenu ? (
-                <button
-                    type="button"
-                    className="nn-provider-row-more"
-                    aria-label={`More actions for ${row.label}`}
-                    aria-haspopup="menu"
-                    title="More actions"
-                    onClick={handleMoreActions}
-                    onKeyDown={event => routeProviderRowKeyboardPropagation('menu', event)}
-                    onKeyUp={event => routeProviderRowKeyboardPropagation('menu', event)}
-                >
-                    <ObsidianIcon name="lucide-ellipsis-vertical" aria-hidden={true} />
-                </button>
-            ) : null}
+            {moreActionsControl}
         </div>
     );
 });

@@ -99,13 +99,9 @@ import {
     expandTypeSelectionAncestors,
     useNavigationPaneTypeSection
 } from '../../hooks/navigationPane/data/useNavigationPaneTypeSection';
-import {
-    filterTpsNavigatorTypesSnapshot,
-    isTpsNavigatorTypeAuthoritativelyMissing,
-    type TpsNavigatorTypeId
-} from '../../types/navigatorTypes';
-import { getVisibleVaultMarkdownFiles } from '../../utils/selectionUtils';
-import { createTypeSelectionFallbackAction } from '../../utils/navigationTypeHistory';
+import { filterTpsNavigatorTypesSnapshot, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
+import { getVisibleVaultFiles } from '../../utils/selectionUtils';
+import { createTypeSelectionFallbackAction, isTypeSelectionAuthoritativelyUnavailable } from '../../utils/navigationTypeHistory';
 
 const EMPTY_INDENT_GUIDE_MAP = new Map<string, number[]>();
 
@@ -444,7 +440,7 @@ export const NavigationPane = React.memo(
             if (!settings.tpsTypesNavigationEnabled) {
                 return new Set<string>();
             }
-            return new Set(getVisibleVaultMarkdownFiles(settings, showHiddenItems, app).map(file => file.path));
+            return new Set(getVisibleVaultFiles(settings, showHiddenItems, app).map(file => file.path));
         }, [app, props.navigationSourceState, settings, showHiddenItems]);
         const typeSnapshot = useMemo(
             () => filterTpsNavigatorTypesSnapshot(rawTypeSnapshot, visibleTypeSourcePaths),
@@ -463,7 +459,7 @@ export const NavigationPane = React.memo(
         useEffect(() => {
             const selectedType =
                 settings.tpsTypesNavigationEnabled && selectionState.selectionType === ItemType.TYPE ? selectionState.selectedType : null;
-            if (!selectedType) {
+            if (!selectedType || isTypeSelectionAuthoritativelyUnavailable(typeSnapshot, selectedType)) {
                 revealedTypeSelectionRef.current = null;
                 return;
             }
@@ -490,7 +486,7 @@ export const NavigationPane = React.memo(
             selectionState.selectedType,
             selectionState.selectionType,
             settings.tpsTypesNavigationEnabled,
-            typeSnapshot.descriptors
+            typeSnapshot
         ]);
         useEffect(() => {
             if (settings.tpsTypesNavigationEnabled || selectionState.selectionType !== ItemType.TYPE) {
@@ -502,7 +498,7 @@ export const NavigationPane = React.memo(
             if (
                 selectionState.selectionType !== ItemType.TYPE ||
                 !selectionState.selectedType ||
-                !isTpsNavigatorTypeAuthoritativelyMissing(typeSnapshot, selectionState.selectedType)
+                !isTypeSelectionAuthoritativelyUnavailable(typeSnapshot, selectionState.selectedType)
             ) {
                 return;
             }

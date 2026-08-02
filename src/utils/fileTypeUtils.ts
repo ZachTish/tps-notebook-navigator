@@ -67,7 +67,7 @@ function getSupportedExtensions(app: App): Set<string> {
             if (typeByExtension && typeof typeByExtension === 'object') {
                 for (const ext of Object.keys(typeByExtension)) {
                     if (typeof ext === 'string') {
-                        extensions.add(ext);
+                        extensions.add(ext.toLowerCase());
                     }
                 }
             }
@@ -80,7 +80,7 @@ function getSupportedExtensions(app: App): Set<string> {
             if (Array.isArray(registeredExtensions)) {
                 for (const ext of registeredExtensions) {
                     if (typeof ext === 'string') {
-                        extensions.add(ext);
+                        extensions.add(ext.toLowerCase());
                     }
                 }
             }
@@ -153,7 +153,7 @@ export function shouldDisplayFile(file: TFile, visibility: FileVisibility, app: 
 
         case FILE_VISIBILITY.SUPPORTED: {
             const extensions = getSupportedExtensions(app);
-            return extensions.has(file.extension);
+            return extensions.has(file.extension.toLowerCase());
         }
 
         case FILE_VISIBILITY.ALL:

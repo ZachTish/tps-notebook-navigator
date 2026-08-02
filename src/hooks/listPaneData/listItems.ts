@@ -49,6 +49,8 @@ import type { AliasSearchMatch, PropertySearchMatch, SearchResultMeta } from '..
 import type { IndexedDBStorage } from '../../storage/IndexedDBStorage';
 import type { PropertySelectionNodeId } from '../../utils/propertyTree';
 import type { ListPaneFolderPathSegment } from '../../types/virtualization';
+import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
+import { getNavigatorPinContext } from '../../utils/selectionUtils';
 
 export interface ListPaneConfig {
     filterPinnedByFolder: boolean;
@@ -79,6 +81,7 @@ interface BuildListItemsArgs {
     selectedFolder: TFolder | null;
     selectedTag?: string | null;
     selectedProperty?: PropertySelectionNodeId | null;
+    selectedType?: TpsNavigatorTypeId | null;
     selectionType: ItemType | null;
     showHiddenItems: boolean;
     sortOption: SortOption;
@@ -172,6 +175,7 @@ function buildListItemsInternal(
         selectedFolder,
         selectedTag = null,
         selectedProperty = null,
+        selectedType = null,
         selectionType,
         showHiddenItems,
         sortOption,
@@ -195,13 +199,12 @@ function buildListItemsInternal(
     const manualSortGroupHeaderFileByMemberPath = collectGroupItemCounts ? new Map<string, TFile>() : null;
 
     const contextFilter =
-        selectionType === ItemType.TAG
-            ? ItemType.TAG
-            : selectionType === ItemType.FOLDER
-              ? ItemType.FOLDER
-              : selectionType === ItemType.PROPERTY
-                ? ItemType.PROPERTY
-                : undefined;
+        selectionType === ItemType.FOLDER ||
+        selectionType === ItemType.TAG ||
+        selectionType === ItemType.PROPERTY ||
+        selectionType === ItemType.TYPE
+            ? getNavigatorPinContext(selectionType)
+            : undefined;
     const db = getDB();
     const pinnedDisplayScope =
         listConfig.filterPinnedByFolder && selectionType === ItemType.FOLDER && selectedFolder
@@ -228,6 +231,7 @@ function buildListItemsInternal(
             selectedFolderPath,
             selectedTag,
             selectedProperty,
+            selectedType,
             groupingMode,
             groupId
         });

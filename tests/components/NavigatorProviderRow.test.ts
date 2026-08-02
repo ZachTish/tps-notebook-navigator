@@ -11,6 +11,7 @@ import {
     consumeProviderRowMenuEvent,
     getProviderCheckboxPresentation,
     getProviderRowMenuCheckboxState,
+    getProviderTypeRowIcon,
     requestProviderRowActivation,
     requestSelectedProviderRowActivation,
     routeProviderRowKeyboardPropagation,
@@ -261,6 +262,109 @@ describe('NavigatorProviderRow', () => {
         expect(selected).toContain('Current selection');
         expect(unselected).not.toContain('aria-current');
         expect(unselected).not.toContain('tps-nn-provider-row is-selected');
+    });
+
+    it('renders standalone Type results with the native standard file-row structure and selected chrome', () => {
+        const typeRow: NavigatorProvidedRow = {
+            ...row(),
+            kind: 'tps/entity-type/heading',
+            indicator: undefined,
+            secondaryLabel: 'Inbox/Tasks.md · line 4'
+        };
+        const markup = renderToStaticMarkup(
+            React.createElement(NavigatorProviderRow, {
+                row: typeRow,
+                presentation: 'type',
+                isSelected: true,
+                hasSelectedAbove: true,
+                hasSelectedBelow: true,
+                titleRows: 2
+            })
+        );
+
+        expect(markup).toContain(
+            'class="tps-nn-provider-row tps-nn-provider-row--type tps-nn-file tps-nn-selected tps-nn-has-selected-above tps-nn-has-selected-below"'
+        );
+        expect(markup).toContain('role="listitem"');
+        expect(markup).toContain('aria-current="true"');
+        expect(markup).toContain('class="tps-nn-file-content"');
+        expect(markup).toContain('class="tps-nn-file-inner-content"');
+        expect(markup).toContain('class="tps-nn-file-icon-slot"');
+        expect(markup).toContain('class="tps-nn-file-icon tps-nn-provider-row-type-icon"');
+        expect(markup).toContain('class="tps-nn-provider-row-open tps-nn-file-text-content"');
+        expect(markup).toContain('class="tps-nn-file-name" data-title-rows="2"');
+        expect(markup).toContain('class="tps-nn-file-second-line"');
+        expect(markup).toContain('Inbox/Tasks.md · line 4');
+        expect(markup).not.toContain('draggable=');
+        expect(markup).not.toContain('data-drag');
+    });
+
+    it('uses native compact file typography without rendering a redundant secondary line', () => {
+        const typeRow: NavigatorProvidedRow = {
+            ...row(),
+            kind: 'tps/entity-type/note',
+            indicator: undefined,
+            secondaryLabel: 'Inbox/Tasks.md'
+        };
+        const markup = renderToStaticMarkup(
+            React.createElement(NavigatorProviderRow, {
+                row: typeRow,
+                presentation: 'type',
+                isCompactMode: true,
+                titleRows: Number.NaN
+            })
+        );
+
+        expect(markup).toContain('tps-nn-provider-row--type tps-nn-file tps-nn-compact');
+        expect(markup).toContain('class="tps-nn-provider-row-open tps-nn-compact-file-text-content"');
+        expect(markup).toContain('class="tps-nn-compact-file-header"');
+        expect(markup).toContain('class="tps-nn-file-name" data-title-rows="1"');
+        expect(markup).toContain('aria-label="Select Review navigator in Inbox/Tasks.md"');
+        expect(markup).not.toContain('tps-nn-file-second-line');
+        expect(markup).not.toContain('tps-nn-provider-row-secondary');
+    });
+
+    it('keeps the provider checkbox in the native leading slot even when ordinary Type icons are hidden', () => {
+        const markup = renderToStaticMarkup(
+            React.createElement(NavigatorProviderRow, {
+                row: row(vi.fn()),
+                presentation: 'type',
+                showTypeIcon: false
+            })
+        );
+
+        expect(markup).toContain('class="tps-nn-file-icon-slot tps-nn-provider-row-checkbox-slot"');
+        expect(markup).toContain('role="checkbox"');
+        expect(markup).toContain('aria-checked="false"');
+        expect(markup).not.toContain('tps-nn-provider-row-type-icon');
+    });
+
+    it('honors file-icon visibility for non-checkbox Type results', () => {
+        const typeRow = { ...row(), indicator: undefined };
+        const markup = renderToStaticMarkup(
+            React.createElement(NavigatorProviderRow, {
+                row: typeRow,
+                presentation: 'type',
+                showTypeIcon: false
+            })
+        );
+
+        expect(markup).not.toContain('tps-nn-file-icon-slot');
+        expect(markup).not.toContain('tps-nn-provider-row-type-icon');
+    });
+
+    it.each([
+        ['tps/entity-type/base', 'lucide-database'],
+        ['tps/entity-type/bullet', 'lucide-list'],
+        ['tps/entity-type/canvas', 'lucide-layout-dashboard'],
+        ['tps/entity-type/task', 'lucide-square-check-big'],
+        ['tps/entity-type/excalidraw', 'lucide-brush'],
+        ['tps/entity-type/heading', 'lucide-heading'],
+        ['tps/entity-type/image', 'lucide-image'],
+        ['tps/entity-type/pdf', 'lucide-file-text'],
+        ['tps/entity-type/unknown', 'lucide-file-text']
+    ])('maps %s to its restrained Type-result icon', (kind, icon) => {
+        expect(getProviderTypeRowIcon(kind)).toBe(icon);
     });
 
     it('keeps a display-only row selectable even when it has no activation callback', () => {

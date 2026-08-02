@@ -8,10 +8,10 @@ import type { NavigatorTypeDescriptor } from '../../src/api/types';
 import { showTypeCollectionContextMenu } from '../../src/utils/contextMenu/typeMenuBuilder';
 
 const descriptor: NavigatorTypeDescriptor = Object.freeze({
-    id: 'kind:Project',
-    label: 'Project',
-    icon: 'lucide-folder-kanban',
-    category: 'kind'
+    id: 'file:base',
+    label: 'Bases',
+    icon: 'lucide-table-2',
+    category: 'structure'
 });
 
 function createEvent() {
@@ -61,7 +61,7 @@ describe('Type collection context menus', () => {
             showTypeCollectionContextMenu({
                 event: event as never,
                 plugin: plugin as never,
-                typeId: 'kind:Project'
+                typeId: 'file:base'
             })
         ).toBe(true);
 
@@ -69,7 +69,7 @@ describe('Type collection context menus', () => {
         const appliedContext = applyTypeMenuExtensions.mock.calls[0]?.[0];
         expect(appliedContext?.menu).toBeInstanceOf(Menu);
         expect(appliedContext).toMatchObject({
-            typeId: 'kind:Project',
+            typeId: 'file:base',
             descriptor
         });
         expect(event.preventDefault).toHaveBeenCalledOnce();
@@ -85,7 +85,7 @@ describe('Type collection context menus', () => {
             showTypeCollectionContextMenu({
                 event: event as never,
                 plugin: plugin as never,
-                typeId: 'kind:Project'
+                typeId: 'file:base'
             })
         ).toBe(false);
 
@@ -122,7 +122,7 @@ describe('Type collection context menus', () => {
             showTypeCollectionContextMenu({
                 event: event as never,
                 plugin: plugin as never,
-                typeId: 'kind:Project'
+                typeId: 'file:base'
             })
         ).toBe(false);
 
@@ -143,7 +143,7 @@ describe('Type collection context menus', () => {
             showTypeCollectionContextMenu({
                 event: event as never,
                 plugin: plugin as never,
-                typeId: 'kind:Project'
+                typeId: 'file:base'
             })
         ).toBe(false);
 

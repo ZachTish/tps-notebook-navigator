@@ -117,13 +117,20 @@ export class NotebookNavigatorAPI {
     public readonly propertyNodes: Pick<PropertyNodesAPI, 'rootId' | 'buildKey' | 'buildValue' | 'parse' | 'normalize'>;
     /** Register active transient rows supplied by another plugin. */
     public readonly rows: Pick<RowsAPI, 'registerProvider'>;
-    /** Discover built-in, dynamic Kind, and registered-provider collections without depending on provider internals. */
+    /** Discover built-in file/line and registered-provider collections without depending on provider internals. */
     public readonly types: Pick<
         TypesAPI,
         | 'notesId'
         | 'checkboxesId'
         | 'bulletsId'
         | 'headingsId'
+        | 'basesId'
+        | 'canvasId'
+        | 'drawingsId'
+        | 'pdfsId'
+        | 'imagesId'
+        | 'audioId'
+        | 'videoId'
         | 'buildKind'
         | 'parseKind'
         | 'isType'
@@ -231,6 +238,13 @@ export class NotebookNavigatorAPI {
             checkboxesId: this.typesController.checkboxesId,
             bulletsId: this.typesController.bulletsId,
             headingsId: this.typesController.headingsId,
+            basesId: this.typesController.basesId,
+            canvasId: this.typesController.canvasId,
+            drawingsId: this.typesController.drawingsId,
+            pdfsId: this.typesController.pdfsId,
+            imagesId: this.typesController.imagesId,
+            audioId: this.typesController.audioId,
+            videoId: this.typesController.videoId,
             buildKind: kind => this.typesController.buildKind(kind),
             parseKind: typeId => this.typesController.parseKind(typeId),
             isType: typeId => this.typesController.isType(typeId),

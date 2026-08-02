@@ -22,6 +22,7 @@ import { useNavigationSelection } from '../context/SelectionContext';
 import type { ListDisplayMode, ListNoteGroupingOption, NotebookNavigatorSettings } from '../settings/types';
 import { ItemType } from '../types';
 import { resolveListGroupingOverride } from '../utils/listGrouping';
+import { isTpsNavigatorFileTypeId } from '../types/navigatorTypes';
 
 export interface FolderAppearance {
     mode?: ListDisplayMode;
@@ -92,10 +93,11 @@ function getVisibilityForMode(mode: ListDisplayMode, defaults: VisibilityDefault
  */
 export function useListPaneAppearance() {
     const settings = useSettingsState();
-    const { selectedFolder, selectedTag, selectedProperty, selectionType } = useNavigationSelection();
+    const { selectedFolder, selectedTag, selectedProperty, selectedType, selectionType } = useNavigationSelection();
     const selectedFolderPath = selectionType === ItemType.FOLDER ? (selectedFolder?.path ?? null) : null;
     const selectedTagPath = selectionType === ItemType.TAG ? selectedTag : null;
     const selectedPropertyNodeId = selectionType === ItemType.PROPERTY ? selectedProperty : null;
+    const selectedFileTypeId = selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectedType) ? selectedType : null;
     const selectedAppearance =
         selectedFolderPath !== null
             ? settings.folderAppearances?.[selectedFolderPath]
@@ -103,7 +105,9 @@ export function useListPaneAppearance() {
               ? settings.tagAppearances?.[selectedTagPath]
               : selectedPropertyNodeId !== null
                 ? settings.propertyAppearances?.[selectedPropertyNodeId]
-                : undefined;
+                : selectedFileTypeId !== null
+                  ? settings.typeAppearances?.[selectedFileTypeId]
+                  : undefined;
     const selectedMode = selectedAppearance?.mode;
     const selectedTitleRows = selectedAppearance?.titleRows;
     const selectedPreviewRows = selectedAppearance?.previewRows;

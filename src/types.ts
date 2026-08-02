@@ -74,7 +74,6 @@ export const PROPERTIES_ROOT_VIRTUAL_FOLDER_ID = 'properties-root';
 
 /** TPS virtual folder ids for the first-class Types navigator. */
 export const TYPES_ROOT_VIRTUAL_FOLDER_ID = 'tps-types-root';
-export const TYPES_KINDS_VIRTUAL_FOLDER_ID = 'tps-types-kinds';
 
 /**
  * Identifies which pane currently has keyboard focus

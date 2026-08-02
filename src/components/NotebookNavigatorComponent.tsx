@@ -51,9 +51,11 @@ import {
 } from '../types';
 import {
     canAddShortcutForNavigationSelection,
+    createFileBackedTypeMoveSelectionGuard,
     getSelectedPath,
     getFilesForSelection,
-    orderFilesByReference
+    orderFilesByReference,
+    resolveFileOperationCurrentFiles
 } from '../utils/selectionUtils';
 import { normalizeNavigationPath } from '../utils/navigationIndex';
 import { createIndexMap } from '../utils/arrayUtils';
@@ -519,8 +521,10 @@ export const NotebookNavigatorComponent = React.memo(
             };
         }, [settings.paneTransitionDuration, uiState.currentSinglePaneView, uiState.singlePane]);
 
+        const getCurrentOrderedFiles = useCallback((): readonly TFile[] => listPaneRef.current?.getOrderedFiles() ?? [], []);
+
         // Enable drag and drop only on desktop
-        useDragAndDrop(containerRef);
+        useDragAndDrop(containerRef, { getCurrentOrderedFiles });
 
         // Switches to navigation pane when dragging starts in single pane mode
         const handleDragActivateNavigation = useCallback(() => {
@@ -1129,24 +1133,36 @@ export const NotebookNavigatorComponent = React.memo(
                         return;
                     }
 
-                    // Get all files in the current view for smart selection
-                    const allFiles = getFilesForSelection(
-                        selectionState,
-                        settings,
-                        {
-                            includeDescendantNotes: uxRef.current.includeDescendantNotes,
-                            showHiddenItems: uxRef.current.showHiddenItems
-                        },
-                        app,
-                        tagTreeService,
-                        propertyTreeService
+                    const currentOrderedFiles = listPaneRef.current?.getOrderedFiles();
+                    // File-backed Types have no folder/tag/property source; their rendered order
+                    // is therefore the source of truth for post-move selection.
+                    const allFiles = Array.from(
+                        resolveFileOperationCurrentFiles(selectionState, currentOrderedFiles, () =>
+                            getFilesForSelection(
+                                selectionState,
+                                settings,
+                                {
+                                    includeDescendantNotes: uxRef.current.includeDescendantNotes,
+                                    showHiddenItems: uxRef.current.showHiddenItems
+                                },
+                                app,
+                                tagTreeService,
+                                propertyTreeService
+                            )
+                        )
                     );
 
                     // Move files with modal
                     await fileSystemOps.moveFilesWithModal(selectedFiles, {
                         selectedFile: selectionState.selectedFile,
                         dispatch: selectionDispatch,
-                        allFiles
+                        allFiles,
+                        shouldKeepMovedFileSelected: createFileBackedTypeMoveSelectionGuard(
+                            selectionState,
+                            settings,
+                            uxRef.current.showHiddenItems,
+                            app
+                        )
                     });
                 },
                 addShortcutForCurrentSelection: async () => {

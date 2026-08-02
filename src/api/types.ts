@@ -95,13 +95,14 @@ export interface TpsNotebookNavigatorApiRequestPayload {
 /** Availability of the optional first-class Types catalog. */
 export type NavigatorTypesAvailability = 'disabled' | 'loading' | 'ready' | 'unavailable' | 'error';
 
-/** Provider-neutral descriptor for one structural or relational Type collection. */
+/** Provider-neutral descriptor for one fixed file/line or registered-provider Type collection. */
 export interface NavigatorTypeDescriptor {
     /** Opaque ID accepted by Type navigation helpers. */
     readonly id: string;
     readonly label: string;
     readonly icon: string;
-    readonly category: 'structure' | 'kind';
+    /** Flat catalog category. Kind is frontmatter metadata and is not a Navigator Type. */
+    readonly category: 'structure';
     /** Stable owner ID for a collection registered by another plugin. */
     readonly providerId?: string;
     /** Provider-local collection ID for a collection registered by another plugin. */
@@ -143,7 +144,7 @@ export interface NavigatorTypeRowsContext extends NavigatorTypeProviderQueryCont
     /** Canonical host-owned Type ID selected in the Navigator. */
     readonly typeId: string;
     readonly searchQuery: string;
-    /** Exact visible Markdown paths the provider may return rows for. */
+    /** Exact visible vault-file paths the provider may return rows for. */
     readonly allowedVaultFilePaths: readonly string[];
 }
 
@@ -184,13 +185,13 @@ export type NavigatorRowSelectionType = 'file' | 'folder' | 'tag' | 'property' |
 export type NavigatorRowProviderOptions = Readonly<Record<string, unknown>>;
 
 export interface NavigatorRowScope {
-    /** Exact markdown paths represented by native items in the current list. */
+    /** Exact visible vault-file paths represented by native rows in the current list. */
     readonly visibleFilePaths: readonly string[];
     readonly selectionType: NavigatorRowSelectionType | null;
     readonly selectedFolderPath: string | null;
     readonly selectedTag: string | null;
     readonly selectedProperty: string | null;
-    /** Opaque built-in, Kind, or registered-provider collection ID when `selectionType` is `type`. */
+    /** Opaque fixed built-in or registered-provider collection ID when `selectionType` is `type`. */
     readonly selectedType: string | null;
 }
 
@@ -394,7 +395,7 @@ export type NavigatorVisibleListRow = NavigatorVisibleFileRow | NavigatorVisible
 export interface NavigatorListSnapshot {
     readonly navItem: NavItem;
     readonly search: NavigatorListSearchState;
-    /** Type collections own their row order, so file-list presentation is null in Type scope. */
+    /** Null for standalone exact-line/provider Types; file-backed Types expose native file-list presentation. */
     readonly presentation: NavigatorListPresentationState | null;
     /** Renderable file/provider order after scope, search, and collapsed-group filtering. */
     readonly rows: readonly NavigatorVisibleListRow[];

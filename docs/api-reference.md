@@ -4,7 +4,7 @@ Updated: August 1, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 2.13.0
+**Current API Version:** 3.0.0
 
 ## Table of Contents
 
@@ -70,7 +70,7 @@ The API provides nine main namespaces:
 
 - **`metadata`** - Folder, tag, and property node colors/icons, and pinned files
 - **`navigation`** - Navigate to files in the navigator
-- **`types`** - Discover built-in, dynamic Kind, and registered-provider collections and build stable Type ids
+- **`types`** - Discover fixed file and exact-line collections plus registered-provider collections
 - **`tagCollections`** - Work with aggregate tag rows such as "Tags" and "Untagged"
 - **`propertyNodes`** - Build and parse property node ids
 - **`rows`** - Register transient rows and actions beneath owning note files
@@ -86,7 +86,7 @@ runtime `api` object may contain additional methods and properties; treat them a
 ### Stability policy
 
 - The documented API and `src/api/public/notebook-navigator.d.ts` are the compatibility contract.
-- API version `2.x` is additive-only. New methods, events, and type exports may be added without a major version bump.
+- API version `3.x` is additive-only. New methods, events, and type exports may be added without a major version bump.
 - Breaking changes to documented members require a major version bump.
 - Undocumented runtime properties may change without notice.
 
@@ -143,7 +143,7 @@ const acceptApi = (state: TpsNotebookNavigatorApiChangedPayload): void => {
     currentHostInstanceId = null;
     return;
   }
-  if (!state.api || !state.apiVersion?.startsWith('2.')) return;
+  if (!state.api || !state.apiVersion?.startsWith('3.')) return;
   if (state.hostInstanceId === currentHostInstanceId && state.api === currentApi) return;
 
   typeRegistration?.unregister();
@@ -388,19 +388,22 @@ await nn.navigation.navigateToProperty('key:status=done');
 When calling `navigateToType(typeId)`:
 
 - Use a descriptor id returned by `nn.types.getSnapshot()` or a stable helper such as `nn.types.checkboxesId`.
-- Opens and waits for the TPS Navigator view, expands **Types** and **Kinds** ancestors, records ordinary navigation history,
-  requests the selected row into view, and preserves navigation focus.
+- Opens and waits for the TPS Navigator view, expands the **Types** ancestor, records ordinary navigation history, requests
+  the selected row into view, and preserves navigation focus.
 - Returns `false` when Types are disabled, the id is malformed, the view cannot mount, or a complete `ready` catalog proves
   the collection no longer exists.
-- A syntactically valid id remains provisional during `loading`, `unavailable`, or `error` so transient GCM startup cannot
-  destroy restored navigation state. Await `nn.types.whenReady()` when the caller needs an authoritative catalog first.
+- A syntactically valid fixed or provider id remains provisional while its relevant source is not authoritative, so transient
+  startup or provider failure cannot destroy restored navigation state. Await `nn.types.whenReady()` when the caller needs a
+  non-loading aggregate state first; provider-specific consumers should subscribe until their descriptor appears.
+- Legacy `kind:` ids remain syntax-compatible only long enough to discard or replace stale state safely. Kind descriptors are
+  not emitted or navigable once the built-in catalog is authoritative.
 
 ```typescript
 const catalog = await nn.types.whenReady();
 if (catalog.availability === 'ready') {
-  const projects = catalog.descriptors.find(descriptor => descriptor.id === nn.types.buildKind('project'));
-  if (projects) {
-    await nn.navigation.navigateToType(projects.id);
+  const bases = catalog.descriptors.find(descriptor => descriptor.id === nn.types.basesId);
+  if (bases) {
+    await nn.navigation.navigateToType(bases.id);
   }
 }
 ```
@@ -471,10 +474,11 @@ const root = nn.propertyNodes.parse(nn.propertyNodes.rootId);
 
 ## Types Catalog API
 
-The Types catalog is the provider-neutral view of every structural, dynamic Kind, and externally registered collection shown
-in the navigation pane. Reading the catalog does not expose GCM records, task payloads, note paths, internal maps, or
-ambiguous pre-visibility counts. `registerProvider(...)` lets an integration establish a new top-level Type scope and reuse
-the Navigator's guarded row renderer.
+The Types catalog is the provider-neutral view of the fixed flat file and exact-line collections plus every externally
+registered collection shown in the navigation pane. Kind is frontmatter metadata, so the catalog does not emit or navigate
+Kind descriptors. Reading the catalog does not expose GCM records, task payloads, note paths, internal maps, or ambiguous
+pre-visibility counts. `registerProvider(...)` lets an integration establish a new top-level Type scope and reuse the
+Navigator's guarded row renderer.
 
 | Member | Description | Returns |
 | ------ | ----------- | ------- |
@@ -482,19 +486,32 @@ the Navigator's guarded row renderer.
 | `checkboxesId` | Stable Checkboxes collection id | `'structural:task'` |
 | `bulletsId` | Stable Bullets collection id | `'structural:bullet'` |
 | `headingsId` | Stable Headings collection id | `'structural:heading'` |
-| `buildKind(kind)` | Build the opaque id for a configured Kind value | `string \| null` |
-| `parseKind(typeId)` | Decode a Kind id | `string \| null` |
-| `isType(value)` | Validate a built-in, Kind, or canonical provider Type id | `boolean` |
+| `basesId` | Stable Bases collection id | `'file:base'` |
+| `canvasId` | Stable Canvas collection id | `'file:canvas'` |
+| `drawingsId` | Stable Drawings collection id | `'file:drawing'` |
+| `pdfsId` | Stable PDFs collection id | `'file:pdf'` |
+| `imagesId` | Stable Images collection id | `'file:image'` |
+| `audioId` | Stable Audio collection id | `'file:audio'` |
+| `videoId` | Stable Video collection id | `'file:video'` |
+| `buildKind(kind)` | **Deprecated.** Build a stale Kind id for legacy-state compatibility only | `string \| null` |
+| `parseKind(typeId)` | **Deprecated.** Parse a stale Kind id for legacy-state compatibility only | `string \| null` |
+| `isType(value)` | Validate a fixed or canonical provider Type id; legacy Kind syntax returns `false` | `boolean` |
 | `registerProvider(provider, options?)` | Register top-level Type collections and their rows | `NavigatorTypeProviderRegistration` |
 | `getSnapshot()` | Read the latest immutable catalog state | `NavigatorTypesSnapshot` |
 | `subscribe(listener)` | Receive the current state immediately and subsequent changes | `() => void` |
 | `whenReady()` | Wait for any non-loading success or guarded failure state | `Promise<NavigatorTypesSnapshot>` |
 
-Availability is `disabled`, `loading`, `ready`, `unavailable`, or `error`. Readiness is provider-isolated: one healthy external
-provider can make the aggregate catalog ready while GCM remains unavailable, and one failing provider cannot remove other
-collections. `subscribe()` shares source subscriptions and returns an idempotent disposer. Snapshots, descriptor arrays, and
-descriptors are frozen; `getSnapshot()` returns the same object while its sources are unchanged. Plugin unload resolves
-pending readiness waits with `unavailable` and closes every provider subscription.
+The fixed display order is Notes, Checkboxes, Bullets, Headings, Bases, Canvas, Drawings, PDFs, Images, Audio, and Video.
+Notes, Bases, Canvas, Drawings, PDFs, Images, Audio, and Video are file-backed; Checkboxes, Bullets, and Headings are
+exact-line collections.
+
+Availability is `disabled`, `loading`, `ready`, `unavailable`, or `error`. File-backed built-ins keep the aggregate catalog
+ready without TPS Global Context Menu; GCM availability governs only the exact-line rows. Readiness is provider-isolated, so
+one failing external provider cannot remove other collections. `subscribe()` shares source subscriptions and returns an
+idempotent disposer. Snapshots, descriptor arrays, and descriptors are frozen; `getSnapshot()` returns the same object while
+its sources are unchanged. Plugin unload resolves pending readiness waits with `unavailable` and closes every provider
+subscription. Deprecated `parseKind(...)` can recognize legacy syntax, but `isType(...)` returns `false` and that id is
+never discoverable, restorable, or navigable.
 
 ```typescript
 const stop = nn.types.subscribe(snapshot => {
@@ -573,8 +590,9 @@ Provider safeguards:
 - Catalog and row queries receive an `AbortSignal` and have a five-second host timeout. Late results after options changes,
   unregistration, or unload are ignored.
 - Catalog refreshes are atomic. Duplicate or malformed collection definitions leave the provider's last good catalog intact.
-- `allowedVaultFilePaths` is the exact active-profile/hidden-item allowlist. Returned rows outside it are discarded by the
-  host, as are malformed and duplicate provider-local row ids.
+- `allowedVaultFilePaths` is the exact allowlist of visible vault-file paths after active-profile and hidden-item filtering.
+  It may include Markdown notes, Bases, canvases, PDFs, drawings, images, audio, video, and other visible vault files. Returned
+  rows outside it are discarded by the host, as are malformed and duplicate provider-local row ids.
 - `searchQuery` is supplied to the owning provider so it can search before the global 1,000-row safety ceiling.
 - Row `activate`, checkbox `indicator`, and `contextMenu` callbacks use the same renderer and safety boundaries as Rows API
   contributions.
@@ -598,7 +616,9 @@ Register transient records that render directly beneath their owning Markdown no
 Provider requirements and safeguards:
 
 - `provider.id` uses `vendor/name` form and must be unique.
-- `sourcePath` must exactly match a Markdown path in `context.scope.visibleFilePaths`; orphan rows are discarded.
+- `sourcePath` must exactly match a path in `context.scope.visibleFilePaths`; orphan rows are discarded. Ordinary
+  folder/tag/property scopes contain Markdown paths, while a fixed file-backed Type scope can contain any supported visible
+  vault-file path.
 - Row IDs are provider-local. Rows have one transient cursor but never enter `TFile` selection, multi-select, drag, rename,
   persistence, or file indexes.
 - `activate` may open or focus the provider-owned record.
@@ -688,24 +708,25 @@ await nn.list.setPresentation({
 
 `getSnapshot()` returns the current navigation item, immediate and applied search strings, requested and effective search
 providers, effective sort/group/display state, and the renderable file/provider row order after scope, search, and
-collapsed-group filtering. Headers and spacers are omitted. Type collections return `presentation: null` because their
-provider owns row order. The snapshot, nested DTOs, and row array are frozen; referenced `TFile`/`TFolder` instances are
-native Obsidian objects and can become stale. Re-resolve `sourcePath` immediately before a mutation. Provider rows expose
-identity and presentation only—activation, checkbox mutation, context-menu builders, tooltips, and provider records are
-never returned. A provider loading/error placeholder can have `file: null`.
+collapsed-group filtering. Headers and spacers are omitted. Fixed file-backed Types return their native file-list
+presentation; exact-line and provider-owned Type collections return `presentation: null` because their provider owns row
+order. The snapshot, nested DTOs, and row array are frozen; referenced `TFile`/`TFolder` instances are native Obsidian
+objects and can become stale. Re-resolve `sourcePath` immediately before a mutation. Provider rows expose identity and
+presentation only—activation, checkbox mutation, context-menu builders, tooltips, and provider records are never returned.
+A provider loading/error placeholder can have `file: null`.
 
 `setSearch(update)` applies the query immediately rather than waiting for keyboard debounce. `query` or `focus: true`
 activates search; `null` or `{ active: false }` clears and closes it. Contradictory input such as an inactive non-empty query
 fails closed. Omnisearch can be requested, while the next snapshot's `effectiveProvider` reports whether it actually
 produced the current rows.
 
-`setPresentation(update)` validates every supplied field before one settings transaction. It works only for folder, tag,
-and property scopes and rejects Type/none scopes, current or requested manual sorting, unconfigured property sort/group
-keys, folder grouping outside a folder, and an explicitly requested date grouping with a non-date sort. Each `null` field
-removes only that per-scope override and inherits the current default. Values equal to inherited defaults are normalized
-away, unrelated appearance fields are preserved, and any invalid field rejects the whole request without a partial write.
-There is no list subscription: integrations pull snapshots when they need them so large provider collections are not cloned
-continuously.
+`setPresentation(update)` validates every supplied field before one settings transaction. It works for folder, tag,
+property, and fixed file-backed Type scopes; it rejects exact-line/provider Type and none scopes, current or requested
+manual sorting, unconfigured property sort/group keys, folder grouping outside a folder, and an explicitly requested date
+grouping with a non-date sort. Each `null` field removes only that per-scope override and inherits the current default.
+Values equal to inherited defaults are normalized away, unrelated appearance fields are preserved, and any invalid field
+rejects the whole request without a partial write. There is no list subscription: integrations pull snapshots when they
+need them so large provider collections are not cloned continuously.
 
 ## Selection API
 
@@ -718,9 +739,10 @@ reload.
 When `navItem.type === 'tag'`, `navItem.tag` can be either a canonical tag path or an aggregate tag collection id
 (`'__tagged__'` or `'__untagged__'`).
 
-When `navItem.type === 'type'`, `navItem.navigatorType` is a stable structural id such as `entity:note` or
-`structural:task`, or an encoded dynamic Kind id beginning with `kind:`. Existing NavItem variants do not gain extra
-fields.
+When `navItem.type === 'type'`, `navItem.navigatorType` is a fixed file or exact-line id such as `entity:note`,
+`structural:task`, or `file:pdf`, or a canonical id for an externally registered provider collection. Current snapshots emit
+no Kind descriptors, Type menus never invoke for Kind, and navigation does not select Kind ids. Stale legacy `kind:`
+selections are rejected immediately and replaced safely. Existing NavItem variants do not gain extra fields.
 
 | Method            | Description                                                | Returns                         |
 | ----------------- | ---------------------------------------------------------- | ------------------------------- |
@@ -856,9 +878,9 @@ const dispose = nn?.menus?.registerFolderMenu(({ addItem, folder }) => {
 
 ### Type collection context menu
 
-`registerTypeMenu(callback)` applies to every selectable collection beneath **Types**: the built-in Notes, Checkboxes,
-Bullets, and Headings collections; dynamic Kind collections; and collections registered by an external Type provider. The
-**Types** and **Kinds** container rows are not collections and do not invoke this hook.
+`registerTypeMenu(callback)` applies to every selectable collection beneath **Types**: Notes, Checkboxes, Bullets, Headings,
+Bases, Canvas, Drawings, PDFs, Images, Audio, Video, and collections registered by an external Type provider. The **Types**
+root is a container rather than a collection and does not invoke this hook. No Kind collection is emitted.
 
 The callback receives a frozen context with:
 
@@ -895,9 +917,10 @@ settings migration.
 
 ### Result row context menu
 
-`registerRowMenu(callback, options?)` applies to source-backed transient rows wherever they render: beneath a note in a
-normal file list, in Notes, Checkboxes, Bullets, Headings, or a dynamic Kind collection, and in collections or augmenting
-rows registered by another provider. Loading/error placeholders and rows whose source file no longer exists fail closed.
+`registerRowMenu(callback, options?)` applies to source-backed transient rows wherever they render: beneath a native file in
+a normal or file-backed Type list, in the exact-line Checkboxes, Bullets, and Headings collections, and in collections or
+augmenting rows registered by another provider. Loading/error placeholders and rows whose source file no longer exists fail
+closed.
 
 The callback receives a frozen context with guarded `addItem(...)` and `addSeparator()` functions plus an immutable
 `target` snapshot:
@@ -1086,6 +1109,18 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 3.0.0 (2026-08-01)
+
+- Replaced dynamic Kind collections with a fixed flat catalog: Notes, Checkboxes, Bullets, Headings, Bases, Canvas, Drawings,
+  PDFs, Images, Audio, and Video
+- Added native file-backed Types while keeping the built-in catalog ready without optional GCM; GCM now governs only
+  exact-line Checkboxes, Bullets, and Headings rows
+- Added native sort, grouping, display controls, public presentation snapshots, and optional per-Type overrides for fixed
+  file-backed Types; metadata edits refresh property-based order and grouping immediately
+- Stopped emitting and navigating Kind descriptors; deprecated `buildKind(...)` and `parseKind(...)`, and retained legacy
+  Kind parsers only so stale state can be recognized and rejected safely; `isType(...)` now returns `false` for Kind ids
+- Broadened external Type-provider `allowedVaultFilePaths` from visible Markdown paths to exact visible vault-file paths
 
 ### Version 2.13.0 (2026-08-01)
 

@@ -42,7 +42,11 @@ import {
     hasPotentialObsidianFileDragType
 } from '../utils/dragData';
 import { FolderMoveError } from '../services/FileSystemService';
-import { getFilesForNavigationSelection } from '../utils/selectionUtils';
+import {
+    createFileBackedTypeMoveSelectionGuard,
+    getFilesForNavigationSelection,
+    resolveFileOperationCurrentFiles
+} from '../utils/selectionUtils';
 import { expandNavigationTreeItems, getFolderAncestorPaths, getTagAncestorPaths } from '../utils/navigationExpansion';
 import { getIconService } from '../services/icons';
 
@@ -205,7 +209,12 @@ const setNativeFileDragPayload = (dataTransfer: DataTransfer, vaultName: string,
     dataTransfer.setData(TEXT_URI_LIST_MIME, payload);
 };
 
-export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>) {
+interface UseDragAndDropOptions {
+    getCurrentOrderedFiles?: () => readonly TFile[];
+}
+
+export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>, options: UseDragAndDropOptions = {}) {
+    const { getCurrentOrderedFiles } = options;
     const { app, isMobile, tagTreeService, propertyTreeService } = useServices();
     const fileSystemOps = useFileSystemOps();
     const tagOperations = useTagOperations();
@@ -360,20 +369,33 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
      * Helper function to get current file list based on selection
      */
     const getCurrentFileList = useCallback((): TFile[] => {
-        return getFilesForNavigationSelection(
-            {
-                selectionType: selectionState.selectionType,
-                selectedFolder: selectionState.selectedFolder,
-                selectedTag: selectionState.selectedTag,
-                selectedProperty: selectionState.selectedProperty
-            },
-            settings,
-            { includeDescendantNotes, showHiddenItems },
-            app,
-            tagTreeService,
-            propertyTreeService
+        return Array.from(
+            resolveFileOperationCurrentFiles(selectionState, getCurrentOrderedFiles?.(), () =>
+                getFilesForNavigationSelection(
+                    {
+                        selectionType: selectionState.selectionType,
+                        selectedFolder: selectionState.selectedFolder,
+                        selectedTag: selectionState.selectedTag,
+                        selectedProperty: selectionState.selectedProperty
+                    },
+                    settings,
+                    { includeDescendantNotes, showHiddenItems },
+                    app,
+                    tagTreeService,
+                    propertyTreeService
+                )
+            )
         );
-    }, [selectionState, settings, includeDescendantNotes, showHiddenItems, app, tagTreeService, propertyTreeService]);
+    }, [
+        selectionState,
+        getCurrentOrderedFiles,
+        settings,
+        includeDescendantNotes,
+        showHiddenItems,
+        app,
+        tagTreeService,
+        propertyTreeService
+    ]);
 
     /**
      * Converts an array of file paths to TFile objects
@@ -455,12 +477,13 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
                 selectionContext: {
                     selectedFile: selectionState.selectedFile,
                     dispatch,
-                    allFiles: currentFiles
+                    allFiles: currentFiles,
+                    shouldKeepMovedFileSelected: createFileBackedTypeMoveSelectionGuard(selectionState, settings, showHiddenItems, app)
                 },
                 showNotifications: true
             });
         },
-        [fileSystemOps, getCurrentFileList, selectionState.selectedFile, dispatch]
+        [app, dispatch, fileSystemOps, getCurrentFileList, selectionState, settings, showHiddenItems]
     );
 
     const getMarkdownFilesFromDragEvent = useCallback(

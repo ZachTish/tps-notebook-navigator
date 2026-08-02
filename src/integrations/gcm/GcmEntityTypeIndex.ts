@@ -9,10 +9,8 @@
 import { normalizePath, type App, type TFile } from 'obsidian';
 import { TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID } from '../../constants/tpsIdentity';
 import {
-    TPS_NAVIGATOR_STRUCTURAL_TYPES,
+    TPS_NAVIGATOR_LINE_TYPES,
     TPS_NAVIGATOR_TYPE_IDS,
-    createTpsNavigatorKindTypeId,
-    getTpsNavigatorKindValue,
     isTpsNavigatorTypeId,
     type TpsNavigatorTypeDescriptor,
     type TpsNavigatorTypeId,
@@ -33,9 +31,7 @@ import {
 } from './gcmTaskApi';
 
 export const GCM_ENTITY_INDEX_API_VERSION = 3;
-export const GCM_ENTITY_INDEX_KIND_DIMENSION = 'kind';
 
-const SYNTHETIC_STRUCTURAL_KIND_VALUES = new Set(['task', 'bullet', 'heading']);
 const EMPTY_DESCRIPTORS = Object.freeze([]) as readonly TpsNavigatorTypeDescriptor[];
 const EMPTY_RECORDS_BY_TYPE = new Map<TpsNavigatorTypeId, readonly TpsNavigatorTypeRecord[]>();
 const EMPTY_TASKS_BY_LOCATOR = new Map<string, GcmTaskRecordLike>();
@@ -103,10 +99,8 @@ export interface GcmEntityIndexApiLike {
     queryAsync(query?: GcmEntityIndexQueryLike): Promise<readonly unknown[]>;
     ensureReady(): Promise<void>;
     getByLocator(locator: string): unknown;
-    getDimensionValues(dimension: string): readonly string[];
     getRevision(): number;
     onChanged(listener: (revision: number) => void): () => void;
-    registerDimension(definition: { name: string; propertyKeys: readonly string[] }): () => void;
 }
 
 export type GcmEntityIndexIssueCode =
@@ -212,10 +206,8 @@ export function isGcmEntityIndexApiLike(value: unknown): value is GcmEntityIndex
         isCallable(value.queryAsync) &&
         isCallable(value.ensureReady) &&
         isCallable(value.getByLocator) &&
-        isCallable(value.getDimensionValues) &&
         isCallable(value.getRevision) &&
-        isCallable(value.onChanged) &&
-        isCallable(value.registerDimension)
+        isCallable(value.onChanged)
     );
 }
 
@@ -286,24 +278,7 @@ export function isGcmEntityIndexRecord(value: unknown): value is GcmEntityIndexR
     return true;
 }
 
-function normalizeIdentity(value: string): string {
-    return value.trim().toLocaleLowerCase();
-}
-
-function getDimensionValues(record: GcmEntityIndexRecordLike, dimensionName: string): readonly string[] {
-    const matchingKey = Object.keys(record.dimensions).find(key => normalizeIdentity(key) === normalizeIdentity(dimensionName));
-    return matchingKey ? (record.dimensions[matchingKey] ?? []) : [];
-}
-
-function hasDimensionValue(record: GcmEntityIndexRecordLike, dimensionName: string, value: string): boolean {
-    const identity = normalizeIdentity(value);
-    return Boolean(identity) && getDimensionValues(record, dimensionName).some(candidate => normalizeIdentity(candidate) === identity);
-}
-
 function getStructuralTypeId(record: GcmEntityIndexRecordLike): TpsNavigatorTypeId | null {
-    if (record.entityType === 'note') {
-        return TPS_NAVIGATOR_TYPE_IDS.NOTES;
-    }
     if (record.lineKind === 'task') {
         return TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES;
     }
@@ -329,8 +304,7 @@ function matchesType(record: GcmEntityIndexRecordLike, typeId: TpsNavigatorTypeI
     if (typeId === TPS_NAVIGATOR_TYPE_IDS.HEADINGS) {
         return record.entityType === 'block' && record.lineKind === 'heading';
     }
-    const kind = getTpsNavigatorKindValue(typeId);
-    return kind !== null && !SYNTHETIC_STRUCTURAL_KIND_VALUES.has(normalizeIdentity(kind)) && hasDimensionValue(record, 'kind', kind);
+    return false;
 }
 
 function toNavigatorRecord(
@@ -375,39 +349,6 @@ function compareNavigatorRecords(left: TpsNavigatorTypeRecord, right: TpsNavigat
         left.sourcePath.localeCompare(right.sourcePath, undefined, { sensitivity: 'base' }) ||
         (left.lineNumber ?? 0) - (right.lineNumber ?? 0) ||
         left.id.localeCompare(right.id)
-    );
-}
-
-function uniqueKindValues(values: readonly string[]): readonly string[] {
-    const valuesByIdentity = new Map<string, string>();
-    for (const value of values) {
-        const displayValue = String(value ?? '').trim();
-        const identity = normalizeIdentity(displayValue);
-        if (!identity || SYNTHETIC_STRUCTURAL_KIND_VALUES.has(identity) || valuesByIdentity.has(identity)) {
-            continue;
-        }
-        valuesByIdentity.set(identity, displayValue);
-    }
-    return Object.freeze(
-        [...valuesByIdentity.values()].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' }))
-    );
-}
-
-function createKindDescriptors(kindValues: readonly string[]): readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] {
-    return Object.freeze(
-        uniqueKindValues(kindValues).flatMap(kind => {
-            const id = createTpsNavigatorKindTypeId(kind);
-            return id
-                ? [
-                      Object.freeze({
-                          id,
-                          label: kind,
-                          icon: 'lucide-shapes',
-                          category: 'kind' as const
-                      })
-                  ]
-                : [];
-        })
     );
 }
 
@@ -468,7 +409,6 @@ function unavailableSnapshot(issue: GcmEntityIndexIssue): GcmEntityTypeIndexSnap
 
 function buildSnapshot(
     records: readonly GcmEntityIndexRecordLike[],
-    kindValues: readonly string[],
     revision: number,
     tasksByLocator: ReadonlyMap<string, GcmTaskRecordLike> = EMPTY_TASKS_BY_LOCATOR,
     capabilities: { canMutateCheckbox: boolean; hasContextMenu: boolean } = {
@@ -476,17 +416,10 @@ function buildSnapshot(
         hasContextMenu: false
     }
 ): GcmEntityTypeIndexSnapshot {
-    const descriptorDefinitions = [...TPS_NAVIGATOR_STRUCTURAL_TYPES, ...createKindDescriptors(kindValues)];
+    const descriptorDefinitions = TPS_NAVIGATOR_LINE_TYPES;
     const mutableRecords = new Map<TpsNavigatorTypeId, TpsNavigatorTypeRecord[]>();
-    const kindTypeByIdentity = new Map<string, TpsNavigatorTypeId>();
     for (const descriptor of descriptorDefinitions) {
         mutableRecords.set(descriptor.id, []);
-        if (descriptor.category === 'kind') {
-            const kind = getTpsNavigatorKindValue(descriptor.id);
-            if (kind) {
-                kindTypeByIdentity.set(normalizeIdentity(kind), descriptor.id);
-            }
-        }
     }
 
     for (const record of records) {
@@ -495,15 +428,6 @@ function buildSnapshot(
             mutableRecords
                 .get(structuralType)
                 ?.push(toNavigatorRecord(record, structuralType, tasksByLocator.get(record.locatorKey), capabilities));
-        }
-        const matchedKindTypes = new Set<TpsNavigatorTypeId>();
-        for (const kindValue of getDimensionValues(record, GCM_ENTITY_INDEX_KIND_DIMENSION)) {
-            const typeId = kindTypeByIdentity.get(normalizeIdentity(kindValue));
-            if (!typeId || matchedKindTypes.has(typeId)) {
-                continue;
-            }
-            matchedKindTypes.add(typeId);
-            mutableRecords.get(typeId)?.push(toNavigatorRecord(record, typeId, tasksByLocator.get(record.locatorKey), capabilities));
         }
     }
 
@@ -534,11 +458,7 @@ function queryForType(typeId: TpsNavigatorTypeId): GcmEntityIndexQueryLike | nul
     if (typeId === TPS_NAVIGATOR_TYPE_IDS.HEADINGS) {
         return { entityTypes: 'block', lineKinds: 'heading' };
     }
-    const kind = getTpsNavigatorKindValue(typeId);
-    if (!kind || SYNTHETIC_STRUCTURAL_KIND_VALUES.has(normalizeIdentity(kind))) {
-        return null;
-    }
-    return { dimensions: { kind } };
+    return null;
 }
 
 function isMarkdownFile(file: TFile | null): file is TFile {
@@ -582,7 +502,6 @@ export class GcmEntityTypeIndexAdapter {
     private taskCheckboxesApi: GcmTaskCheckboxesApiLike | null = null;
     private taskLinesApi: GcmTaskLinesApiLike | null = null;
     private connectionIssue: GcmEntityIndexIssue | null = null;
-    private unregisterDimension: (() => void) | null = null;
     private unsubscribeRevision: (() => void) | null = null;
     private readonly revisionListeners = new Set<GcmEntityIndexRevisionListener>();
     private readonly taskHydrationCache = new Map<string, TaskHydrationCacheEntry>();
@@ -649,13 +568,8 @@ export class GcmEntityTypeIndexAdapter {
         }
 
         this.releaseApi();
-        let unregisterDimension: (() => void) | null = null;
         let unsubscribeRevision: (() => void) | null = null;
         try {
-            unregisterDimension = api.registerDimension({ name: GCM_ENTITY_INDEX_KIND_DIMENSION, propertyKeys: [] });
-            if (typeof unregisterDimension !== 'function') {
-                throw new Error('GCM entity index registerDimension() did not return a disposer.');
-            }
             unsubscribeRevision = api.onChanged(revision => {
                 const nextRevision = Number.isSafeInteger(revision) && revision >= 0 ? revision : safeRevision(api);
                 for (const listener of [...this.revisionListeners]) {
@@ -675,11 +589,6 @@ export class GcmEntityTypeIndexAdapter {
             } catch {
                 // Best-effort cleanup of an incomplete foreign API connection.
             }
-            try {
-                unregisterDimension?.();
-            } catch {
-                // Best-effort cleanup of an incomplete foreign API connection.
-            }
             this.connectionIssue = {
                 code: 'gcm-incompatible',
                 message: 'TPS Global Context Menu entity index v3 could not be initialized.',
@@ -692,7 +601,6 @@ export class GcmEntityTypeIndexAdapter {
         this.taskApi = capabilities.taskApi ?? null;
         this.taskCheckboxesApi = capabilities.taskCheckboxesApi ?? null;
         this.taskLinesApi = capabilities.taskLinesApi ?? null;
-        this.unregisterDimension = unregisterDimension;
         this.unsubscribeRevision = unsubscribeRevision;
         this.connectionIssue = null;
         return true;
@@ -746,10 +654,9 @@ export class GcmEntityTypeIndexAdapter {
         const api = this.api;
         try {
             await api.ensureReady();
-            const records = asRecordArray(await api.queryAsync({}));
-            const kindValues = api.getDimensionValues(GCM_ENTITY_INDEX_KIND_DIMENSION);
+            const records = asRecordArray(await api.queryAsync({ entityTypes: 'block', lineKinds: ['task', 'bullet', 'heading'] }));
             const tasksByLocator = await this.hydrateTasks(records);
-            return buildSnapshot(records, kindValues, safeRevision(api), tasksByLocator, this.getTaskCapabilities());
+            return buildSnapshot(records, safeRevision(api), tasksByLocator, this.getTaskCapabilities());
         } catch (error) {
             return unavailableSnapshot(issueFromError(error));
         }
@@ -1005,21 +912,14 @@ export class GcmEntityTypeIndexAdapter {
 
     private releaseApi(): void {
         const unsubscribeRevision = this.unsubscribeRevision;
-        const unregisterDimension = this.unregisterDimension;
         this.api = null;
         this.taskApi = null;
         this.taskCheckboxesApi = null;
         this.taskLinesApi = null;
         this.resetTaskHydrationCache();
         this.unsubscribeRevision = null;
-        this.unregisterDimension = null;
         try {
             unsubscribeRevision?.();
-        } catch {
-            // Best-effort cleanup of a foreign optional API.
-        }
-        try {
-            unregisterDimension?.();
         } catch {
             // Best-effort cleanup of a foreign optional API.
         }

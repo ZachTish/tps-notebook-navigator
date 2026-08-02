@@ -15,6 +15,7 @@ import {
     type NotebookNavigatorSettings
 } from '../../settings/types';
 import { ItemType } from '../../types';
+import { isTpsNavigatorFileTypeId, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
 import type { PropertySelectionNodeId } from '../../utils/propertyTree';
 import { casefold, ensureRecord, sanitizeRecord } from '../../utils/recordUtils';
 import {
@@ -30,7 +31,8 @@ import { areListGroupingOptionsEqual, resolveListGroupingOverride } from '../../
 export type NavigatorListPresentationTarget =
     | { readonly type: typeof ItemType.FOLDER; readonly key: string }
     | { readonly type: typeof ItemType.TAG; readonly key: string }
-    | { readonly type: typeof ItemType.PROPERTY; readonly key: string };
+    | { readonly type: typeof ItemType.PROPERTY; readonly key: string }
+    | { readonly type: typeof ItemType.TYPE; readonly key: TpsNavigatorTypeId };
 
 interface PlannedField<T> {
     readonly included: boolean;
@@ -59,12 +61,14 @@ export function resolveNavigatorListPresentationTarget({
     selectionType,
     selectedFolder,
     selectedTag,
-    selectedProperty
+    selectedProperty,
+    selectedType
 }: {
     selectionType: string | null;
     selectedFolder: TFolder | null;
     selectedTag: string | null;
     selectedProperty: PropertySelectionNodeId | null;
+    selectedType?: TpsNavigatorTypeId | null;
 }): NavigatorListPresentationTarget | null {
     if (selectionType === ItemType.FOLDER && selectedFolder) {
         return Object.freeze({ type: ItemType.FOLDER, key: selectedFolder.path });
@@ -74,6 +78,9 @@ export function resolveNavigatorListPresentationTarget({
     }
     if (selectionType === ItemType.PROPERTY && selectedProperty) {
         return Object.freeze({ type: ItemType.PROPERTY, key: selectedProperty });
+    }
+    if (selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectedType)) {
+        return Object.freeze({ type: ItemType.TYPE, key: selectedType });
     }
     return null;
 }
@@ -88,7 +95,10 @@ function getSortRecord(
     if (target.type === ItemType.TAG) {
         return settings.tagSortOverrides;
     }
-    return settings.propertySortOverrides;
+    if (target.type === ItemType.PROPERTY) {
+        return settings.propertySortOverrides;
+    }
+    return settings.typeSortOverrides ?? {};
 }
 
 function setSortRecord(
@@ -100,8 +110,10 @@ function setSortRecord(
         settings.folderSortOverrides = record;
     } else if (target.type === ItemType.TAG) {
         settings.tagSortOverrides = record;
-    } else {
+    } else if (target.type === ItemType.PROPERTY) {
         settings.propertySortOverrides = record;
+    } else {
+        settings.typeSortOverrides = record;
     }
 }
 
@@ -115,7 +127,10 @@ function getAppearanceRecord(
     if (target.type === ItemType.TAG) {
         return settings.tagAppearances;
     }
-    return settings.propertyAppearances;
+    if (target.type === ItemType.PROPERTY) {
+        return settings.propertyAppearances;
+    }
+    return settings.typeAppearances ?? {};
 }
 
 function setAppearanceRecord(
@@ -127,8 +142,10 @@ function setAppearanceRecord(
         settings.folderAppearances = record;
     } else if (target.type === ItemType.TAG) {
         settings.tagAppearances = record;
-    } else {
+    } else if (target.type === ItemType.PROPERTY) {
         settings.propertyAppearances = record;
+    } else {
+        settings.typeAppearances = record;
     }
 }
 

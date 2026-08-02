@@ -25,8 +25,8 @@ export function resolveNavigatorRowProvidersForScope(
 }
 
 /**
- * Derives the exact Markdown paths represented by native Type rows. The valid
- * path set excludes synthetic status rows and preserves Navigator visibility.
+ * Derives the exact visible vault-file paths represented by native Type rows.
+ * The valid path set excludes synthetic status rows and preserves Navigator visibility.
  */
 export function collectTypeScopeVisibleFilePaths(
     typeRows: readonly NavigatorProvidedRow[],

@@ -24,6 +24,7 @@ import { ItemType } from '../types';
 import { runAsyncAction } from '../utils/async';
 import { ensureRecord, sanitizeRecord } from '../utils/recordUtils';
 import type { PropertySelectionNodeId } from '../utils/propertyTree';
+import { isTpsNavigatorFileTypeId, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 
 interface AppearanceMenuProps {
     event: MouseEvent;
@@ -31,6 +32,7 @@ interface AppearanceMenuProps {
     selectedFolder: TFolder | null;
     selectedTag?: string | null;
     selectedProperty?: PropertySelectionNodeId | null;
+    selectedType?: TpsNavigatorTypeId | null;
     selectionType?: ItemType;
     updateSettings: (updater: (settings: NotebookNavigatorSettings) => void) => Promise<void>;
     descendantAction?: {
@@ -57,6 +59,7 @@ export function showListPaneAppearanceMenu({
     selectedFolder,
     selectedTag,
     selectedProperty,
+    selectedType,
     selectionType,
     updateSettings,
     descendantAction,
@@ -88,6 +91,15 @@ export function showListPaneAppearanceMenu({
                 getRecord: targetSettings => targetSettings.propertyAppearances,
                 setRecord: (targetSettings, next) => {
                     targetSettings.propertyAppearances = next;
+                }
+            };
+        }
+        if (selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectedType)) {
+            return {
+                key: selectedType,
+                getRecord: targetSettings => targetSettings.typeAppearances,
+                setRecord: (targetSettings, next) => {
+                    targetSettings.typeAppearances = next;
                 }
             };
         }

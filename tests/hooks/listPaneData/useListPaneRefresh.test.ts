@@ -21,6 +21,7 @@ import { App, TFile } from 'obsidian';
 import {
     getModifiedSortBoundaryRefreshKey,
     hasPropertySearchContentChange,
+    hasTypePresentationContentChange,
     hasTypeVisibilityContentChange,
     shouldRefreshForCustomGroupHeaderMetadataChange,
     shouldSkipModifiedSortBoundaryRefresh
@@ -213,6 +214,35 @@ describe('hasTypeVisibilityContentChange', () => {
         expect(hasTypeVisibilityContentChange(base)).toBe(false);
         expect(hasTypeVisibilityContentChange({ ...base, selectionType: ItemType.FOLDER })).toBe(false);
         expect(hasTypeVisibilityContentChange({ ...base, showHiddenItems: true })).toBe(false);
+    });
+});
+
+describe('hasTypePresentationContentChange', () => {
+    it('refreshes file-backed Type ordering/grouping for in-scope property writes', () => {
+        const changes = [{ path: 'notes/project.md', changes: { properties: [] }, changeType: 'content' as const }];
+
+        expect(
+            hasTypePresentationContentChange({
+                changes,
+                basePathSet: new Set(['notes/project.md']),
+                isFileBackedTypeSelection: true,
+                usesMetadataPresentation: true
+            })
+        ).toBe(true);
+    });
+
+    it('guards standalone Types, metadata-independent presentation, and out-of-scope writes', () => {
+        const changes = [{ path: 'notes/project.md', changes: { properties: [] }, changeType: 'content' as const }];
+        const base = {
+            changes,
+            basePathSet: new Set(['notes/project.md']),
+            isFileBackedTypeSelection: true,
+            usesMetadataPresentation: true
+        };
+
+        expect(hasTypePresentationContentChange({ ...base, isFileBackedTypeSelection: false })).toBe(false);
+        expect(hasTypePresentationContentChange({ ...base, usesMetadataPresentation: false })).toBe(false);
+        expect(hasTypePresentationContentChange({ ...base, basePathSet: new Set(['notes/other.md']) })).toBe(false);
     });
 });
 

@@ -38,7 +38,7 @@ const UPSTREAM_IMPORT_COPY = {
 const TYPES_NAVIGATION_COPY = {
     group: 'Types navigation',
     name: 'Show Types in navigation',
-    desc: 'Show a Types section for notes, checkboxes, bullets, headings, and Kind values exposed by TPS Global Context Menu.'
+    desc: 'Show a Types section for vault file formats and exact-line checkboxes, bullets, and headings.'
 } as const;
 
 const TASK_ROWS_COPY = {
@@ -58,7 +58,7 @@ export function createTpsIntegrationSettingDefinitions(context: SettingsTabConte
         createRenderDefinition({
             name: TYPES_NAVIGATION_COPY.name,
             desc: TYPES_NAVIGATION_COPY.desc,
-            aliases: ['Types section', 'entity navigation', 'GCM kinds'],
+            aliases: ['Types section', 'file types', 'checkboxes', 'bullets', 'headings'],
             render: setting => renderTpsTypesNavigationEnabledSetting(setting, context)
         })
     ];

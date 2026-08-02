@@ -52,6 +52,7 @@ import { createNavigatorRowMenuTarget } from '../../utils/contextMenu/providerRo
 import { NavigatorProviderRow, type NavigatorProviderRowMenuHost } from '../providerRows/NavigatorProviderRow';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
 import { getNavigatorRowSelectionKey } from '../../services/rows/rowSelection';
+import { usesStandaloneTypeProviderPresentation } from '../../utils/listPaneMeasurements';
 
 export interface PointerClientPosition {
     clientX: number;
@@ -91,6 +92,14 @@ export interface HeaderRenderModel {
     folderIconId: string | null;
     folderColor: string | null;
     applyFolderColorToLabel: boolean;
+}
+
+export function resolveVisibleStickyHeader(
+    stickyHeader: HeaderRenderModel | null,
+    isEmptySelection: boolean,
+    hasNoFiles: boolean
+): HeaderRenderModel | null {
+    return isEmptySelection || hasNoFiles ? null : stickyHeader;
 }
 
 interface HeaderRenderModels {
@@ -479,6 +488,10 @@ interface ListPaneRowProps {
     onGroupHeaderContextMenu: (event: React.MouseEvent<HTMLDivElement>, header: HeaderRenderModel) => void;
     onProviderRowActivationRequested?: () => void;
     onProviderRowSelect: (row: NavigatorProvidedRow) => boolean;
+    isTypePresentation: boolean;
+    isCompactMode: boolean;
+    titleRows: number;
+    showTypeIcon: boolean;
     rowMenuHost?: NavigatorProviderRowMenuHost;
 }
 
@@ -521,6 +534,10 @@ const ListPaneRow = React.memo(function ListPaneRow({
     onGroupHeaderContextMenu,
     onProviderRowActivationRequested,
     onProviderRowSelect,
+    isTypePresentation,
+    isCompactMode,
+    titleRows,
+    showTypeIcon,
     rowMenuHost
 }: ListPaneRowProps) {
     const virtualItemStyle: VirtualRowStyle = {
@@ -533,6 +550,9 @@ const ListPaneRow = React.memo(function ListPaneRow({
     }
     if (item.type === ListPaneItemType.PROVIDER_ROW) {
         virtualItemClasses.push('nn-virtual-provider-row');
+        if (isTypePresentation) {
+            virtualItemClasses.push('nn-virtual-file-item', 'nn-virtual-provider-row--type');
+        }
     }
     if (headerModel) {
         virtualItemClasses.push('nn-virtual-list-group-header');
@@ -608,6 +628,12 @@ const ListPaneRow = React.memo(function ListPaneRow({
                 <NavigatorProviderRow
                     row={item.data as NavigatorProvidedRow}
                     isSelected={isSelected}
+                    hasSelectedAbove={hasSelectedAbove}
+                    hasSelectedBelow={hasSelectedBelow}
+                    presentation={isTypePresentation ? 'type' : 'attached'}
+                    isCompactMode={isCompactMode}
+                    titleRows={titleRows}
+                    showTypeIcon={showTypeIcon}
                     onSelectionRequested={() => onProviderRowSelect(item.data as NavigatorProvidedRow)}
                     onActivationRequested={onProviderRowActivationRequested}
                     rowMenuHost={rowMenuHost}
@@ -649,6 +675,19 @@ export function getHoveredFilePathAtPointer(
 
 function isFileListItem(item: ListPaneItem | undefined): item is ListPaneItem & { type: typeof ListPaneItemType.FILE; data: TFile } {
     return item?.type === ListPaneItemType.FILE && item.data instanceof TFile;
+}
+
+function isProviderListItem(
+    item: ListPaneItem | undefined
+): item is ListPaneItem & { type: typeof ListPaneItemType.PROVIDER_ROW; data: NavigatorProvidedRow } {
+    return item?.type === ListPaneItemType.PROVIDER_ROW && item.data !== null && typeof item.data === 'object';
+}
+
+function getProviderListItemSelectionKey(item: ListPaneItem | undefined): string | null {
+    if (!isProviderListItem(item)) {
+        return null;
+    }
+    return getNavigatorRowSelectionKey({ providerId: item.data.providerId, rowId: item.data.id });
 }
 
 export function ListPaneVirtualContent({
@@ -712,6 +751,7 @@ export function ListPaneVirtualContent({
     const getRowMenuRevision = useCallback(() => rowMenus?.getRowMenuRevision() ?? 0, [rowMenus]);
     const rowMenuRevision = useSyncExternalStore(subscribeToRowMenus, getRowMenuRevision, getRowMenuRevision);
     const rowMenuTypeId = selectionType === ItemType.TYPE ? selectedType : null;
+    const isStandaloneTypePresentation = usesStandaloneTypeProviderPresentation(selectionType, selectedType);
     const rowMenuHost = useMemo<NavigatorProviderRowMenuHost | undefined>(() => {
         if (!rowMenus) {
             return undefined;
@@ -1129,6 +1169,7 @@ export function ListPaneVirtualContent({
     const firstVisibleItem =
         stickyOffset !== null && listItems.length > 0 ? rowVirtualizer.getVirtualItemForOffset(stickyOffset) : undefined;
     const stickyHeader = stickyGroupHeaders ? findActiveHeaderModel(headerModels, firstVisibleItem?.index ?? null) : null;
+    const visibleStickyHeader = resolveVisibleStickyHeader(stickyHeader, isEmptySelection, hasNoFiles);
 
     return (
         <div
@@ -1144,10 +1185,10 @@ export function ListPaneVirtualContent({
             onMouseMove={handleListMouseMove}
             onMouseLeave={handleListMouseLeave}
         >
-            {stickyHeader ? (
+            {visibleStickyHeader ? (
                 <div className="nn-list-sticky-header">
                     <ListPaneGroupHeader
-                        header={stickyHeader}
+                        header={visibleStickyHeader}
                         collapseChevronIcons={collapseChevronIcons}
                         pinnedSectionIcon={pinnedSectionIcon}
                         onPinnedGroupHeaderToggle={onPinnedGroupHeaderToggle}
@@ -1183,32 +1224,37 @@ export function ListPaneVirtualContent({
                             const nextItem = getItemAt(listItems, virtualItem.index + 1);
                             const previousItem = getItemAt(listItems, virtualItem.index - 1);
                             const isFileRow = isFileListItem(item);
-                            const providerRowKey =
-                                item.type === ListPaneItemType.PROVIDER_ROW && typeof item.data === 'object'
-                                    ? getNavigatorRowSelectionKey({
-                                          providerId: (item.data as NavigatorProvidedRow).providerId,
-                                          rowId: (item.data as NavigatorProvidedRow).id
-                                      })
-                                    : null;
+                            const isTypeProviderRow = isStandaloneTypePresentation && isProviderListItem(item);
+                            const providerRowKey = getProviderListItemSelectionKey(item);
                             const isSelected =
                                 (isFileRow && isFileVisuallySelected(item.data)) ||
                                 (providerRowKey !== null && providerRowKey === selectedProviderRowKey);
                             const isPreviousFileSelected = isFileListItem(previousItem) && isFileVisuallySelected(previousItem.data);
                             const isNextFileSelected = isFileListItem(nextItem) && isFileVisuallySelected(nextItem.data);
+                            const isPreviousTypeProviderSelected =
+                                isStandaloneTypePresentation &&
+                                selectedProviderRowKey !== null &&
+                                getProviderListItemSelectionKey(previousItem) === selectedProviderRowKey;
+                            const isNextTypeProviderSelected =
+                                isStandaloneTypePresentation &&
+                                selectedProviderRowKey !== null &&
+                                getProviderListItemSelectionKey(nextItem) === selectedProviderRowKey;
+                            const isPreviousVisualRowSelected = isPreviousFileSelected || isPreviousTypeProviderSelected;
+                            const isNextVisualRowSelected = isNextFileSelected || isNextTypeProviderSelected;
+                            const isVisualFileRow = isFileRow || isTypeProviderRow;
                             const hasCustomBackground = hasFileCustomBackground(item);
                             const previousHasCustomBackground = isFileRow && hasFileCustomBackground(previousItem);
                             const nextHasCustomBackground = isFileRow && hasFileCustomBackground(nextItem);
                             const hasPreviousCustomBackground = hasCustomBackground && previousHasCustomBackground;
                             const hasNextCustomBackground = isFileRow && nextHasCustomBackground;
-                            const hasFilledBackground = isFileRow && (isSelected || hasCustomBackground);
+                            const hasFilledBackground = isVisualFileRow && (isSelected || hasCustomBackground);
                             const hasPreviousFilledBackground =
                                 hasFilledBackground &&
-                                isFileListItem(previousItem) &&
-                                (isPreviousFileSelected || previousHasCustomBackground);
+                                (isPreviousVisualRowSelected || (isFileListItem(previousItem) && previousHasCustomBackground));
                             const hasNextFilledBackground =
-                                hasFilledBackground && isFileListItem(nextItem) && (isNextFileSelected || nextHasCustomBackground);
+                                hasFilledBackground && (isNextVisualRowSelected || (isFileListItem(nextItem) && nextHasCustomBackground));
                             const isLastFile =
-                                isFileRow &&
+                                isVisualFileRow &&
                                 (virtualItem.index === listItems.length - 1 ||
                                     (nextItem &&
                                         (nextItem.type === ListPaneItemType.HEADER ||
@@ -1216,8 +1262,8 @@ export function ListPaneVirtualContent({
                                             nextItem.type === ListPaneItemType.TOP_SPACER ||
                                             nextItem.type === ListPaneItemType.BOTTOM_SPACER)));
 
-                            const hasSelectedAbove = isFileRow && isPreviousFileSelected;
-                            const hasSelectedBelow = isFileRow && isNextFileSelected;
+                            const hasSelectedAbove = isVisualFileRow && isPreviousVisualRowSelected;
+                            const hasSelectedBelow = isVisualFileRow && isNextVisualRowSelected;
 
                             const groupHeaderLabel =
                                 item.type === ListPaneItemType.FILE ? (dateGroupLabelByIndex[virtualItem.index] ?? null) : null;
@@ -1235,8 +1281,7 @@ export function ListPaneVirtualContent({
                             const shouldHideHeaderSeparatorForGroup =
                                 shouldHideCollapsedHeaderSeparator(headerModel) || shouldHideManualSortGoalHeaderSeparator(headerModel);
                             const hideFileSeparator =
-                                item.type === ListPaneItemType.FILE &&
-                                ((isSelected && !hasSelectedBelow) || (!isSelected && isNextFileSelected));
+                                isVisualFileRow && ((isSelected && !hasSelectedBelow) || (!isSelected && isNextVisualRowSelected));
                             const hideHeaderSeparator = firstFileAfterHeader !== null && isFileVisuallySelected(firstFileAfterHeader);
                             const hideSeparator = hideFileSeparator || hideHeaderSeparator;
 
@@ -1278,6 +1323,10 @@ export function ListPaneVirtualContent({
                                     onGroupHeaderContextMenu={handleGroupHeaderContextMenu}
                                     onProviderRowActivationRequested={onProviderRowActivationRequested}
                                     onProviderRowSelect={onProviderRowSelect}
+                                    isTypePresentation={isStandaloneTypePresentation}
+                                    isCompactMode={isCompactMode}
+                                    titleRows={appearanceSettings.titleRows}
+                                    showTypeIcon={settings.showFileIcons}
                                     rowMenuHost={rowMenuHost}
                                 />
                             );

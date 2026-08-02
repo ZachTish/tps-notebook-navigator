@@ -2,11 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ExpansionAction } from '../../src/context/ExpansionContext';
 import type { SelectionAction } from '../../src/context/SelectionContext';
 import type { ContentPane } from '../../src/context/UIStateContext';
-import { ItemType, TYPES_KINDS_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
+import { TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
 import {
     TPS_NAVIGATOR_STRUCTURAL_TYPES,
     TPS_NAVIGATOR_TYPE_IDS,
-    createTpsNavigatorKindTypeId,
     createTpsNavigatorProviderTypeId,
     getTpsNavigatorProviderSourceKey,
     type TpsNavigatorTypeDescriptor,
@@ -20,7 +19,7 @@ function descriptor(id: TpsNavigatorTypeDescriptor['id']): TpsNavigatorTypeDescr
         id,
         label: structural?.label ?? 'Project / Client',
         icon: structural?.icon ?? 'lucide-box',
-        category: structural?.category ?? 'kind',
+        category: 'structure',
         count: 1
     };
 }
@@ -86,27 +85,18 @@ describe('navigateToType', () => {
         }
     );
 
-    it('canonicalizes a Kind id, expands Types and Kinds, selects it, focuses navigation, and scrolls', () => {
-        const canonicalId = createTpsNavigatorKindTypeId('Project / Client');
-        expect(canonicalId).not.toBeNull();
-        const { env, expansionDispatch, selectionDispatch, activatePane, requestScroll } = createEnvironment({
-            descriptors: [descriptor(canonicalId!)]
-        });
+    it.each<TpsNavigatorTypesAvailability>(['loading', 'unavailable', 'error', 'ready'])(
+        'rejects legacy Kind syntax without side effects while the snapshot is %s',
+        availability => {
+            const result = createEnvironment({ availability, descriptors: [] });
 
-        expect(navigateToType(env, 'kind:Project%20%2f%20Client', { source: 'manual', historyIndex: 3 })).toBe(canonicalId);
-        expect(expansionDispatch).toHaveBeenCalledWith({
-            type: 'SET_EXPANDED_VIRTUAL_FOLDERS',
-            folders: new Set([TYPES_ROOT_VIRTUAL_FOLDER_ID, TYPES_KINDS_VIRTUAL_FOLDER_ID])
-        });
-        expect(selectionDispatch).toHaveBeenCalledWith({
-            type: 'SET_SELECTED_TYPE',
-            typeId: canonicalId,
-            source: 'manual',
-            historyIndex: 3
-        });
-        expect(activatePane).toHaveBeenCalledWith('navigation');
-        expect(requestScroll).toHaveBeenCalledWith(canonicalId, { align: 'auto', itemType: ItemType.TYPE });
-    });
+            expect(navigateToType(result.env, 'kind:Project%20%2F%20Client', { source: 'manual', historyIndex: 3 })).toBeNull();
+            expect(result.expansionDispatch).not.toHaveBeenCalled();
+            expect(result.selectionDispatch).not.toHaveBeenCalled();
+            expect(result.activatePane).not.toHaveBeenCalled();
+            expect(result.requestScroll).not.toHaveBeenCalled();
+        }
+    );
 
     it('expands only the Types root for a structural collection and can focus files', () => {
         const { env, expansionDispatch, activatePane } = createEnvironment();

@@ -65,6 +65,7 @@ import type { SelectionDispatch, SelectionState } from '../context/SelectionCont
 import { calculateCompactListMetrics } from '../utils/listPaneMetrics';
 import {
     estimateFileRowHeight,
+    estimateTypeProviderRowHeight,
     type FileRowHeightConfig,
     type FileRowHeightInputs,
     getSelectedPropertyValuePillToHide,
@@ -75,8 +76,10 @@ import {
     getPropertyRowCount,
     shouldShowExtensionBadgeThumbnail,
     shouldShowFeatureImageArea,
-    shouldShowFileItemParentFolderLine
+    shouldShowFileItemParentFolderLine,
+    usesStandaloneTypeProviderPresentation
 } from '../utils/listPaneMeasurements';
+import type { NavigatorProvidedRow } from '../services/rows/types';
 import type { PropertySelectionNodeId } from '../utils/propertyTree';
 import { getCachedFileTags } from '../utils/tagUtils';
 import type { HiddenTagVisibility } from '../utils/tagPrefixMatcher';
@@ -185,6 +188,7 @@ export interface ListFileRowSizingConfig extends FileRowHeightConfig {
     characterCountSpaces: NotebookNavigatorSettings['characterCountSpaces'];
     showParentFolder: boolean;
     selectionType: SelectionState['selectionType'];
+    selectedType: SelectionState['selectedType'];
     includeDescendantNotes: boolean;
     selectedTagToHide: string | null;
     selectedPropertyValueNodeIdToHide: string | null;
@@ -731,6 +735,7 @@ export function useListPaneScroll({
             characterCountSpaces: settings.characterCountSpaces,
             showParentFolder: settings.showParentFolder,
             selectionType: selectionState.selectionType,
+            selectedType: selectionState.selectedType,
             includeDescendantNotes,
             selectedTagToHide,
             selectedPropertyValueNodeIdToHide,
@@ -753,6 +758,7 @@ export function useListPaneScroll({
         listMeasurements,
         selectedPropertyValueNodeIdToHide,
         selectedTagToHide,
+        selectionState.selectedType,
         selectionState.selectionType,
         settings.characterCountSpaces,
         settings.showFileProperties,
@@ -823,6 +829,23 @@ export function useListPaneScroll({
                     }),
                     rowSizingConfig
                 );
+            }
+
+            if (
+                item.type === ListPaneItemType.PROVIDER_ROW &&
+                usesStandaloneTypeProviderPresentation(rowSizingConfig.selectionType, rowSizingConfig.selectedType) &&
+                item.data !== null &&
+                typeof item.data === 'object'
+            ) {
+                const row = item.data as NavigatorProvidedRow;
+                return estimateTypeProviderRowHeight({
+                    heights,
+                    compactPaddingTotal: rowSizingConfig.compactPaddingTotal,
+                    isCompactMode: rowSizingConfig.isCompactMode,
+                    isMobile,
+                    titleRows: rowSizingConfig.titleRows,
+                    hasSecondaryLabel: typeof row.secondaryLabel === 'string' && row.secondaryLabel.length > 0
+                });
             }
 
             if (item.type === ListPaneItemType.PROVIDER_ROW) {
@@ -1348,7 +1371,8 @@ export function useListPaneScroll({
         selectionState.selectionType,
         selectedFolder,
         selectedTag,
-        selectedProperty
+        selectedProperty,
+        selectionState.selectedType
     );
     const effectiveSortSpec = useMemo(() => resolveListSort(settings, selectedSortOverride), [settings, selectedSortOverride]);
     const effectiveSort = effectiveSortSpec.option;

@@ -2,13 +2,18 @@
  * TPS Notebook Navigator - shared React store for the optional GCM entity index.
  *
  * Navigation and list panes share one adapter/query per Obsidian app. This avoids
- * duplicate dimension registrations and duplicate whole-vault index queries.
+ * duplicate exact-line index queries while the same store maintains a read-free
+ * vault-file catalog for the native file-backed Type collections.
  */
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import { normalizePath, type App, type EventRef } from 'obsidian';
+import { normalizePath, TFile, type App, type EventRef } from 'obsidian';
 import {
+    TPS_NAVIGATOR_FILE_TYPES,
+    TPS_NAVIGATOR_LINE_TYPES,
     TPS_NAVIGATOR_STRUCTURAL_TYPES,
+    isTpsNavigatorFileTypeId,
+    type TpsNavigatorFileTypeId,
     type TpsNavigatorTypeId,
     type TpsNavigatorTypeRecord,
     type TpsNavigatorTypesSnapshot
@@ -22,14 +27,26 @@ import {
     TPS_GCM_API_REQUEST_EVENT,
     TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID
 } from '../../constants/tpsIdentity';
+import {
+    buildVaultFileTypesSnapshot,
+    buildVaultFileTypesSnapshotFromFiles,
+    getTpsNavigatorFileTypeId
+} from '../../services/types/vaultFileTypes';
 
 const EMPTY_RECORDS_BY_TYPE = new Map<TpsNavigatorTypeId, readonly TpsNavigatorTypeRecord[]>();
-const LOADING_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
+const LOADING_FILE_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
     availability: 'loading',
-    descriptors: Object.freeze(TPS_NAVIGATOR_STRUCTURAL_TYPES.map(descriptor => Object.freeze({ ...descriptor, count: 0 }))),
+    descriptors: Object.freeze(TPS_NAVIGATOR_FILE_TYPES.map(descriptor => Object.freeze({ ...descriptor, count: 0 }))),
+    recordsByType: new Map(TPS_NAVIGATOR_FILE_TYPES.map(descriptor => [descriptor.id, Object.freeze([])])),
+    revision: 0,
+    message: 'Loading vault file Types…'
+});
+const LOADING_LINE_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
+    availability: 'loading',
+    descriptors: Object.freeze(TPS_NAVIGATOR_LINE_TYPES.map(descriptor => Object.freeze({ ...descriptor, count: 0 }))),
     recordsByType: EMPTY_RECORDS_BY_TYPE,
     revision: 0,
-    message: 'Loading types…'
+    message: 'Loading exact-line items…'
 });
 const DISABLED_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
     availability: 'unavailable',
@@ -39,20 +56,30 @@ const DISABLED_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
     message: 'Types navigation is disabled.'
 });
 
-function withStructuralFallback(snapshot: TpsNavigatorTypesSnapshot): TpsNavigatorTypesSnapshot {
-    if (snapshot.descriptors.length > 0) {
-        return snapshot;
-    }
+function composeBuiltinSnapshot(
+    fileSnapshot: TpsNavigatorTypesSnapshot,
+    lineSnapshot: TpsNavigatorTypesSnapshot,
+    revision: number
+): TpsNavigatorTypesSnapshot {
     const recordsByType = new Map<TpsNavigatorTypeId, readonly TpsNavigatorTypeRecord[]>();
     const descriptors = TPS_NAVIGATOR_STRUCTURAL_TYPES.map(descriptor => {
-        recordsByType.set(descriptor.id, Object.freeze([]));
-        return Object.freeze({ ...descriptor, count: 0 });
+        const sourceSnapshot = isTpsNavigatorFileTypeId(descriptor.id) ? fileSnapshot : lineSnapshot;
+        const records = sourceSnapshot.recordsByType.get(descriptor.id) ?? Object.freeze([]);
+        recordsByType.set(descriptor.id, records);
+        return Object.freeze({ ...descriptor, count: records.length });
     });
-    return {
-        ...snapshot,
+    const availability = fileSnapshot.availability === 'ready' ? 'ready' : fileSnapshot.availability;
+    return Object.freeze({
+        availability,
         descriptors: Object.freeze(descriptors),
-        recordsByType
-    };
+        recordsByType,
+        revision,
+        ...(availability === 'ready' ? {} : { message: fileSnapshot.message ?? 'Vault file Types are unavailable.' }),
+        builtinAvailability: availability,
+        ...(availability === 'ready' ? {} : { builtinMessage: fileSnapshot.message ?? 'Vault file Types are unavailable.' }),
+        lineAvailability: lineSnapshot.availability,
+        ...(lineSnapshot.message ? { lineMessage: lineSnapshot.message } : {})
+    });
 }
 
 type SnapshotListener = () => void;
@@ -66,7 +93,7 @@ function getUpdatedPaths(payload: unknown): string[] {
     return [...new Set(rawPaths.map(path => normalizePath(String(path ?? '').trim())).filter(Boolean))];
 }
 
-function getMarkdownPath(value: unknown): string | null {
+function getVaultPath(value: unknown): string | null {
     if (!value || typeof value !== 'object') {
         return null;
     }
@@ -74,24 +101,49 @@ function getMarkdownPath(value: unknown): string | null {
     if (typeof file.path !== 'string' || !file.path.trim()) {
         return null;
     }
-    const path = normalizePath(file.path);
+    return normalizePath(file.path);
+}
+
+function getMarkdownPath(value: unknown): string | null {
+    const path = getVaultPath(value);
+    if (!path) {
+        return null;
+    }
+    const file = value as { extension?: unknown };
     const extension = typeof file.extension === 'string' ? file.extension.toLocaleLowerCase() : '';
     return extension === 'md' || path.toLocaleLowerCase().endsWith('.md') ? path : null;
 }
 
+function getIndexedFileTypeId(snapshot: TpsNavigatorTypesSnapshot, sourcePath: string): TpsNavigatorFileTypeId | null {
+    for (const descriptor of TPS_NAVIGATOR_FILE_TYPES) {
+        const records = snapshot.recordsByType.get(descriptor.id) ?? [];
+        if (records.some(record => record.sourcePath === sourcePath)) {
+            return descriptor.id as TpsNavigatorFileTypeId;
+        }
+    }
+    return null;
+}
+
 export class GcmEntityTypesStore {
     private readonly adapter: GcmEntityTypeIndexAdapter;
-    private snapshot: TpsNavigatorTypesSnapshot = LOADING_SNAPSHOT;
+    private fileSnapshot: TpsNavigatorTypesSnapshot = LOADING_FILE_SNAPSHOT;
+    private lineSnapshot: TpsNavigatorTypesSnapshot = LOADING_LINE_SNAPSHOT;
+    private snapshot: TpsNavigatorTypesSnapshot;
     private readonly listeners = new Set<SnapshotListener>();
     private stopRevision: (() => void) | null = null;
     private stopWorkspaceEvents: (() => void) | null = null;
     private stopVaultEvents: (() => void) | null = null;
+    private stopMetadataEvents: (() => void) | null = null;
     private loadGeneration = 0;
+    private publishedRevision = 0;
     private reloadPending = false;
+    private refreshFilesPending = false;
+    private refreshLinesPending = false;
     private reloadInFlight: { generation: number; task: Promise<void> } | null = null;
 
     constructor(private readonly app: App) {
         this.adapter = new GcmEntityTypeIndexAdapter(app);
+        this.snapshot = composeBuiltinSnapshot(this.fileSnapshot, this.lineSnapshot, this.publishedRevision);
     }
 
     readonly subscribe = (listener: SnapshotListener): (() => void) => {
@@ -131,7 +183,7 @@ export class GcmEntityTypesStore {
             this.requestReload();
         });
         const workspace = this.app.workspace;
-        let receivedApiPayload = false;
+        let starting = true;
         if (workspace && typeof workspace.on === 'function' && typeof workspace.trigger === 'function') {
             const eventSource = workspace as unknown as {
                 on(name: string, callback: (payload: unknown) => void): EventRef;
@@ -142,8 +194,9 @@ export class GcmEntityTypesStore {
                 if (!this.adapter.acceptApiPayload(payload)) {
                     return;
                 }
-                receivedApiPayload = true;
-                this.requestReload({ supersede: true });
+                if (!starting) {
+                    this.requestReload({ supersede: true });
+                }
             });
             const filesUpdatedRef = eventSource.on(TPS_FILES_UPDATED_EVENT, payload => {
                 this.handleTaskPathUpdates(getUpdatedPaths(payload), { invalidateAllWhenEmpty: true });
@@ -157,6 +210,7 @@ export class GcmEntityTypesStore {
                 requester: TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID,
                 timestamp: Date.now()
             });
+            starting = false;
         }
         const vault = this.app.vault as unknown as {
             on(name: string, callback: (...args: unknown[]) => void): EventRef;
@@ -174,81 +228,157 @@ export class GcmEntityTypesStore {
                 }
             });
             subscribe('create', file => {
-                const path = getMarkdownPath(file);
-                if (path) {
-                    this.handleTaskPathUpdates([path]);
+                const markdownPath = getMarkdownPath(file);
+                if (markdownPath) {
+                    this.adapter.invalidateTaskPaths([markdownPath]);
                 }
+                this.requestReload({ refreshFiles: true, refreshLines: markdownPath !== null });
             });
             subscribe('delete', file => {
-                const path = getMarkdownPath(file);
-                if (path) {
-                    this.handleTaskPathUpdates([path]);
+                const markdownPath = getMarkdownPath(file);
+                if (markdownPath) {
+                    this.adapter.invalidateTaskPaths([markdownPath]);
                 }
+                this.requestReload({ refreshFiles: true, refreshLines: markdownPath !== null });
             });
             subscribe('rename', (file, oldPath) => {
                 const nextPath = getMarkdownPath(file);
                 const previousPath = typeof oldPath === 'string' ? normalizePath(oldPath.trim()) : '';
-                this.handleTaskPathUpdates([previousPath, nextPath ?? ''].filter(Boolean));
+                this.adapter.invalidateTaskPaths([previousPath, nextPath ?? ''].filter(Boolean));
+                this.requestReload({
+                    refreshFiles: true,
+                    refreshLines: nextPath !== null || previousPath.toLocaleLowerCase().endsWith('.md')
+                });
             });
             this.stopVaultEvents = () => refs.forEach(ref => vault.offref(ref));
         }
-        if (!receivedApiPayload) {
-            this.requestReload({ supersede: true });
+        const metadataCache = this.app.metadataCache as unknown as {
+            on?(name: string, callback: (...args: unknown[]) => void): EventRef;
+            offref?(ref: EventRef): void;
+        };
+        if (typeof metadataCache.on === 'function' && typeof metadataCache.offref === 'function') {
+            const metadataRef = metadataCache.on('changed', file => {
+                const path = getMarkdownPath(file);
+                if (!path || !(file instanceof TFile)) {
+                    return;
+                }
+                try {
+                    if (getIndexedFileTypeId(this.fileSnapshot, path) !== getTpsNavigatorFileTypeId(this.app, file)) {
+                        this.requestReload({ refreshFiles: true, refreshLines: false });
+                    }
+                } catch (error) {
+                    console.warn('[TPS Notebook Navigator] Vault file Type classification failed', { path, error });
+                }
+            });
+            this.stopMetadataEvents = () => metadataCache.offref?.(metadataRef);
         }
+        starting = false;
+        this.requestReload({ supersede: true, refreshFiles: true });
     }
 
     private stop(): void {
         this.loadGeneration += 1;
         this.reloadPending = false;
+        this.refreshFilesPending = false;
+        this.refreshLinesPending = false;
         this.reloadInFlight = null;
         this.stopRevision?.();
         this.stopWorkspaceEvents?.();
         this.stopVaultEvents?.();
+        this.stopMetadataEvents?.();
         this.stopRevision = null;
         this.stopWorkspaceEvents = null;
         this.stopVaultEvents = null;
+        this.stopMetadataEvents = null;
         this.adapter.dispose();
-        this.snapshot = LOADING_SNAPSHOT;
+        this.lineSnapshot = LOADING_LINE_SNAPSHOT;
+        this.snapshot = composeBuiltinSnapshot(this.fileSnapshot, this.lineSnapshot, ++this.publishedRevision);
     }
 
-    private requestReload(options: { supersede?: boolean } = {}): void {
-        const generation = ++this.loadGeneration;
+    private requestReload(options: { supersede?: boolean; refreshFiles?: boolean; refreshLines?: boolean } = {}): void {
         this.reloadPending = true;
+        this.refreshFilesPending ||= options.refreshFiles === true;
+        this.refreshLinesPending ||= options.refreshLines !== false;
         if (this.reloadInFlight && !options.supersede) {
             return;
         }
+        this.startPendingReload();
+    }
+
+    private startPendingReload(): void {
+        const generation = ++this.loadGeneration;
         this.reloadPending = false;
-        const task = this.loadAndPublish(generation);
+        const refreshFiles = this.refreshFilesPending;
+        const refreshLines = this.refreshLinesPending;
+        this.refreshFilesPending = false;
+        this.refreshLinesPending = false;
+        const task = this.loadAndPublish(generation, refreshFiles, refreshLines);
         const activeLoad = { generation, task };
         this.reloadInFlight = activeLoad;
-        void task.finally(() => {
+        const finish = () => {
             if (this.reloadInFlight !== activeLoad) {
                 return;
             }
             this.reloadInFlight = null;
             if (this.reloadPending && this.listeners.size > 0) {
-                this.requestReload();
+                this.startPendingReload();
             }
+        };
+        void task.then(finish, (error: unknown) => {
+            console.warn('[TPS Notebook Navigator] Types refresh failed unexpectedly', { error });
+            finish();
         });
     }
 
-    private async loadAndPublish(generation: number): Promise<void> {
-        let snapshot: TpsNavigatorTypesSnapshot;
+    private async loadAndPublish(generation: number, refreshFiles: boolean, refreshLines: boolean): Promise<void> {
+        const fileSnapshot = refreshFiles ? this.buildFileSnapshotSafely() : this.fileSnapshot;
+        if (generation === this.loadGeneration && this.listeners.size > 0) {
+            this.fileSnapshot = fileSnapshot;
+            this.publish(composeBuiltinSnapshot(fileSnapshot, this.lineSnapshot, ++this.publishedRevision));
+        }
+
+        if (!refreshLines) {
+            return;
+        }
+
+        let lineSnapshot: TpsNavigatorTypesSnapshot;
         try {
-            snapshot = withStructuralFallback(await this.adapter.loadSnapshot());
+            lineSnapshot = await this.adapter.loadSnapshot();
         } catch (error) {
-            console.warn('[TPS Notebook Navigator] Types index refresh failed', { error });
-            snapshot = withStructuralFallback({
+            console.warn('[TPS Notebook Navigator] Exact-line Types refresh failed', { error });
+            lineSnapshot = {
                 availability: 'error',
                 descriptors: Object.freeze([]),
                 recordsByType: EMPTY_RECORDS_BY_TYPE,
                 revision: 0,
                 message: 'The entity index could not be loaded.'
-            });
+            };
         }
         if (generation !== this.loadGeneration || this.listeners.size === 0) {
             return;
         }
+        this.fileSnapshot = fileSnapshot;
+        this.lineSnapshot = lineSnapshot;
+        this.publish(composeBuiltinSnapshot(fileSnapshot, lineSnapshot, ++this.publishedRevision));
+    }
+
+    private buildFileSnapshotSafely(): TpsNavigatorTypesSnapshot {
+        try {
+            return buildVaultFileTypesSnapshot(this.app);
+        } catch (error) {
+            console.warn('[TPS Notebook Navigator] Vault file Types refresh failed', { error });
+            if (this.fileSnapshot.availability !== 'loading') {
+                return this.fileSnapshot;
+            }
+            return Object.freeze({
+                ...buildVaultFileTypesSnapshotFromFiles(this.app, []),
+                availability: 'error',
+                message: 'Vault file Types could not be loaded.'
+            });
+        }
+    }
+
+    private publish(snapshot: TpsNavigatorTypesSnapshot): void {
         this.snapshot = snapshot;
         for (const listener of [...this.listeners]) {
             try {

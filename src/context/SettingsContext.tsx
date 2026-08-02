@@ -293,6 +293,7 @@ export function SettingsProvider({ children, plugin }: SettingsProviderProps) {
             folderAppearances: cloneAppearanceMap(plugin.settings.folderAppearances),
             tagAppearances: cloneAppearanceMap(plugin.settings.tagAppearances),
             propertyAppearances: cloneAppearanceMap(plugin.settings.propertyAppearances),
+            typeAppearances: cloneAppearanceMap(plugin.settings.typeAppearances),
             pinnedNotes
         };
         // Deep copy vault profiles to prevent mutations from affecting the original settings

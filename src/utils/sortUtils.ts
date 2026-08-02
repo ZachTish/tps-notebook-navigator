@@ -30,6 +30,8 @@ import { NavigationItemType, ItemType, type ItemType as ItemTypeValue } from '..
 import { casefold, getMatchingRecordValue } from './recordUtils';
 import { isRecord } from './typeGuards';
 import type { UXIconId } from './uxIcons';
+import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
+import { isTpsNavigatorFileTypeId } from '../types/navigatorTypes';
 
 export function isDateSortOption(sortOption: SortOption): boolean {
     return sortOption.startsWith('modified') || sortOption.startsWith('created');
@@ -52,13 +54,14 @@ export interface EffectiveListSort {
     propertySortSecondary: PropertySortSecondaryOption;
 }
 
-export type SortOverrideRecordKey = 'folderSortOverrides' | 'tagSortOverrides' | 'propertySortOverrides';
+export type SortOverrideRecordKey = 'folderSortOverrides' | 'tagSortOverrides' | 'propertySortOverrides' | 'typeSortOverrides';
 type PropertySortKeyMapper = (key: string, normalizedKey: string) => string | null;
 
 export const SORT_OVERRIDE_RECORD_KEYS: readonly SortOverrideRecordKey[] = [
     'folderSortOverrides',
     'tagSortOverrides',
-    'propertySortOverrides'
+    'propertySortOverrides',
+    'typeSortOverrides'
 ];
 
 const SORT_FIELD_TOOLBAR_ICON_IDS: Record<SortField, UXIconId> = {
@@ -266,7 +269,7 @@ export function pruneUnavailablePropertySortOverrides(settings: NotebookNavigato
     let changed = false;
 
     SORT_OVERRIDE_RECORD_KEYS.forEach(recordKey => {
-        const record = settings[recordKey] as Record<string, ListSortOverrideValue> | undefined;
+        const record = settings[recordKey];
         if (!record) {
             return;
         }
@@ -279,7 +282,7 @@ export function pruneUnavailablePropertySortOverrides(settings: NotebookNavigato
 
             if (typeof normalizedOverride === 'string') {
                 if (configuredPropertyKeySet.size === 0 && isPropertySortOption(normalizedOverride)) {
-                    delete record[key];
+                    Reflect.deleteProperty(record, key);
                     changed = true;
                 }
                 return;
@@ -290,7 +293,7 @@ export function pruneUnavailablePropertySortOverrides(settings: NotebookNavigato
                 return;
             }
 
-            delete record[key];
+            Reflect.deleteProperty(record, key);
             changed = true;
         });
     });
@@ -488,9 +491,10 @@ export function getEffectiveSortOption(
     selectionType: NavigationItemType,
     selectedFolder: TFolder | null,
     selectedTag?: string | null,
-    selectedProperty?: string | null
+    selectedProperty?: string | null,
+    selectedType?: TpsNavigatorTypeId | null
 ): SortOption {
-    return getEffectiveListSort(settings, selectionType, selectedFolder, selectedTag, selectedProperty).option;
+    return getEffectiveListSort(settings, selectionType, selectedFolder, selectedTag, selectedProperty, selectedType).option;
 }
 
 export function resolveListSort(settings: NotebookNavigatorSettings, sortOverride?: ListSortOverrideValue): EffectiveListSort {
@@ -519,7 +523,8 @@ export function getListSortOverrideForSelection(
     selectionType: ItemTypeValue | null,
     selectedFolder: TFolder | null,
     selectedTag?: string | null,
-    selectedProperty?: string | null
+    selectedProperty?: string | null,
+    selectedType?: TpsNavigatorTypeId | null
 ): ListSortOverrideValue | undefined {
     if (selectionType === ItemType.FOLDER && selectedFolder) {
         return settings.folderSortOverrides?.[selectedFolder.path];
@@ -530,6 +535,9 @@ export function getListSortOverrideForSelection(
     if (selectionType === ItemType.PROPERTY && selectedProperty) {
         return settings.propertySortOverrides?.[selectedProperty];
     }
+    if (selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectedType)) {
+        return settings.typeSortOverrides?.[selectedType];
+    }
     return undefined;
 }
 
@@ -538,11 +546,12 @@ export function getEffectiveListSort(
     selectionType: NavigationItemType,
     selectedFolder: TFolder | null,
     selectedTag?: string | null,
-    selectedProperty?: string | null
+    selectedProperty?: string | null,
+    selectedType?: TpsNavigatorTypeId | null
 ): EffectiveListSort {
     return resolveListSort(
         settings,
-        getListSortOverrideForSelection(settings, selectionType, selectedFolder, selectedTag, selectedProperty)
+        getListSortOverrideForSelection(settings, selectionType, selectedFolder, selectedTag, selectedProperty, selectedType)
     );
 }
 

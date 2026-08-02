@@ -71,7 +71,7 @@ import {
 } from '../utils/manualSort';
 import { resolveIconForMenu, resolveUXIcon, resolveUXIconForMenu } from '../utils/uxIcons';
 import { buildPropertyKeyNodeId, parsePropertyNodeId } from '../utils/propertyTree';
-import { getFilesForNavigationSelection } from '../utils/selectionUtils';
+import { getFilesForNavigationSelection, getVisibleVaultFiles } from '../utils/selectionUtils';
 import { findVaultProfileById } from '../utils/vaultProfiles';
 import { casefold, ensureRecord, sanitizeRecord } from '../utils/recordUtils';
 import {
@@ -83,11 +83,14 @@ import {
 import { getErrorMessage } from '../utils/errorUtils';
 import { showNotice } from '../utils/noticeUtils';
 import { registerActiveFileWorkspaceListeners } from '../utils/workspaceActiveFileEvents';
+import { isTpsNavigatorFileTypeId } from '../types/navigatorTypes';
+import { collectFileBackedTypeFiles } from './listPaneData/typeListItems';
 
 type SelectionSortTarget =
     | { type: typeof ItemType.FOLDER; key: string }
     | { type: typeof ItemType.TAG; key: string }
-    | { type: typeof ItemType.PROPERTY; key: string };
+    | { type: typeof ItemType.PROPERTY; key: string }
+    | { type: typeof ItemType.TYPE; key: string };
 
 type DescendantApplyStats = {
     descendantCount: number;
@@ -170,7 +173,10 @@ function getSortOverridesForTarget(
     if (target.type === ItemType.TAG) {
         return sanitizeRecord(ensureRecord(settings.tagSortOverrides));
     }
-    return sanitizeRecord(ensureRecord(settings.propertySortOverrides));
+    if (target.type === ItemType.PROPERTY) {
+        return sanitizeRecord(ensureRecord(settings.propertySortOverrides));
+    }
+    return sanitizeRecord(ensureRecord(settings.typeSortOverrides));
 }
 
 function setSortOverridesForTarget(
@@ -186,7 +192,44 @@ function setSortOverridesForTarget(
         settings.tagSortOverrides = sortOverrides;
         return;
     }
-    settings.propertySortOverrides = sortOverrides;
+    if (target.type === ItemType.PROPERTY) {
+        settings.propertySortOverrides = sortOverrides;
+        return;
+    }
+    settings.typeSortOverrides = sortOverrides;
+}
+
+function getAppearancesForTarget(settings: NotebookNavigatorSettings, target: SelectionSortTarget): Record<string, FolderAppearance> {
+    if (target.type === ItemType.FOLDER) {
+        return sanitizeRecord(ensureRecord(settings.folderAppearances));
+    }
+    if (target.type === ItemType.TAG) {
+        return sanitizeRecord(ensureRecord(settings.tagAppearances));
+    }
+    if (target.type === ItemType.PROPERTY) {
+        return sanitizeRecord(ensureRecord(settings.propertyAppearances));
+    }
+    return sanitizeRecord(ensureRecord(settings.typeAppearances));
+}
+
+function setAppearancesForTarget(
+    settings: NotebookNavigatorSettings,
+    target: SelectionSortTarget,
+    appearances: Record<string, FolderAppearance>
+): void {
+    if (target.type === ItemType.FOLDER) {
+        settings.folderAppearances = appearances;
+        return;
+    }
+    if (target.type === ItemType.TAG) {
+        settings.tagAppearances = appearances;
+        return;
+    }
+    if (target.type === ItemType.PROPERTY) {
+        settings.propertyAppearances = appearances;
+        return;
+    }
+    settings.typeAppearances = appearances;
 }
 
 function setSortOverrideForTarget(
@@ -487,8 +530,10 @@ export function useListActions({
     const hasCreatableTagSelection =
         hasTagSelection && selectionState.selectedTag !== TAGGED_TAG_ID && selectionState.selectedTag !== UNTAGGED_TAG_ID;
     const hasPropertySelection = selectionState.selectionType === ItemType.PROPERTY && Boolean(selectionState.selectedProperty);
+    const hasFileBackedTypeSelection =
+        selectionState.selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectionState.selectedType);
     const hasCreatablePropertySelection = hasPropertySelection && selectionState.selectedProperty !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID;
-    const hasAppearanceOrSortSelection = hasFolderSelection || hasTagSelection || hasPropertySelection;
+    const hasAppearanceOrSortSelection = hasFolderSelection || hasTagSelection || hasPropertySelection || hasFileBackedTypeSelection;
 
     const openDefaultListSettings = useCallback(() => {
         plugin.openSettings();
@@ -514,8 +559,17 @@ export function useListActions({
         if (selectionState.selectionType === ItemType.PROPERTY && selectionState.selectedProperty) {
             return { type: ItemType.PROPERTY, key: selectionState.selectedProperty };
         }
+        if (selectionState.selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectionState.selectedType)) {
+            return { type: ItemType.TYPE, key: selectionState.selectedType };
+        }
         return null;
-    }, [selectionState.selectionType, selectionState.selectedFolder, selectionState.selectedTag, selectionState.selectedProperty]);
+    }, [
+        selectionState.selectionType,
+        selectionState.selectedFolder,
+        selectionState.selectedTag,
+        selectionState.selectedProperty,
+        selectionState.selectedType
+    ]);
 
     const handleNewFile = useCallback(async () => {
         try {
@@ -576,13 +630,15 @@ export function useListActions({
             selectionState.selectionType,
             selectionState.selectedFolder,
             selectionState.selectedTag,
-            selectionState.selectedProperty
+            selectionState.selectedProperty,
+            selectionState.selectedType
         );
     }, [
         selectionState.selectionType,
         selectionState.selectedFolder,
         selectionState.selectedTag,
         selectionState.selectedProperty,
+        selectionState.selectedType,
         settings
     ]);
 
@@ -596,15 +652,20 @@ export function useListActions({
         if (selectionState.selectionType === ItemType.PROPERTY && selectionState.selectedProperty) {
             return settings.propertyAppearances?.[selectionState.selectedProperty];
         }
+        if (selectionState.selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectionState.selectedType)) {
+            return settings.typeAppearances?.[selectionState.selectedType];
+        }
         return undefined;
     }, [
         selectionState.selectionType,
         selectionState.selectedFolder,
         selectionState.selectedTag,
         selectionState.selectedProperty,
+        selectionState.selectedType,
         settings.folderAppearances,
         settings.tagAppearances,
-        settings.propertyAppearances
+        settings.propertyAppearances,
+        settings.typeAppearances
     ]);
 
     const getSelectionDescendantKeys = useCallback((): string[] => {
@@ -716,9 +777,17 @@ export function useListActions({
                 selectionType: selectionState.selectionType,
                 folderPath: selectionState.selectedFolder ? selectionState.selectedFolder.path : null,
                 tag: selectionState.selectedTag ?? null,
-                propertyNodeId: selectionState.selectedProperty ?? null
+                propertyNodeId: selectionState.selectedProperty ?? null,
+                typeId: selectionState.selectedType
             }),
-        [settings, selectionState.selectedFolder, selectionState.selectedProperty, selectionState.selectedTag, selectionState.selectionType]
+        [
+            settings,
+            selectionState.selectedFolder,
+            selectionState.selectedProperty,
+            selectionState.selectedTag,
+            selectionState.selectedType,
+            selectionState.selectionType
+        ]
     );
     const selectionGroupOverride = groupingInfo.normalizedOverride;
     const hasSelectionGroupOverride = groupingInfo.hasCustomOverride;
@@ -862,8 +931,16 @@ export function useListActions({
             await metadataService.removeTagSortOverride(target.key);
             return;
         }
-        await metadataService.removePropertySortOverride(target.key);
-    }, [getSelectionSortTarget, metadataService]);
+        if (target.type === ItemType.PROPERTY) {
+            await metadataService.removePropertySortOverride(target.key);
+            return;
+        }
+        await updateSettings(current => {
+            const overrides = getSortOverridesForTarget(current, target);
+            delete overrides[target.key];
+            setSortOverridesForTarget(current, target, overrides);
+        });
+    }, [getSelectionSortTarget, metadataService, updateSettings]);
 
     const setSelectionSortOverride = useCallback(
         async (sortOverride: ListSortOverrideValue) => {
@@ -879,9 +956,15 @@ export function useListActions({
                 await metadataService.setTagSortOverride(target.key, sortOverride);
                 return;
             }
-            await metadataService.setPropertySortOverride(target.key, sortOverride);
+            if (target.type === ItemType.PROPERTY) {
+                await metadataService.setPropertySortOverride(target.key, sortOverride);
+                return;
+            }
+            await updateSettings(current => {
+                setSortOverrideForTarget(current, target, sortOverride);
+            });
         },
-        [getSelectionSortTarget, metadataService]
+        [getSelectionSortTarget, metadataService, updateSettings]
     );
 
     const setSelectionGroupOverride = useCallback(
@@ -892,12 +975,7 @@ export function useListActions({
             }
 
             await updateSettings(current => {
-                const next =
-                    target.type === ItemType.FOLDER
-                        ? sanitizeRecord(ensureRecord(current.folderAppearances))
-                        : target.type === ItemType.TAG
-                          ? sanitizeRecord(ensureRecord(current.tagAppearances))
-                          : sanitizeRecord(ensureRecord(current.propertyAppearances));
+                const next = getAppearancesForTarget(current, target);
                 const currentAppearance = next[target.key];
                 const normalizedAppearance = mergeAppearanceAndGrouping(
                     normalizeAppearanceOverride(currentAppearance, defaultMode),
@@ -910,15 +988,7 @@ export function useListActions({
                     delete next[target.key];
                 }
 
-                if (target.type === ItemType.FOLDER) {
-                    current.folderAppearances = next;
-                    return;
-                }
-                if (target.type === ItemType.TAG) {
-                    current.tagAppearances = next;
-                    return;
-                }
-                current.propertyAppearances = next;
+                setAppearancesForTarget(current, target, next);
             });
         },
         [defaultMode, getSelectionSortTarget, updateSettings]
@@ -944,13 +1014,24 @@ export function useListActions({
                 setSortOverrideForTarget(baselineSettings, target, sortOverride);
             }
 
+            if (target.type === ItemType.TYPE && isTpsNavigatorFileTypeId(selectionState.selectedType)) {
+                return orderManualSortFiles(
+                    collectFileBackedTypeFiles(
+                        app,
+                        getVisibleVaultFiles(baselineSettings, showHiddenItems, app),
+                        selectionState.selectedType
+                    )
+                );
+            }
+
             return orderManualSortFiles(
                 getFilesForNavigationSelection(
                     {
                         selectionType: selectionState.selectionType,
                         selectedFolder: selectionState.selectedFolder,
                         selectedTag: selectionState.selectedTag,
-                        selectedProperty: selectionState.selectedProperty
+                        selectedProperty: selectionState.selectedProperty,
+                        selectedType: selectionState.selectedType
                     },
                     baselineSettings,
                     { includeDescendantNotes, showHiddenItems },
@@ -967,6 +1048,7 @@ export function useListActions({
             selectionState.selectedFolder,
             selectionState.selectedProperty,
             selectionState.selectedTag,
+            selectionState.selectedType,
             selectionState.selectionType,
             settings,
             showHiddenItems,
@@ -977,12 +1059,21 @@ export function useListActions({
     const getManualSortPropertyRemovalFiles = useCallback((): TFile[] => {
         const baselineSettings = getManualSortBaselineSettings(settings);
 
+        if (selectionState.selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectionState.selectedType)) {
+            return collectFileBackedTypeFiles(
+                app,
+                getVisibleVaultFiles(baselineSettings, showHiddenItems, app),
+                selectionState.selectedType
+            );
+        }
+
         return getFilesForNavigationSelection(
             {
                 selectionType: selectionState.selectionType,
                 selectedFolder: selectionState.selectedFolder,
                 selectedTag: selectionState.selectedTag,
-                selectedProperty: selectionState.selectedProperty
+                selectedProperty: selectionState.selectedProperty,
+                selectedType: selectionState.selectedType
             },
             baselineSettings,
             { includeDescendantNotes, showHiddenItems },
@@ -998,6 +1089,7 @@ export function useListActions({
         selectionState.selectedFolder,
         selectionState.selectedProperty,
         selectionState.selectedTag,
+        selectionState.selectedType,
         selectionState.selectionType,
         settings,
         showHiddenItems,
@@ -1015,12 +1107,7 @@ export function useListActions({
                     setSortOverrideForTarget(current, target, createListSortOverride('property-asc', propertyKey));
                 }
 
-                const appearances =
-                    target.type === ItemType.FOLDER
-                        ? sanitizeRecord(ensureRecord(current.folderAppearances))
-                        : target.type === ItemType.TAG
-                          ? sanitizeRecord(ensureRecord(current.tagAppearances))
-                          : sanitizeRecord(ensureRecord(current.propertyAppearances));
+                const appearances = getAppearancesForTarget(current, target);
                 const normalizedAppearance = normalizeAppearanceOverride(appearances[target.key], defaultMode);
 
                 if (normalizedAppearance) {
@@ -1029,15 +1116,7 @@ export function useListActions({
                     delete appearances[target.key];
                 }
 
-                if (target.type === ItemType.FOLDER) {
-                    current.folderAppearances = appearances;
-                    return;
-                }
-                if (target.type === ItemType.TAG) {
-                    current.tagAppearances = appearances;
-                    return;
-                }
-                current.propertyAppearances = appearances;
+                setAppearancesForTarget(current, target, appearances);
             });
 
             app.workspace.requestSaveLayout();
@@ -1546,6 +1625,7 @@ export function useListActions({
                 selectedFolder: selectionState.selectedFolder,
                 selectedTag: selectionState.selectedTag,
                 selectedProperty: selectionState.selectedProperty,
+                selectedType: selectionState.selectedType,
                 selectionType: selectionState.selectionType,
                 updateSettings,
                 descendantAction: canApplyToDescendants
@@ -1572,6 +1652,7 @@ export function useListActions({
             selectionState.selectedFolder,
             selectionState.selectedTag,
             selectionState.selectedProperty,
+            selectionState.selectedType,
             selectionState.selectionType,
             updateSettings
         ]
@@ -1978,7 +2059,10 @@ export function useListActions({
         (hasTagSelection && selectionState.selectedTag && hasMeaningfulOverrides(settings.tagAppearances?.[selectionState.selectedTag])) ||
         (hasPropertySelection &&
             selectionState.selectedProperty &&
-            hasMeaningfulOverrides(settings.propertyAppearances?.[selectionState.selectedProperty]));
+            hasMeaningfulOverrides(settings.propertyAppearances?.[selectionState.selectedProperty])) ||
+        (hasFileBackedTypeSelection &&
+            isTpsNavigatorFileTypeId(selectionState.selectedType) &&
+            hasMeaningfulOverrides(settings.typeAppearances?.[selectionState.selectedType]));
 
     const activeFileVisibility = useMemo(() => {
         return findVaultProfileById(vaultProfiles, vaultProfileId).fileVisibility;

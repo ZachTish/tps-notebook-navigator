@@ -532,9 +532,11 @@ export class MarkdownPipelineContentProvider extends FeatureImageContentProvider
             'folderSortOverrides',
             'tagSortOverrides',
             'propertySortOverrides',
+            'typeSortOverrides',
             'folderAppearances',
             'tagAppearances',
             'propertyAppearances',
+            'typeAppearances',
             'wordCountTargetProperty'
         ];
     }

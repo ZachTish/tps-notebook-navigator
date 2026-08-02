@@ -20,9 +20,11 @@ describe('getTpsNavigatorTypeTitleData', () => {
         });
     });
 
-    it('decodes a dynamic Kind label', () => {
-        expect(getTpsNavigatorTypeTitleData('kind:project%20objective')).toEqual({
-            label: 'project objective',
+    it('uses a generic fallback for an unavailable provider descriptor', () => {
+        const typeId = createTpsNavigatorProviderTypeId('example/entities', 'missing')!;
+
+        expect(getTpsNavigatorTypeTitleData(typeId)).toEqual({
+            label: 'Types',
             icon: 'lucide-box'
         });
     });

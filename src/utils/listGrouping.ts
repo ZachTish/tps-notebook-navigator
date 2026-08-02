@@ -19,6 +19,7 @@
 import { ItemType } from '../types';
 import { createPropertyGroupingOption, getPropertyGroupingDirection, getPropertyGroupingKey } from '../settings/types';
 import type { ListNoteGroupingOption, ListSortOverrideValue, NotebookNavigatorSettings, SortOption } from '../settings/types';
+import { isTpsNavigatorFileTypeId, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 import { casefold } from './recordUtils';
 import {
     getManualSortPropertyKey,
@@ -30,11 +31,15 @@ import {
 } from './sortUtils';
 
 interface ResolveListGroupingParams {
-    settings: Pick<NotebookNavigatorSettings, 'noteGrouping' | 'folderAppearances' | 'tagAppearances' | 'propertyAppearances'>;
+    settings: Pick<
+        NotebookNavigatorSettings,
+        'noteGrouping' | 'folderAppearances' | 'tagAppearances' | 'propertyAppearances' | 'typeAppearances'
+    >;
     selectionType?: ItemType;
     folderPath?: string | null;
     tag?: string | null;
     propertyNodeId?: string | null;
+    typeId?: TpsNavigatorTypeId | null;
 }
 
 const effectiveCustomListGroupingCache = new WeakMap<NotebookNavigatorSettings, boolean>();
@@ -112,7 +117,7 @@ export function areListGroupingOptionsSameKind(left: ListNoteGroupingOption, rig
     return casefold(leftPropertyKey) === casefold(rightPropertyKey);
 }
 
-const APPEARANCE_RECORD_KEYS = ['folderAppearances', 'tagAppearances', 'propertyAppearances'] as const;
+const APPEARANCE_RECORD_KEYS = ['folderAppearances', 'tagAppearances', 'propertyAppearances', 'typeAppearances'] as const;
 
 /**
  * Removes property grouping overrides whose key is no longer configured in the property sort list.
@@ -144,7 +149,7 @@ export function pruneUnavailablePropertyGroupingOverrides(settings: NotebookNavi
             // A grouping-only appearance becomes an empty object; drop the entry so no
             // field-less record stays persisted and counted as stored metadata.
             if (Object.keys(appearance).length === 0) {
-                delete record[entryKey];
+                Reflect.deleteProperty(record, entryKey);
             }
             changed = true;
         });
@@ -186,7 +191,7 @@ export function updatePropertyGroupingOverrideKeys(
                 // A grouping-only appearance becomes an empty object; drop the entry so no
                 // field-less record stays persisted and counted as stored metadata.
                 if (Object.keys(appearance).length === 0) {
-                    delete record[entryKey];
+                    Reflect.deleteProperty(record, entryKey);
                 }
             }
             changed = true;
@@ -216,7 +221,7 @@ export function resolveListGroupingOverride({
         };
     }
 
-    if (selectionType === ItemType.TAG || selectionType === ItemType.PROPERTY) {
+    if (selectionType === ItemType.TAG || selectionType === ItemType.PROPERTY || selectionType === ItemType.TYPE) {
         const defaultGrouping: ListNoteGroupingOption = globalDefault === 'folder' ? 'date' : globalDefault;
 
         if (groupBy === undefined || groupBy === 'folder') {
@@ -317,6 +322,12 @@ export function hasEffectiveCustomListGrouping(settings: NotebookNavigatorSettin
             selectionType: ItemType.PROPERTY,
             appearances: settings.propertyAppearances,
             sortOverrides: settings.propertySortOverrides
+        }) ||
+        hasEffectiveCustomGroupingForSelection({
+            settings,
+            selectionType: ItemType.TYPE,
+            appearances: settings.typeAppearances ?? {},
+            sortOverrides: settings.typeSortOverrides ?? {}
         });
 
     effectiveCustomListGroupingCache.set(settings, hasEffectiveCustomGrouping);
@@ -332,7 +343,8 @@ export function resolveListGrouping({
     selectionType,
     folderPath,
     tag,
-    propertyNodeId
+    propertyNodeId,
+    typeId
 }: ResolveListGroupingParams): ListGroupingResolution {
     const globalDefault: ListNoteGroupingOption = settings.noteGrouping ?? 'custom';
 
@@ -359,6 +371,14 @@ export function resolveListGrouping({
             noteGrouping: globalDefault,
             selectionType,
             groupBy: settings.propertyAppearances?.[propertyNodeId]?.groupBy
+        });
+    }
+
+    if (selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(typeId)) {
+        return resolveListGroupingOverride({
+            noteGrouping: globalDefault,
+            selectionType,
+            groupBy: settings.typeAppearances?.[typeId]?.groupBy
         });
     }
 

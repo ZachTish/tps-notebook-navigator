@@ -51,6 +51,7 @@ interface UseListPaneRefreshArgs {
     hiddenFilePropertyMatcher: ReturnType<typeof createFrontmatterPropertyExclusionMatcher>;
     hiddenFileTags: string[];
     includeDescendantNotes: boolean;
+    isFileBackedTypeSelection: boolean;
     manualSortGroupHeaderPropertyKey: string | null;
     onRefresh: () => void;
     propertyTreeService: IPropertyTreeProvider | null;
@@ -149,6 +150,19 @@ export function hasTypeVisibilityContentChange(params: {
     );
 }
 
+/** File-backed Type presentation must react when indexed properties drive sort or grouping. */
+export function hasTypePresentationContentChange(params: {
+    changes: readonly FileContentChange[];
+    basePathSet: ReadonlySet<string>;
+    isFileBackedTypeSelection: boolean;
+    usesMetadataPresentation: boolean;
+}): boolean {
+    if (!params.isFileBackedTypeSelection || !params.usesMetadataPresentation) {
+        return false;
+    }
+    return params.changes.some(change => change.changes.properties !== undefined && params.basePathSet.has(change.path));
+}
+
 /**
  * Current metadata detects added headers, while the rendered and count-snapshot paths detect removals
  * after the header property no longer identifies the file as an owner.
@@ -214,6 +228,7 @@ export function useListPaneRefresh({
     hiddenFilePropertyMatcher,
     hiddenFileTags,
     includeDescendantNotes,
+    isFileBackedTypeSelection,
     manualSortGroupHeaderPropertyKey,
     onRefresh,
     propertyTreeService,
@@ -464,6 +479,10 @@ export function useListPaneRefresh({
             if (selectionType === ItemType.TYPE) {
                 if (!showHiddenItems && hasHiddenPropertyStateChanged()) {
                     queueRefresh();
+                    return;
+                }
+                if (isFileBackedTypeSelection && shouldRefreshOnMetadataChange && basePathSet.has(file.path)) {
+                    queueRefresh();
                 }
                 return;
             }
@@ -513,6 +532,17 @@ export function useListPaneRefresh({
                 shouldRefresh = true;
             }
             if (hasPropertySearchFilters && hasPropertySearchContentChange(changes, basePathSet)) {
+                shouldRefresh = true;
+            }
+            if (
+                !shouldRefresh &&
+                hasTypePresentationContentChange({
+                    changes,
+                    basePathSet,
+                    isFileBackedTypeSelection,
+                    usesMetadataPresentation: shouldRefreshOnMetadataChange
+                })
+            ) {
                 shouldRefresh = true;
             }
             if (!shouldRefresh && (hasTagChanges || hasPropertyChanges)) {
@@ -595,6 +625,7 @@ export function useListPaneRefresh({
         hiddenFilePropertyMatcher,
         hiddenFileTags,
         includeDescendantNotes,
+        isFileBackedTypeSelection,
         manualSortGroupHeaderPropertyKey,
         propertyTreeService,
         selectedFolder,

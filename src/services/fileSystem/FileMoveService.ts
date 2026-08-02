@@ -131,6 +131,10 @@ export class FileMoveService {
         }
 
         const selectedFileOriginalPath = selectionContext?.selectedFile?.path ?? null;
+        const movedFilesByOriginalPath = new Map(files.map(file => [file.path, file]));
+        const selectionOriginalPaths = selectionContext
+            ? new Map(selectionContext.allFiles.map(file => [file, file.path] as const))
+            : undefined;
         const commandQueue = this.getCommandQueue();
         if (commandQueue) {
             const moveConflictsSetting = this.resolveMoveFileConflictsSetting();
@@ -320,8 +324,30 @@ export class FileMoveService {
             if (selectionContext && selectedFileOriginalPath) {
                 const movedPathSet = new Set(moveResult.data.movedSourcePaths);
                 if (movedPathSet.has(selectedFileOriginalPath)) {
-                    const nextFileToSelect = findNextFileAfterRemoval(selectionContext.allFiles, movedPathSet);
-                    await updateSelectionAfterFileOperation(nextFileToSelect, selectionContext.dispatch, this.app);
+                    const movedSelectedFile = movedFilesByOriginalPath.get(selectedFileOriginalPath) ?? null;
+                    let shouldKeepMovedFileSelected = false;
+                    if (movedSelectedFile && selectionContext.shouldKeepMovedFileSelected) {
+                        try {
+                            shouldKeepMovedFileSelected = selectionContext.shouldKeepMovedFileSelected(movedSelectedFile);
+                        } catch (error) {
+                            console.error('Failed to verify moved file selection membership:', error);
+                        }
+                    }
+
+                    if (shouldKeepMovedFileSelected) {
+                        // Vault rename listeners normally remap these paths. Dispatching the
+                        // same idempotent updates here keeps single and multi-selection stable
+                        // even when metadata work delays those listeners.
+                        movedPathSet.forEach(oldPath => {
+                            const movedFile = movedFilesByOriginalPath.get(oldPath);
+                            if (movedFile && movedFile.path !== oldPath) {
+                                selectionContext.dispatch({ type: 'UPDATE_FILE_PATH', oldPath, newPath: movedFile.path });
+                            }
+                        });
+                    } else {
+                        const nextFileToSelect = findNextFileAfterRemoval(selectionContext.allFiles, movedPathSet, selectionOriginalPaths);
+                        await updateSelectionAfterFileOperation(nextFileToSelect, selectionContext.dispatch, this.app);
+                    }
                 }
             }
 

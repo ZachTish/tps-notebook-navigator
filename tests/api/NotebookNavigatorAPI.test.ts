@@ -193,9 +193,18 @@ describe('NotebookNavigatorAPI', () => {
         expect(api.types.checkboxesId).toBe('structural:task');
         expect(api.types.bulletsId).toBe('structural:bullet');
         expect(api.types.headingsId).toBe('structural:heading');
+        expect(api.types.basesId).toBe('file:base');
+        expect(api.types.canvasId).toBe('file:canvas');
+        expect(api.types.drawingsId).toBe('file:drawing');
+        expect(api.types.pdfsId).toBe('file:pdf');
+        expect(api.types.imagesId).toBe('file:image');
+        expect(api.types.audioId).toBe('file:audio');
+        expect(api.types.videoId).toBe('file:video');
         expect(api.types.buildKind('Project')).toBe('kind:Project');
         expect(api.types.parseKind('kind:Project')).toBe('Project');
         expect(api.types.isType('structural:task')).toBe(true);
+        expect(api.types.isType('file:image')).toBe(true);
+        expect(api.types.isType('kind:Project')).toBe(false);
         expect(typeof api.types.getSnapshot).toBe('function');
         expect(typeof api.types.subscribe).toBe('function');
         expect(typeof api.types.whenReady).toBe('function');

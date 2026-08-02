@@ -37,7 +37,12 @@ import { confirmRemoveAllTagsFromFiles, openAddTagToFilesModal, removeTagFromFil
 import { addFolderStyleChangeActions, addFolderStyleMenu, addStyleMenu } from './styleMenuBuilder';
 import { resolveIconForMenu, resolveUXIconForMenu } from '../uxIcons';
 import { isFolderNote } from '../../utils/folderNoteLookup';
-import { getFilesForNavigationSelection, getNavigatorPinContext, orderFilesByReference } from '../selectionUtils';
+import {
+    createFileBackedTypeMoveSelectionGuard,
+    getFilesForNavigationSelection,
+    getNavigatorPinContext,
+    orderFilesByReference
+} from '../selectionUtils';
 import { collectFileMenuPropertyActions, type FileMenuPropertyAction } from '../../utils/propertyMenuActions';
 import { INTERNAL_NOTEBOOK_NAVIGATOR_API } from '../../api/NotebookNavigatorAPI';
 import { getManualSortGroupHeaderPropertyKey } from '../manualSort';
@@ -184,6 +189,7 @@ export function buildFileMenu(params: FileMenuBuilderParams): void {
 
         return cachedFileList;
     };
+    const shouldKeepMovedFileSelected = createFileBackedTypeMoveSelectionGuard(selectionState, settings, visibility.showHiddenItems, app);
 
     // Cache selected files to avoid repeated path-to-file conversions
     const cachedSelectedFiles = shouldShowMultiOptions
@@ -406,7 +412,8 @@ export function buildFileMenu(params: FileMenuBuilderParams): void {
                     await fileSystemOps.moveFilesWithModal(currentFiles, {
                         selectedFile: selectionState.selectedFile,
                         dispatch: selectionDispatch,
-                        allFiles: getCachedFileList()
+                        allFiles: getCachedFileList(),
+                        shouldKeepMovedFileSelected
                     });
                 }
             );
@@ -548,7 +555,8 @@ export function buildFileMenu(params: FileMenuBuilderParams): void {
                     await fileSystemOps.moveFilesWithModal([file], {
                         selectedFile: selectionState.selectedFile,
                         dispatch: selectionDispatch,
-                        allFiles: getCachedFileList()
+                        allFiles: getCachedFileList(),
+                        shouldKeepMovedFileSelected
                     });
                 }
             );
@@ -604,14 +612,16 @@ function addManualSortGroupHeaderAction(params: AddManualSortGroupHeaderActionPa
         selectionState.selectionType,
         selectionState.selectedFolder,
         selectionState.selectedTag,
-        selectionState.selectedProperty
+        selectionState.selectedProperty,
+        selectionState.selectedType
     );
     const groupingInfo = resolveListGrouping({
         settings,
         selectionType: selectionState.selectionType,
         folderPath: selectionState.selectedFolder?.path ?? null,
         tag: selectionState.selectedTag ?? null,
-        propertyNodeId: selectionState.selectedProperty ?? null
+        propertyNodeId: selectionState.selectedProperty ?? null,
+        typeId: selectionState.selectedType
     });
     const effectiveGrouping = resolveEffectiveListGroupingForSort({
         groupBy: groupingInfo.effectiveGrouping,

@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 2.13.0
+ * Version: 3.0.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -95,13 +95,14 @@ export interface TpsNotebookNavigatorApiRequestPayload {
 /** Availability of the optional first-class Types catalog. */
 export type NavigatorTypesAvailability = 'disabled' | 'loading' | 'ready' | 'unavailable' | 'error';
 
-/** Provider-neutral descriptor for one structural or relational Type collection. */
+/** Provider-neutral descriptor for one fixed file/line or registered-provider Type collection. */
 export interface NavigatorTypeDescriptor {
     /** Opaque ID accepted by Type navigation helpers. */
     readonly id: string;
     readonly label: string;
     readonly icon: string;
-    readonly category: 'structure' | 'kind';
+    /** Flat catalog category. Kind is frontmatter metadata and is not a Navigator Type. */
+    readonly category: 'structure';
     /** Stable owner ID for a collection registered by another plugin. */
     readonly providerId?: string;
     /** Provider-local collection ID for a collection registered by another plugin. */
@@ -138,6 +139,7 @@ export interface NavigatorTypeProviderQueryContext extends NavigatorTypeProvider
 export interface NavigatorTypeRowsContext extends NavigatorTypeProviderQueryContext {
     readonly typeId: string;
     readonly searchQuery: string;
+    /** Exact visible vault-file paths the provider may return rows for. */
     readonly allowedVaultFilePaths: readonly string[];
 }
 
@@ -166,12 +168,13 @@ export type NavigatorRowSelectionType = 'file' | 'folder' | 'tag' | 'property' |
 export type NavigatorRowProviderOptions = Readonly<Record<string, unknown>>;
 
 export interface NavigatorRowScope {
+    /** Exact visible vault-file paths represented by native rows in the current list. */
     readonly visibleFilePaths: readonly string[];
     readonly selectionType: NavigatorRowSelectionType | null;
     readonly selectedFolderPath: string | null;
     readonly selectedTag: string | null;
     readonly selectedProperty: string | null;
-    /** Opaque built-in, Kind, or registered-provider collection ID when `selectionType` is `type`. */
+    /** Opaque fixed built-in or registered-provider collection ID when `selectionType` is `type`. */
     readonly selectedType: string | null;
 }
 
@@ -339,6 +342,7 @@ export type NavigatorVisibleListRow = NavigatorVisibleFileRow | NavigatorVisible
 export interface NavigatorListSnapshot {
     readonly navItem: NavItem;
     readonly search: NavigatorListSearchState;
+    /** Null for standalone exact-line/provider Types; file-backed Types expose native file-list presentation. */
     readonly presentation: NavigatorListPresentationState | null;
     readonly rows: readonly NavigatorVisibleListRow[];
 }
@@ -619,7 +623,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 2.13.0
+ * @version 3.0.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */
@@ -671,23 +675,30 @@ export interface NotebookNavigatorAPI {
         navigateToTag(tag: string): Promise<boolean>;
         /** Select a property node in the navigator navigation pane (e.g. 'key:status' or 'key:status=done'). */
         navigateToProperty(nodeId: string): Promise<boolean>;
-        /** Select any built-in, dynamic Kind, or registered-provider collection discovered through `types`. */
+        /** Select any built-in file/line or registered-provider collection discovered through `types`. */
         navigateToType(typeId: string): Promise<boolean>;
         /** Focus an exact currently rendered row without changing scope or activating it. */
         focusRow(target: NavigatorRowFocusTarget): Promise<boolean>;
     };
 
-    /** Discover and address built-in, dynamic Kind, and registered-provider Type collections. */
+    /** Discover and address built-in file/line and registered-provider Type collections. */
     types: {
         readonly notesId: 'entity:note';
         readonly checkboxesId: 'structural:task';
         readonly bulletsId: 'structural:bullet';
         readonly headingsId: 'structural:heading';
-        /** Build an opaque Type id from a configured Kind value. */
+        readonly basesId: 'file:base';
+        readonly canvasId: 'file:canvas';
+        readonly drawingsId: 'file:drawing';
+        readonly pdfsId: 'file:pdf';
+        readonly imagesId: 'file:image';
+        readonly audioId: 'file:audio';
+        readonly videoId: 'file:video';
+        /** @deprecated Kind is frontmatter metadata and is no longer published in Types. */
         buildKind(kind: string): string | null;
-        /** Parse a configured Kind value from an opaque Type id. */
+        /** @deprecated Parses stale Kind ids for compatibility only. */
         parseKind(typeId: string): string | null;
-        /** Check whether a runtime value is a syntactically valid built-in, Kind, or provider Type id. */
+        /** Check whether a value is a fixed or canonical provider Type id. Legacy Kind ids return false. */
         isType(typeId: unknown): boolean;
         /** Register runtime-owned top-level collections and their guarded rows. */
         registerProvider(provider: NavigatorTypeProvider, options?: NavigatorTypeProviderOptions): NavigatorTypeProviderRegistration;
@@ -757,9 +768,9 @@ export interface NotebookNavigatorAPI {
         registerTagMenu(callback: (context: TagMenuExtensionContext) => void): MenuExtensionDispose;
         /** Register items for the property context menu */
         registerPropertyMenu(callback: (context: PropertyMenuExtensionContext) => void): MenuExtensionDispose;
-        /** Register items for a built-in, Kind, or provider-owned Type collection context menu */
+        /** Register items for a fixed built-in or provider-owned Type collection context menu */
         registerTypeMenu(callback: (context: TypeMenuExtensionContext) => void): MenuExtensionDispose;
-        /** Register actions for matching attached, structural, Kind, task, and provider-owned rows */
+        /** Register actions for matching attached, fixed-Type, task, and provider-owned rows */
         registerRowMenu(
             callback: (context: NavigatorRowMenuExtensionContext) => void,
             options?: NavigatorRowMenuExtensionOptions

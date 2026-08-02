@@ -37,14 +37,7 @@ import { useServices, useFileSystemOps } from '../context/ServicesContext';
 import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferences } from '../context/UXPreferencesContext';
 import { useUIState, useUIDispatch } from '../context/UIStateContext';
-import {
-    NavigationPaneItemType,
-    ItemType,
-    PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
-    TAGGED_TAG_ID,
-    TYPES_KINDS_VIRTUAL_FOLDER_ID,
-    TYPES_ROOT_VIRTUAL_FOLDER_ID
-} from '../types';
+import { NavigationPaneItemType, ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../types';
 import type { CombinedNavigationItem, VirtualFolderItem } from '../types/virtualization';
 import { deleteSelectedFolder } from '../utils/deleteOperations';
 import { useKeyboardNavigation, KeyboardNavigationHelpers } from './useKeyboardNavigation';
@@ -100,10 +93,7 @@ function isVirtualTypeCollection(item: CombinedNavigationItem): item is VirtualT
 }
 
 function getKeyboardOnlyTypeRootId(item: CombinedNavigationItem): string | null {
-    return item.type === NavigationPaneItemType.VIRTUAL_FOLDER &&
-        (item.data.id === TYPES_ROOT_VIRTUAL_FOLDER_ID || item.data.id === TYPES_KINDS_VIRTUAL_FOLDER_ID)
-        ? item.data.id
-        : null;
+    return item.type === NavigationPaneItemType.VIRTUAL_FOLDER && item.data.id === TYPES_ROOT_VIRTUAL_FOLDER_ID ? item.data.id : null;
 }
 
 function isKeyboardOnlyTypeRoot(item: CombinedNavigationItem): boolean {

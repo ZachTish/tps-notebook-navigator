@@ -16,15 +16,21 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { App, TFolder, type TFile } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import {
     canAddShortcutForNavigationSelection,
+    createFileBackedTypeMoveSelectionGuard,
+    findNextFileAfterRemoval,
     getNavigatorPinContext,
     getPinnedSectionCollapseKey,
     getSelectedPath,
-    orderFilesByReference
+    orderFilesByReference,
+    resolveFileOperationCurrentFiles
 } from '../../src/utils/selectionUtils';
 import { ItemType } from '../../src/types';
+import { TPS_NAVIGATOR_FILE_TYPES, TPS_NAVIGATOR_LINE_TYPES, TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
+import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import { createTestTFile } from './createTestTFile';
 
 describe('orderFilesByReference', () => {
@@ -63,5 +69,85 @@ describe('Types selection helpers', () => {
         expect(canAddShortcutForNavigationSelection(ItemType.FOLDER)).toBe(true);
         expect(canAddShortcutForNavigationSelection(ItemType.TAG)).toBe(true);
         expect(canAddShortcutForNavigationSelection(ItemType.PROPERTY)).toBe(true);
+    });
+
+    it.each(TPS_NAVIGATOR_FILE_TYPES)('uses the live ordered rows for file-backed Type $id operations', descriptor => {
+        const orderedFiles = [createTestTFile('Visible/Second.md'), createTestTFile('Visible/First.md')];
+        let fallbackCalls = 0;
+
+        const result = resolveFileOperationCurrentFiles({ ...typeSelection, selectedType: descriptor.id }, orderedFiles, () => {
+            fallbackCalls += 1;
+            return [createTestTFile('Fallback.md')];
+        });
+
+        expect(result).toBe(orderedFiles);
+        expect(fallbackCalls).toBe(0);
+    });
+
+    it('treats an unavailable live list as an empty file-backed Type scope', () => {
+        const fallback = [createTestTFile('Fallback.md')];
+
+        expect(resolveFileOperationCurrentFiles({ ...typeSelection, selectedType: 'file:base' }, undefined, () => fallback)).toEqual([]);
+    });
+
+    it.each([...TPS_NAVIGATOR_LINE_TYPES.map(descriptor => descriptor.id), 'provider:example%2Fentities:projects', 'kind:project'])(
+        'preserves fallback selection behavior for non-file Type %s',
+        selectedType => {
+            const orderedFiles = [createTestTFile('Visible.md')];
+            const fallback = [createTestTFile('Fallback.md')];
+
+            expect(resolveFileOperationCurrentFiles({ ...typeSelection, selectedType }, orderedFiles, () => fallback)).toBe(fallback);
+        }
+    );
+
+    it('retains a moved file only while it remains visible in the selected file-backed Type', () => {
+        const app = new App();
+        const root = app.vault.getRoot() as TFolder & { children: TFile[] };
+        const note = createTestTFile('Inbox/Note.md');
+        (note as TFile & { parent: TFolder }).parent = root;
+        root.children = [note];
+
+        const guard = createFileBackedTypeMoveSelectionGuard(
+            { ...typeSelection, selectedType: TPS_NAVIGATOR_TYPE_IDS.NOTES },
+            DEFAULT_SETTINGS,
+            false,
+            app
+        );
+
+        expect(guard).toBeTypeOf('function');
+        expect(guard?.(note)).toBe(true);
+
+        Object.assign(note, createTestTFile('Inbox/Note.base'));
+        expect(guard?.(note)).toBe(false);
+
+        Object.assign(note, createTestTFile('Inbox/Note.md'));
+        root.children = [];
+        expect(guard?.(note)).toBe(false);
+    });
+
+    it.each([...TPS_NAVIGATOR_LINE_TYPES.map(descriptor => descriptor.id), 'provider:example%2Fentities:projects', 'kind:project'])(
+        'does not opt non-file Type %s into moved-file retention',
+        selectedType => {
+            expect(
+                createFileBackedTypeMoveSelectionGuard({ ...typeSelection, selectedType }, DEFAULT_SETTINGS, false, new App())
+            ).toBeUndefined();
+        }
+    );
+});
+
+describe('findNextFileAfterRemoval', () => {
+    it('uses stable pre-operation paths after Obsidian mutates moved TFile objects', () => {
+        const first = createTestTFile('Inbox/First.md');
+        const moved = createTestTFile('Inbox/Moved.md');
+        const last = createTestTFile('Inbox/Last.md');
+        const originalPaths = new Map<TFile, string>([
+            [first, first.path],
+            [moved, moved.path],
+            [last, last.path]
+        ]);
+
+        Object.assign(moved, createTestTFile('Archive/Moved.md'));
+
+        expect(findNextFileAfterRemoval([first, moved, last], new Set(['Inbox/Moved.md']), originalPaths)).toBe(last);
     });
 });

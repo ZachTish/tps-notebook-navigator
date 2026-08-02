@@ -112,6 +112,7 @@ import {
     type UXPreferences
 } from '../../types';
 import type { FolderAppearance } from '../../hooks/useListPaneAppearance';
+import { isTpsNavigatorFileTypeId } from '../../types/navigatorTypes';
 import { createSyncModeRegistry, type SyncModeRegistry } from './syncModeRegistry';
 import { getDefaultUXPreferences, isUXPreferencesRecord } from './uxPreferences';
 
@@ -194,7 +195,8 @@ function containsLegacyNoneGroupingInStoredData(storedData: Record<string, unkno
         storedData.noteGrouping === 'none' ||
         hasLegacyNoneGroupingInAppearanceMap(storedData.folderAppearances) ||
         hasLegacyNoneGroupingInAppearanceMap(storedData.tagAppearances) ||
-        hasLegacyNoneGroupingInAppearanceMap(storedData.propertyAppearances)
+        hasLegacyNoneGroupingInAppearanceMap(storedData.propertyAppearances) ||
+        hasLegacyNoneGroupingInAppearanceMap(storedData.typeAppearances)
     );
 }
 
@@ -1244,6 +1246,28 @@ export class PluginSettingsController {
             });
             return sanitized;
         };
+        const sanitizeTypeSortMap = (
+            record?: NotebookNavigatorSettings['typeSortOverrides']
+        ): NonNullable<NotebookNavigatorSettings['typeSortOverrides']> => {
+            const sanitized = sanitizeSortMap(record);
+            Object.keys(sanitized).forEach(key => {
+                if (!isTpsNavigatorFileTypeId(key)) {
+                    delete sanitized[key];
+                }
+            });
+            return sanitized;
+        };
+        const sanitizeTypeAppearanceMap = (
+            record?: NotebookNavigatorSettings['typeAppearances']
+        ): NonNullable<NotebookNavigatorSettings['typeAppearances']> => {
+            const sanitized = sanitizeAppearanceMap(record);
+            Object.keys(sanitized).forEach(key => {
+                if (!isTpsNavigatorFileTypeId(key)) {
+                    delete sanitized[key];
+                }
+            });
+            return sanitized;
+        };
         const sanitizeBooleanMap = (record?: Record<string, boolean>): Record<string, boolean> =>
             sanitizeRecord(record, isBooleanRecordValue);
         const sanitizeSettingsSyncMap = (record?: Record<string, SettingSyncMode>): Record<string, SettingSyncMode> =>
@@ -1262,12 +1286,14 @@ export class PluginSettingsController {
         this.currentSettings.folderSortOverrides = sanitizeSortMap(this.currentSettings.folderSortOverrides);
         this.currentSettings.tagSortOverrides = sanitizeSortMap(this.currentSettings.tagSortOverrides);
         this.currentSettings.propertySortOverrides = sanitizeSortMap(this.currentSettings.propertySortOverrides);
+        this.currentSettings.typeSortOverrides = sanitizeTypeSortMap(this.currentSettings.typeSortOverrides);
         this.currentSettings.folderTreeSortOverrides = sanitizeAlphaSortOrderMap(this.currentSettings.folderTreeSortOverrides);
         this.currentSettings.tagTreeSortOverrides = sanitizeAlphaSortOrderMap(this.currentSettings.tagTreeSortOverrides);
         this.currentSettings.propertyTreeSortOverrides = sanitizeAlphaSortOrderMap(this.currentSettings.propertyTreeSortOverrides);
         this.currentSettings.folderAppearances = sanitizeAppearanceMap(this.currentSettings.folderAppearances);
         this.currentSettings.tagAppearances = sanitizeAppearanceMap(this.currentSettings.tagAppearances);
         this.currentSettings.propertyAppearances = sanitizeAppearanceMap(this.currentSettings.propertyAppearances);
+        this.currentSettings.typeAppearances = sanitizeTypeAppearanceMap(this.currentSettings.typeAppearances);
         this.currentSettings.navigationSeparators = sanitizeBooleanMap(this.currentSettings.navigationSeparators);
         this.currentSettings.externalIconProviders = sanitizeBooleanMap(this.currentSettings.externalIconProviders);
         this.currentSettings.syncModes = sanitizeSettingsSyncMap(this.currentSettings.syncModes);

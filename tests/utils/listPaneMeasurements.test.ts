@@ -16,10 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
     calculateNormalListFileRowHeightEstimate,
     estimateFileRowHeight,
+    estimateTypeProviderRowHeight,
     getFileItemLayoutState,
     getListPaneMeasurements,
     getSelectedPropertyValuePillToHide,
@@ -28,12 +29,20 @@ import {
     getPropertyRowCount,
     shouldShowExtensionBadgeThumbnail,
     shouldShowFeatureImageArea,
-    shouldShowFileItemParentFolderLine
+    shouldShowFileItemParentFolderLine,
+    usesStandaloneTypeProviderPresentation
 } from '../../src/utils/listPaneMeasurements';
 import { ItemType } from '../../src/types';
 import { buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { createHiddenTagVisibility } from '../../src/utils/tagPrefixMatcher';
 import { createTestTFile } from './createTestTFile';
+
+vi.mock('../../src/i18n', () => ({
+    strings: {
+        common: { unknownError: 'Unknown error' },
+        listPane: { manualSortMultipleWriteFailure: () => 'Write failed' }
+    }
+}));
 
 describe('listPaneMeasurements layout helpers', () => {
     const desktopHeights = getListPaneMeasurements(false);
@@ -41,6 +50,96 @@ describe('listPaneMeasurements layout helpers', () => {
     it('reserves exact provider-row heights for two-line desktop rows and mobile touch targets', () => {
         expect(desktopHeights.providerRowHeight).toBe(54);
         expect(getListPaneMeasurements(true).providerRowHeight).toBe(57);
+    });
+
+    it('uses file-styled provider presentation only for standalone non-file Type collections', () => {
+        expect(usesStandaloneTypeProviderPresentation(ItemType.TYPE, 'structural:task')).toBe(true);
+        expect(usesStandaloneTypeProviderPresentation(ItemType.TYPE, 'provider:tps:tasks')).toBe(true);
+        expect(usesStandaloneTypeProviderPresentation(ItemType.TYPE, 'entity:note')).toBe(false);
+        expect(usesStandaloneTypeProviderPresentation(ItemType.TYPE, 'file:base')).toBe(false);
+        expect(usesStandaloneTypeProviderPresentation(ItemType.FOLDER, 'structural:task')).toBe(false);
+        expect(usesStandaloneTypeProviderPresentation(ItemType.TYPE, null)).toBe(false);
+    });
+
+    it('sizes standard Type results with the native file title and source-line rhythm', () => {
+        expect(
+            estimateTypeProviderRowHeight({
+                heights: desktopHeights,
+                compactPaddingTotal: 8,
+                isCompactMode: false,
+                isMobile: false,
+                titleRows: 1,
+                hasSecondaryLabel: true
+            })
+        ).toBe(55);
+        expect(
+            estimateTypeProviderRowHeight({
+                heights: desktopHeights,
+                compactPaddingTotal: 8,
+                isCompactMode: false,
+                isMobile: false,
+                titleRows: 2,
+                hasSecondaryLabel: false
+            })
+        ).toBe(56);
+    });
+
+    it('sizes compact Type results like compact files and omits the hidden secondary line', () => {
+        expect(
+            estimateTypeProviderRowHeight({
+                heights: desktopHeights,
+                compactPaddingTotal: 8,
+                isCompactMode: true,
+                isMobile: false,
+                titleRows: 1,
+                hasSecondaryLabel: true
+            })
+        ).toBe(28);
+        expect(
+            estimateTypeProviderRowHeight({
+                heights: desktopHeights,
+                compactPaddingTotal: 8,
+                isCompactMode: true,
+                isMobile: false,
+                titleRows: Number.NaN,
+                hasSecondaryLabel: false
+            })
+        ).toBe(28);
+    });
+
+    it('preserves 44px Type action targets inside the native mobile padding', () => {
+        const mobileHeights = getListPaneMeasurements(true);
+
+        expect(
+            estimateTypeProviderRowHeight({
+                heights: mobileHeights,
+                compactPaddingTotal: 16,
+                isCompactMode: true,
+                isMobile: true,
+                titleRows: 1,
+                hasSecondaryLabel: true
+            })
+        ).toBe(60);
+        expect(
+            estimateTypeProviderRowHeight({
+                heights: mobileHeights,
+                compactPaddingTotal: 16,
+                isCompactMode: false,
+                isMobile: true,
+                titleRows: 1,
+                hasSecondaryLabel: true
+            })
+        ).toBe(68);
+        expect(
+            estimateTypeProviderRowHeight({
+                heights: mobileHeights,
+                compactPaddingTotal: 16,
+                isCompactMode: false,
+                isMobile: true,
+                titleRows: 2,
+                hasSecondaryLabel: true
+            })
+        ).toBe(86);
     });
 
     it('uses explicit compact mode instead of inferring it from hidden date, preview, and image sections', () => {

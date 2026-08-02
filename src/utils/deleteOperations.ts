@@ -24,7 +24,7 @@ import { TagTreeService } from '../services/TagTreeService';
 import type { PropertyTreeService } from '../services/PropertyTreeService';
 import type { NotebookNavigatorSettings } from '../settings/types';
 import type { VisibilityPreferences } from '../types';
-import { getFilesForNavigationSelection } from './selectionUtils';
+import { getFilesForNavigationSelection, resolveFileOperationCurrentFiles } from './selectionUtils';
 
 interface BaseDeleteOperationsContext {
     app: App;
@@ -37,7 +37,7 @@ interface BaseDeleteOperationsContext {
 
 type DeleteFilesSelectionState = Pick<
     SelectionState,
-    'selectionType' | 'selectedFolder' | 'selectedTag' | 'selectedProperty' | 'selectedFiles' | 'selectedFile'
+    'selectionType' | 'selectedFolder' | 'selectedTag' | 'selectedProperty' | 'selectedType' | 'selectedFiles' | 'selectedFile'
 >;
 
 interface DeleteFilesContext extends Omit<BaseDeleteOperationsContext, 'selectionState'> {
@@ -63,23 +63,25 @@ export async function deleteSelectedFiles({
     orderedFiles
 }: DeleteFilesContext): Promise<void> {
     const getCurrentFiles = (selectedPaths: ReadonlySet<string>): readonly TFile[] => {
-        if (orderedFiles?.some(file => selectedPaths.has(file.path))) {
-            return orderedFiles;
-        }
+        return resolveFileOperationCurrentFiles(selectionState, orderedFiles, () => {
+            if (orderedFiles?.some(file => selectedPaths.has(file.path))) {
+                return orderedFiles;
+            }
 
-        return getFilesForNavigationSelection(
-            {
-                selectionType: selectionState.selectionType,
-                selectedFolder: selectionState.selectedFolder,
-                selectedTag: selectionState.selectedTag,
-                selectedProperty: selectionState.selectedProperty
-            },
-            settings,
-            visibility,
-            app,
-            tagTreeService,
-            propertyTreeService
-        );
+            return getFilesForNavigationSelection(
+                {
+                    selectionType: selectionState.selectionType,
+                    selectedFolder: selectionState.selectedFolder,
+                    selectedTag: selectionState.selectedTag,
+                    selectedProperty: selectionState.selectedProperty
+                },
+                settings,
+                visibility,
+                app,
+                tagTreeService,
+                propertyTreeService
+            );
+        });
     };
 
     // Check if multiple files are selected

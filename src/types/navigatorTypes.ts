@@ -10,14 +10,33 @@ export const TPS_NAVIGATOR_TYPE_IDS = {
     NOTES: 'entity:note',
     CHECKBOXES: 'structural:task',
     BULLETS: 'structural:bullet',
-    HEADINGS: 'structural:heading'
+    HEADINGS: 'structural:heading',
+    BASES: 'file:base',
+    CANVAS: 'file:canvas',
+    DRAWINGS: 'file:drawing',
+    PDFS: 'file:pdf',
+    IMAGES: 'file:image',
+    AUDIO: 'file:audio',
+    VIDEO: 'file:video'
 } as const;
 
-export type TpsNavigatorStructuralTypeId = (typeof TPS_NAVIGATOR_TYPE_IDS)[keyof typeof TPS_NAVIGATOR_TYPE_IDS];
+export type TpsNavigatorFileTypeId =
+    | typeof TPS_NAVIGATOR_TYPE_IDS.NOTES
+    | typeof TPS_NAVIGATOR_TYPE_IDS.BASES
+    | typeof TPS_NAVIGATOR_TYPE_IDS.CANVAS
+    | typeof TPS_NAVIGATOR_TYPE_IDS.DRAWINGS
+    | typeof TPS_NAVIGATOR_TYPE_IDS.PDFS
+    | typeof TPS_NAVIGATOR_TYPE_IDS.IMAGES
+    | typeof TPS_NAVIGATOR_TYPE_IDS.AUDIO
+    | typeof TPS_NAVIGATOR_TYPE_IDS.VIDEO;
+export type TpsNavigatorLineTypeId =
+    typeof TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES | typeof TPS_NAVIGATOR_TYPE_IDS.BULLETS | typeof TPS_NAVIGATOR_TYPE_IDS.HEADINGS;
+export type TpsNavigatorStructuralTypeId = TpsNavigatorFileTypeId | TpsNavigatorLineTypeId;
+/** @deprecated Kind values are metadata, not Navigator Types. Kept only to parse stale IDs safely. */
 export type TpsNavigatorKindTypeId = `kind:${string}`;
 export type TpsNavigatorProviderTypeId = `provider:${string}:${string}`;
-export type TpsNavigatorTypeId = TpsNavigatorStructuralTypeId | TpsNavigatorKindTypeId | TpsNavigatorProviderTypeId;
-export type TpsNavigatorTypeCategory = 'structure' | 'kind';
+export type TpsNavigatorTypeId = TpsNavigatorStructuralTypeId | TpsNavigatorProviderTypeId;
+export type TpsNavigatorTypeCategory = 'structure';
 
 export const TPS_NAVIGATOR_BUILTIN_TYPE_SOURCE = 'builtin';
 export const TPS_NAVIGATOR_TYPE_PROVIDER_ID_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*\/[a-z0-9]+(?:[._-][a-z0-9]+)*$/u;
@@ -42,7 +61,7 @@ export interface TpsNavigatorTypeRecord {
     typeId: TpsNavigatorTypeId;
     label: string;
     sourcePath: string;
-    entityType: 'note' | 'block';
+    entityType: 'file' | 'note' | 'block';
     lineKind?: 'task' | 'bullet' | 'heading';
     /** One-based source line supplied by the entity index. */
     lineNumber?: number;
@@ -79,15 +98,63 @@ export interface TpsNavigatorTypesSnapshot {
     /** Original GCM source state, independent from healthy external providers. */
     builtinAvailability?: TpsNavigatorTypesAvailability;
     builtinMessage?: string;
+    /** Exact-line entity state. File-backed Types remain ready when this source is unavailable. */
+    lineAvailability?: TpsNavigatorTypesAvailability;
+    lineMessage?: string;
 }
 
-export const TPS_NAVIGATOR_STRUCTURAL_TYPES: readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] = Object.freeze([
+export const TPS_NAVIGATOR_FILE_TYPES: readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] = Object.freeze([
     {
         id: TPS_NAVIGATOR_TYPE_IDS.NOTES,
         label: 'Notes',
         icon: 'lucide-file-text',
         category: 'structure'
     },
+    {
+        id: TPS_NAVIGATOR_TYPE_IDS.BASES,
+        label: 'Bases',
+        icon: 'lucide-table-2',
+        category: 'structure'
+    },
+    {
+        id: TPS_NAVIGATOR_TYPE_IDS.CANVAS,
+        label: 'Canvas',
+        icon: 'lucide-layout-dashboard',
+        category: 'structure'
+    },
+    {
+        id: TPS_NAVIGATOR_TYPE_IDS.DRAWINGS,
+        label: 'Drawings',
+        icon: 'lucide-pencil-ruler',
+        category: 'structure'
+    },
+    {
+        id: TPS_NAVIGATOR_TYPE_IDS.PDFS,
+        label: 'PDFs',
+        icon: 'lucide-file-text',
+        category: 'structure'
+    },
+    {
+        id: TPS_NAVIGATOR_TYPE_IDS.IMAGES,
+        label: 'Images',
+        icon: 'lucide-image',
+        category: 'structure'
+    },
+    {
+        id: TPS_NAVIGATOR_TYPE_IDS.AUDIO,
+        label: 'Audio',
+        icon: 'lucide-audio-lines',
+        category: 'structure'
+    },
+    {
+        id: TPS_NAVIGATOR_TYPE_IDS.VIDEO,
+        label: 'Video',
+        icon: 'lucide-video',
+        category: 'structure'
+    }
+]);
+
+export const TPS_NAVIGATOR_LINE_TYPES: readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] = Object.freeze([
     {
         id: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
         label: 'Checkboxes',
@@ -108,6 +175,25 @@ export const TPS_NAVIGATOR_STRUCTURAL_TYPES: readonly Omit<TpsNavigatorTypeDescr
     }
 ]);
 
+/** Stable flat display order for built-in Types. */
+export const TPS_NAVIGATOR_STRUCTURAL_TYPES: readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] = Object.freeze([
+    TPS_NAVIGATOR_FILE_TYPES[0],
+    ...TPS_NAVIGATOR_LINE_TYPES,
+    ...TPS_NAVIGATOR_FILE_TYPES.slice(1)
+]);
+
+const TPS_NAVIGATOR_FILE_TYPE_ID_SET = new Set<TpsNavigatorTypeId>(TPS_NAVIGATOR_FILE_TYPES.map(type => type.id));
+const TPS_NAVIGATOR_LINE_TYPE_ID_SET = new Set<TpsNavigatorTypeId>(TPS_NAVIGATOR_LINE_TYPES.map(type => type.id));
+
+export function isTpsNavigatorFileTypeId(typeId: unknown): typeId is TpsNavigatorFileTypeId {
+    return typeof typeId === 'string' && TPS_NAVIGATOR_FILE_TYPE_ID_SET.has(typeId as TpsNavigatorTypeId);
+}
+
+export function isTpsNavigatorLineTypeId(typeId: unknown): typeId is TpsNavigatorLineTypeId {
+    return typeof typeId === 'string' && TPS_NAVIGATOR_LINE_TYPE_ID_SET.has(typeId as TpsNavigatorTypeId);
+}
+
+/** @deprecated Kind values are metadata, not Navigator Types. */
 export function createTpsNavigatorKindTypeId(kind: string): TpsNavigatorKindTypeId | null {
     const normalized = String(kind ?? '').trim();
     if (!normalized) {
@@ -116,6 +202,7 @@ export function createTpsNavigatorKindTypeId(kind: string): TpsNavigatorKindType
     return `kind:${encodeURIComponent(normalized)}`;
 }
 
+/** @deprecated Kind values are metadata, not Navigator Types. */
 export function getTpsNavigatorKindValue(typeId: string): string | null {
     if (!typeId.startsWith('kind:')) {
         return null;
@@ -198,7 +285,7 @@ export function isTpsNavigatorTypeId(value: unknown): value is TpsNavigatorTypeI
     if ((Object.values(TPS_NAVIGATOR_TYPE_IDS) as string[]).includes(value)) {
         return true;
     }
-    return getTpsNavigatorKindValue(value) !== null || parseTpsNavigatorProviderTypeId(value) !== null;
+    return parseTpsNavigatorProviderTypeId(value) !== null;
 }
 
 /** Applies Navigator visibility rules to a raw entity-index snapshot. */

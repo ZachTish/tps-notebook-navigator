@@ -1,44 +1,24 @@
-import { App } from 'obsidian';
+import { TFolder } from 'obsidian';
 import { describe, expect, it } from 'vitest';
-import { selectionReducer } from '../../src/context/selection/state';
-import type { SelectionState } from '../../src/context/selection/types';
 import { ItemType } from '../../src/types';
-import { createTypeSelectionFallbackAction, resolveTypeSelectionHistoryEntry } from '../../src/utils/navigationTypeHistory';
-import type { TpsNavigatorTypeDescriptor } from '../../src/types/navigatorTypes';
+import {
+    createTypeSelectionFallbackAction,
+    isTypeSelectionAuthoritativelyUnavailable,
+    resolveTypeSelectionHistoryEntry
+} from '../../src/utils/navigationTypeHistory';
+import {
+    createTpsNavigatorProviderTypeId,
+    getTpsNavigatorProviderSourceKey,
+    type TpsNavigatorTypeDescriptor
+} from '../../src/types/navigatorTypes';
 
-const PROJECT_DESCRIPTOR: TpsNavigatorTypeDescriptor = {
-    id: 'kind:Project',
-    label: 'Projects',
-    icon: 'lucide-box',
-    category: 'kind',
+const TASK_DESCRIPTOR: TpsNavigatorTypeDescriptor = {
+    id: 'structural:task',
+    label: 'Checkboxes',
+    icon: 'lucide-square-check-big',
+    category: 'structure',
     count: 1
 };
-
-function createTypeSelectionState(app: App): SelectionState {
-    const root = app.vault.getRoot();
-    return {
-        selectionType: ItemType.TYPE,
-        selectedFolder: null,
-        selectedTag: null,
-        selectedProperty: null,
-        selectedType: 'kind:Removed',
-        selectedFiles: new Set<string>(),
-        selectedRow: null,
-        selectedFile: null,
-        anchorIndex: null,
-        lastMovementDirection: null,
-        isRevealOperation: false,
-        isFolderChangeWithAutoSelect: false,
-        isKeyboardNavigation: false,
-        isFolderNavigation: true,
-        revealSource: null,
-        navigationHistory: [
-            { type: ItemType.FOLDER, value: root.path },
-            { type: ItemType.TYPE, value: 'kind:Removed' }
-        ],
-        navigationHistoryIndex: 1
-    };
-}
 
 describe('Types navigation history', () => {
     it('skips valid Type history entries while Types navigation is disabled', () => {
@@ -48,28 +28,45 @@ describe('Types navigation history', () => {
         expect(resolveTypeSelectionHistoryEntry(entry, true)).toEqual(entry);
     });
 
-    it('skips removed Types only when a ready catalog is authoritative', () => {
-        const removed = { type: ItemType.TYPE, value: 'kind:Removed' } as const;
-        const present = { type: ItemType.TYPE, value: 'kind:Project' } as const;
-        const readySnapshot = { availability: 'ready', descriptors: [PROJECT_DESCRIPTOR] } as const;
+    it('always skips legacy Kind history entries while retaining an active built-in Type', () => {
+        const retiredKind = { type: ItemType.TYPE, value: 'kind:Project' } as const;
+        const current = { type: ItemType.TYPE, value: 'structural:task' } as const;
+        const readySnapshot = { availability: 'ready', descriptors: [TASK_DESCRIPTOR] } as const;
 
-        expect(resolveTypeSelectionHistoryEntry(removed, true, readySnapshot)).toBeNull();
-        expect(resolveTypeSelectionHistoryEntry(present, true, readySnapshot)).toEqual(present);
+        expect(resolveTypeSelectionHistoryEntry(current, true, readySnapshot)).toEqual(current);
 
-        for (const availability of ['loading', 'unavailable', 'error'] as const) {
-            expect(resolveTypeSelectionHistoryEntry(removed, true, { availability, descriptors: [] })).toEqual(removed);
+        for (const availability of ['loading', 'unavailable', 'error', 'ready'] as const) {
+            expect(resolveTypeSelectionHistoryEntry(retiredKind, true, { availability, descriptors: [] })).toBeNull();
         }
     });
 
-    it('replaces a removed Kind selection so Back can move past the stale entry', () => {
-        const app = new App();
-        const state = createTypeSelectionState(app);
+    it('waits for the owning provider to become authoritative before rejecting a missing provider Type', () => {
+        const providerTypeId = createTpsNavigatorProviderTypeId('example/entities', 'projects')!;
+        const externallyReadySnapshot = {
+            availability: 'ready',
+            descriptors: [],
+            authoritativeSourceKeys: new Set<string>()
+        } as const;
 
-        const next = selectionReducer(state, createTypeSelectionFallbackAction(app.vault.getRoot()), app);
+        expect(isTypeSelectionAuthoritativelyUnavailable(externallyReadySnapshot, providerTypeId)).toBe(false);
+        expect(
+            isTypeSelectionAuthoritativelyUnavailable(
+                {
+                    ...externallyReadySnapshot,
+                    authoritativeSourceKeys: new Set([getTpsNavigatorProviderSourceKey('example/entities')])
+                },
+                providerTypeId
+            )
+        ).toBe(true);
+    });
 
-        expect(next.selectionType).toBe(ItemType.FOLDER);
-        expect(next.selectedType).toBeNull();
-        expect(next.navigationHistory).toEqual([{ type: ItemType.FOLDER, value: '/' }]);
-        expect(next.navigationHistoryIndex).toBe(0);
+    it('replaces an unavailable Type selection instead of adding another history entry', () => {
+        const root = new TFolder('/');
+
+        expect(createTypeSelectionFallbackAction(root)).toEqual({
+            type: 'SET_SELECTED_FOLDER',
+            folder: root,
+            historyBehavior: 'replace'
+        });
     });
 });
