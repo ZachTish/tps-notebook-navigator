@@ -80,4 +80,28 @@ describe('buildListGroupCollapseKey', () => {
             })
         ).toBe('scope=type:entity%3Anote;group=property%3Astatus;id=');
     });
+
+    it('shares state across direction changes but isolates exact values from calendar-day buckets', () => {
+        const prefix = (
+            groupingMode:
+                | 'property:scheduled'
+                | 'property-desc:scheduled'
+                | 'property-day:scheduled'
+                | 'line-property:scheduled'
+                | 'line-property-desc:scheduled'
+        ) =>
+            buildListGroupCollapseKeyPrefix({
+                selectionType: ItemType.TYPE,
+                selectedFolderPath: null,
+                selectedTag: null,
+                selectedProperty: null,
+                selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
+                groupingMode
+            });
+
+        expect(prefix('property-desc:scheduled')).toBe(prefix('property:scheduled'));
+        expect(prefix('property-day:scheduled')).not.toBe(prefix('property:scheduled'));
+        expect(prefix('line-property-desc:scheduled')).toBe(prefix('line-property:scheduled'));
+        expect(prefix('line-property:scheduled')).not.toBe(prefix('property:scheduled'));
+    });
 });

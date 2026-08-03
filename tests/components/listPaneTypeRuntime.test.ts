@@ -3,8 +3,12 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import {
+    resolveRenderedPropertyGroupingForSelection,
+    shouldShowListCreateButton,
     shouldCollapseMobileDrawerForTypeProviderActivation,
+    supportsDayPropertyGroupingForSelection,
     supportsCalendarInteractionsForSelection,
+    supportsLinePropertyGroupingSourceForSelection,
     supportsListSortAndGroupingForSelection,
     supportsNativeListPresentationForSelection
 } from '../../src/components/listPane/typeModeRuntime';
@@ -47,6 +51,46 @@ describe('Type-mode list runtime behavior', () => {
         expect(supportsListSortAndGroupingForSelection(ItemType.TYPE, providerType)).toBe(false);
         expect(supportsListSortAndGroupingForSelection(ItemType.TYPE, null)).toBe(false);
         expect(supportsListSortAndGroupingForSelection(ItemType.TAG, null)).toBe(true);
+    });
+
+    it('offers line-property source only for exact GCM rows or an active mixed structural search', () => {
+        expect(supportsLinePropertyGroupingSourceForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, false)).toBe(true);
+        expect(supportsLinePropertyGroupingSourceForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.BULLETS, false)).toBe(true);
+        expect(supportsLinePropertyGroupingSourceForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.HEADINGS, false)).toBe(true);
+        expect(supportsLinePropertyGroupingSourceForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS, false)).toBe(false);
+        expect(supportsLinePropertyGroupingSourceForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.NOTES, false)).toBe(false);
+        expect(supportsLinePropertyGroupingSourceForSelection(ItemType.FOLDER, null, true)).toBe(true);
+        expect(supportsLinePropertyGroupingSourceForSelection(ItemType.TAG, null, true)).toBe(true);
+    });
+
+    it('keeps a latent line source across the mixed-search close and reopen transition while reporting rendered note grouping', () => {
+        const configured = 'line-property-day:scheduled' as const;
+
+        expect(resolveRenderedPropertyGroupingForSelection(ItemType.FOLDER, null, configured, true)).toBe(configured);
+        expect(resolveRenderedPropertyGroupingForSelection(ItemType.FOLDER, null, configured, false)).toBe('property-day:scheduled');
+        expect(resolveRenderedPropertyGroupingForSelection(ItemType.FOLDER, null, configured, true)).toBe(configured);
+
+        expect(resolveRenderedPropertyGroupingForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS, configured, false)).toBe(
+            'property-day:scheduled'
+        );
+        expect(resolveRenderedPropertyGroupingForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, configured, false)).toBe(
+            configured
+        );
+    });
+
+    it('offers day property buckets for standalone line Types and active mixed structural search scopes', () => {
+        expect(supportsDayPropertyGroupingForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS, false)).toBe(true);
+        expect(supportsDayPropertyGroupingForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS, false)).toBe(true);
+        expect(supportsDayPropertyGroupingForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.NOTES, false)).toBe(false);
+        expect(supportsDayPropertyGroupingForSelection(ItemType.PROPERTY, null, true)).toBe(true);
+    });
+
+    it('shows the shared desktop/mobile create control only for creatable Type selections', () => {
+        expect(shouldShowListCreateButton(ItemType.TYPE, true, true)).toBe(true);
+        expect(shouldShowListCreateButton(ItemType.TYPE, false, true)).toBe(false);
+        expect(shouldShowListCreateButton(ItemType.FOLDER, false, true)).toBe(true);
+        expect(shouldShowListCreateButton(ItemType.TAG, false, true)).toBe(true);
+        expect(shouldShowListCreateButton(ItemType.TYPE, true, false)).toBe(false);
     });
 
     it('binds provider wrappers to their virtual height and keeps every mobile action target at least 44px', async () => {

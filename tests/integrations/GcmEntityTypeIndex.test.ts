@@ -4,6 +4,7 @@ import { TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID } from '../../src/constants/tpsIdenti
 import {
     GCM_ENTITY_INDEX_API_VERSION,
     GcmEntityTypeIndexAdapter,
+    isGcmEntityIndexRecord,
     isGcmEntityIndexApiLike,
     resolveGcmEntityIndexApi,
     type GcmEntityIndexApiLike,
@@ -97,6 +98,7 @@ function entity(options: {
     lineKind?: 'task' | 'bullet' | 'heading';
     lineNumber?: number;
     dimensions?: Readonly<Record<string, readonly string[]>>;
+    lineProperties?: Readonly<Record<string, readonly string[]>>;
     locatorKey?: string;
 }): GcmEntityIndexRecordLike {
     const entityType = options.entityType ?? 'note';
@@ -111,6 +113,7 @@ function entity(options: {
         displayName: label,
         basename: label,
         dimensions: options.dimensions ?? {},
+        ...(options.lineProperties ? { lineProperties: options.lineProperties } : {}),
         sourcePath,
         entityType,
         subpath: entityType === 'block' ? '#^block' : '',
@@ -234,6 +237,62 @@ describe('GcmEntityTypeIndexAdapter', () => {
             lineKinds: ['task', 'bullet', 'heading']
         });
         expect(harness.getDimensionValues).not.toHaveBeenCalled();
+        adapter.dispose();
+    });
+
+    it('validates, defensively copies, and deeply freezes optional block line properties', async () => {
+        const priority = ['low', '', 'high'];
+        const tags = ['waiting', 'home'];
+        const lineProperties = Object.assign(Object.create(null) as Record<string, string[]>, { Priority: priority, tags });
+        const source = entity({
+            id: 'bullet-properties',
+            entityType: 'block',
+            lineKind: 'bullet',
+            lineProperties
+        });
+        const harness = createApiHarness([source]);
+        const adapter = new GcmEntityTypeIndexAdapter(createApp());
+        adapter.acceptApiPayload(createApiPayload(harness.api));
+
+        expect(isGcmEntityIndexRecord(source)).toBe(true);
+        const snapshot = await adapter.loadSnapshot();
+        const [record] = snapshot.recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.BULLETS) ?? [];
+
+        expect(record.properties).toEqual({ Priority: ['low', '', 'high'], tags: ['waiting', 'home'] });
+        expect(Object.getPrototypeOf(record.properties)).toBeNull();
+        expect(Object.isFrozen(record.properties)).toBe(true);
+        expect(Object.values(record.properties ?? {}).every(Object.isFrozen)).toBe(true);
+
+        priority[0] = 'changed';
+        tags.push('mutated');
+        expect(record.properties).toEqual({ Priority: ['low', '', 'high'], tags: ['waiting', 'home'] });
+        adapter.dispose();
+    });
+
+    it('rejects malformed or note-backed line properties without rejecting valid sibling records', async () => {
+        const valid = entity({
+            id: 'valid-properties',
+            entityType: 'block',
+            lineKind: 'heading',
+            lineProperties: { Owner: ['Sam'] }
+        });
+        const malformed = [
+            { ...valid, id: 'array-object', lineProperties: [] },
+            { ...valid, id: 'scalar-value', lineProperties: { Owner: 'Sam' } },
+            { ...valid, id: 'date-object', lineProperties: new Date() },
+            { ...entity({ id: 'note-properties' }), lineProperties: { Owner: ['Sam'] } }
+        ];
+        malformed.forEach(record => expect(isGcmEntityIndexRecord(record)).toBe(false));
+
+        const harness = createApiHarness([valid, ...malformed]);
+        const adapter = new GcmEntityTypeIndexAdapter(createApp());
+        adapter.acceptApiPayload(createApiPayload(harness.api));
+
+        const result = await adapter.queryType(TPS_NAVIGATOR_TYPE_IDS.HEADINGS);
+        expect(result).toMatchObject({ ok: true, records: [{ id: 'valid-properties', properties: { Owner: ['Sam'] } }] });
+        if (result.ok) {
+            expect(result.records).toHaveLength(1);
+        }
         adapter.dispose();
     });
 

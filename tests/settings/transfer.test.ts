@@ -77,6 +77,22 @@ describe('createModifiedSettingsTransfer', () => {
         expect(restored.typeNavigationSortOrder).toBe('manual');
         expect(restored.rootTypeOrder).toEqual(['structural:table', 'provider:example%2Frelations:projects']);
     });
+
+    it('round-trips the Type resource creation target and specific-note path', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.tpsResourceCreationTarget = 'specific-note';
+        settings.tpsResourceCreationSpecificFile = 'Inbox/Capture.md';
+
+        const transferData = createModifiedSettingsTransfer(settings, '5.3.1');
+        expect(transferData.settings).toEqual({
+            tpsResourceCreationTarget: 'specific-note',
+            tpsResourceCreationSpecificFile: 'Inbox/Capture.md'
+        });
+
+        const restored = applyModifiedSettingsTransfer(structuredClone(DEFAULT_SETTINGS), transferData);
+        expect(restored.tpsResourceCreationTarget).toBe('specific-note');
+        expect(restored.tpsResourceCreationSpecificFile).toBe('Inbox/Capture.md');
+    });
 });
 
 describe('applyModifiedSettingsTransfer', () => {

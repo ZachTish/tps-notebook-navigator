@@ -22,6 +22,8 @@ export interface GcmTaskRecordLike extends GcmTaskRefLike {
     status: string;
     isComplete: boolean;
     tags: string[];
+    /** Parsed task-local inline fields. Optional for compatibility with earlier GCM v1 builds. */
+    fields?: Readonly<Record<string, string>>;
 }
 
 export interface GcmTaskMutationResultLike {
@@ -31,10 +33,26 @@ export interface GcmTaskMutationResultLike {
     error?: string;
 }
 
+export interface GcmTaskCreateInputLike {
+    title: string;
+    targetFile?: TFile;
+    targetPath?: string;
+    checkbox?: string;
+    status?: string;
+    fields?: Record<string, string | number | boolean | null | undefined>;
+    tags?: string[];
+    rawLine?: string;
+    placement?: 'after-frontmatter' | 'end';
+    focus?: boolean;
+    notice?: boolean;
+}
+
 export interface GcmTaskApiLike {
     readonly version: number;
     list(filter: { paths: string[]; includeCompleted: boolean; maxResults: number }): Promise<GcmTaskRecordLike[]>;
     focus(ref: GcmTaskRefLike): Promise<boolean>;
+    /** Canonical configured task creation path in newer GCM v1 builds. */
+    create?(input: GcmTaskCreateInputLike): Promise<GcmTaskMutationResultLike>;
     /** Available in current GCM v1 builds. */
     get?(ref: GcmTaskRefLike): Promise<GcmTaskRecordLike | null>;
     /** Available in current GCM v1 builds. */
@@ -87,6 +105,14 @@ interface PluginManagerLike {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object';
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+    if (!isRecord(value) || Array.isArray(value)) {
+        return false;
+    }
+    const prototype: unknown = Object.getPrototypeOf(value);
+    return (prototype === Object.prototype || prototype === null) && Object.keys(value).every(key => typeof value[key] === 'string');
 }
 
 export function isGcmTaskApiLike(value: unknown): value is GcmTaskApiLike {
@@ -202,6 +228,7 @@ export function isGcmTaskRecord(value: unknown): value is GcmTaskRecordLike {
         typeof task.marker === 'string' &&
         typeof task.status === 'string' &&
         typeof task.isComplete === 'boolean' &&
-        Array.isArray(task.tags)
+        Array.isArray(task.tags) &&
+        (task.fields === undefined || isStringRecord(task.fields))
     );
 }

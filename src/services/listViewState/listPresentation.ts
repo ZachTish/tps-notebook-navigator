@@ -6,8 +6,11 @@ import type { TFolder } from 'obsidian';
 import type { NavigatorListPresentationUpdate } from '../../api/types';
 import type { FolderAppearance } from '../../hooks/useListPaneAppearance';
 import {
+    createPropertyGroupingOption,
     getPropertyGroupingDirection,
+    getPropertyGroupingGranularity,
     getPropertyGroupingKey,
+    getPropertyGroupingSource,
     normalizeListNoteGroupingOption,
     normalizeListSortOverride,
     type ListNoteGroupingOption,
@@ -17,6 +20,7 @@ import {
 import { ItemType } from '../../types';
 import {
     isTpsNavigatorFileTypeId,
+    isTpsNavigatorGcmLineTypeId,
     isTpsNavigatorLineTypeId,
     isTpsNavigatorStructuralTypeId,
     type TpsNavigatorTypeId
@@ -208,7 +212,16 @@ function normalizeRequestedGrouping(
         return null;
     }
     const direction = getPropertyGroupingDirection(normalized) ?? 'asc';
-    return direction === 'desc' ? `property-desc:${configuredKey}` : `property:${configuredKey}`;
+    const granularity = getPropertyGroupingGranularity(normalized) ?? 'value';
+    const source = getPropertyGroupingSource(normalized) ?? 'note';
+    if (source === 'line' && target.type === ItemType.TYPE) {
+        // File-backed Types can host mixed structural search results. Exact GCM line Types can use
+        // row-local properties standalone. Navigator-owned range Types have no inline-property contract.
+        if (!isTpsNavigatorFileTypeId(target.key) && !isTpsNavigatorGcmLineTypeId(target.key)) {
+            return null;
+        }
+    }
+    return createPropertyGroupingOption(configuredKey, direction, granularity, source);
 }
 
 function getCurrentSortOverride(

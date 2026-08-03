@@ -128,6 +128,7 @@ export class NotebookNavigatorAPI {
         | 'calloutsId'
         | 'blockquotesId'
         | 'tablesId'
+        | 'webLinksId'
         | 'basesId'
         | 'canvasId'
         | 'drawingsId'
@@ -246,6 +247,7 @@ export class NotebookNavigatorAPI {
             calloutsId: this.typesController.calloutsId,
             blockquotesId: this.typesController.blockquotesId,
             tablesId: this.typesController.tablesId,
+            webLinksId: this.typesController.webLinksId,
             basesId: this.typesController.basesId,
             canvasId: this.typesController.canvasId,
             drawingsId: this.typesController.drawingsId,

@@ -67,3 +67,26 @@ export function shouldUseGlobalTypeSearch({
 }): boolean {
     return enabled && isTypeSelection && isTpsNavigatorStructuralTypeId(selectedType) && hasSearchQuery && !useOmnisearch;
 }
+
+/**
+ * Whether the current internal Filter Search renders structural rows alongside the native result scope.
+ * Keep this predicate aligned with the search-group construction guard so presentation controls describe
+ * the rows that are actually on screen. Provider-owned Type scopes never satisfy `useGlobalTypeSearch`.
+ */
+export function isMixedStructuralSearchActive({
+    enabled,
+    isTypeSelection,
+    useGlobalTypeSearch,
+    useOmnisearch,
+    hasSearchQuery,
+    hasParsedSearchTokens
+}: {
+    enabled: boolean;
+    isTypeSelection: boolean;
+    useGlobalTypeSearch: boolean;
+    useOmnisearch: boolean;
+    hasSearchQuery: boolean;
+    hasParsedSearchTokens: boolean;
+}): boolean {
+    return enabled && (!isTypeSelection || useGlobalTypeSearch) && !useOmnisearch && hasSearchQuery && hasParsedSearchTokens;
+}

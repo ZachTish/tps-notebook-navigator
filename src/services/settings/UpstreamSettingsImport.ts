@@ -51,6 +51,8 @@ const TPS_ONLY_SETTING_KEYS = new Set([
     'tpsTypesNavigationEnabled',
     'typeNavigationSortOrder',
     'rootTypeOrder',
+    'tpsResourceCreationTarget',
+    'tpsResourceCreationSpecificFile',
     'tpsGcmTaskRowsEnabled',
     'tpsGcmTaskRowsIncludeCompleted',
     'tpsGcmTaskRowsPerNote'

@@ -128,7 +128,11 @@ import { focusElementPreventScroll } from '../utils/domUtils';
 import { createBuiltInRowProviderSelection } from '../integrations/rowProviderIntegrations';
 import { useExternalRowProviderSelection } from '../hooks/useProviderRows';
 import { mergeNavigatorRowProviderSelections } from '../services/rows/providerSelections';
-import { shouldCollapseMobileDrawerForTypeProviderActivation, supportsCalendarInteractionsForSelection } from './listPane/typeModeRuntime';
+import {
+    resolveRenderedPropertyGroupingForSelection,
+    shouldCollapseMobileDrawerForTypeProviderActivation,
+    supportsCalendarInteractionsForSelection
+} from './listPane/typeModeRuntime';
 import type {
     NavItem,
     NavigatorListPresentationState,
@@ -287,6 +291,7 @@ interface ListPaneTitleChromeProps {
     canToggleGroupExpansion: boolean;
     shouldCollapseGroups: boolean;
     onToggleGroupExpansion: () => boolean;
+    mixedStructuralSearchActive: boolean;
     actionsDisabled?: boolean;
     shouldShowDesktopTitleArea: boolean;
     children: React.ReactNode;
@@ -301,6 +306,7 @@ function ListPaneTitleChrome({
     canToggleGroupExpansion,
     shouldCollapseGroups,
     onToggleGroupExpansion,
+    mixedStructuralSearchActive,
     actionsDisabled,
     shouldShowDesktopTitleArea,
     children
@@ -317,6 +323,7 @@ function ListPaneTitleChrome({
                 canToggleGroupExpansion={canToggleGroupExpansion}
                 shouldCollapseGroups={shouldCollapseGroups}
                 onToggleGroupExpansion={onToggleGroupExpansion}
+                mixedStructuralSearchActive={mixedStructuralSearchActive}
                 actionsDisabled={actionsDisabled}
                 desktopTitle={desktopTitle}
                 breadcrumbSegments={breadcrumbSegments}
@@ -803,7 +810,8 @@ export const ListPane = React.memo(
             hiddenFileState,
             appliedSearchQuery,
             effectiveSearchProvider,
-            localDayKey
+            localDayKey,
+            mixedStructuralSearchActive
         } = useListPaneData({
             selectionType,
             selectedFolder,
@@ -846,6 +854,12 @@ export const ListPane = React.memo(
             selectionType,
             groupBy: selectedAppearance?.groupBy
         });
+        const renderedEffectiveGroupBy = resolveRenderedPropertyGroupingForSelection(
+            selectionType,
+            selectedType,
+            effectiveGroupBy,
+            mixedStructuralSearchActive
+        );
         const listPresentation = useMemo<NavigatorListPresentationState | null>(() => {
             if (
                 !resolveNavigatorListPresentationTarget({
@@ -867,7 +881,7 @@ export const ListPane = React.memo(
                 },
                 grouping: {
                     configured: groupingResolution.effectiveGrouping,
-                    effective: effectiveGroupBy,
+                    effective: renderedEffectiveGroupBy,
                     source: groupingResolution.hasCustomOverride ? 'scope' : 'default'
                 },
                 displayMode: {
@@ -877,12 +891,12 @@ export const ListPane = React.memo(
             };
         }, [
             appearanceSettings.mode,
-            effectiveGroupBy,
             effectivePropertySortKey,
             effectiveSortOption,
             groupingResolution.effectiveGrouping,
             groupingResolution.hasCustomOverride,
             isPropertySortActive,
+            renderedEffectiveGroupBy,
             selectedAppearance?.mode,
             selectedFolder,
             selectedProperty,
@@ -1950,6 +1964,7 @@ export const ListPane = React.memo(
                     canToggleGroupExpansion={listGroupExpansionToggleState.canToggle}
                     shouldCollapseGroups={listGroupExpansionToggleState.shouldCollapse}
                     onToggleGroupExpansion={toggleGroupExpansion}
+                    mixedStructuralSearchActive={mixedStructuralSearchActive}
                     useFloatingLayout={shouldUseFloatingToolbars}
                 />
             );
@@ -1960,6 +1975,7 @@ export const ListPane = React.memo(
             isSearchActive,
             listGroupExpansionToggleState.canToggle,
             listGroupExpansionToggleState.shouldCollapse,
+            mixedStructuralSearchActive,
             shouldUseFloatingToolbars,
             toggleGroupExpansion
         ]);
@@ -2124,6 +2140,7 @@ export const ListPane = React.memo(
                         canToggleGroupExpansion={listGroupExpansionToggleState.canToggle}
                         shouldCollapseGroups={listGroupExpansionToggleState.shouldCollapse}
                         onToggleGroupExpansion={toggleGroupExpansion}
+                        mixedStructuralSearchActive={mixedStructuralSearchActive}
                         actionsDisabled={isManualSortEditActive}
                         shouldShowDesktopTitleArea={shouldShowDesktopTitleArea}
                     >

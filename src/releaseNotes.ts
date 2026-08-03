@@ -106,6 +106,26 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.4.0',
+        date: '2026-08-03',
+        showOnUpdate: true,
+        info: 'Source-backed Types can now create items, group task dates by calendar day, and browse Web links.',
+        new: [
+            "The Types create button can append checkboxes, bullets, headings, code blocks, callouts, blockquotes, tables, and web links to today's daily note, the active note, or a configured note.",
+            'Web links is a searchable built-in Type backed by a bounded local Markdown index, showing only URL origins with no network requests and guarded source-line activation.',
+            'Property grouping adds a calendar-day mode so scheduled timestamps on the same day share one group while exact datetime grouping remains available.',
+            'GCM task, bullet, and heading views—and their active mixed-search sections—can group by owning-note frontmatter or strictly by exact line fields; missing line values never inherit from the note.'
+        ],
+        improved: [
+            'Exact GCM task, bullet, and heading fields continue to drive property sorting before owning-note frontmatter, including scheduled and canonical task status values.',
+            "Creation is atomic, creates today's Daily Note from its configured folder/format/template when needed, opens the inserted source position, and delegates checkbox creation to TPS Global Context Menu so configured task mappings remain authoritative."
+        ],
+        changed: [
+            'Public API 3.3.0 adds the stable Web links Type id plus note/line exact-value and calendar-day grouping encodings without changing existing Type ids.',
+            "Today's daily note is the default Type creation target; generic line-property grouping uses TPS Global Context Menu 1.18.0, and existing settings require no migration."
+        ]
+    },
+    {
         version: '5.3.1',
         date: '2026-08-02',
         showOnUpdate: true,

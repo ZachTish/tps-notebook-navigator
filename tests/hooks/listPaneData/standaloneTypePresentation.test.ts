@@ -1,7 +1,11 @@
 import { TFile } from 'obsidian';
 import { describe, expect, it, vi } from 'vitest';
-import { buildStandaloneStructuralTypePresentation } from '../../../src/hooks/listPaneData/standaloneTypePresentation';
+import {
+    buildStandaloneStructuralTypePresentation,
+    getEffectiveStandaloneStructuralTypeGrouping
+} from '../../../src/hooks/listPaneData/standaloneTypePresentation';
 import type { NavigatorProvidedRow } from '../../../src/services/rows/types';
+import type { ListNoteGroupingOption } from '../../../src/settings/types';
 import { ListPaneItemType } from '../../../src/types';
 import { TPS_NAVIGATOR_TYPE_IDS } from '../../../src/types/navigatorTypes';
 import type { ListPaneItem } from '../../../src/types/virtualization';
@@ -65,7 +69,7 @@ function present({
         | 'property-desc';
     propertyKey?: string;
     propertySortSecondary?: 'title' | 'filename' | 'created' | 'modified';
-    groupBy?: 'custom' | 'date' | `property:${string}` | `property-desc:${string}`;
+    groupBy?: ListNoteGroupingOption;
     collapsedListGroups?: ReadonlySet<string>;
 }): ListPaneItem[] {
     const sourceByPath = new Map(files.map(entry => [entry.file.path, entry]));
@@ -84,6 +88,18 @@ function present({
 }
 
 describe('standalone structural Type presentation', () => {
+    it('keeps a mixed-search line source latent when a Navigator-owned range Type returns to standalone mode', () => {
+        expect(getEffectiveStandaloneStructuralTypeGrouping(TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS, 'line-property-day:scheduled', true)).toBe(
+            'line-property-day:scheduled'
+        );
+        expect(getEffectiveStandaloneStructuralTypeGrouping(TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS, 'line-property-day:scheduled', false)).toBe(
+            'property-day:scheduled'
+        );
+        expect(getEffectiveStandaloneStructuralTypeGrouping(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, 'line-property:status', false)).toBe(
+            'line-property:status'
+        );
+    });
+
     it('sorts Title by row label and resolves equal labels by source path, line, and id', () => {
         const files = [file('Zeta.md', 1, 1), file('Alpha.md', 1, 1)];
         const input = [
@@ -153,6 +169,43 @@ describe('standalone structural Type presentation', () => {
         ]);
     });
 
+    it('keeps row-first property sorting while grouping explicitly chooses note-only or line-only values', () => {
+        const files = [file('Source.md', 1, 1, { Priority: 'owner' })];
+        const input = [
+            { ...row('fallback', 'Fallback', 'Source.md', 3) },
+            { ...row('empty', 'Empty', 'Source.md', 2), properties: { priority: '' } },
+            { ...row('local', 'Local', 'Source.md', 1), properties: { PRIORITY: 'alpha' } }
+        ];
+
+        expect(rowsFrom(present({ rows: input, files, option: 'property-asc', propertyKey: 'priority' })).map(item => item.id)).toEqual([
+            'local',
+            'fallback',
+            'empty'
+        ]);
+
+        const noteGrouped = present({ rows: input, files, groupBy: 'property:priority' });
+        expect(headersFrom(noteGrouped).map(header => header.data)).toEqual(['owner']);
+        expect(rowsFrom(noteGrouped).map(item => item.id)).toEqual(['empty', 'fallback', 'local']);
+
+        const lineGrouped = present({ rows: input, files, groupBy: 'line-property:priority' });
+        expect(headersFrom(lineGrouped).map(header => header.data)).toEqual(['alpha', 'No value']);
+        expect(headersFrom(lineGrouped).map(header => header.groupFilePaths?.length)).toEqual([1, 2]);
+        expect(rowsFrom(lineGrouped).map(item => item.id)).toEqual(['local', 'empty', 'fallback']);
+    });
+
+    it('groups repeated raw line values together while treating preserved blank-only arrays as missing', () => {
+        const files = [file('Source.md', 1, 1, { Parents: 'Note owner' })];
+        const input: NavigatorProvidedRow[] = [
+            { ...row('parents', 'Parents', 'Source.md', 1), properties: { Parents: ['Project A', '', 'Area B'] } },
+            { ...row('blank', 'Blank', 'Source.md', 2), properties: { Parents: [''] } }
+        ];
+
+        const grouped = present({ rows: input, files, groupBy: 'line-property:parents' });
+
+        expect(headersFrom(grouped).map(header => header.data)).toEqual(['Project A, Area B', 'No value']);
+        expect(rowsFrom(grouped).map(item => item.id)).toEqual(['parents', 'blank']);
+    });
+
     it('groups property values in deterministic direction, counts rows, trails missing values, and honors collapse state', () => {
         const files = [file('Numeric.md', 1, 1, { lane: 2 }), file('Alpha.md', 1, 1, { lane: 'Alpha' }), file('Missing.md', 1, 1, {})];
         const input = [
@@ -186,6 +239,32 @@ describe('standalone structural Type presentation', () => {
 
         expect(alphaHeader).toMatchObject({ collapseKey: alphaCollapseKey, isCollapsed: true, headerKind: 'property' });
         expect(rowsFrom(collapsed).map(item => item.id)).toEqual(['numeric', 'missing']);
+    });
+
+    it('groups scheduled task values by calendar day without timestamp or timezone drift', () => {
+        const files = [file('Source.md', 1, 1, { scheduled: '2026-08-05 07:00:00' })];
+        const input: NavigatorProvidedRow[] = [
+            { ...row('day-4', 'Day 4', 'Source.md', 3), properties: { scheduled: '2026-08-04 08:00:00' } },
+            { ...row('day-3-evening', 'Evening', 'Source.md', 2), properties: { Scheduled: '2026-08-03T23:30:00Z' } },
+            { ...row('invalid', 'Invalid', 'Source.md', 5), properties: { scheduled: '2026-02-31 09:00:00' } },
+            { ...row('fallback', 'Fallback', 'Source.md', 4) },
+            { ...row('day-3-morning', 'Morning', 'Source.md', 1), properties: { scheduled: '2026-08-03 09:00:00' } }
+        ];
+
+        const ascending = present({ rows: input, files, groupBy: 'line-property-day:scheduled' });
+        expect(headersFrom(ascending).map(header => header.data)).toEqual(['2026-08-03', '2026-08-04', 'No value']);
+        expect(headersFrom(ascending).map(header => header.groupFilePaths?.length)).toEqual([2, 1, 2]);
+        expect(rowsFrom(ascending).map(item => item.id)).toEqual(['day-3-evening', 'day-3-morning', 'day-4', 'fallback', 'invalid']);
+        expect(
+            headersFrom(present({ rows: input, files, groupBy: 'line-property-day-desc:scheduled' })).map(header => header.data)
+        ).toEqual(['2026-08-04', '2026-08-03', 'No value']);
+
+        const exactHeaders = headersFrom(present({ rows: input, files, groupBy: 'line-property:scheduled' })).map(header => header.data);
+        expect(exactHeaders).toContain('2026-08-03 09:00:00');
+        expect(exactHeaders).toContain('2026-08-03T23:30:00Z');
+        expect(headersFrom(present({ rows: input, files, groupBy: 'property-day:scheduled' })).map(header => header.data)).toEqual([
+            '2026-08-05'
+        ]);
     });
 
     it('groups date-sorted rows by the owning file timestamp with missing timestamps last and collapsible row counts', () => {

@@ -163,7 +163,7 @@ async function ensureFolderExists(app: App, path: string): Promise<void> {
     }
 }
 
-async function readTemplateInfo(app: App, templatePath: string): Promise<{ contents: string; foldInfo: unknown }> {
+async function readTemplateInfo(app: App, templatePath: string): Promise<{ contents: string; foldInfo: unknown } | null> {
     const normalized = normalizePath(templatePath);
     if (!normalized || normalized === '/') {
         return { contents: '', foldInfo: null };
@@ -173,18 +173,26 @@ async function readTemplateInfo(app: App, templatePath: string): Promise<{ conte
         // Templates are resolved the same way Obsidian does in other contexts: first matching linkpath destination.
         const templateFile = app.metadataCache.getFirstLinkpathDest(normalized, '');
         if (!templateFile) {
-            return { contents: '', foldInfo: null };
+            console.warn(`Daily note template could not be resolved: "${normalized}"`);
+            showNotice(strings.dailyNotes.templateReadFailed);
+            return null;
         }
 
         const contents = await app.vault.cachedRead(templateFile);
         // Preserve fold state from the template (best-effort) so new notes look like the template.
         const foldManager = getFoldManager(app);
-        const foldInfo = foldManager?.load(templateFile) ?? null;
+        let foldInfo: unknown = null;
+        try {
+            foldInfo = foldManager?.load(templateFile) ?? null;
+        } catch {
+            // Fold state is optional presentation metadata. A corrupt or
+            // unavailable fold store must not invalidate a readable template.
+        }
         return { contents, foldInfo };
     } catch (error) {
         console.error(`Failed to read the daily note template "${normalized}"`, error);
         showNotice(strings.dailyNotes.templateReadFailed);
-        return { contents: '', foldInfo: null };
+        return null;
     }
 }
 
@@ -250,9 +258,15 @@ export async function createDailyNote(app: App, date: MomentInstance, settings: 
     }
 
     try {
+        // A configured template is part of the creation contract. Resolve and read it before
+        // creating folders or the note so a stale template path cannot silently produce a blank daily note.
+        const templateInfo = await readTemplateInfo(app, settings.template);
+        if (!templateInfo) {
+            return null;
+        }
         await ensureFolderExists(app, path);
 
-        const { contents: templateContents, foldInfo } = await readTemplateInfo(app, settings.template);
+        const { contents: templateContents, foldInfo } = templateInfo;
         const noteTitle = formatDailyNoteTitle(date, settings.format);
 
         const createdFile = await app.vault.create(path, renderDailyNoteTemplate(templateContents, date, noteTitle, settings.format));

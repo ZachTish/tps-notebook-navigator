@@ -326,6 +326,7 @@
                         'blockquotesId should match the stable Type id'
                     );
                     this.assertEqual(this.api.types.tablesId, 'structural:table', 'tablesId should match the stable Type id');
+                    this.assertEqual(this.api.types.webLinksId, 'structural:web-link', 'webLinksId should match the stable Type id');
                     this.assertEqual(
                         this.api.types.parseKind(this.api.types.buildKind('project')),
                         'project',

@@ -360,6 +360,7 @@ describe('NavigatorProviderRow', () => {
         ['tps/entity-type/callout', 'lucide-message-square-warning'],
         ['tps/entity-type/blockquote', 'lucide-quote'],
         ['tps/entity-type/table', 'lucide-table-2'],
+        ['tps/entity-type/web-link', 'lucide-external-link'],
         ['tps/entity-type/canvas', 'lucide-layout-dashboard'],
         ['tps/entity-type/task', 'lucide-square-check-big'],
         ['tps/entity-type/excalidraw', 'lucide-brush'],

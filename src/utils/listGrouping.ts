@@ -17,7 +17,13 @@
  */
 
 import { ItemType } from '../types';
-import { createPropertyGroupingOption, getPropertyGroupingDirection, getPropertyGroupingKey } from '../settings/types';
+import {
+    createPropertyGroupingOption,
+    getPropertyGroupingDirection,
+    getPropertyGroupingGranularity,
+    getPropertyGroupingKey,
+    getPropertyGroupingSource
+} from '../settings/types';
 import type { ListNoteGroupingOption, ListSortOverrideValue, NotebookNavigatorSettings, SortOption } from '../settings/types';
 import { isTpsNavigatorFileTypeId, isTpsNavigatorStructuralTypeId, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 import { casefold } from './recordUtils';
@@ -98,7 +104,9 @@ export function areListGroupingOptionsEqual(left: ListNoteGroupingOption, right:
 
     return (
         casefold(leftPropertyKey) === casefold(rightPropertyKey) &&
-        getPropertyGroupingDirection(left) === getPropertyGroupingDirection(right)
+        getPropertyGroupingDirection(left) === getPropertyGroupingDirection(right) &&
+        getPropertyGroupingGranularity(left) === getPropertyGroupingGranularity(right) &&
+        getPropertyGroupingSource(left) === getPropertyGroupingSource(right)
     );
 }
 
@@ -114,7 +122,11 @@ export function areListGroupingOptionsSameKind(left: ListNoteGroupingOption, rig
         return false;
     }
 
-    return casefold(leftPropertyKey) === casefold(rightPropertyKey);
+    return (
+        casefold(leftPropertyKey) === casefold(rightPropertyKey) &&
+        getPropertyGroupingGranularity(left) === getPropertyGroupingGranularity(right) &&
+        getPropertyGroupingSource(left) === getPropertyGroupingSource(right)
+    );
 }
 
 const APPEARANCE_RECORD_KEYS = ['folderAppearances', 'tagAppearances', 'propertyAppearances', 'typeAppearances'] as const;
@@ -184,7 +196,9 @@ export function updatePropertyGroupingOverrideKeys(
             if (newKeyDisplay) {
                 appearance.groupBy = createPropertyGroupingOption(
                     newKeyDisplay,
-                    getPropertyGroupingDirection(appearance?.groupBy) ?? 'asc'
+                    getPropertyGroupingDirection(appearance?.groupBy) ?? 'asc',
+                    getPropertyGroupingGranularity(appearance?.groupBy) ?? 'value',
+                    getPropertyGroupingSource(appearance?.groupBy) ?? 'note'
                 );
             } else {
                 delete appearance.groupBy;

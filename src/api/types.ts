@@ -312,7 +312,18 @@ export interface NavigatorListSortSpec {
     readonly propertyKey?: string;
 }
 
-export type NavigatorListGrouping = 'custom' | 'date' | 'folder' | `property:${string}` | `property-desc:${string}`;
+export type NavigatorListGrouping =
+    | 'custom'
+    | 'date'
+    | 'folder'
+    | `property:${string}`
+    | `property-desc:${string}`
+    | `property-day:${string}`
+    | `property-day-desc:${string}`
+    | `line-property:${string}`
+    | `line-property-desc:${string}`
+    | `line-property-day:${string}`
+    | `line-property-day-desc:${string}`;
 export type NavigatorListDisplayMode = 'standard' | 'compact';
 
 /** Guarded update for the search owned by the primary mounted TPS Navigator view. */

@@ -197,6 +197,7 @@ describe('NotebookNavigatorAPI', () => {
         expect(api.types.calloutsId).toBe('structural:callout');
         expect(api.types.blockquotesId).toBe('structural:blockquote');
         expect(api.types.tablesId).toBe('structural:table');
+        expect(api.types.webLinksId).toBe('structural:web-link');
         expect(api.types.basesId).toBe('file:base');
         expect(api.types.canvasId).toBe('file:canvas');
         expect(api.types.drawingsId).toBe('file:drawing');

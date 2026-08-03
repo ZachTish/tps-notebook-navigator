@@ -54,6 +54,7 @@ describe('GcmEntityTypesStore', () => {
             TPS_NAVIGATOR_TYPE_IDS.CALLOUTS,
             TPS_NAVIGATOR_TYPE_IDS.BLOCKQUOTES,
             TPS_NAVIGATOR_TYPE_IDS.TABLES,
+            TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS,
             TPS_NAVIGATOR_TYPE_IDS.BASES,
             TPS_NAVIGATOR_TYPE_IDS.CANVAS,
             TPS_NAVIGATOR_TYPE_IDS.DRAWINGS,
@@ -62,6 +63,80 @@ describe('GcmEntityTypesStore', () => {
             TPS_NAVIGATOR_TYPE_IDS.AUDIO,
             TPS_NAVIGATOR_TYPE_IDS.VIDEO
         ]);
+        unsubscribe();
+    });
+
+    it('publishes file Types immediately while line and Web-link sources load independently', async () => {
+        const app = new App();
+        const file = new TFile('Notes/Startup.md');
+        (app.vault as unknown as { registerFile(file: TFile): void }).registerFile(file);
+        const bodyRead = deferred<string>();
+        const cachedRead = vi.fn(() => bodyRead.promise);
+        Object.assign(app.vault, {
+            getFiles: () => [file],
+            getMarkdownFiles: () => [file],
+            cachedRead
+        });
+        Object.assign(app.metadataCache, { getFileCache: () => ({}) });
+
+        const lineQuery = deferred<readonly unknown[]>();
+        const queryAsync = vi.fn(() => lineQuery.promise);
+        const entityApi = {
+            version: 3,
+            queryAsync,
+            ensureReady: vi.fn(async () => undefined),
+            getByLocator: vi.fn(() => null),
+            getDimensionValues: vi.fn(() => []),
+            getRevision: vi.fn(() => 1),
+            onChanged: vi.fn(() => () => undefined),
+            registerDimension: vi.fn(() => () => undefined)
+        } as GcmEntityIndexApiLike;
+        const changedPayload = {
+            source: 'tps-global-context-menu',
+            sourcePluginId: 'tps-global-context-menu',
+            available: true,
+            api: { entityIndex: entityApi },
+            entityIndexVersion: 3
+        };
+        type Listener = (payload: unknown) => void;
+        const listeners = new Map<string, Set<Listener>>();
+        Object.assign(app, {
+            workspace: {
+                on: vi.fn((name: string, callback: Listener) => {
+                    const eventListeners = listeners.get(name) ?? new Set<Listener>();
+                    eventListeners.add(callback);
+                    listeners.set(name, eventListeners);
+                    return { name, callback };
+                }),
+                offref: vi.fn(),
+                trigger: vi.fn((name: string, payload: unknown) => {
+                    if (name === TPS_GCM_API_REQUEST_EVENT) {
+                        listeners.get(TPS_GCM_API_CHANGED_EVENT)?.forEach(listener => listener(changedPayload));
+                    }
+                })
+            }
+        });
+
+        const store = new GcmEntityTypesStore(app);
+        const unsubscribe = store.subscribe(vi.fn());
+        await vi.waitFor(() => expect(cachedRead).toHaveBeenCalledOnce());
+        await vi.waitFor(() => expect(queryAsync).toHaveBeenCalledOnce());
+
+        expect(store.getSnapshot()).toMatchObject({
+            availability: 'ready',
+            lineAvailability: 'loading',
+            markdownAvailability: 'loading'
+        });
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.NOTES)).toHaveLength(1);
+
+        lineQuery.resolve([]);
+        await vi.waitFor(() => expect(store.getSnapshot().lineAvailability).toBe('ready'));
+        expect(store.getSnapshot().markdownAvailability).toBe('loading');
+
+        bodyRead.resolve('[Site](https://example.com/startup)');
+        await vi.waitFor(() => expect(store.getSnapshot().markdownAvailability).toBe('ready'));
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS)?.[0]?.label).toBe('Site');
+
         unsubscribe();
     });
 
@@ -393,7 +468,9 @@ describe('GcmEntityTypesStore', () => {
         ]);
         const getFiles = vi.fn(() => files);
         const getMarkdownFiles = vi.fn(() => files);
-        Object.assign(app.vault, { getFiles, getMarkdownFiles });
+        let markdownBody = '[Initial site](https://initial.example/path)';
+        const cachedRead = vi.fn(async () => markdownBody);
+        Object.assign(app.vault, { getFiles, getMarkdownFiles, cachedRead });
         (app.vault as unknown as { registerFile(file: TFile): void }).registerFile(file);
 
         type Listener = (...args: unknown[]) => void;
@@ -432,7 +509,9 @@ describe('GcmEntityTypesStore', () => {
         const unsubscribe = store.subscribe(vi.fn());
         await vi.waitFor(() => expect(store.getSnapshot().markdownAvailability).toBe('ready'));
         expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS)).toHaveLength(1);
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS)?.[0]?.label).toBe('Initial site');
         expect(getMarkdownFiles).toHaveBeenCalledOnce();
+        expect(cachedRead).toHaveBeenCalledOnce();
 
         const tableCache: CachedMetadata = {
             sections: [
@@ -446,10 +525,28 @@ describe('GcmEntityTypesStore', () => {
             ]
         };
         caches.set(file.path, tableCache);
-        metadataEvents.trigger('changed', file, '', tableCache);
+        markdownBody = '[Current site](https://current.example/path)';
+        metadataEvents.trigger('changed', file, markdownBody, tableCache);
         expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS)).toHaveLength(0);
         expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.TABLES)).toHaveLength(1);
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS)?.[0]?.label).toBe('Current site');
         expect(getMarkdownFiles).toHaveBeenCalledOnce();
+
+        // Some Obsidian versions or synthetic callers do not provide a string
+        // body with the metadata event. Refresh sections but retain the last
+        // known links instead of erasing them.
+        metadataEvents.trigger('changed', file, undefined, tableCache);
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.TABLES)).toHaveLength(1);
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS)?.[0]?.label).toBe('Current site');
+
+        const revisionBeforeResolved = store.getSnapshot().revision;
+        metadataEvents.trigger('resolved');
+        await vi.waitFor(() => expect(getMarkdownFiles).toHaveBeenCalledTimes(2));
+        await vi.waitFor(() => expect(store.getSnapshot().revision).toBeGreaterThan(revisionBeforeResolved));
+        expect(cachedRead).toHaveBeenCalledOnce();
+        metadataEvents.trigger('resolved');
+        await Promise.resolve();
+        expect(getMarkdownFiles).toHaveBeenCalledTimes(2);
 
         const oldPath = file.path;
         (file as TFile & { setPath(path: string): void }).setPath('Notes/Renamed.md');
@@ -459,16 +556,15 @@ describe('GcmEntityTypesStore', () => {
         await vi.waitFor(() =>
             expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.TABLES)?.[0]?.sourcePath).toBe(file.path)
         );
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS)?.[0]).toMatchObject({
+            label: 'Current site',
+            sourcePath: file.path
+        });
 
         files.splice(0, 1);
         vaultEvents.trigger('delete', file);
         await vi.waitFor(() => expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.TABLES)).toHaveLength(0));
-
-        metadataEvents.trigger('resolved');
-        await vi.waitFor(() => expect(getMarkdownFiles).toHaveBeenCalledTimes(2));
-        metadataEvents.trigger('resolved');
-        await Promise.resolve();
-        expect(getMarkdownFiles).toHaveBeenCalledTimes(2);
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS)).toHaveLength(0);
 
         unsubscribe();
         expect(metadataEvents.offref).toHaveBeenCalledTimes(2);

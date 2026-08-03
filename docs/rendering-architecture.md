@@ -1,6 +1,6 @@
 # Notebook Navigator Rendering Architecture
 
-Updated: July 9, 2026
+Updated: August 3, 2026
 
 ## Table of Contents
 
@@ -499,20 +499,28 @@ const { rowVirtualizer, scrollContainerRefCallback, requestScroll } = useNavigat
   `date`, `folder`, `section`, and `manual-sort-custom`), and file items with pinned and hidden flags plus lookup maps
   (`filePathToIndex`, `fileIndexMap`).
 - A source-backed structural Type selection builds native-styled transient rows from either the GCM Entity Index
-  (Checkboxes, Bullets, and Headings) or the Navigator-owned Markdown section index (Code blocks, Callouts, Blockquotes,
-  and Tables), followed once by external providers that explicitly set `supportsTypeScope: true`. The Markdown index uses
-  only root-level `CachedMetadata.sections`, rebuilds once at startup/resolution, and updates one path per metadata event;
-  it never reads note bodies. The provider scope contains the opaque selected Type id and deduplicated paths from the searched
+  (Checkboxes, Bullets, and Headings) or the Navigator-owned Markdown structure index (Code blocks, Callouts, Blockquotes,
+  Tables, and Web links), followed once by external providers that explicitly set `supportsTypeScope: true`. The first four
+  Navigator-owned structures use root-level `CachedMetadata.sections`; Web links uses a bounded local Markdown scan because
+  Obsidian does not publish external HTTP links through `CachedMetadata.links`. The index rebuilds once at startup/resolution,
+  consumes the body already supplied with metadata `changed` events when possible, and updates one path at a time without any
+  network requests. The provider scope contains the opaque selected Type id and deduplicated paths from the searched
   built-in rows; attached-list providers are excluded to prevent duplicate task rows.
 - Hydrated task-backed Type rows reuse `NavigatorProviderRow` for live checkbox state, optimistic rollback, exact-line activation, and guarded GCM task actions. The menu bridge exposes only queued item/separator operations, and task/file events refresh hydration even when the Entity Index identity is unchanged.
 - Cached-range Markdown rows use the same native file-row presentation, transient cursor, search, keyboard activation, and
   guarded row menus. Activation revalidates the current metadata cache; existing block ids follow movement, while stale
   range-only locators fail closed. These rows intentionally do not opt into `TFile` multi-select, pinning, rename, persistence,
   or drag because a safe source-range mutation contract has not been defined yet.
-- All seven fixed source-backed Types pass through `buildStandaloneStructuralTypePresentation`. The selected Type can sort by
-  row title or by the owning note's filename, configured created/modified timestamp, or a configured non-manual frontmatter property.
-  Missing values always sort last, including descending sorts, and missing-value groups remain last. Date grouping is valid
-  only with a date sort; configured non-manual property grouping reads owning-note frontmatter; **Custom** produces an
+- All eight fixed source-backed Types pass through `buildStandaloneStructuralTypePresentation`. The selected Type can sort by
+  row title or by the owning note's filename, configured created/modified timestamp, or a configured non-manual property.
+  Property sorting keeps exact GCM task/bullet/heading fields ahead of owning-note frontmatter; Navigator-owned ranges use
+  note frontmatter because they have no inline-property contract. Property grouping independently encodes its source:
+  historical `property...` forms read only owning-note frontmatter, while `line-property...` forms read only exact GCM row
+  fields and never fall back. The source switch is available on the three GCM line Types and during active mixed search;
+  native file rows still use frontmatter, and Navigator-owned ranges enter No value under line-only grouping. Missing values
+  always sort last, including descending sorts, and missing-value groups remain last. Date grouping is valid only with a
+  date sort; property groups preserve the complete value by default, while each
+  source has a calendar-day encoding that normalizes valid local date/time values to `YYYY-MM-DD`; **Custom** produces an
   ungrouped source-row list because custom header ownership is file-based. Folder/manual grouping, manual sort, and
   display-mode/appearance edits remain unsupported for source rows. External provider Types bypass this presentation stage
   unchanged.
@@ -523,6 +531,11 @@ const { rowVirtualizer, scrollContainerRefCallback, requestScroll } = useNavigat
   Each appended row carries its own `providerTypeId`, so mixed results preserve Type styling,
   selection, context-menu targeting, height measurement, and public snapshot identity.
 - Task hydration batches up to 64 uncached source paths per GCM call with four batches in flight. A 2,048-path LRU keyed by source mtime/size avoids repeat parsing; per-path generations and explicit GCM/vault/mutation invalidation prevent in-flight or failed reads from becoming stale cache entries.
+- The shared desktop/mobile create action is enabled only for source-backed Types with an explicit scaffold. Its target is
+  resolved from the TPS-only daily/active/specific-note setting with no unrelated fallback. A missing Daily Note is created
+  through the current Daily Notes folder/format/template contract, and a blank target accepts the scaffold. Non-task
+  scaffolds append inside `Vault.process` and focus their exact cursor; Checkbox creation calls GCM `tasks.create` so task
+  mappings remain canonical.
 - `useListPaneScroll` feeds `listItems` into `useVirtualizer`, calculating heights with `getListPaneMeasurements`,
   preview availability (`hasPreview`), search metadata, and appearance settings. The current implementation uses
   `scrollMargin: 0`; the calendar overlay is handled by a follow-up `scrollToIndex` when its height changes.
@@ -599,8 +612,8 @@ metadata, and content-cache updates with `debounce` from Obsidian. `StorageConte
 provider queues, and tag/property tree rebuilds so UI components only react to finalized updates.
 
 Structural Type search computes the visibility-derived vault path allowlist only for a selected Type scope or a nonempty
-internal query. It then reuses the cached GCM Entity Index and Obsidian metadata-section index; Navigator does not read note
-bodies to aggregate source-backed search results.
+internal query. It then reuses the cached GCM Entity Index, Obsidian metadata-section index, and bounded Web-link index;
+queries do not initiate fresh note-body reads.
 
 ### 3. Memoized Components
 

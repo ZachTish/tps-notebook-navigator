@@ -17,7 +17,12 @@
  */
 
 import { ItemType, type NavigationItemType } from '../types';
-import { createPropertyGroupingOption, getPropertyGroupingKey } from '../settings/types';
+import {
+    createPropertyGroupingOption,
+    getPropertyGroupingGranularity,
+    getPropertyGroupingKey,
+    getPropertyGroupingSource
+} from '../settings/types';
 import type { ListNoteGroupingOption } from '../settings/types';
 import type { PropertySelectionNodeId } from './propertyTree';
 import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
@@ -90,9 +95,18 @@ export function buildListGroupCollapseKeyPrefix({
         scope = `folder:${encodeKeyPart(selectedFolderPath ?? '/')}`;
     }
 
-    // Property grouping keys drop the direction prefix so collapse state survives flipping the group order.
+    // Property grouping keys drop only the direction so collapse state survives flipping group order while
+    // exact-value and calendar-day buckets retain independent state.
     const propertyGroupingKey = getPropertyGroupingKey(groupingMode);
-    const scopeGroupingMode = propertyGroupingKey !== null ? createPropertyGroupingOption(propertyGroupingKey) : groupingMode;
+    const scopeGroupingMode =
+        propertyGroupingKey !== null
+            ? createPropertyGroupingOption(
+                  propertyGroupingKey,
+                  'asc',
+                  getPropertyGroupingGranularity(groupingMode) ?? 'value',
+                  getPropertyGroupingSource(groupingMode) ?? 'note'
+              )
+            : groupingMode;
 
     return `scope=${scope};group=${encodeKeyPart(scopeGroupingMode)};id=`;
 }

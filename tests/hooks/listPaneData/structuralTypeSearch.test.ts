@@ -4,6 +4,7 @@ import {
     fileMatchesStructuralTypeSearch,
     getStructuralTypeSearchCollections,
     getStructuralTypeSourceSearchTokens,
+    isMixedStructuralSearchActive,
     shouldUseGlobalTypeSearch
 } from '../../../src/hooks/listPaneData/structuralTypeSearch';
 import { filterListPaneFiles } from '../../../src/hooks/listPaneData/searchPipeline';
@@ -74,6 +75,25 @@ describe('structural Type search helpers', () => {
                 selectedType: createTpsNavigatorProviderTypeId('example/entities', 'projects')
             })
         ).toBe(false);
+    });
+
+    it('reports mixed structural search only for the same eligible internal-search scopes that render structural groups', () => {
+        const base = {
+            enabled: true,
+            isTypeSelection: false,
+            useGlobalTypeSearch: false,
+            useOmnisearch: false,
+            hasSearchQuery: true,
+            hasParsedSearchTokens: true
+        };
+
+        expect(isMixedStructuralSearchActive(base)).toBe(true);
+        expect(isMixedStructuralSearchActive({ ...base, isTypeSelection: true, useGlobalTypeSearch: true })).toBe(true);
+        expect(isMixedStructuralSearchActive({ ...base, isTypeSelection: true })).toBe(false);
+        expect(isMixedStructuralSearchActive({ ...base, useOmnisearch: true })).toBe(false);
+        expect(isMixedStructuralSearchActive({ ...base, hasSearchQuery: false })).toBe(false);
+        expect(isMixedStructuralSearchActive({ ...base, hasParsedSearchTokens: false })).toBe(false);
+        expect(isMixedStructuralSearchActive({ ...base, enabled: false })).toBe(false);
     });
 
     it('keeps a normally selected tag as scope while Shift-adding Checkboxes and another tag', () => {

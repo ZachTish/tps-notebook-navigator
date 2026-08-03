@@ -26,7 +26,11 @@ import { runAsyncAction } from '../utils/async';
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
 import { ItemType } from '../types';
-import { supportsListSortAndGroupingForSelection, supportsNativeListPresentationForSelection } from './listPane/typeModeRuntime';
+import {
+    shouldShowListCreateButton,
+    supportsListSortAndGroupingForSelection,
+    supportsNativeListPresentationForSelection
+} from './listPane/typeModeRuntime';
 
 interface ListToolbarProps {
     isSearchActive?: boolean;
@@ -36,6 +40,7 @@ interface ListToolbarProps {
     canToggleGroupExpansion: boolean;
     shouldCollapseGroups: boolean;
     onToggleGroupExpansion: () => boolean;
+    mixedStructuralSearchActive?: boolean;
     useFloatingLayout?: boolean;
 }
 
@@ -47,6 +52,7 @@ export function ListToolbar({
     canToggleGroupExpansion,
     shouldCollapseGroups,
     onToggleGroupExpansion,
+    mixedStructuralSearchActive = false,
     useFloatingLayout = false
 }: ListToolbarProps) {
     const uxPreferences = useUXPreferences();
@@ -60,6 +66,7 @@ export function ListToolbar({
     const {
         handleNewFile,
         canCreateNewFile,
+        newItemLabel,
         handleRevealFile,
         canRevealFile,
         handleAppearanceMenu,
@@ -70,7 +77,12 @@ export function ListToolbar({
         hasAppearanceOrSortSelection,
         hasCustomSortOrGroup,
         hasCustomAppearance
-    } = useListActions({ onManualSortStart, getManualSortNewFileContext, trackRevealFileAvailability: showRevealButton });
+    } = useListActions({
+        onManualSortStart,
+        getManualSortNewFileContext,
+        trackRevealFileAvailability: showRevealButton,
+        mixedStructuralSearchActive
+    });
 
     const isTypeSelection = selectionState.selectionType === ItemType.TYPE && Boolean(selectionState.selectedType);
     const supportsNativeListPresentation = supportsNativeListPresentationForSelection(
@@ -83,7 +95,7 @@ export function ListToolbar({
     const showGroupExpansionButton = supportsListSortAndGrouping && listVisibility.groupExpansion;
     const showSortButton = supportsListSortAndGrouping && listVisibility.sort;
     const showAppearanceButton = supportsNativeListPresentation && listVisibility.appearance;
-    const showNewNoteButton = !isTypeSelection && listVisibility.newNote;
+    const showNewNoteButton = shouldShowListCreateButton(selectionState.selectionType, canCreateNewFile, listVisibility.newNote);
     const showEffectiveRevealButton = !isTypeSelection && showRevealButton;
     const hasNavigationSelection = Boolean(
         selectionState.selectedFolder || selectionState.selectedTag || selectionState.selectedProperty || selectionState.selectedType
@@ -190,7 +202,7 @@ export function ListToolbar({
         <button
             key="new-note"
             className="nn-mobile-toolbar-button nn-mobile-toolbar-button-circle"
-            aria-label={strings.paneHeader.newNote}
+            aria-label={newItemLabel}
             onClick={() => {
                 runAsyncAction(() => handleNewFile());
             }}

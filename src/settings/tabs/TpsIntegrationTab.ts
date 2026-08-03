@@ -15,7 +15,15 @@ import { setElementVisible } from '../dependentSettings';
 import type { SettingsTabContext } from './SettingsTabContext';
 import { showNotice } from '../../utils/noticeUtils';
 import { renderSliderSetting } from './SliderSetting';
-import { TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT, TPS_GCM_TASK_ROWS_PER_NOTE_MAX, TPS_GCM_TASK_ROWS_PER_NOTE_MIN } from '../types';
+import { FilePathInputSuggest } from '../../suggest/FilePathInputSuggest';
+import { hasExcalidrawFrontmatterFlagValue, isExcalidrawFile } from '../../utils/fileNameUtils';
+import { normalizeOptionalVaultFilePath } from '../../utils/pathUtils';
+import {
+    TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT,
+    TPS_GCM_TASK_ROWS_PER_NOTE_MAX,
+    TPS_GCM_TASK_ROWS_PER_NOTE_MIN,
+    isTpsResourceCreationTarget
+} from '../types';
 
 export const TPS_INTEGRATION_SETTINGS_LABEL = 'TPS integration';
 export const TPS_INTEGRATION_SETTINGS_DESCRIPTION =
@@ -38,7 +46,21 @@ const UPSTREAM_IMPORT_COPY = {
 const TYPES_NAVIGATION_COPY = {
     group: 'Types navigation',
     name: 'Show Types in navigation',
-    desc: 'Show one Types section for vault files, checkboxes, bullets, headings, code blocks, callouts, blockquotes, and tables.'
+    desc: 'Show one Types section for vault files, checkboxes, bullets, headings, code blocks, callouts, blockquotes, tables, and web links.'
+} as const;
+
+const RESOURCE_CREATION_COPY = {
+    group: 'Type item creation',
+    targetName: 'Create items in',
+    targetDesc: 'Choose which Markdown note receives new checkboxes, bullets, headings, and other source-backed Types.',
+    targetOptions: {
+        'daily-note': "Today's daily note",
+        'active-note': 'Active note',
+        'specific-note': 'Specific note'
+    },
+    fileName: 'Specific note',
+    fileDesc: 'Choose the existing Markdown note used when the creation target is Specific note.',
+    filePlaceholder: 'Folder/Note.md'
 } as const;
 
 const TASK_ROWS_COPY = {
@@ -67,7 +89,8 @@ export function createTpsIntegrationSettingDefinitions(context: SettingsTabConte
                 'code blocks',
                 'callouts',
                 'blockquotes',
-                'tables'
+                'tables',
+                'web links'
             ],
             render: setting => renderTpsTypesNavigationEnabledSetting(setting, context)
         })
@@ -92,6 +115,21 @@ export function createTpsIntegrationSettingDefinitions(context: SettingsTabConte
             render: setting => renderGcmTaskRowsPerNoteSetting(setting, context)
         })
     ];
+    const resourceCreationItems: NonNullable<SettingDefinitionGroup['items']> = [
+        createRenderDefinition({
+            name: RESOURCE_CREATION_COPY.targetName,
+            desc: RESOURCE_CREATION_COPY.targetDesc,
+            aliases: Object.values(RESOURCE_CREATION_COPY.targetOptions),
+            render: setting => renderTpsResourceCreationTargetSetting(setting, context)
+        }),
+        createRenderDefinition({
+            name: RESOURCE_CREATION_COPY.fileName,
+            desc: RESOURCE_CREATION_COPY.fileDesc,
+            aliases: [RESOURCE_CREATION_COPY.filePlaceholder, 'creation note'],
+            visible: () => context.plugin.settings.tpsResourceCreationTarget === 'specific-note',
+            render: setting => renderTpsResourceCreationSpecificFileSetting(setting, context)
+        })
+    ];
     const setupItems: NonNullable<SettingDefinitionGroup['items']> = [
         createRenderDefinition({
             name: UPSTREAM_IMPORT_COPY.name,
@@ -103,9 +141,74 @@ export function createTpsIntegrationSettingDefinitions(context: SettingsTabConte
 
     return [
         createGroupDefinition(TYPES_NAVIGATION_COPY.group, typeItems),
+        createGroupDefinition(RESOURCE_CREATION_COPY.group, resourceCreationItems),
         createGroupDefinition(TASK_ROWS_COPY.group, taskItems),
         createGroupDefinition(UPSTREAM_IMPORT_COPY.group, setupItems)
     ];
+}
+
+/** Shared renderer for the source-backed Type creation target. */
+export function renderTpsResourceCreationTargetSetting(setting: Setting, context: SettingsTabContext, onAfterUpdate?: () => void): void {
+    const { plugin } = context;
+    setting
+        .setName(RESOURCE_CREATION_COPY.targetName)
+        .setDesc(RESOURCE_CREATION_COPY.targetDesc)
+        .addDropdown(dropdown => {
+            Object.entries(RESOURCE_CREATION_COPY.targetOptions).forEach(([value, label]) => {
+                dropdown.addOption(value, label);
+            });
+            dropdown.setValue(plugin.settings.tpsResourceCreationTarget).onChange(async value => {
+                if (!isTpsResourceCreationTarget(value)) {
+                    return;
+                }
+                plugin.settings.tpsResourceCreationTarget = value;
+                await plugin.saveSettingsAndUpdate();
+                context.refreshSettingsDomState();
+                onAfterUpdate?.();
+            });
+        });
+}
+
+/** Shared renderer for the conditional specific-note creation target. */
+export function renderTpsResourceCreationSpecificFileSetting(setting: Setting, context: SettingsTabContext): void {
+    const { app, plugin } = context;
+    context.configureDebouncedTextSetting(
+        setting,
+        RESOURCE_CREATION_COPY.fileName,
+        RESOURCE_CREATION_COPY.fileDesc,
+        RESOURCE_CREATION_COPY.filePlaceholder,
+        () => plugin.settings.tpsResourceCreationSpecificFile ?? '',
+        value => {
+            plugin.settings.tpsResourceCreationSpecificFile = normalizeOptionalVaultFilePath(value);
+        }
+    );
+    setting.controlEl.addClass('nn-setting-wide-input');
+    const inputEl = setting.controlEl.querySelector<HTMLInputElement>('input');
+    if (!inputEl) {
+        return;
+    }
+    const suggest = new FilePathInputSuggest(app, inputEl, {
+        includeFile: file => {
+            const cache = app.metadataCache.getFileCache(file);
+            return (
+                file.extension.toLocaleLowerCase() === 'md' &&
+                !isExcalidrawFile(file) &&
+                cache !== null &&
+                !hasExcalidrawFrontmatterFlagValue(cache.frontmatter)
+            );
+        }
+    });
+    inputEl.addEventListener('click', () => {
+        suggest.open();
+    });
+    context.registerSettingsRenderCleanup(() => suggest.close());
+}
+
+/** Applies the namespaced visibility class used by the legacy specific-note row. */
+export function setTpsResourceCreationSpecificFileVisibility(element: HTMLElement | null, visible: boolean): void {
+    if (element) {
+        setElementVisible(element, visible);
+    }
 }
 
 /** Shared renderer for the Types-navigation enable control. */

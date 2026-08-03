@@ -168,6 +168,24 @@ describe('public list state', () => {
             value: { sort: { option: 'property-asc', propertyKey: 'Rank' } }
         });
         expect(validateListPresentationUpdate({ groupBy: 'property:' })).toEqual({ ok: false });
+        expect(validateListPresentationUpdate({ groupBy: 'property-day:scheduled ' })).toMatchObject({
+            ok: true,
+            value: { groupBy: 'property-day:scheduled' }
+        });
+        expect(validateListPresentationUpdate({ groupBy: 'property-day-desc:scheduled' })).toMatchObject({
+            ok: true,
+            value: { groupBy: 'property-day-desc:scheduled' }
+        });
+        expect(validateListPresentationUpdate({ groupBy: 'line-property:status' })).toMatchObject({
+            ok: true,
+            value: { groupBy: 'line-property:status' }
+        });
+        expect(validateListPresentationUpdate({ groupBy: 'line-property-day-desc:scheduled' })).toMatchObject({
+            ok: true,
+            value: { groupBy: 'line-property-day-desc:scheduled' }
+        });
+        expect(validateListPresentationUpdate({ groupBy: 'property-day:' })).toEqual({ ok: false });
+        expect(validateListPresentationUpdate({ groupBy: 'line-property-day:' })).toEqual({ ok: false });
         expect(validateListPresentationUpdate({ displayMode: 'wide' })).toEqual({ ok: false });
     });
 });

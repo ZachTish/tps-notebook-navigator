@@ -24,7 +24,16 @@ import { useSettingsState, useSettingsUpdate } from '../context/SettingsContext'
 import { useUXPreferenceActions, useUXPreferences } from '../context/UXPreferencesContext';
 import { strings } from '../i18n';
 import { ConfirmModal } from '../modals/ConfirmModal';
-import { createPropertyGroupingOption, getPropertyGroupingDirection, getPropertyGroupingKey } from '../settings/types';
+import { InputModal } from '../modals/InputModal';
+import {
+    createPropertyGroupingOption,
+    getPropertyGroupingDirection,
+    getPropertyGroupingGranularity,
+    getPropertyGroupingKey,
+    getPropertyGroupingSource,
+    normalizePropertyGroupingSourceForMenu,
+    replacePropertyGroupingSource
+} from '../settings/types';
 import type {
     ListNoteGroupingBaseOption,
     ListNoteGroupingOption,
@@ -54,6 +63,10 @@ import {
     type SortField
 } from '../utils/sortUtils';
 import { showListPaneAppearanceMenu } from '../components/ListPaneAppearanceMenu';
+import {
+    supportsDayPropertyGroupingForSelection,
+    supportsLinePropertyGroupingSourceForSelection
+} from '../components/listPane/typeModeRuntime';
 import { getDefaultListMode } from './useListPaneAppearance';
 import type { FolderAppearance } from './useListPaneAppearance';
 import { getFilesForFolder } from '../utils/fileFinder';
@@ -84,8 +97,18 @@ import {
 import { getErrorMessage } from '../utils/errorUtils';
 import { showNotice } from '../utils/noticeUtils';
 import { registerActiveFileWorkspaceListeners } from '../utils/workspaceActiveFileEvents';
-import { isTpsNavigatorFileTypeId, isTpsNavigatorLineTypeId, isTpsNavigatorStructuralTypeId } from '../types/navigatorTypes';
+import {
+    TPS_NAVIGATOR_TYPE_IDS,
+    isTpsNavigatorFileTypeId,
+    isTpsNavigatorLineTypeId,
+    isTpsNavigatorStructuralTypeId
+} from '../types/navigatorTypes';
 import { collectFileBackedTypeFiles } from './listPaneData/typeListItems';
+import {
+    createTpsNavigatorResource,
+    getTpsResourceCreationActionLabel,
+    isTpsNavigatorCreatableResourceTypeId
+} from '../services/types/markdownResourceCreation';
 
 type SelectionSortTarget =
     | { type: typeof ItemType.FOLDER; key: string }
@@ -113,6 +136,7 @@ interface UseListActionsOptions {
     onManualSortStart?: (propertyKey: string) => void;
     getManualSortNewFileContext?: () => ManualSortNewFilePlacementContext | null;
     trackRevealFileAvailability?: boolean;
+    mixedStructuralSearchActive?: boolean;
 }
 
 const BIDI_ISOLATE_START = '\u2068'; // First Strong Isolate
@@ -398,6 +422,12 @@ function buildDescendantApplyStats<T>({
 }
 
 function getGroupingIcon(option: ListNoteGroupingOption): string {
+    if (getPropertyGroupingGranularity(option) === 'day') {
+        return 'lucide-calendar-days';
+    }
+    if (getPropertyGroupingSource(option) === 'line') {
+        return 'lucide-list-tree';
+    }
     switch (option) {
         case 'custom':
             return 'lucide-heading';
@@ -511,7 +541,8 @@ function collectAllPropertyNodeIds(propertyTreeService: NonNullable<ReturnType<t
 export function useListActions({
     onManualSortStart,
     getManualSortNewFileContext,
-    trackRevealFileAvailability = false
+    trackRevealFileAvailability = false,
+    mixedStructuralSearchActive = false
 }: UseListActionsOptions = {}) {
     const { app, plugin, tagTreeService, propertyTreeService } = useServices();
     const settings = useSettingsState();
@@ -535,6 +566,18 @@ export function useListActions({
         selectionState.selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectionState.selectedType);
     const hasLineBackedTypeSelection =
         selectionState.selectionType === ItemType.TYPE && isTpsNavigatorLineTypeId(selectionState.selectedType);
+    const canChooseLinePropertySource = supportsLinePropertyGroupingSourceForSelection(
+        selectionState.selectionType,
+        selectionState.selectedType,
+        mixedStructuralSearchActive
+    );
+    const canChooseDayPropertyGrouping = supportsDayPropertyGroupingForSelection(
+        selectionState.selectionType,
+        selectionState.selectedType,
+        mixedStructuralSearchActive
+    );
+    const hasCreatableTypeSelection =
+        selectionState.selectionType === ItemType.TYPE && isTpsNavigatorCreatableResourceTypeId(selectionState.selectedType);
     const hasCreatablePropertySelection = hasPropertySelection && selectionState.selectedProperty !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID;
     const hasAppearanceOrSortSelection =
         hasFolderSelection || hasTagSelection || hasPropertySelection || hasFileBackedTypeSelection || hasLineBackedTypeSelection;
@@ -546,7 +589,13 @@ export function useListActions({
     const openDefaultListAppearanceSettings = useCallback(() => {
         plugin.openSettings();
     }, [plugin]);
-    const canCreateNewFile = Boolean(selectionState.selectedFolder) || hasCreatableTagSelection || hasCreatablePropertySelection;
+    const canCreateNewFile =
+        selectionState.selectionType === ItemType.TYPE
+            ? hasCreatableTypeSelection
+            : Boolean(selectionState.selectedFolder) || hasCreatableTagSelection || hasCreatablePropertySelection;
+    const newItemLabel = hasCreatableTypeSelection
+        ? (getTpsResourceCreationActionLabel(selectionState.selectedType) ?? strings.paneHeader.newNote)
+        : strings.paneHeader.newNote;
     const getRevealableActiveFile = useCallback((): TFile | null => {
         const activeFile = app.workspace.getActiveFile();
         return activeFile?.parent ? activeFile : null;
@@ -577,6 +626,34 @@ export function useListActions({
 
     const handleNewFile = useCallback(async () => {
         try {
+            const selectedType = selectionState.selectedType;
+            if (hasCreatableTypeSelection && isTpsNavigatorCreatableResourceTypeId(selectedType)) {
+                const createResource = async (taskTitle?: string) => {
+                    const result = await createTpsNavigatorResource(
+                        app,
+                        selectedType,
+                        {
+                            target: settings.tpsResourceCreationTarget,
+                            specificFile: settings.tpsResourceCreationSpecificFile
+                        },
+                        { taskTitle }
+                    );
+                    if (!result.ok) {
+                        showNotice(result.message, { variant: 'warning' });
+                    }
+                };
+
+                if (selectedType === TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES) {
+                    new InputModal(app, 'New checkbox', 'Task title', value => createResource(value), '', {
+                        submitButtonText: 'Create'
+                    }).open();
+                    return;
+                }
+
+                await createResource();
+                return;
+            }
+
             const manualSortContext = getManualSortNewFileContext?.() ?? null;
             if (selectionState.selectedFolder) {
                 await fileSystemOps.createNewFile(selectionState.selectedFolder, settings.createNewNotesInNewTab, manualSortContext);
@@ -611,9 +688,13 @@ export function useListActions({
         selectionState.selectedTag,
         selectionState.selectedProperty,
         selectionState.selectedFile,
+        selectionState.selectedType,
         hasCreatableTagSelection,
         hasCreatablePropertySelection,
+        hasCreatableTypeSelection,
         settings.createNewNotesInNewTab,
+        settings.tpsResourceCreationTarget,
+        settings.tpsResourceCreationSpecificFile,
         getManualSortNewFileContext,
         fileSystemOps,
         app
@@ -1868,6 +1949,7 @@ export function useListActions({
                 selectionType: selectionState.selectionType,
                 isManualSortActive
             });
+            const effectiveMenuGroup = normalizePropertyGroupingSourceForMenu(effectiveCurrentGroup, canChooseLinePropertySource);
             const isGroupOptionDisabled = (option: ListNoteGroupingOption): boolean =>
                 isManualSortActive || (option === 'date' && !isDateSortOption(currentSort));
             const addGroupOptionItem = (option: ListNoteGroupingOption, title: string, icon: string, isDisabled: boolean): void => {
@@ -1877,7 +1959,7 @@ export function useListActions({
                     item.setTitle(`    ${withDefaultSuffix(title, isDefaultGroup)}`)
                         .setIcon(icon)
                         .setDisabled(isDisabled)
-                        .setChecked(areListGroupingOptionsSameKind(effectiveCurrentGroup, option))
+                        .setChecked(areListGroupingOptionsSameKind(effectiveMenuGroup, option))
                         .onClick(() => {
                             if (isDisabled) {
                                 return;
@@ -1906,15 +1988,24 @@ export function useListActions({
 
             // The properties registered for property sort double as grouping choices, mirroring the sort field list above.
             // Switching the grouping property keeps the current group order direction, matching Obsidian Bases.
-            const effectiveGroupPropertyKey = getPropertyGroupingKey(effectiveCurrentGroup);
-            const effectiveGroupDirection = getPropertyGroupingDirection(effectiveCurrentGroup) ?? 'asc';
+            const effectiveGroupPropertyKey = getPropertyGroupingKey(effectiveMenuGroup);
+            const effectiveGroupDirection = getPropertyGroupingDirection(effectiveMenuGroup) ?? 'asc';
+            const effectiveGroupSource = canChooseLinePropertySource ? (getPropertyGroupingSource(effectiveMenuGroup) ?? 'note') : 'note';
             propertySortKeys.forEach(propertyKey => {
                 addGroupOptionItem(
-                    createPropertyGroupingOption(propertyKey, effectiveGroupDirection),
+                    createPropertyGroupingOption(propertyKey, effectiveGroupDirection, 'value', effectiveGroupSource),
                     getSortFieldLabel('property', propertyKey),
                     getSortFieldMenuIcon('property', propertyKey),
                     isManualSortActive
                 );
+                if (canChooseDayPropertyGrouping) {
+                    addGroupOptionItem(
+                        createPropertyGroupingOption(propertyKey, effectiveGroupDirection, 'day', effectiveGroupSource),
+                        `${getSortFieldLabel('property', propertyKey)} · ${strings.settings.items.groupNotes.options.date}`,
+                        'lucide-calendar-days',
+                        isManualSortActive
+                    );
+                }
             });
 
             // Without configured property keys the property grouping entries above render nothing, so a
@@ -1929,6 +2020,35 @@ export function useListActions({
 
             // Group order direction applies only to property grouping; date and folder groups keep their fixed order.
             if (effectiveGroupPropertyKey !== null) {
+                const effectiveGroupGranularity = getPropertyGroupingGranularity(effectiveMenuGroup) ?? 'value';
+                if (canChooseLinePropertySource) {
+                    menu.addSeparator();
+                    menu.addItem(item => {
+                        item.setTitle('Property source').setIcon('lucide-database').setDisabled(true);
+                    });
+                    (['note', 'line'] as const).forEach(source => {
+                        menu.addItem(item => {
+                            item.setTitle(`    ${source === 'line' ? 'Line properties' : 'Note properties'}`)
+                                .setIcon(source === 'line' ? 'lucide-list-tree' : 'lucide-file-text')
+                                .setChecked(effectiveGroupSource === source)
+                                .onClick(() => {
+                                    if (effectiveGroupSource === source) {
+                                        return;
+                                    }
+                                    runAsyncAction(async () => {
+                                        const nextOption = replacePropertyGroupingSource(effectiveCurrentGroup, source);
+                                        if (!nextOption) {
+                                            return;
+                                        }
+                                        await setSelectionGroupOverride(
+                                            areListGroupingOptionsEqual(nextOption, groupingInfo.defaultGrouping) ? undefined : nextOption
+                                        );
+                                        app.workspace.requestSaveLayout();
+                                    });
+                                });
+                        });
+                    });
+                }
                 menu.addSeparator();
                 (['asc', 'desc'] as const).forEach(direction => {
                     menu.addItem(item => {
@@ -1940,7 +2060,14 @@ export function useListActions({
                                     return;
                                 }
                                 runAsyncAction(async () => {
-                                    await setSelectionGroupOverride(createPropertyGroupingOption(effectiveGroupPropertyKey, direction));
+                                    await setSelectionGroupOverride(
+                                        createPropertyGroupingOption(
+                                            effectiveGroupPropertyKey,
+                                            direction,
+                                            effectiveGroupGranularity,
+                                            effectiveGroupSource
+                                        )
+                                    );
                                     app.workspace.requestSaveLayout();
                                 });
                             });
@@ -1995,6 +2122,8 @@ export function useListActions({
         },
         [
             canApplyToDescendants,
+            canChooseDayPropertyGrouping,
+            canChooseLinePropertySource,
             hasAppearanceOrSortSelection,
             hasFolderSelection,
             hasLineBackedTypeSelection,
@@ -2110,6 +2239,7 @@ export function useListActions({
     return {
         handleNewFile,
         canCreateNewFile,
+        newItemLabel,
         handleRevealFile,
         canRevealFile,
         handleAppearanceMenu,

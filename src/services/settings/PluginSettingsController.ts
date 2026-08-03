@@ -69,6 +69,7 @@ import {
     isSettingSyncMode,
     isSortOption,
     isTagSortOrder,
+    isTpsResourceCreationTarget,
     isTypeNavigationSortOrder,
     normalizeAppearanceGroupBy,
     normalizeListSortOverride,
@@ -556,6 +557,12 @@ export class PluginSettingsController {
         if (!isTypeNavigationSortOrder(this.currentSettings.typeNavigationSortOrder)) {
             this.currentSettings.typeNavigationSortOrder = DEFAULT_SETTINGS.typeNavigationSortOrder;
         }
+        if (!isTpsResourceCreationTarget(this.currentSettings.tpsResourceCreationTarget)) {
+            this.currentSettings.tpsResourceCreationTarget = DEFAULT_SETTINGS.tpsResourceCreationTarget;
+        }
+        this.currentSettings.tpsResourceCreationSpecificFile = normalizeOptionalVaultFilePath(
+            this.currentSettings.tpsResourceCreationSpecificFile
+        );
         this.currentSettings.tpsGcmTaskRowsEnabled = this.sanitizeBooleanSetting(
             this.currentSettings.tpsGcmTaskRowsEnabled,
             DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled

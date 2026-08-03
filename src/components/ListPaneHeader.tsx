@@ -37,7 +37,11 @@ import { normalizeTagPath } from '../utils/tagUtils';
 import { runAsyncAction } from '../utils/async';
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
-import { supportsListSortAndGroupingForSelection, supportsNativeListPresentationForSelection } from './listPane/typeModeRuntime';
+import {
+    shouldShowListCreateButton,
+    supportsListSortAndGroupingForSelection,
+    supportsNativeListPresentationForSelection
+} from './listPane/typeModeRuntime';
 
 interface ListPaneHeaderProps {
     onHeaderClick?: () => void;
@@ -48,6 +52,7 @@ interface ListPaneHeaderProps {
     canToggleGroupExpansion: boolean;
     shouldCollapseGroups: boolean;
     onToggleGroupExpansion: () => boolean;
+    mixedStructuralSearchActive?: boolean;
     actionsDisabled?: boolean;
     desktopTitle: string;
     breadcrumbSegments: BreadcrumbSegment[];
@@ -64,6 +69,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     canToggleGroupExpansion,
     shouldCollapseGroups,
     onToggleGroupExpansion,
+    mixedStructuralSearchActive = false,
     actionsDisabled = false,
     desktopTitle,
     breadcrumbSegments,
@@ -93,6 +99,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     const {
         handleNewFile,
         canCreateNewFile,
+        newItemLabel,
         handleRevealFile,
         canRevealFile,
         handleAppearanceMenu,
@@ -106,7 +113,8 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     } = useListActions({
         onManualSortStart,
         getManualSortNewFileContext,
-        trackRevealFileAvailability: !useMobileChrome && showRevealButton
+        trackRevealFileAvailability: !useMobileChrome && showRevealButton,
+        mixedStructuralSearchActive
     });
     const showBackButton = listToolbarVisibility.back && uiState.singlePane;
     const isTypeSelection = selectionState.selectionType === ItemType.TYPE && Boolean(selectionState.selectedType);
@@ -120,7 +128,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     const showGroupExpansionButton = supportsListSortAndGrouping && listToolbarVisibility.groupExpansion;
     const showSortButton = supportsListSortAndGrouping && listToolbarVisibility.sort;
     const showAppearanceButton = supportsNativeListPresentation && listToolbarVisibility.appearance;
-    const showNewNoteButton = !isTypeSelection && listToolbarVisibility.newNote;
+    const showNewNoteButton = shouldShowListCreateButton(selectionState.selectionType, canCreateNewFile, listToolbarVisibility.newNote);
     const showEffectiveRevealButton = !isTypeSelection && showRevealButton;
     const hasNavigationSelection = Boolean(
         selectionState.selectedFolder || selectionState.selectedTag || selectionState.selectedProperty || selectionState.selectedType
@@ -486,7 +494,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                     {showNewNoteButton ? (
                         <button
                             className="nn-icon-button"
-                            aria-label={strings.paneHeader.newNote}
+                            aria-label={newItemLabel}
                             onClick={() => {
                                 runAsyncAction(() => handleNewFile());
                             }}

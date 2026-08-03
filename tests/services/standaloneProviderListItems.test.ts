@@ -134,7 +134,8 @@ describe('buildStandaloneProviderListItems', () => {
         ['Code blocks', 'structural:code-block', 'code'],
         ['Callouts', 'structural:callout', 'callout'],
         ['Blockquotes', 'structural:blockquote', 'blockquote'],
-        ['Tables', 'structural:table', 'table']
+        ['Tables', 'structural:table', 'table'],
+        ['Web links', 'structural:web-link', 'web-link']
     ])('keeps every built-in source-backed %s row above the external-provider ceiling', (_label, typeId, rowKind) => {
         const builtInRows: NavigatorProvidedRow[] = Array.from({ length: NAVIGATOR_ROW_PROVIDER_MAX_ROWS + 1 }, (_, index) => ({
             providerId: 'tps/entity-types',

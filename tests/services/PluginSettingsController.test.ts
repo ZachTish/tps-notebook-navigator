@@ -133,14 +133,19 @@ describe('PluginSettingsController.normalizeNavigationSeparatorSettings', () => 
 describe('PluginSettingsController Type presentation persistence', () => {
     it('round-trips structural Type sort/group settings while discarding unsupported line appearance fields', async () => {
         let storedData: Record<string, unknown> = {
-            propertySortKey: 'priority, status',
+            propertySortKey: 'priority, status, scheduled',
             typeSortOverrides: {
                 [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { option: 'property-desc', propertyKey: 'priority' },
                 [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: 'title-asc'
             },
             typeAppearances: {
                 [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property:status' },
-                [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { mode: 'compact', titleRows: 4, previewRows: 3, groupBy: 'property:status' },
+                [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: {
+                    mode: 'compact',
+                    titleRows: 4,
+                    previewRows: 3,
+                    groupBy: 'line-property-day-desc:scheduled'
+                },
                 [TPS_NAVIGATOR_TYPE_IDS.CALLOUTS]: { groupBy: 'custom' },
                 [TPS_NAVIGATOR_TYPE_IDS.TABLES]: { groupBy: 'date' }
             }
@@ -164,7 +169,7 @@ describe('PluginSettingsController Type presentation persistence', () => {
         });
         expect(first.settings.typeAppearances).toEqual({
             [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property:status' },
-            [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { groupBy: 'property:status' },
+            [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { groupBy: 'line-property-day-desc:scheduled' },
             [TPS_NAVIGATOR_TYPE_IDS.CALLOUTS]: { groupBy: 'custom' },
             [TPS_NAVIGATOR_TYPE_IDS.TABLES]: { groupBy: 'date' }
         });
@@ -618,6 +623,8 @@ describe('PluginSettingsController.applySettingsRecord', () => {
                 tpsTypesNavigationEnabled: false,
                 typeNavigationSortOrder: 'count-desc',
                 rootTypeOrder: [TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId, TPS_NAVIGATOR_TYPE_IDS.TABLES, 'kind:project', 'invalid'],
+                tpsResourceCreationTarget: 'specific-note',
+                tpsResourceCreationSpecificFile: ' /Inbox/Capture.md ',
                 tpsGcmTaskRowsEnabled: true,
                 tpsGcmTaskRowsIncludeCompleted: true,
                 tpsGcmTaskRowsPerNote: 12
@@ -628,6 +635,8 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
         expect(controller.settings.typeNavigationSortOrder).toBe('count-desc');
         expect(controller.settings.rootTypeOrder).toEqual([TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId]);
+        expect(controller.settings.tpsResourceCreationTarget).toBe('specific-note');
+        expect(controller.settings.tpsResourceCreationSpecificFile).toBe('Inbox/Capture.md');
         expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(true);
         expect(controller.settings.tpsGcmTaskRowsIncludeCompleted).toBe(true);
         expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(12);
@@ -635,6 +644,8 @@ describe('PluginSettingsController.applySettingsRecord', () => {
             tpsTypesNavigationEnabled: false,
             typeNavigationSortOrder: 'count-desc',
             rootTypeOrder: [TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId],
+            tpsResourceCreationTarget: 'specific-note',
+            tpsResourceCreationSpecificFile: 'Inbox/Capture.md',
             tpsGcmTaskRowsEnabled: true,
             tpsGcmTaskRowsIncludeCompleted: true,
             tpsGcmTaskRowsPerNote: 12
@@ -645,6 +656,8 @@ describe('PluginSettingsController.applySettingsRecord', () => {
                 tpsTypesNavigationEnabled: 'no',
                 typeNavigationSortOrder: 'frequency-desc',
                 rootTypeOrder: 'not-an-array',
+                tpsResourceCreationTarget: 'somewhere',
+                tpsResourceCreationSpecificFile: '/',
                 tpsGcmTaskRowsEnabled: 'yes',
                 tpsGcmTaskRowsIncludeCompleted: 1,
                 tpsGcmTaskRowsPerNote: 500
@@ -655,6 +668,8 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         expect(controller.settings.tpsTypesNavigationEnabled).toBe(DEFAULT_SETTINGS.tpsTypesNavigationEnabled);
         expect(controller.settings.typeNavigationSortOrder).toBe(DEFAULT_SETTINGS.typeNavigationSortOrder);
         expect(controller.settings.rootTypeOrder).toEqual(DEFAULT_SETTINGS.rootTypeOrder);
+        expect(controller.settings.tpsResourceCreationTarget).toBe(DEFAULT_SETTINGS.tpsResourceCreationTarget);
+        expect(controller.settings.tpsResourceCreationSpecificFile).toBeNull();
         expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled);
         expect(controller.settings.tpsGcmTaskRowsIncludeCompleted).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsIncludeCompleted);
         expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsPerNote);

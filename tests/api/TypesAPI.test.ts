@@ -103,6 +103,7 @@ describe('TypesAPI', () => {
         expect(api.calloutsId).toBe('structural:callout');
         expect(api.blockquotesId).toBe('structural:blockquote');
         expect(api.tablesId).toBe('structural:table');
+        expect(api.webLinksId).toBe('structural:web-link');
         expect(api.basesId).toBe('file:base');
         expect(api.canvasId).toBe('file:canvas');
         expect(api.drawingsId).toBe('file:drawing');

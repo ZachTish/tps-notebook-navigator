@@ -62,6 +62,8 @@ export interface GcmEntityIndexRecordLike {
     readonly displayName: string;
     readonly basename: string;
     readonly dimensions: Readonly<Record<string, readonly string[]>>;
+    /** Optional raw inline fields, published only for block-backed records. */
+    readonly lineProperties?: Readonly<Record<string, readonly string[]>>;
     readonly sourcePath: string;
     readonly entityType: GcmEntityIndexEntityType;
     readonly subpath: string;
@@ -230,6 +232,18 @@ function isDimensions(value: unknown): value is Readonly<Record<string, readonly
     return isRecord(value) && Object.values(value).every(isStringArray);
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+    if (!isRecord(value) || Array.isArray(value)) {
+        return false;
+    }
+    const prototype: unknown = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+}
+
+function isLineProperties(value: unknown): value is Readonly<Record<string, readonly string[]>> {
+    return isPlainRecord(value) && Object.values(value).every(isStringArray);
+}
+
 export function isGcmEntityIndexRecord(value: unknown): value is GcmEntityIndexRecordLike {
     if (!isRecord(value)) {
         return false;
@@ -243,6 +257,7 @@ export function isGcmEntityIndexRecord(value: unknown): value is GcmEntityIndexR
         typeof value.displayName !== 'string' ||
         typeof value.basename !== 'string' ||
         !isDimensions(value.dimensions) ||
+        (value.lineProperties !== undefined && !isLineProperties(value.lineProperties)) ||
         typeof value.sourcePath !== 'string' ||
         !value.sourcePath.trim() ||
         (entityType !== 'note' && entityType !== 'block') ||
@@ -262,6 +277,9 @@ export function isGcmEntityIndexRecord(value: unknown): value is GcmEntityIndexR
         return false;
     }
     if (entityType === 'block' && (!isLineKind(value.lineKind) || !Number.isSafeInteger(lineNumber) || Number(lineNumber) < 1)) {
+        return false;
+    }
+    if (entityType !== 'block' && value.lineProperties !== undefined) {
         return false;
     }
     return true;
@@ -296,6 +314,35 @@ function matchesType(record: GcmEntityIndexRecordLike, typeId: TpsNavigatorTypeI
     return false;
 }
 
+function copyTaskFields(fields: unknown): Readonly<Record<string, string>> | undefined {
+    if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
+        return undefined;
+    }
+
+    const copy: Record<string, string> = Object.create(null) as Record<string, string>;
+    Object.keys(fields).forEach(key => {
+        const value = (fields as Record<string, unknown>)[key];
+        if (typeof value === 'string') {
+            copy[key] = value;
+        }
+    });
+    return Object.freeze(copy);
+}
+
+function copyLineProperties(
+    properties: Readonly<Record<string, readonly string[]>> | undefined
+): Readonly<Record<string, readonly string[]>> | undefined {
+    if (!properties) {
+        return undefined;
+    }
+
+    const copy: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
+    Object.entries(properties).forEach(([key, values]) => {
+        copy[key] = Object.freeze([...values]);
+    });
+    return Object.keys(copy).length > 0 ? Object.freeze(copy) : undefined;
+}
+
 function toNavigatorRecord(
     record: GcmEntityIndexRecordLike,
     typeId: TpsNavigatorTypeId,
@@ -303,6 +350,8 @@ function toNavigatorRecord(
     capabilities: { canMutateCheckbox: boolean; hasContextMenu: boolean }
 ): TpsNavigatorTypeRecord {
     const label = record.displayName.trim() || record.name.trim() || record.basename.trim() || record.sourcePath;
+    const taskFields = copyTaskFields(task?.fields);
+    const properties = copyLineProperties(record.lineProperties);
     return Object.freeze({
         id: record.id,
         typeId,
@@ -313,6 +362,7 @@ function toNavigatorRecord(
         ...(record.lineNumber !== undefined ? { lineNumber: record.lineNumber } : {}),
         locatorKey: record.locatorKey,
         referenceTarget: record.referenceTarget,
+        ...(properties ? { properties } : {}),
         ...(task
             ? {
                   task: Object.freeze({
@@ -323,6 +373,7 @@ function toNavigatorRecord(
                       marker: task.marker,
                       status: task.status,
                       isComplete: task.isComplete,
+                      ...(taskFields !== undefined ? { fields: taskFields } : {}),
                       canMutateCheckbox: capabilities.canMutateCheckbox,
                       hasContextMenu: capabilities.hasContextMenu
                   }),

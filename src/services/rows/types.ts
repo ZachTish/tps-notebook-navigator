@@ -22,6 +22,8 @@ export type {
 export interface NavigatorProvidedRow extends NavigatorRowDefinition {
     /** Added by the registry; providers cannot impersonate one another. */
     providerId: string;
+    /** Built-in row-local values used for presentation; intentionally unavailable to external row providers. */
+    readonly properties?: Readonly<Record<string, string | number | boolean | readonly (string | number | boolean)[]>>;
 }
 
 export type NavigatorProvidedRowCandidate = NavigatorRowDefinition;

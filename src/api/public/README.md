@@ -26,7 +26,11 @@ Complete TypeScript type definitions for the Notebook Navigator API.
 4. Call `await nn.whenReady()` before storage-backed reads or tag/property navigation that depends on the storage mirror.
    Call `await nn.types.whenReady()` when you need an available aggregate Type catalog before Type navigation. File-backed
    Types stay ready without TPS Global Context Menu; GCM governs only exact-line Checkboxes, Bullets, and Headings rows.
-   Navigator-owned Code blocks, Callouts, Blockquotes, and Tables use Obsidian's root-level Markdown section cache instead.
+   Navigator-owned Code blocks, Callouts, Blockquotes, and Tables use Obsidian's root-level Markdown section cache instead;
+   Web links use a bounded, local Markdown-body scan because Obsidian's link cache does not publish external URLs. That scan
+   includes authored HTTP(S) Markdown links, angle autolinks, and bare URLs, reuses unchanged bodies by file stat, excludes
+   code and images, and never requests a discovered target. File Types publish before it completes, while GCM line loading
+   proceeds concurrently.
    Registered providers publish independently, so subscribe when you need to wait for one provider's descriptor.
 5. Long-lived provider integrations should subscribe to `tps:notebook-navigator-api-changed` and send a point-to-point
    `tps:notebook-navigator-api-request` after subscribing. The documented
@@ -53,6 +57,10 @@ Complete TypeScript type definitions for the Notebook Navigator API.
     `setPresentation(...)` act on that same view, never open one, and return `false` for stale, unsupported, or invalid
     requests. Presentation updates are atomic. Fixed file-backed Types support the ordinary file controls; fixed
     source-backed Types support their bounded sort/group subset and reject display mode, manual sort, and folder grouping.
+    Their historical `property...` grouping forms read owning-note frontmatter; the additive `line-property...` exact/day
+    forms read only inline row fields and never fall back to the note. Line-only grouping is accepted on folders, tags,
+    properties, file-backed Types, and GCM line Types so it can drive mixed structural searches. Standalone
+    Navigator-owned range Types and external provider Types reject it.
     External provider Types remain provider-owned. Mixed structural search rows expose their owning fixed `typeId`.
 
 ## Public Surface
@@ -68,7 +76,7 @@ Complete TypeScript type definitions for the Notebook Navigator API.
   request/change payloads, list search/presentation controls and callback-free snapshots, and event payloads
 
 The fixed flat Types catalog uses `entity:note`, `structural:task`, `structural:bullet`, `structural:heading`,
-`structural:code-block`, `structural:callout`, `structural:blockquote`, `structural:table`, `file:base`, `file:canvas`,
+`structural:code-block`, `structural:callout`, `structural:blockquote`, `structural:table`, `structural:web-link`, `file:base`, `file:canvas`,
 `file:drawing`, `file:pdf`, `file:image`, `file:audio`, and `file:video`. Kind is frontmatter metadata and no
 Kind descriptor is emitted or navigable. Deprecated `buildKind(...)` constructs a legacy id and `parseKind(...)` recognizes
 one so callers can migrate stale state; `isType(...)` and navigation reject Kind ids. For external Type providers,
@@ -86,7 +94,7 @@ target shapes and fail-closed behavior are documented in the [Menus API](../../.
 
 ## Version
 
-Current API Version: **3.2.0**
+Current API Version: **3.3.0**
 
 ## Documentation
 

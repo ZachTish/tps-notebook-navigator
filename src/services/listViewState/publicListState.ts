@@ -128,7 +128,17 @@ export function validateListPresentationUpdate(value: unknown): PublicListInputR
             groupBy !== 'custom' &&
             groupBy !== 'date' &&
             groupBy !== 'folder' &&
-            !(typeof groupBy === 'string' && (/^property:[^\s].*$/.test(groupBy) || /^property-desc:[^\s].*$/.test(groupBy)))
+            !(
+                typeof groupBy === 'string' &&
+                (/^property:[^\s].*$/.test(groupBy) ||
+                    /^property-desc:[^\s].*$/.test(groupBy) ||
+                    /^property-day:[^\s].*$/.test(groupBy) ||
+                    /^property-day-desc:[^\s].*$/.test(groupBy) ||
+                    /^line-property:[^\s].*$/.test(groupBy) ||
+                    /^line-property-desc:[^\s].*$/.test(groupBy) ||
+                    /^line-property-day:[^\s].*$/.test(groupBy) ||
+                    /^line-property-day-desc:[^\s].*$/.test(groupBy))
+            )
         ) {
             return { ok: false };
         }

@@ -1,10 +1,10 @@
 # TPS Notebook Navigator API Reference
 
-Updated: August 2, 2026
+Updated: August 3, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 3.2.0
+**Current API Version:** 3.3.0
 
 ## Table of Contents
 
@@ -496,6 +496,7 @@ position.
 | `calloutsId` | Stable Callouts collection id | `'structural:callout'` |
 | `blockquotesId` | Stable Blockquotes collection id | `'structural:blockquote'` |
 | `tablesId` | Stable Tables collection id | `'structural:table'` |
+| `webLinksId` | Stable Web links collection id | `'structural:web-link'` |
 | `basesId` | Stable Bases collection id | `'file:base'` |
 | `canvasId` | Stable Canvas collection id | `'file:canvas'` |
 | `drawingsId` | Stable Drawings collection id | `'file:drawing'` |
@@ -512,11 +513,13 @@ position.
 | `whenReady()` | Wait for any non-loading success or guarded failure state | `Promise<NavigatorTypesSnapshot>` |
 
 The canonical built-in catalog order is Notes, Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables,
-Bases, Canvas, Drawings, PDFs, Images, Audio, and Video. Registered provider descriptors follow the built-ins in registry
+Web links, Bases, Canvas, Drawings, PDFs, Images, Audio, and Video. Registered provider descriptors follow the built-ins in registry
 order. A customized navigation order is a display-only projection and does not rewrite this sequence. Notes, Bases, Canvas,
 Drawings, PDFs, Images, Audio, and Video are file-backed; Checkboxes, Bullets, and Headings are GCM exact-line collections;
 Code blocks, Callouts, Blockquotes, and Tables are Navigator-owned cached-range collections built from Obsidian's root-level
-Markdown section metadata.
+Markdown section metadata. Web links are a Navigator-owned source-range collection built by scanning local Markdown bodies
+for authored HTTP(S) Markdown links, angle autolinks, and bare URLs. Obsidian's `CachedMetadata.links` is not used for this
+collection because it does not publish external URLs.
 
 Availability is `disabled`, `loading`, `ready`, `unavailable`, or `error`. File-backed and cached-range built-ins keep the
 aggregate catalog ready without TPS Global Context Menu; GCM availability governs only Checkboxes, Bullets, and Headings.
@@ -528,20 +531,37 @@ subscription. Deprecated `parseKind(...)` can recognize legacy syntax, but `isTy
 never discoverable, restorable, or navigable.
 
 Code blocks, Callouts, Blockquotes, and Tables are a strict whitelist over Obsidian's root-level
-`CachedMetadata.sections`. The Navigator performs no note-body reads: it builds from the current cache, repeats one full
-cache-only build at the first metadata `resolved` barrier, then updates individual paths on `changed`, `rename`, and
-`delete`. Excalidraw Markdown is excluded. Nested syntax appears only when Obsidian emits it as its own section. These rows
-are searchable by their owning-note/line label and source path, selectable with the transient row cursor, and guarded on
-activation against the current cache. They are not `TFile` rows and therefore do not initially support file drag,
+`CachedMetadata.sections` and require no body reads. Web links use a bounded local scan with at most four concurrent reads,
+the shared 2 MB mobile / 8 MB desktop Markdown read limit, a 10,000-record per-file guard, and an mtime-plus-size cache that
+avoids rereading unchanged files. File-backed Types publish before this scan completes, and optional GCM exact-line loading
+runs concurrently with it. The first metadata `resolved` barrier performs one full bounded rebuild; `changed`, `rename`, and
+`delete` then update individual paths. A non-string `changed` payload and a transient read failure preserve the
+last known links; an oversized body fails closed without a read. Excalidraw Markdown, YAML frontmatter, HTML comments,
+Obsidian `%%` comments and hidden TPS carriers, fenced and inline code, indented code, Markdown image syntax, vault links,
+and non-HTTP(S) targets are excluded. No discovered target is requested.
+
+All Navigator-owned structure rows are searchable by their owning-note/line label and source path, selectable with the
+transient row cursor, and guarded on activation against their current source. Web-link rows additionally display and search
+only the sanitized URL origin (`scheme://host`), open the owning note at the exact rescanned line and column, and omit URL
+credentials, path, query, and fragment data from labels, search text, locators, and diagnostic row ids. They do not navigate
+to or fetch the external target.
+These rows are not `TFile` rows and therefore do not initially support file drag,
 multi-select, pinning, rename, or persistent selection.
 
-All seven fixed source-backed Types—Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, and Tables—support
+All eight fixed source-backed Types—Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and Web links—support
 host-owned Sort and Group controls. Sort can use the row title or the owning note's filename, configured created/modified
-timestamp, or a configured non-manual frontmatter property. Missing source-note values stay last in both sort directions,
-and missing-value groups stay last. Date grouping is available only with a date sort; configured non-manual property grouping
-reads the owning note's frontmatter; `custom` is the ungrouped source-row presentation because custom header ownership is
-file-based. Manual sort, folder/manual grouping, and display-mode/appearance editing remain unsupported. External provider
-Types keep their existing provider-owned presentation.
+timestamp, or a configured non-manual property. GCM task, bullet, and heading rows resolve their exact line fields first,
+including `scheduled` and canonical task `status`, and fall back to owning-note frontmatter only when the line field is absent. Missing
+values stay last in both sort directions, and missing-value groups stay last. Date grouping is available only with a date
+sort. Historical `property:<key>` / `property-desc:<key>` grouping remains note-frontmatter-only; its
+`property-day:<key>` / `property-day-desc:<key>` forms bucket that note value by local calendar day. Source-backed views can
+instead select line-only grouping for GCM Checkboxes, Bullets, and Headings—or their sections in an active mixed search—with
+`line-property:<key>` / `line-property-desc:<key>` or calendar-day `line-property-day:<key>` /
+`line-property-day-desc:<key>`. Line-only grouping never falls back to the owning note, so an absent or blank inline field
+lands in No value; Navigator-owned ranges have no inline-property contract and also remain in No value. Native file rows
+always group from frontmatter. `custom` is the ungrouped source-row presentation because custom header
+ownership is file-based. Manual sort, folder/manual grouping, and display-mode/appearance editing remain unsupported.
+External provider Types keep their existing provider-owned presentation.
 
 Internal Filter Search accepts canonical `type:<fixed-id>` and `-type:<fixed-id>` facets, for example
 `type:structural:task` and `-type:structural:heading`. Multiple positive Types are always OR; that Type dimension is ANDed
@@ -553,7 +573,7 @@ Shift-click or the configured multi-select modifier adds a tag, property, or fix
 plus Shift adds a tag or property with OR. Multiple Types remain an OR union regardless of the navigation gesture.
 
 The visibility-derived vault allowlist is computed only for a Type scope or nonempty internal search. Aggregation then uses
-the cached GCM entity and Obsidian metadata indexes without reading note bodies.
+the cached GCM entity, Obsidian metadata, and bounded Web-link indexes without starting fresh body reads for each query.
 
 ```typescript
 const stop = nn.types.subscribe(snapshot => {
@@ -768,13 +788,18 @@ result contract.
 
 `setPresentation(update)` validates every supplied field before one settings transaction. It works for folder, tag,
 property, and every fixed built-in Type scope. Fixed source-backed Types accept title, filename, configured created/modified,
-and configured non-manual frontmatter-property sort plus compatible date/property/ungrouped (`custom`) grouping. They reject
-display mode, manual sort, and folder/manual grouping. External provider Type and none scopes remain unsupported. All scopes
-reject the manual-rank property, unconfigured property sort/group keys, and an explicitly requested date grouping with a
-non-date sort. Each `null` field removes only that per-scope override and inherits the current default. Values equal to
-inherited defaults are normalized away, unrelated appearance fields are preserved, and any invalid field rejects the whole
-request without a partial write. There is no list subscription: integrations pull snapshots when they need them so large
-provider collections are not cloned continuously.
+and configured non-manual property sort plus compatible date/property/ungrouped (`custom`) grouping. Property grouping may
+request owning-note values with `property:` / `property-desc:` and `property-day:` / `property-day-desc:`. Line-only
+`line-property:` / `line-property-desc:` and `line-property-day:` / `line-property-day-desc:` forms are accepted on folder,
+tag, property, file-backed Type, and GCM line-Type targets so the same saved presentation can govern their active mixed
+structural searches. Standalone Navigator-owned range Types reject line-only grouping because they have no inline-property
+contract. The property key must still be configured. Fixed source-backed Types reject display mode, manual sort, and
+folder/manual grouping. External provider Type and none scopes remain unsupported. All scopes reject the manual-rank
+property, unconfigured property sort/group keys, and an explicitly requested date grouping with a non-date sort. Each
+`null` field removes only that per-scope override and inherits the current default. Values equal to inherited defaults are
+normalized away, unrelated appearance fields are preserved, and any invalid field rejects the whole request without a
+partial write. There is no list subscription: integrations pull snapshots when they need them so large provider
+collections are not cloned continuously.
 
 The presentation snapshot keeps its stable three-field shape. For a source-backed Type, `displayMode` reports the inherited
 default for compatibility, but source rows use their fixed native presentation and `setPresentation({ displayMode: ... })`
@@ -931,7 +956,7 @@ const dispose = nn?.menus?.registerFolderMenu(({ addItem, folder }) => {
 ### Type collection context menu
 
 `registerTypeMenu(callback)` applies to every selectable collection beneath **Types**: Notes, Checkboxes, Bullets, Headings,
-Code blocks, Callouts, Blockquotes, Tables, Bases, Canvas, Drawings, PDFs, Images, Audio, Video, and collections registered by an external Type provider. The **Types**
+Code blocks, Callouts, Blockquotes, Tables, Web links, Bases, Canvas, Drawings, PDFs, Images, Audio, Video, and collections registered by an external Type provider. The **Types**
 root is a container rather than a collection and does not invoke this hook. No Kind collection is emitted.
 
 The callback receives a frozen context with:
@@ -970,7 +995,7 @@ settings migration.
 ### Result row context menu
 
 `registerRowMenu(callback, options?)` applies to source-backed transient rows wherever they render: beneath a native file in
-a normal or file-backed Type list, in the Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, and Tables collections, and in collections or
+a normal or file-backed Type list, in the Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and Web links collections, and in collections or
 augmenting rows registered by another provider. Loading/error placeholders and rows whose source file no longer exists fail
 closed.
 
@@ -1161,6 +1186,17 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 3.3.0 (2026-08-03)
+
+- Added the fixed `structural:web-link` Type and stable `types.webLinksId` getter
+- Added note-frontmatter and GCM line-local exact/day grouping encodings; historical `property...` forms retain note
+  semantics, while additive `line-property...` forms never fall back
+- Kept exact GCM task, bullet, and heading fields authoritative for property sorting before owning-note frontmatter fallback
+- Indexed authored HTTP(S) links outside YAML/comments/images/code without network requests, with guarded exact source locations
+- Exposed only each URL origin and kept credentials, path, query, and fragments out of labels, search text, locators, and
+  diagnostic row ids
+- Preserved API 3.x compatibility: existing Type ids, providers, menus, navigation, and snapshots are unchanged
 
 ### Version 3.2.0 (2026-08-02)
 

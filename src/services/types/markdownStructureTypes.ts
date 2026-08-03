@@ -1,12 +1,13 @@
 /*
- * TPS Notebook Navigator - read-free Markdown structure Type index.
+ * TPS Notebook Navigator - cache-aware Markdown structure Type index.
  *
  * Obsidian's metadata cache is the parser authority. Only explicitly supported
- * top-level SectionCache kinds are indexed; unknown parser section kinds are
- * ignored so a future Obsidian parser change cannot silently create new Types.
+ * top-level SectionCache kinds are indexed without body reads. External web
+ * links use a bounded local body scan because Obsidian does not publish them in
+ * CachedMetadata.links. No discovered URL is ever requested.
  */
 
-import { normalizePath, TFile, type App, type CachedMetadata, type SectionCache } from 'obsidian';
+import { normalizePath, Platform, TFile, type App, type CachedMetadata, type Pos, type SectionCache } from 'obsidian';
 import {
     TPS_NAVIGATOR_MARKDOWN_TYPES,
     TPS_NAVIGATOR_TYPE_IDS,
@@ -18,14 +19,29 @@ import {
     type TpsNavigatorTypesSnapshot
 } from '../../types/navigatorTypes';
 import { hasExcalidrawFrontmatterFlagValue, isExcalidrawFile } from '../../utils/fileNameUtils';
+import { LIMITS } from '../../constants/limits';
 import { openMarkdownSourceLocation, type SourceLocationActivationResult } from './sourceLocation';
+import { scanMarkdownWebLinks } from './markdownWebLinks';
 
 type MarkdownStructureLineKind = 'code' | 'callout' | 'blockquote' | 'table';
+
+interface CachePositionRange {
+    readonly startLine: number;
+    readonly endLine: number;
+    readonly startColumn: number;
+    readonly startOffset: number;
+    readonly endOffset: number;
+}
 
 interface MarkdownStructureDefinition {
     readonly typeId: TpsNavigatorMarkdownTypeId;
     readonly sectionType: string;
     readonly lineKind: MarkdownStructureLineKind;
+}
+
+interface WebLinkBodyStamp {
+    readonly mtime: number;
+    readonly size: number;
 }
 
 const DEFINITIONS: readonly MarkdownStructureDefinition[] = Object.freeze([
@@ -52,25 +68,79 @@ const DEFINITIONS: readonly MarkdownStructureDefinition[] = Object.freeze([
 ]);
 
 const DEFINITION_BY_SECTION_TYPE = new Map(DEFINITIONS.map(definition => [definition.sectionType, definition] as const));
+const WEB_LINK_READ_CONCURRENCY = 4;
 
 export type MarkdownStructureActivationResult =
-    SourceLocationActivationResult | { readonly ok: false; readonly reason: 'invalid-record' | 'stale-locator' };
+    | SourceLocationActivationResult
+    | { readonly ok: false; readonly reason: 'invalid-record' | 'stale-locator' | 'read-failed'; readonly error?: unknown };
 
 function isMarkdownNote(file: TFile, cache: CachedMetadata | null): boolean {
     return file.extension.toLocaleLowerCase() === 'md' && !isExcalidrawFile(file) && !hasExcalidrawFrontmatterFlagValue(cache?.frontmatter);
 }
 
-function getSectionRange(section: SectionCache): { startLine: number; endLine: number } | null {
-    const startLine = Number(section.position?.start?.line);
-    const rawEndLine = Number(section.position?.end?.line);
-    const rawEndColumn = Number(section.position?.end?.col);
-    if (!Number.isSafeInteger(startLine) || startLine < 0 || !Number.isSafeInteger(rawEndLine) || rawEndLine < startLine) {
+function getWebLinkReadLimit(): number {
+    return Platform.isMobile ? LIMITS.markdown.maxReadBytes.mobile : LIMITS.markdown.maxReadBytes.desktop;
+}
+
+function canReadWebLinkBody(file: TFile): boolean {
+    const fileSize = Number(file.stat?.size);
+    return !Number.isFinite(fileSize) || fileSize <= getWebLinkReadLimit();
+}
+
+function canScanWebLinkBody(file: TFile, content: string): boolean {
+    return canReadWebLinkBody(file) && content.length <= getWebLinkReadLimit();
+}
+
+function getWebLinkBodyStamp(file: TFile): WebLinkBodyStamp {
+    const mtime = Number(file.stat?.mtime);
+    const size = Number(file.stat?.size);
+    return {
+        mtime: Number.isFinite(mtime) ? mtime : -1,
+        size: Number.isFinite(size) ? size : -1
+    };
+}
+
+function webLinkBodyStampsMatch(left: WebLinkBodyStamp | undefined, right: WebLinkBodyStamp): boolean {
+    return Boolean(left && left.mtime === right.mtime && left.size === right.size);
+}
+
+function getCachePositionRange(position: Pos | null | undefined): CachePositionRange | null {
+    const startLine = Number(position?.start?.line);
+    const startColumn = Number(position?.start?.col);
+    const startOffset = Number(position?.start?.offset);
+    const rawEndLine = Number(position?.end?.line);
+    const rawEndColumn = Number(position?.end?.col);
+    const endOffset = Number(position?.end?.offset);
+    if (
+        !Number.isSafeInteger(startLine) ||
+        startLine < 0 ||
+        !Number.isSafeInteger(startColumn) ||
+        startColumn < 0 ||
+        !Number.isSafeInteger(startOffset) ||
+        startOffset < 0 ||
+        !Number.isSafeInteger(rawEndLine) ||
+        rawEndLine < startLine ||
+        !Number.isSafeInteger(rawEndColumn) ||
+        rawEndColumn < 0 ||
+        !Number.isSafeInteger(endOffset) ||
+        endOffset < startOffset
+    ) {
         return null;
     }
     // Cache ranges may end at column zero on the line after the section. Treat
     // that boundary as exclusive while preserving a same-line empty section.
     const endLine = rawEndLine > startLine && rawEndColumn === 0 ? rawEndLine - 1 : rawEndLine;
-    return { startLine: startLine + 1, endLine: Math.max(startLine, endLine) + 1 };
+    return {
+        startLine: startLine + 1,
+        endLine: Math.max(startLine, endLine) + 1,
+        startColumn,
+        startOffset,
+        endOffset
+    };
+}
+
+function getSectionRange(section: SectionCache): CachePositionRange | null {
+    return getCachePositionRange(section.position);
 }
 
 function createLocatorKey(
@@ -87,20 +157,28 @@ function createLocatorKey(
     return `markdown-section:${encodeURIComponent(typeId)}:${encodeURIComponent(sourcePath)}:${startLine}:${endLine}`;
 }
 
+function createWebLinkLocatorKey(sourcePath: string, startOffset: number, endOffset: number): string {
+    return `markdown-link:${encodeURIComponent(sourcePath)}:${startOffset}:${endOffset}`;
+}
+
 /** Maps one authoritative metadata-cache entry to immutable source-range records. */
-export function getMarkdownStructureRecordsForFile(file: TFile, cache: CachedMetadata | null): readonly TpsNavigatorTypeRecord[] {
-    if (!cache || !isMarkdownNote(file, cache) || !Array.isArray(cache.sections)) {
+export function getMarkdownStructureRecordsForFile(
+    file: TFile,
+    cache: CachedMetadata | null,
+    content?: string
+): readonly TpsNavigatorTypeRecord[] {
+    if (!cache || !isMarkdownNote(file, cache)) {
         return Object.freeze([]);
     }
 
     const records: TpsNavigatorTypeRecord[] = [];
-    for (const section of cache.sections) {
+    const sourcePath = normalizePath(file.path);
+    for (const section of Array.isArray(cache.sections) ? cache.sections : []) {
         const definition = DEFINITION_BY_SECTION_TYPE.get(section.type);
         const range = definition ? getSectionRange(section) : null;
         if (!definition || !range) {
             continue;
         }
-        const sourcePath = normalizePath(file.path);
         const blockId = section.id?.trim();
         const locatorKey = createLocatorKey(definition.typeId, sourcePath, range.startLine, range.endLine, blockId);
         records.push(
@@ -121,6 +199,26 @@ export function getMarkdownStructureRecordsForFile(file: TFile, cache: CachedMet
             })
         );
     }
+    for (const link of typeof content === 'string' && canScanWebLinkBody(file, content) ? scanMarkdownWebLinks(content).matches : []) {
+        const locatorKey = createWebLinkLocatorKey(sourcePath, link.startOffset, link.endOffset);
+        records.push(
+            Object.freeze({
+                id: locatorKey,
+                typeId: TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS,
+                label: link.label,
+                sourcePath,
+                entityType: 'block',
+                lineKind: 'web-link',
+                lineNumber: link.lineNumber,
+                columnNumber: link.columnNumber,
+                sourceOffset: link.startOffset,
+                sourceEndOffset: link.endOffset,
+                locatorKey,
+                referenceTarget: link.target,
+                searchText: link.safeDisplay
+            })
+        );
+    }
     return Object.freeze(records);
 }
 
@@ -128,6 +226,7 @@ function compareRecords(left: TpsNavigatorTypeRecord, right: TpsNavigatorTypeRec
     return (
         left.sourcePath.localeCompare(right.sourcePath, undefined, { sensitivity: 'base' }) ||
         (left.lineNumber ?? 0) - (right.lineNumber ?? 0) ||
+        (left.columnNumber ?? 0) - (right.columnNumber ?? 0) ||
         left.locatorKey.localeCompare(right.locatorKey)
     );
 }
@@ -149,10 +248,14 @@ function recordsMatch(left: readonly TpsNavigatorTypeRecord[] | undefined, right
                 record.entityType === candidate.entityType &&
                 record.lineKind === candidate.lineKind &&
                 record.lineNumber === candidate.lineNumber &&
+                record.columnNumber === candidate.columnNumber &&
+                record.sourceOffset === candidate.sourceOffset &&
+                record.sourceEndOffset === candidate.sourceEndOffset &&
                 record.lineEndNumber === candidate.lineEndNumber &&
                 record.blockId === candidate.blockId &&
                 record.locatorKey === candidate.locatorKey &&
-                record.referenceTarget === candidate.referenceTarget
+                record.referenceTarget === candidate.referenceTarget &&
+                record.searchText === candidate.searchText
             );
         })
     );
@@ -167,6 +270,10 @@ function getVaultMarkdownFiles(app: App): TFile[] {
 /** Cache-aware, path-incremental source for Navigator-owned Markdown block Types. */
 export class MarkdownStructureTypesIndex {
     private readonly recordsByPath = new Map<string, readonly TpsNavigatorTypeRecord[]>();
+    private readonly webLinkBodyStamps = new Map<string, WebLinkBodyStamp>();
+    private readonly pathVersions = new Map<string, number>();
+    private pathVersion = 0;
+    private rebuildGeneration = 0;
     private revision = 0;
     private snapshot = this.buildSnapshot();
 
@@ -176,57 +283,188 @@ export class MarkdownStructureTypesIndex {
         return this.snapshot;
     }
 
-    /** Full cache-only rebuild used at startup and the first metadata resolved barrier. */
-    rebuild(): TpsNavigatorTypesSnapshot {
+    /** Full bounded rebuild used at startup and the first metadata resolved barrier. */
+    async rebuild(): Promise<TpsNavigatorTypesSnapshot> {
+        const generation = ++this.rebuildGeneration;
+        const rebuildStartVersion = this.pathVersion;
         const nextRecordsByPath = new Map<string, readonly TpsNavigatorTypeRecord[]>();
-        for (const file of getVaultMarkdownFiles(this.app)) {
-            const cache = this.app.metadataCache.getFileCache(file);
-            if (!cache) {
-                const previous = this.recordsByPath.get(normalizePath(file.path));
-                if (previous) {
-                    nextRecordsByPath.set(normalizePath(file.path), previous);
+        const nextWebLinkBodyStamps = new Map<string, WebLinkBodyStamp>();
+        const files = getVaultMarkdownFiles(this.app);
+        let failedReadCount = 0;
+        let cursor = 0;
+        const worker = async (): Promise<void> => {
+            while (cursor < files.length) {
+                const file = files[cursor++];
+                if (!file) {
+                    continue;
                 }
-                continue;
+                const path = normalizePath(file.path);
+                const cache = this.app.metadataCache.getFileCache(file);
+                if (!cache) {
+                    const previous = this.recordsByPath.get(path);
+                    if (previous) {
+                        nextRecordsByPath.set(path, previous);
+                    }
+                    const previousStamp = this.webLinkBodyStamps.get(path);
+                    if (previousStamp) {
+                        nextWebLinkBodyStamps.set(path, previousStamp);
+                    }
+                    continue;
+                }
+                const bodyStamp = getWebLinkBodyStamp(file);
+                const priorRecords = this.recordsByPath.get(path) ?? [];
+                const priorLinks = priorRecords.filter(record => record.typeId === TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS);
+                if (webLinkBodyStampsMatch(this.webLinkBodyStamps.get(path), bodyStamp)) {
+                    const sections = getMarkdownStructureRecordsForFile(file, cache);
+                    nextRecordsByPath.set(path, Object.freeze([...sections, ...priorLinks].sort(compareRecords)));
+                    nextWebLinkBodyStamps.set(path, bodyStamp);
+                    continue;
+                }
+                let content: string | undefined;
+                const bodyTooLarge = isMarkdownNote(file, cache) && !canReadWebLinkBody(file);
+                if (isMarkdownNote(file, cache) && !bodyTooLarge) {
+                    try {
+                        content = await this.app.vault.cachedRead(file);
+                    } catch {
+                        failedReadCount += 1;
+                    }
+                }
+                const currentRecords = getMarkdownStructureRecordsForFile(file, cache, content);
+                if (content === undefined && !bodyTooLarge) {
+                    nextRecordsByPath.set(path, Object.freeze([...currentRecords, ...priorLinks].sort(compareRecords)));
+                    const previousStamp = this.webLinkBodyStamps.get(path);
+                    if (previousStamp) {
+                        nextWebLinkBodyStamps.set(path, previousStamp);
+                    }
+                } else {
+                    nextRecordsByPath.set(path, currentRecords);
+                    nextWebLinkBodyStamps.set(path, bodyStamp);
+                }
             }
-            nextRecordsByPath.set(normalizePath(file.path), getMarkdownStructureRecordsForFile(file, cache));
+        };
+        await Promise.all(Array.from({ length: Math.min(WEB_LINK_READ_CONCURRENCY, Math.max(1, files.length)) }, worker));
+        if (generation !== this.rebuildGeneration) {
+            return this.snapshot;
+        }
+
+        // A metadata/rename/delete event can arrive while the bounded reads are
+        // in flight. Preserve every path changed after this rebuild began.
+        this.pathVersions.forEach((version, path) => {
+            if (version <= rebuildStartVersion) {
+                return;
+            }
+            const current = this.recordsByPath.get(path);
+            if (current) {
+                nextRecordsByPath.set(path, current);
+                const currentStamp = this.webLinkBodyStamps.get(path);
+                if (currentStamp) {
+                    nextWebLinkBodyStamps.set(path, currentStamp);
+                }
+            } else {
+                nextRecordsByPath.delete(path);
+                nextWebLinkBodyStamps.delete(path);
+            }
+        });
+        if (failedReadCount > 0) {
+            console.warn('[TPS Notebook Navigator] Web-link body scan skipped unreadable Markdown files', {
+                count: failedReadCount
+            });
         }
         this.recordsByPath.clear();
         nextRecordsByPath.forEach((records, path) => this.recordsByPath.set(path, records));
+        this.webLinkBodyStamps.clear();
+        nextWebLinkBodyStamps.forEach((stamp, path) => this.webLinkBodyStamps.set(path, stamp));
         return this.publish();
     }
 
-    /** Applies the authoritative cache delivered by metadataCache.changed. */
-    updateFile(file: TFile, cache: CachedMetadata): TpsNavigatorTypesSnapshot {
+    /** Applies the authoritative cache and body delivered by metadataCache.changed. */
+    updateFile(file: TFile, cache: CachedMetadata, content?: string): TpsNavigatorTypesSnapshot {
         const path = normalizePath(file.path);
-        const records = getMarkdownStructureRecordsForFile(file, cache);
+        const currentRecords = getMarkdownStructureRecordsForFile(file, cache, content);
+        const eligible = isMarkdownNote(file, cache);
+        const records =
+            !eligible || typeof content === 'string'
+                ? currentRecords
+                : Object.freeze(
+                      [
+                          ...currentRecords,
+                          ...(this.recordsByPath.get(path) ?? []).filter(record => record.typeId === TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS)
+                      ].sort(compareRecords)
+                  );
+        if (!eligible) {
+            this.webLinkBodyStamps.delete(path);
+        } else if (typeof content === 'string') {
+            // A body can change without changing the resulting link rows. Keep
+            // the stat cache current so a later resolved rebuild does not read
+            // the same body again merely because recordsMatch returns early.
+            this.webLinkBodyStamps.set(path, getWebLinkBodyStamp(file));
+        }
         if (recordsMatch(this.recordsByPath.get(path), records)) {
+            // Even a visually identical metadata event is newer than a full
+            // rebuild that may still be reading this path in the background.
+            this.pathVersions.set(path, ++this.pathVersion);
             return this.snapshot;
         }
         this.recordsByPath.set(path, records);
+        this.pathVersions.set(path, ++this.pathVersion);
         return this.publish();
     }
 
     removePath(path: string): TpsNavigatorTypesSnapshot {
-        if (!this.recordsByPath.delete(normalizePath(path))) {
-            return this.snapshot;
-        }
-        return this.publish();
+        const normalizedPath = normalizePath(path);
+        const removed = this.recordsByPath.delete(normalizedPath);
+        this.webLinkBodyStamps.delete(normalizedPath);
+        this.pathVersions.set(normalizedPath, ++this.pathVersion);
+        return removed ? this.publish() : this.snapshot;
     }
 
     renameFile(file: TFile, oldPath: string): TpsNavigatorTypesSnapshot {
         const previousPath = normalizePath(oldPath);
         const nextPath = normalizePath(file.path);
         const previousRecords = this.recordsByPath.get(previousPath);
+        const previousBodyStamp = this.webLinkBodyStamps.get(previousPath);
         const removedPreviousPath = previousPath !== nextPath && this.recordsByPath.delete(previousPath);
+        if (previousPath !== nextPath) {
+            this.webLinkBodyStamps.delete(previousPath);
+        }
         const cache = this.app.metadataCache.getFileCache(file);
         if (!cache) {
+            if (previousPath !== nextPath) {
+                this.pathVersions.set(previousPath, ++this.pathVersion);
+                this.pathVersions.set(nextPath, ++this.pathVersion);
+            }
             return removedPreviousPath ? this.publish() : this.snapshot;
         }
-        const nextRecords = getMarkdownStructureRecordsForFile(file, cache);
+        if (!isMarkdownNote(file, cache)) {
+            const removedNextPath = this.recordsByPath.delete(nextPath);
+            this.webLinkBodyStamps.delete(nextPath);
+            this.pathVersions.set(previousPath, ++this.pathVersion);
+            this.pathVersions.set(nextPath, ++this.pathVersion);
+            return removedPreviousPath || removedNextPath ? this.publish() : this.snapshot;
+        }
+        const nextSections = getMarkdownStructureRecordsForFile(file, cache);
+        const previousLinks = (previousRecords ?? [])
+            .filter(record => record.typeId === TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS)
+            .map(record => {
+                const startOffset = record.sourceOffset;
+                const endOffset = record.sourceEndOffset;
+                if (!Number.isSafeInteger(startOffset) || !Number.isSafeInteger(endOffset)) {
+                    return null;
+                }
+                const locatorKey = createWebLinkLocatorKey(nextPath, Number(startOffset), Number(endOffset));
+                return Object.freeze({ ...record, id: locatorKey, sourcePath: nextPath, locatorKey });
+            })
+            .filter((record): record is TpsNavigatorTypeRecord => record !== null);
+        const nextRecords = Object.freeze([...nextSections, ...previousLinks].sort(compareRecords));
         if (previousPath === nextPath && recordsMatch(previousRecords, nextRecords)) {
             return this.snapshot;
         }
         this.recordsByPath.set(nextPath, nextRecords);
+        if (previousBodyStamp) {
+            this.webLinkBodyStamps.set(nextPath, previousBodyStamp);
+        }
+        this.pathVersions.set(previousPath, ++this.pathVersion);
+        this.pathVersions.set(nextPath, ++this.pathVersion);
         return this.publish();
     }
 
@@ -245,12 +483,28 @@ export class MarkdownStructureTypesIndex {
         if (!(file instanceof TFile) || file.extension.toLocaleLowerCase() !== 'md') {
             return { ok: false, reason: 'missing-file' };
         }
-        const currentRecords = getMarkdownStructureRecordsForFile(file, this.app.metadataCache.getFileCache(file));
-        const current = currentRecords.find(candidate => candidate.locatorKey === record.locatorKey && candidate.typeId === record.typeId);
+        let content: string | undefined;
+        if (record.typeId === TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS) {
+            if (!canReadWebLinkBody(file)) {
+                return { ok: false, reason: 'stale-locator' };
+            }
+            try {
+                content = await this.app.vault.cachedRead(file);
+            } catch (error) {
+                return { ok: false, reason: 'read-failed', error };
+            }
+        }
+        const currentRecords = getMarkdownStructureRecordsForFile(file, this.app.metadataCache.getFileCache(file), content);
+        const current = currentRecords.find(
+            candidate =>
+                candidate.locatorKey === record.locatorKey &&
+                candidate.typeId === record.typeId &&
+                candidate.referenceTarget === record.referenceTarget
+        );
         if (!current?.lineNumber) {
             return { ok: false, reason: 'stale-locator' };
         }
-        return openMarkdownSourceLocation(this.app, file, current.lineNumber);
+        return openMarkdownSourceLocation(this.app, file, current.lineNumber, current.columnNumber ?? 0);
     }
 
     private publish(): TpsNavigatorTypesSnapshot {

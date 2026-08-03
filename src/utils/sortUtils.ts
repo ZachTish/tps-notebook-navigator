@@ -167,18 +167,23 @@ function extractPropertySortParts(value: unknown): string[] {
     return [];
 }
 
-export function getPropertySortValueFromRecord(frontmatter: unknown, propertyKey: string): string | null {
-    if (!isRecord(frontmatter)) {
-        return null;
-    }
-
-    const parts = extractPropertySortParts(getMatchingRecordValue(frontmatter, propertyKey));
+/** Normalizes one already-resolved property value for presentation sorting. */
+export function getPropertySortValue(value: unknown): string | null {
+    const parts = extractPropertySortParts(value);
     if (parts.length === 0) {
         return null;
     }
 
     const joined = parts.join(' ').trim();
     return joined.length > 0 ? joined : null;
+}
+
+export function getPropertySortValueFromRecord(frontmatter: unknown, propertyKey: string): string | null {
+    if (!isRecord(frontmatter)) {
+        return null;
+    }
+
+    return getPropertySortValue(getMatchingRecordValue(frontmatter, propertyKey));
 }
 
 export interface PropertyGroupingValue {
@@ -191,18 +196,97 @@ export interface PropertyGroupingValue {
     numericValue: number | null;
 }
 
+export interface PropertyDayGroupingValue {
+    /** Canonical local calendar-day keys. Arrays retain their distinct ordered day values. */
+    parts: string[];
+    /** Local start-of-day timestamp for the first part, used for chronological group order. */
+    sortValue: number;
+}
+
+function getValidLocalDay(dayKey: string): { key: string; timestamp: number } | null {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(dayKey);
+    if (!match) {
+        return null;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        return null;
+    }
+    return { key: dayKey, timestamp: date.getTime() };
+}
+
+function getLocalDayFromScalar(value: unknown): { key: string; timestamp: number } | null {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        // GCM's local scheduled format begins with YYYY-MM-DD. Preserve that calendar day directly
+        // instead of allowing UTC offset conversion to move it into an adjacent local day.
+        const leadingDay = /^(\d{4}-\d{2}-\d{2})(?:$|[T\s])/u.exec(trimmed)?.[1];
+        if (leadingDay) {
+            return getValidLocalDay(leadingDay);
+        }
+    }
+
+    let timestamp: number;
+    if (value instanceof Date) {
+        timestamp = value.getTime();
+    } else if (typeof value === 'number') {
+        timestamp = value < 32_503_680_000 ? value * 1_000 : value;
+    } else if (typeof value === 'string') {
+        timestamp = Date.parse(value.trim());
+    } else {
+        return null;
+    }
+    if (!Number.isFinite(timestamp)) {
+        return null;
+    }
+    const date = new Date(timestamp);
+    if (!Number.isFinite(date.getTime())) {
+        return null;
+    }
+    const key = `${date.getFullYear().toString().padStart(4, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date
+        .getDate()
+        .toString()
+        .padStart(2, '0')}`;
+    return { key, timestamp: new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() };
+}
+
+/** Normalizes one property value into local calendar-day buckets. */
+export function getPropertyDayGroupingValue(value: unknown): PropertyDayGroupingValue | null {
+    const rawValues = Array.isArray(value) ? value : [value];
+    const days: { key: string; timestamp: number }[] = [];
+    const seen = new Set<string>();
+    rawValues.forEach(rawValue => {
+        const day = getLocalDayFromScalar(rawValue);
+        if (day && !seen.has(day.key)) {
+            seen.add(day.key);
+            days.push(day);
+        }
+    });
+    if (days.length === 0) {
+        return null;
+    }
+    return { parts: days.map(day => day.key), sortValue: days[0].timestamp };
+}
+
+export function getPropertyDayGroupingValueFromRecord(frontmatter: unknown, propertyKey: string): PropertyDayGroupingValue | null {
+    if (!isRecord(frontmatter)) {
+        return null;
+    }
+    return getPropertyDayGroupingValue(getMatchingRecordValue(frontmatter, propertyKey));
+}
+
 /**
  * Extracts the frontmatter value used for property grouping.
  * Returns null when the property is missing or empty. A single-element list produces the
  * same parts as its scalar value, so `[value]` and `value` land in the same group,
  * matching how Obsidian Bases compares list values against scalars.
  */
-export function getPropertyGroupingValueFromRecord(frontmatter: unknown, propertyKey: string): PropertyGroupingValue | null {
-    if (!isRecord(frontmatter)) {
-        return null;
-    }
-
-    const rawValue = getMatchingRecordValue(frontmatter, propertyKey);
+/** Normalizes one already-resolved property value into an exact-value grouping bucket. */
+export function getPropertyGroupingValue(rawValue: unknown): PropertyGroupingValue | null {
     const parts = extractPropertySortParts(rawValue);
     if (parts.length === 0) {
         return null;
@@ -212,6 +296,14 @@ export function getPropertyGroupingValueFromRecord(frontmatter: unknown, propert
         parts,
         numericValue: typeof rawValue === 'number' && Number.isFinite(rawValue) ? rawValue : null
     };
+}
+
+export function getPropertyGroupingValueFromRecord(frontmatter: unknown, propertyKey: string): PropertyGroupingValue | null {
+    if (!isRecord(frontmatter)) {
+        return null;
+    }
+
+    return getPropertyGroupingValue(getMatchingRecordValue(frontmatter, propertyKey));
 }
 
 export function replacePropertySortKey(value: string, oldKeyNormalized: string, newKeyDisplay: string | null): string {

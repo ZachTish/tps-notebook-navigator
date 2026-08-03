@@ -37,7 +37,8 @@ const LINE_TYPE_IDS: readonly TpsNavigatorLineTypeId[] = [
     TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS,
     TPS_NAVIGATOR_TYPE_IDS.CALLOUTS,
     TPS_NAVIGATOR_TYPE_IDS.BLOCKQUOTES,
-    TPS_NAVIGATOR_TYPE_IDS.TABLES
+    TPS_NAVIGATOR_TYPE_IDS.TABLES,
+    TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS
 ];
 
 function createDb(): IndexedDBStorage {
@@ -312,6 +313,88 @@ describe('Type list routing', () => {
             );
         }
     );
+
+    it('preserves source-row sorting and Note-vs-Line property groups during a global Type search', () => {
+        const mode = resolveTypeListMode(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES);
+        const later: NavigatorProvidedRow = {
+            providerId: 'tps/entity-types',
+            id: 'later',
+            kind: 'tps/entity-type/task',
+            label: 'Later',
+            sourcePath: 'Tasks/Today.md',
+            sourceLineNumber: 8,
+            properties: { scheduled: '2026-08-04 09:00:00' }
+        };
+        const earlier: NavigatorProvidedRow = {
+            ...later,
+            id: 'earlier',
+            label: 'Earlier',
+            sourceLineNumber: 2,
+            properties: { scheduled: '2026-08-03 18:00:00' }
+        };
+        const coreListItems: ListPaneItem[] = [
+            { type: ListPaneItemType.TOP_SPACER, data: '', key: 'top-spacer' },
+            { type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom-spacer' }
+        ];
+        const presentedItems: ListPaneItem[] = [
+            { type: ListPaneItemType.TOP_SPACER, data: '', key: 'top-spacer' },
+            {
+                type: ListPaneItemType.HEADER,
+                data: '2026-08-03',
+                key: 'standalone-type-header:line-property-day:2026-08-03',
+                headerKind: 'property'
+            },
+            {
+                type: ListPaneItemType.PROVIDER_ROW,
+                data: earlier,
+                key: `provider:${earlier.providerId}:${earlier.id}`,
+                providerTypeId: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
+            },
+            {
+                type: ListPaneItemType.HEADER,
+                data: '2026-08-04',
+                key: 'standalone-type-header:line-property-day:2026-08-04',
+                headerKind: 'property'
+            },
+            {
+                type: ListPaneItemType.PROVIDER_ROW,
+                data: later,
+                key: `provider:${later.providerId}:${later.id}`,
+                providerTypeId: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
+            },
+            { type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom-spacer' }
+        ];
+
+        const items = composeTypeListItems({
+            mode,
+            coreListItems,
+            typeRows: [later, earlier],
+            providerRows: [],
+            globalTypeSearch: true,
+            searchTypeGroups: [
+                {
+                    typeId: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
+                    label: 'Checkboxes',
+                    rows: [later, earlier],
+                    presentedItems
+                }
+            ]
+        });
+
+        expect(items.filter(item => item.type === ListPaneItemType.HEADER).map(item => item.data)).toEqual([
+            'Checkboxes',
+            '2026-08-03',
+            '2026-08-04'
+        ]);
+        expect(
+            items.filter(item => item.type === ListPaneItemType.PROVIDER_ROW).map(item => (item.data as NavigatorProvidedRow).id)
+        ).toEqual(['earlier', 'later']);
+        expect(items.filter(item => item.type === ListPaneItemType.PROVIDER_ROW).map(item => item.providerTypeId)).toEqual([
+            TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
+            TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
+        ]);
+        expect(items.map(item => item.key)).toEqual(expect.arrayContaining([expect.stringContaining('search-type:structural:task:')]));
+    });
 
     it('keeps external Type collections in standalone provider mode', () => {
         const providerTypeId = createTpsNavigatorProviderTypeId('example/entities', 'contexts')!;

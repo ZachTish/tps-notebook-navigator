@@ -88,12 +88,16 @@ import { collectTypeScopeVisibleFilePaths } from '../services/rows/providerScope
 import { useNavigatorTypes } from './useNavigatorTypes';
 import { useNavigatorTypeRows } from './useNavigatorTypeRows';
 import { collectFileBackedTypeFiles, composeTypeListItems, resolveTypeListMode } from './listPaneData/typeListItems';
-import { buildStandaloneStructuralTypePresentation } from './listPaneData/standaloneTypePresentation';
+import {
+    buildStandaloneStructuralTypePresentation,
+    getEffectiveStandaloneStructuralTypeGrouping
+} from './listPaneData/standaloneTypePresentation';
 import { isTpsNavigatorLineTypeId } from '../types/navigatorTypes';
 import {
     fileMatchesStructuralTypeSearch,
     getStructuralTypeSearchCollections,
     getStructuralTypeSourceSearchTokens,
+    isMixedStructuralSearchActive,
     shouldUseGlobalTypeSearch
 } from './listPaneData/structuralTypeSearch';
 
@@ -166,6 +170,8 @@ interface UseListPaneDataResult {
     effectiveSearchProvider: SearchProvider;
     /** Local day key in YYYY-MM-DD format */
     localDayKey: string;
+    /** Whether internal Filter Search is currently mixing structural rows into this result scope. */
+    mixedStructuralSearchActive: boolean;
 }
 
 /**
@@ -270,6 +276,14 @@ export function useListPaneData({
         selectedType,
         hasSearchQuery,
         useOmnisearch
+    });
+    const mixedStructuralSearchActive = isMixedStructuralSearchActive({
+        enabled: settings.tpsTypesNavigationEnabled,
+        isTypeSelection,
+        useGlobalTypeSearch,
+        useOmnisearch,
+        hasSearchQuery,
+        hasParsedSearchTokens: parsedSearchTokens !== null
     });
     const activeFilterSearchTokens = useMemo(() => {
         if (!parsedSearchTokens || useOmnisearch) {
@@ -741,11 +755,12 @@ export function useListPaneData({
         if (!isLineBackedTypeSelection || !isTpsNavigatorLineTypeId(selectedType)) {
             return undefined;
         }
+        const effectiveStandaloneGroupBy = getEffectiveStandaloneStructuralTypeGrouping(selectedType, groupBy, mixedStructuralSearchActive);
         return buildStandaloneStructuralTypePresentation({
             rows: typeRows,
             selectedType,
             sort: sortSpec,
-            groupBy,
+            groupBy: effectiveStandaloneGroupBy,
             dayKey,
             collapsedListGroups,
             resolveFile: sourcePath => app.vault.getFileByPath(sourcePath),
@@ -761,6 +776,7 @@ export function useListPaneData({
         groupBy,
         getFileTimestamps,
         isLineBackedTypeSelection,
+        mixedStructuralSearchActive,
         selectedType,
         sortSpec,
         typeRows
@@ -808,13 +824,7 @@ export function useListPaneData({
         selection: rowProviderSelection
     });
     const searchTypeGroups = useMemo(() => {
-        if (
-            !settings.tpsTypesNavigationEnabled ||
-            (isTypeSelection && !useGlobalTypeSearch) ||
-            useOmnisearch ||
-            !hasSearchQuery ||
-            !parsedSearchTokens
-        ) {
+        if (!mixedStructuralSearchActive || !parsedSearchTokens) {
             return [];
         }
 
@@ -845,23 +855,38 @@ export function useListPaneData({
                       {
                           typeId,
                           label: descriptorLabelById.get(typeId) ?? typeId,
-                          rows
+                          rows,
+                          presentedItems: buildStandaloneStructuralTypePresentation({
+                              rows,
+                              selectedType: typeId,
+                              sort: sortSpec,
+                              groupBy,
+                              dayKey,
+                              collapsedListGroups,
+                              resolveFile: sourcePath => app.vault.getFileByPath(sourcePath),
+                              getFrontmatter: file => app.metadataCache.getFileCache(file)?.frontmatter ?? null,
+                              getFileTimestamps,
+                              noValueLabel: strings.listPane.propertyGroupNoValue
+                          })
                       }
                   ];
         });
     }, [
+        app.metadataCache,
+        app.vault,
         activateTypeRecord,
         addTypeTaskContextMenuItems,
-        hasSearchQuery,
-        isTypeSelection,
+        collapsedListGroups,
+        dayKey,
+        getFileTimestamps,
+        groupBy,
+        mixedStructuralSearchActive,
         parsedSearchTokens,
         setTypeTaskCheckbox,
-        settings.tpsTypesNavigationEnabled,
+        sortSpec,
         structuralSourcePathSet,
         trimmedQuery,
-        typeSnapshot,
-        useGlobalTypeSearch,
-        useOmnisearch
+        typeSnapshot
     ]);
     const listItems = useMemo(() => {
         return composeTypeListItems({
@@ -962,6 +987,7 @@ export function useListPaneData({
         searchMeta: searchMetaMap,
         appliedSearchQuery: appliedSearchState.query,
         effectiveSearchProvider: appliedSearchState.provider,
-        localDayKey: dayKey
+        localDayKey: dayKey,
+        mixedStructuralSearchActive
     };
 }

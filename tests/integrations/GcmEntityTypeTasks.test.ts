@@ -9,11 +9,12 @@ import {
     type GcmEntityIndexApiLike,
     type GcmEntityIndexRecordLike
 } from '../../src/integrations/gcm/GcmEntityTypeIndex';
-import type {
-    GcmTaskApiLike,
-    GcmTaskCheckboxesApiLike,
-    GcmTaskLinesApiLike,
-    GcmTaskRecordLike
+import {
+    isGcmTaskRecord,
+    type GcmTaskApiLike,
+    type GcmTaskCheckboxesApiLike,
+    type GcmTaskLinesApiLike,
+    type GcmTaskRecordLike
 } from '../../src/integrations/gcm/gcmTaskApi';
 import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
@@ -153,10 +154,18 @@ function createAppWithFiles(paths: readonly string[]): App {
 }
 
 describe('GCM entity Type task integration', () => {
+    it('accepts optional string task fields and rejects malformed field payloads', () => {
+        expect(isGcmTaskRecord(taskRecord())).toBe(true);
+        expect(isGcmTaskRecord(taskRecord({ fields: { scheduled: '2026-08-03 09:30:00' } }))).toBe(true);
+        expect(isGcmTaskRecord({ ...taskRecord(), fields: { scheduled: 42 } })).toBe(false);
+        expect(isGcmTaskRecord({ ...taskRecord(), fields: new Date() })).toBe(false);
+    });
+
     it('hydrates exact live task state into the Checkboxes collection', async () => {
         const entity = taskEntity();
         const entityApi = createEntityApi(entity);
-        const tasks = createTaskApi([taskRecord()]);
+        const fields = { scheduled: '2026-08-03 09:30:00', Priority: 'high' };
+        const tasks = createTaskApi([taskRecord({ fields })]);
         const taskLines = createTaskLinesApi();
         const adapter = new GcmEntityTypeIndexAdapter(createAppWithFile());
         expect(adapter.acceptApiPayload(payload(entityApi.api, tasks.api, taskLines.api))).toBe(true);
@@ -176,7 +185,24 @@ describe('GCM entity Type task integration', () => {
             canMutateCheckbox: true,
             hasContextMenu: true
         });
+        expect(structural?.task?.fields).toEqual(fields);
+        expect(structural?.task?.fields).not.toBe(fields);
+        expect(Object.isFrozen(structural?.task?.fields)).toBe(true);
+        fields.scheduled = '2026-08-04 10:00:00';
+        expect(structural?.task?.fields?.scheduled).toBe('2026-08-03 09:30:00');
         expect(structural?.checked).toBe(false);
+    });
+
+    it('keeps older GCM v1 task records without fields compatible', async () => {
+        const entityApi = createEntityApi(taskEntity());
+        const tasks = createTaskApi([taskRecord()]);
+        const adapter = new GcmEntityTypeIndexAdapter(createAppWithFile());
+        adapter.acceptApiPayload(payload(entityApi.api, tasks.api, createTaskLinesApi().api));
+
+        const task = (await adapter.loadSnapshot()).recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES)?.[0]?.task;
+
+        expect(task?.title).toBe('Ship it');
+        expect(task?.fields).toBeUndefined();
     });
 
     it('degrades a failed task hydration path to open-only without failing the Type snapshot', async () => {

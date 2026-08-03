@@ -240,6 +240,13 @@ export function isTypeNavigationSortOrder(value: unknown): value is TypeNavigati
     );
 }
 
+/** Destination used when the Types create action inserts a Markdown resource. */
+export type TpsResourceCreationTarget = 'daily-note' | 'active-note' | 'specific-note';
+
+export function isTpsResourceCreationTarget(value: unknown): value is TpsResourceCreationTarget {
+    return value === 'daily-note' || value === 'active-note' || value === 'specific-note';
+}
+
 /** Scope of items that button actions affect */
 export type ItemScope = 'all' | 'folders-only' | 'tags-only' | 'properties-only';
 
@@ -436,36 +443,75 @@ export type ListNoteGroupingBaseOption = 'custom' | 'date' | 'folder';
 /** Direction applied to property grouping group order */
 export type PropertyGroupingDirection = 'asc' | 'desc';
 
+/** Whether property grouping preserves the complete value or buckets date/time values by local calendar day. */
+export type PropertyGroupingGranularity = 'value' | 'day';
+
+/** Metadata source used by property grouping in source-backed Type views. */
+export type PropertyGroupingSource = 'note' | 'line';
+
 /**
  * Grouping options for list pane notes.
  * Property grouping is stored as `property:<frontmatter key>` (ascending group order) or
- * `property-desc:<frontmatter key>` (descending group order) so appearance records keep a
- * single scalar `groupBy` value across settings sync. The direction lives in the prefix
- * because keys may themselves contain separator characters such as `:`.
+ * `property-desc:<frontmatter key>` (descending group order). Calendar-day grouping uses
+ * the backward-compatible `property-day:` and `property-day-desc:` prefixes. These historical
+ * forms always read owning-note frontmatter. Source-backed Type views can explicitly read only
+ * row-local fields through equivalent `line-property...` prefixes. Appearance records therefore
+ * keep one scalar `groupBy` value across settings sync, and keys may contain `:`.
  */
-export type ListNoteGroupingOption = ListNoteGroupingBaseOption | `property:${string}` | `property-desc:${string}`;
+export type ListNoteGroupingOption =
+    | ListNoteGroupingBaseOption
+    | `property:${string}`
+    | `property-desc:${string}`
+    | `property-day:${string}`
+    | `property-day-desc:${string}`
+    | `line-property:${string}`
+    | `line-property-desc:${string}`
+    | `line-property-day:${string}`
+    | `line-property-day-desc:${string}`;
 
 const PROPERTY_GROUPING_PREFIX = 'property:';
 const PROPERTY_GROUPING_DESC_PREFIX = 'property-desc:';
+const PROPERTY_DAY_GROUPING_PREFIX = 'property-day:';
+const PROPERTY_DAY_GROUPING_DESC_PREFIX = 'property-day-desc:';
+const LINE_PROPERTY_GROUPING_PREFIX = 'line-property:';
+const LINE_PROPERTY_GROUPING_DESC_PREFIX = 'line-property-desc:';
+const LINE_PROPERTY_DAY_GROUPING_PREFIX = 'line-property-day:';
+const LINE_PROPERTY_DAY_GROUPING_DESC_PREFIX = 'line-property-day-desc:';
 
 function isListNoteGroupingBaseOption(value: unknown): value is ListNoteGroupingBaseOption {
     return value === 'custom' || value === 'date' || value === 'folder';
 }
 
-function parsePropertyGroupingOption(value: unknown): { propertyKey: string; direction: PropertyGroupingDirection } | null {
+function parsePropertyGroupingOption(value: unknown): {
+    propertyKey: string;
+    direction: PropertyGroupingDirection;
+    granularity: PropertyGroupingGranularity;
+    source: PropertyGroupingSource;
+} | null {
     if (typeof value !== 'string') {
         return null;
     }
 
-    // The descending prefix must be tested first because both prefixes start with `property`.
-    const direction: PropertyGroupingDirection = value.startsWith(PROPERTY_GROUPING_DESC_PREFIX) ? 'desc' : 'asc';
-    const prefix = direction === 'desc' ? PROPERTY_GROUPING_DESC_PREFIX : PROPERTY_GROUPING_PREFIX;
-    if (!value.startsWith(prefix)) {
+    // Test the most specific prefixes first so every stored scalar has one unambiguous interpretation.
+    const matched = (
+        [
+            [LINE_PROPERTY_DAY_GROUPING_DESC_PREFIX, 'desc', 'day', 'line'],
+            [LINE_PROPERTY_DAY_GROUPING_PREFIX, 'asc', 'day', 'line'],
+            [LINE_PROPERTY_GROUPING_DESC_PREFIX, 'desc', 'value', 'line'],
+            [LINE_PROPERTY_GROUPING_PREFIX, 'asc', 'value', 'line'],
+            [PROPERTY_DAY_GROUPING_DESC_PREFIX, 'desc', 'day', 'note'],
+            [PROPERTY_DAY_GROUPING_PREFIX, 'asc', 'day', 'note'],
+            [PROPERTY_GROUPING_DESC_PREFIX, 'desc', 'value', 'note'],
+            [PROPERTY_GROUPING_PREFIX, 'asc', 'value', 'note']
+        ] as const
+    ).find(([prefix]) => value.startsWith(prefix));
+    if (!matched) {
         return null;
     }
 
+    const [prefix, direction, granularity, source] = matched;
     const propertyKey = value.slice(prefix.length).trim();
-    return propertyKey.length > 0 ? { propertyKey, direction } : null;
+    return propertyKey.length > 0 ? { propertyKey, direction, granularity, source } : null;
 }
 
 /** Returns the frontmatter key encoded in a property grouping option, or null for base grouping modes. */
@@ -478,9 +524,60 @@ export function getPropertyGroupingDirection(value: unknown): PropertyGroupingDi
     return parsePropertyGroupingOption(value)?.direction ?? null;
 }
 
-export function createPropertyGroupingOption(propertyKey: string, direction: PropertyGroupingDirection = 'asc'): ListNoteGroupingOption {
-    const prefix = direction === 'desc' ? PROPERTY_GROUPING_DESC_PREFIX : PROPERTY_GROUPING_PREFIX;
+/** Returns the value granularity encoded in a property grouping option, or null for base grouping modes. */
+export function getPropertyGroupingGranularity(value: unknown): PropertyGroupingGranularity | null {
+    return parsePropertyGroupingOption(value)?.granularity ?? null;
+}
+
+/** Returns the metadata source encoded in a property grouping option, or null for base grouping modes. */
+export function getPropertyGroupingSource(value: unknown): PropertyGroupingSource | null {
+    return parsePropertyGroupingOption(value)?.source ?? null;
+}
+
+export function createPropertyGroupingOption(
+    propertyKey: string,
+    direction: PropertyGroupingDirection = 'asc',
+    granularity: PropertyGroupingGranularity = 'value',
+    source: PropertyGroupingSource = 'note'
+): ListNoteGroupingOption {
+    const prefix =
+        source === 'line'
+            ? granularity === 'day'
+                ? direction === 'desc'
+                    ? LINE_PROPERTY_DAY_GROUPING_DESC_PREFIX
+                    : LINE_PROPERTY_DAY_GROUPING_PREFIX
+                : direction === 'desc'
+                  ? LINE_PROPERTY_GROUPING_DESC_PREFIX
+                  : LINE_PROPERTY_GROUPING_PREFIX
+            : granularity === 'day'
+              ? direction === 'desc'
+                  ? PROPERTY_DAY_GROUPING_DESC_PREFIX
+                  : PROPERTY_DAY_GROUPING_PREFIX
+              : direction === 'desc'
+                ? PROPERTY_GROUPING_DESC_PREFIX
+                : PROPERTY_GROUPING_PREFIX;
     return `${prefix}${propertyKey.trim()}`;
+}
+
+/** Switches only the metadata source while preserving key, direction, and exact/day granularity. */
+export function replacePropertyGroupingSource(value: unknown, source: PropertyGroupingSource): ListNoteGroupingOption | null {
+    const parsed = parsePropertyGroupingOption(value);
+    return parsed ? createPropertyGroupingOption(parsed.propertyKey, parsed.direction, parsed.granularity, source) : null;
+}
+
+/**
+ * Returns the effective grouping value for a surface that cannot currently read line properties.
+ * The persisted line source remains untouched when structural search closes, while native note rows,
+ * menu choices, and public presentation state report their frontmatter source.
+ */
+export function normalizePropertyGroupingSourceForMenu(
+    value: ListNoteGroupingOption,
+    canChooseLinePropertySource: boolean
+): ListNoteGroupingOption {
+    if (canChooseLinePropertySource || getPropertyGroupingSource(value) !== 'line') {
+        return value;
+    }
+    return replacePropertyGroupingSource(value, 'note') ?? value;
 }
 
 /**
@@ -504,7 +601,7 @@ export function normalizeListNoteGroupingOption(value: unknown): ListNoteGroupin
 
     // Re-encode property groupings so stored values always carry a trimmed key.
     const parsed = parsePropertyGroupingOption(value);
-    return parsed ? createPropertyGroupingOption(parsed.propertyKey, parsed.direction) : null;
+    return parsed ? createPropertyGroupingOption(parsed.propertyKey, parsed.direction, parsed.granularity, parsed.source) : null;
 }
 
 export interface AppearanceGroupingValue {
@@ -613,6 +710,8 @@ export interface NotebookNavigatorSettings {
     // TPS integration
     tpsTypesNavigationEnabled: boolean;
     typeNavigationSortOrder: TypeNavigationSortOrder;
+    tpsResourceCreationTarget: TpsResourceCreationTarget;
+    tpsResourceCreationSpecificFile: string | null;
     tpsGcmTaskRowsEnabled: boolean;
     tpsGcmTaskRowsIncludeCompleted: boolean;
     tpsGcmTaskRowsPerNote: number;

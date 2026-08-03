@@ -79,15 +79,34 @@ describe('public list presentation plans', () => {
         const lineType = { type: ItemType.TYPE, key: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES } as const;
         const linePlan = createNavigatorListPresentationPlan(current, lineType, {
             sort: { option: 'title-desc' },
-            groupBy: 'property:status'
+            groupBy: 'line-property-day:status'
         });
         expect(linePlan).not.toBeNull();
         applyNavigatorListPresentationPlan(current, linePlan!);
         expect(current.typeSortOverrides?.[TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]).toBe('title-desc');
-        expect(current.typeAppearances?.[TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]).toEqual({ groupBy: 'property:Status' });
+        expect(current.typeAppearances?.[TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]).toEqual({ groupBy: 'line-property-day:Status' });
         expect(createNavigatorListPresentationPlan(current, lineType, { displayMode: 'compact' })).toBeNull();
         expect(createNavigatorListPresentationPlan(current, lineType, { groupBy: 'folder' })).toBeNull();
         expect(createNavigatorListPresentationPlan(current, lineType, { groupBy: 'custom' })).not.toBeNull();
+        expect(createNavigatorListPresentationPlan(current, fileType, { groupBy: 'line-property:status' })).not.toBeNull();
+        expect(
+            createNavigatorListPresentationPlan(
+                current,
+                { type: ItemType.TYPE, key: TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS },
+                {
+                    groupBy: 'line-property:status'
+                }
+            )
+        ).toBeNull();
+        expect(
+            createNavigatorListPresentationPlan(
+                current,
+                { type: ItemType.TYPE, key: TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS },
+                {
+                    groupBy: 'line-property-day:status'
+                }
+            )
+        ).toBeNull();
         expect(
             createNavigatorListPresentationPlan(current, lineType, {
                 sort: { option: 'property-asc', propertyKey: 'Rank' }
@@ -98,7 +117,13 @@ describe('public list presentation plans', () => {
         current.propertySortKey = 'Rank, Priority';
         expect(createNavigatorListPresentationPlan(current, lineType, { groupBy: 'property:priority' })).not.toBeNull();
 
+        current.propertySortKey = 'Priority, Status, Rank';
         const tag = { type: ItemType.TAG, key: 'work' } as const;
+        const folder = { type: ItemType.FOLDER, key: 'Projects' } as const;
+        const property = { type: ItemType.PROPERTY, key: 'key:status' } as const;
+        expect(createNavigatorListPresentationPlan(current, folder, { groupBy: 'line-property:status' })).not.toBeNull();
+        expect(createNavigatorListPresentationPlan(current, tag, { groupBy: 'line-property-day:status' })).not.toBeNull();
+        expect(createNavigatorListPresentationPlan(current, property, { groupBy: 'line-property:status' })).not.toBeNull();
         expect(createNavigatorListPresentationPlan(current, tag, { groupBy: 'folder' })).toBeNull();
         expect(createNavigatorListPresentationPlan(current, tag, { groupBy: 'date', sort: { option: 'title-asc' } })).toBeNull();
         expect(createNavigatorListPresentationPlan(current, tag, { sort: { option: 'property-asc', propertyKey: 'Rank' } })).toBeNull();

@@ -27,7 +27,7 @@ The release assets are `main.js`, `manifest.json`, and `styles.css`. The minimum
 
 The integration surface is intentionally modular. The navigator owns presentation and row composition; a provider owns its data and actions. Provider failures are isolated and never block the normal file list.
 
-The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.15.0 is the tested completion baseline: task checkboxes complete or reopen the exact task through GCM's configured status/checkbox rules, selecting the title re-resolves and opens its source line, and right-click, mobile long-press, or **More actions** opens the same guarded GCM task menu available in Types. Custom checkbox markers remain visible instead of being flattened to a binary checkmark. Generic row providers can also add their own synchronous context-menu actions without granting the navigator access to provider internals. Older structurally compatible APIs without a safe task mutation or menu path degrade only that capability. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
+The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.15.0 remains the completion-capability baseline; 1.18.0 is the tested baseline for this release's generic task, bullet, and heading line-property grouping. Task checkboxes complete or reopen the exact task through GCM's configured status/checkbox rules, selecting the title re-resolves and opens its source line, and right-click, mobile long-press, or **More actions** opens the same guarded GCM task menu available in Types. Custom checkbox markers remain visible instead of being flattened to a binary checkmark. Generic row providers can also add their own synchronous context-menu actions without granting the navigator access to provider internals. Older structurally compatible APIs without a safe task mutation, menu, or raw-line-property path degrade only that capability. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
 
 ### Types navigation
 
@@ -38,23 +38,25 @@ The first-class **Types** section is enabled by default and has one flat built-i
 - Like the normal file view, YAML-backed manual ranking can write only to Markdown files. Non-Markdown Types retain filename,
   title, created, and modified sorting but cannot store a manual rank in frontmatter.
 - Exact-line collections are **Checkboxes**, **Bullets**, and **Headings**. TPS Global Context Menu's generic Entity Index v3 supplies their stable line locators without giving the Navigator a second Markdown parser. These rows use the native file-row visual language with a restrained line-type icon or live task checkbox, then re-resolve and open their current source line.
-- Cached-range collections are **Code blocks**, **Callouts**, **Blockquotes**, and **Tables**. They come directly from Obsidian's root-level `CachedMetadata.sections`, without reading note bodies or depending on GCM. Excalidraw Markdown is excluded. Each row names its owning note and starting line, shows the cached source range, and revalidates that locator before opening the source; an existing block id can follow movement. Nested syntax appears only when Obsidian publishes it as its own root-level section, and unsupported or future parser types are ignored until explicitly added. A fenced block itself therefore appears in **Code blocks**, while task/list/heading examples inside fences stay excluded from the GCM collections.
+- Navigator-owned source-range collections are **Code blocks**, **Callouts**, **Blockquotes**, **Tables**, and **Web links**. The first four come from Obsidian's root-level `CachedMetadata.sections` without reading bodies. Because Obsidian does not publish external URLs in `CachedMetadata.links`, Web links uses a bounded local Markdown scan: at most four concurrent reads, the shared 2 MB mobile / 8 MB desktop body limit, a 10,000-link per-file guard, and an mtime-plus-size cache for unchanged files. File-backed Types publish immediately and GCM exact-line loading runs in parallel, so this scan does not hold either catalog behind body I/O. It recognizes Markdown links, angle autolinks, and bare HTTP(S) URLs while excluding YAML frontmatter, HTML comments, Obsidian `%%` comments and hidden TPS carriers, Markdown image syntax, inline/indented/fenced code, vault links, mail links, and Excalidraw Markdown. No target is requested. Each row revalidates its current source before opening the owning note at the exact line and column. Only the URL origin (`scheme://host`) is displayed or searchable; credentials, path, query, and fragment data are omitted from labels, search text, locators, and diagnostic row ids.
 - Hydrated task entities in **Checkboxes** use GCM's canonical completion path with optimistic rollback. Right-click, mobile long-press, or **More actions** opens the same guarded GCM task menu. A task that cannot be matched exactly remains open-only rather than inventing state.
 - Task hydration batches cold reads across source files, then reuses a bounded per-path cache keyed by file metadata. Exact GCM and vault update paths invalidate that cache, including failed initial hydration, so unchanged vaults avoid repeated scans without leaving edited checkboxes stale.
-- Every fixed source-backed collection—**Checkboxes**, **Bullets**, **Headings**, **Code blocks**, **Callouts**, **Blockquotes**, and **Tables**—exposes **Sort** and **Group** controls. Rows can sort by their own title or by the owning note's filename, configured created/modified timestamp, or a configured non-manual frontmatter property; missing values and groups stay last. Date grouping is available for a date sort, configured non-manual property groups use the owning note's frontmatter, and **Custom** leaves source rows ungrouped because custom headers belong to files. Folder grouping, manual sorting/grouping, and display-mode/appearance editing remain file-only. External provider Types retain their provider-owned presentation.
+- Every fixed source-backed collection—**Checkboxes**, **Bullets**, **Headings**, **Code blocks**, **Callouts**, **Blockquotes**, **Tables**, and **Web links**—exposes **Sort** and **Group** controls. Rows can sort by their own title or by the owning note's filename, configured created/modified timestamp, or a configured non-manual property; missing values and groups stay last. Property sorting uses an exact GCM line field first for Checkboxes, Bullets, and Headings, then falls back to owning-note frontmatter when that field is absent; Navigator-owned source ranges have no inline-property contract and therefore use note frontmatter. Property grouping has an explicit **Property source** choice on those three GCM line Types and while an internal mixed search is active. **Note properties** reads only owning-note frontmatter. **Line properties** reads only exact GCM task/bullet/heading fields and sends blank or absent values—and Navigator-owned ranges with no line-property contract—to **No value** without falling back. Native note/file rows always use frontmatter under either search choice. Property grouping keeps the complete value by default, and **Property · Date** buckets valid date/time values by their written local `YYYY-MM-DD`. Existing saved groups retain note-frontmatter and exact-value semantics. Date grouping is available for a date sort, and **Custom** leaves source rows ungrouped because custom headers belong to files. Folder grouping, manual sorting/grouping, and display-mode/appearance editing remain file-only. External provider Types retain their provider-owned presentation.
+- The create button is available for **Checkboxes**, **Bullets**, **Headings**, **Code blocks**, **Callouts**, **Blockquotes**, **Tables**, and **Web links**. It atomically appends an editable scaffold and opens the inserted source position. Today's Daily Note is the default target; when it does not exist, Navigator creates it from the configured Daily Notes folder, format, and template before inserting, and an existing blank note accepts the scaffold normally. Checkbox creation asks for a title and delegates the write to GCM so checkbox/status mappings and hidden task fields stay canonical. Other file-backed Types and external provider Types remain non-creatable until they define a safe creation contract.
 - Counts and rows respect the active Navigator profile, hidden-folder/file/property/tag rules, file visibility, and the hidden-items override. Fenced examples that GCM excludes never become Navigator rows.
 - **Reorder navigation** edits the flat Types list in place. **Type order** offers **Default order**, **Name: A to Z**, **Name: Z to A**, **Most items first**, **Fewest items first**, and **Manual order**. Name and count modes sort automatically as the visible catalog changes; count modes use the same visibility-filtered quantities shown beside the Type rows, while provider collections that do not publish a count stay after counted Types. The editor continues to show those counts so the active ordering is inspectable.
 - Moving a Type with its up/down buttons or drag handle immediately switches the list to **Manual order**. New Types append without disturbing the saved sequence, and temporarily unavailable provider Type ids retain their positions so plugin load order does not erase the user's arrangement. **Default order** returns to the canonical catalog order without changing the public catalog itself.
 - The order mode and retained manual ids persist in TPS Notebook Navigator's own `data.json`. On mobile, the order selector stacks above the Types list, rows keep touch-sized up/down controls, and the existing handle-only drag interaction avoids turning the full row into a scroll-blocking drag target. Very narrow desktop panes prioritize readable Type names by hiding counts and revealing that row's arrow controls on hover or keyboard focus.
 - Exact-line, cached-range, and provider-owned rows have one transient row cursor and remain deliberately excluded from `TFile` multi-select, pinning, drag, rename, and persistence. File-backed Type results retain normal file interactions because they are real `TFile` rows. Dragging cached source ranges is intentionally deferred until it can preserve source syntax and locators safely.
-- Missing, disabled, incompatible, or incomplete GCM indexing affects only Checkboxes, Bullets, and Headings and produces a visible status row there. File-backed and cached-range collections remain available. TPS Global Context Menu 1.15.0 is the tested Entity Index v3 and canonical task-completion baseline.
+- Missing, disabled, incompatible, or incomplete GCM indexing affects only Checkboxes, Bullets, and Headings and produces a visible status row there. File-backed and cached-range collections remain available. TPS Global Context Menu 1.18.0 is the tested Entity Index v3/raw-line-property baseline; its canonical task-completion path remains backward-compatible with the 1.15.0 capability.
 
 The selected type and Types-root expansion state use TPS-namespaced local storage, participate in back/forward history and keyboard navigation, and do not alter upstream Notebook Navigator state. A stale saved `kind:*` selection is rejected immediately and safely falls back; no note or settings migration is required.
 
 External integrations can discover fixed built-in and registered-provider descriptors through the provider-neutral public
 `types` catalog, subscribe to its availability/revision changes, and navigate through `navigation.navigateToType(typeId)`.
-Public API 3.2.0 adds bounded presentation controls for fixed source-backed Types and preserves each mixed search row's
-owning Type identity. API 3.1.0 added stable ids for Code blocks, Callouts, Blockquotes, and Tables. API 3.0.0 removed Kind descriptors from
+Public API 3.3.0 adds the stable Web links id plus additive note/line exact-value and calendar-day grouping encodings. API
+3.2.0 added bounded presentation controls for fixed source-backed Types and preserves each mixed search row's owning Type
+identity. API 3.1.0 added stable ids for Code blocks, Callouts, Blockquotes, and Tables. API 3.0.0 removed Kind descriptors from
 discovery and navigation while retaining deprecated helpers to construct and parse legacy Kind ids during migration; active
 validation and navigation reject them. The earlier API 2.7.0 also adds
 `types.registerProvider(...)`: one runtime registration defines one
@@ -72,7 +74,7 @@ duplicate callback registrations retain independent idempotent disposers. Regist
 persisted state, or migration.
 
 API 2.10.0 adds `menus.registerRowMenu(...)` so an integration can attach actions to the actual source-backed rows rendered
-beneath notes or inside Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and provider-owned collections. The optional
+beneath notes or inside Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, Web links, and provider-owned collections. The optional
 pure `supports(target)` filter controls which rows expose the action affordance. A frozen target includes current `TFile`
 identity, provider/row/kind identity, optional zero-based line, selected Type id, and immutable checkbox presentation without
 exposing provider mutation callbacks or the host `Menu`. Row-owner actions remain first; desktop right-click, native mobile
@@ -120,14 +122,15 @@ The default settings surface remains the normal Notebook Navigator landing page.
 
 - **Task rows** — **Show GCM tasks beneath notes** is off by default. When enabled, the same page reveals **Include completed tasks** and **Tasks per note**; there is no nested editor or second configuration page.
 - **Types navigation** — **Show Types in navigation** is on by default and directly controls the flat file-format and Markdown-structure Types catalog. The navigation editor exposes its in-place order selector, counts, up/down buttons, and drag handles without adding a nested settings page.
+- **Type item creation** — **Create items in** defaults to **Today's daily note** and can instead target the active regular Markdown note or one configured existing Markdown note. The specific-note picker appears only while that target is selected. Daily-note creation follows Obsidian's current Daily notes folder, format, and template settings and fails before creating anything when a configured template cannot be resolved or read. Excalidraw Markdown is rejected by both filename and frontmatter.
 - **One-way setup** — **Import upstream Notebook Navigator settings** always asks for confirmation. It reads only `.obsidian/plugins/notebook-navigator/data.json`, copies recognized upstream settings into the TPS plugin, preserves TPS-only integration settings, and never writes to upstream state.
 
-The Types toggle, Type order mode and retained manual ids, all three task-row values, and any user-created per-Type
+The Types toggle, Type order mode and retained manual ids, both Type-creation values, all three task-row values, and any user-created per-Type
 presentation overrides persist in the TPS plugin's own `data.json`. A one-way upstream import preserves these TPS-only Type
 ordering values. The importer, active route, disclosures, focus, and scroll position do not create extra persisted schema.
 On mobile, settings use Obsidian's native stacked rows and the in-navigation Type order editor stacks its selector while
-retaining touch-sized controls; optional task controls disappear while task rows are disabled so they do not consume the
-viewport.
+retaining touch-sized controls; the specific-note picker and optional task controls disappear when irrelevant so they do not
+consume the viewport.
 
 ### Provider behavior and limits
 
@@ -155,7 +158,7 @@ viewport.
   without polling, rebroadcasting a request response, or retaining provider state in Navigator. Each loaded host has one
   opaque identity, so a consumer can match teardown to the exact instance instead of ordering hosts by a wall-clock timestamp.
 - TPS settings import is a copy, not synchronization. Later upstream setting changes are not mirrored unless the import is explicitly run again.
-- Built-in exact-line and cached-range Type rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. External Type-provider rows retain the public provider safety ceiling. Plain-text search matches structural row labels and source paths—not block contents; tag, property, date, folder, and extension facets constrain the owning note. External owners receive the same query before their row ceiling. File-backed Types use the ordinary file search pipeline, while file-only advanced search operators and Omnisearch ranking do not apply to structural/provider-owned collections. The vault-path allowlist is built only for a selected Type scope or a nonempty internal search, then the mixed search reuses the GCM entity and Obsidian metadata indexes without reading note bodies.
+- Built-in exact-line and cached-range Type rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. External Type-provider rows retain the public provider safety ceiling. Plain-text search matches structural row labels and source paths—not block contents; Web-link rows additionally match only their sanitized URL origin. Tag, property, date, folder, and extension facets constrain the owning note. External owners receive the same query before their row ceiling. File-backed Types use the ordinary file search pipeline, while file-only advanced search operators and Omnisearch ranking do not apply to structural/provider-owned collections. The vault-path allowlist is built only for a selected Type scope or a nonempty internal search, then the mixed search reuses the already-built GCM, Obsidian metadata, and bounded Web-link indexes without starting new body reads for each query.
 
 ## Keeping up with Notebook Navigator
 
@@ -169,6 +172,34 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 5.4.0 — day-grouped tasks, Type creation, and Web links
+
+- Keeps exact GCM task, bullet, and heading fields ahead of owning-note frontmatter for property sorting, so fields such as
+  task `scheduled` and canonical task `status` describe the line itself.
+- Adds a per-view **Property source** grouping control for Checkboxes, Bullets, Headings, and active mixed searches. **Note
+  properties** uses only owning-note frontmatter, while **Line properties** uses only exact GCM line fields; blank or missing
+  line values stay in **No value** and never inherit an unrelated note value. Notes and other file rows always use frontmatter.
+- Adds a separate calendar-day grouping choice for configured properties. Exact datetime grouping remains the unchanged
+  default, while the day form buckets timestamps by their written local `YYYY-MM-DD`, sorts the groups chronologically, and
+  keeps missing or invalid values in the trailing **No value** group. Existing per-Type views need no migration.
+- Adds source-backed Type creation for Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and Web
+  links. The default target is today's daily note; settings can instead select the active note or one existing Markdown
+  note. A missing Daily Note is created through its configured folder, format, and template, and a blank target accepts the
+  scaffold. Writes are atomic and focus the inserted source position, while Checkboxes use GCM's canonical create path.
+- Adds **Web links** as a fixed, searchable Type. A bounded, stat-cached local Markdown scan indexes authored HTTP(S)
+  Markdown links, angle autolinks, and bare URLs without network requests; excludes YAML, comments, hidden TPS carriers,
+  Markdown images, and code; exposes only each URL origin; and revalidates the exact source before opening the owning note.
+- Advances the additive public API to 3.3.0 with `types.webLinksId`, calendar-day property grouping, and explicit
+  `line-property...` exact/day encodings. Historical `property...` encodings remain note-frontmatter-only. Plugin 5.4.0
+  remains backward compatible with Obsidian 1.11.0 and requires no settings or note migration. Generic line-property
+  grouping is coordinated with TPS Global Context Menu 1.18.0.
+- Validation passed 229 test files and 2,547 tests on Node 24 plus TypeScript, formatting, ESLint, stylesheet, namespace,
+  operational-identity, and artifact gates. In reloaded Obsidian 1.12.7 inside the isolated test vault, a missing Daily
+  Note was created and received the Web-link scaffold, private URL paths stayed out of results while origin search worked,
+  activation opened the owning source, exact task datetimes separated, day mode combined same-day tasks, Line properties
+  used exact task values, and missing line values stayed in **None** without note fallback. The temporary view/settings
+  were restored and both synthetic notes were moved directly to `_archive`; production was not accessed.
 
 ### 5.3.1 — full-height desktop list viewport
 
@@ -633,11 +664,13 @@ Filters files by display name, alias, tags, properties, dates, folders, extensio
 
 Any nonempty internal Filter Search started from a fixed Type searches all fixed Types rather than remaining trapped in the
 selected collection. Native files remain ordinary rows, while Checkboxes, Bullets, Headings, Code blocks, Callouts,
-Blockquotes, and Tables appear in labeled sections. Search from a folder, tag, or property keeps that navigation scope.
+Blockquotes, Tables, and Web links appear in labeled sections. Search from a folder, tag, or property keeps that navigation scope.
 Plain text matches a source row's label or source path, not its note contents; tag, property, date, folder, and extension
 facets apply to the owning note, not an individual block's inline metadata. Mixed results preserve each row's Type identity
 for styling, selection, context menus, and API snapshots. This mixed catalog is an internal Filter Search feature; Omnisearch
-continues to return its own ranked file results. The search consumes cached GCM/Obsidian indexes without reading note bodies.
+continues to return its own ranked file results. Search consumes the cached GCM, Obsidian metadata, and bounded Web-link
+indexes without rereading note bodies for each query. While a mixed search is active, its Group menu can switch between
+owning-note and exact GCM line properties; ordinary note/file results continue to group from frontmatter.
 
 **Filters**
 

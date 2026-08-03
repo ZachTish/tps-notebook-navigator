@@ -130,6 +130,8 @@ export interface StructuralTypeSearchGroup {
     typeId: TpsNavigatorLineTypeId;
     label: string;
     rows: readonly NavigatorProvidedRow[];
+    /** Sorted/grouped form of the same rows, excluding no search matches. */
+    presentedItems?: readonly ListPaneItem[];
 }
 
 /**
@@ -161,6 +163,7 @@ export function appendStructuralTypeSearchGroups(listItems: ListPaneItem[], grou
         if (uniqueRows.length === 0) {
             return;
         }
+        const uniqueRowKeys = new Set(uniqueRows.map(row => `provider:${row.providerId}:${row.id}`));
         const headerKey = `search-type-header:${group.typeId}`;
         if (prefix.length > 1 || additions.length > 0) {
             additions.push({ type: ListPaneItemType.HEADER_SPACER, data: '', key: `${headerKey}:spacer` });
@@ -172,6 +175,28 @@ export function appendStructuralTypeSearchGroups(listItems: ListPaneItem[], grou
             headerKind: 'section',
             groupFilePaths: uniqueRows.map(row => row.sourcePath)
         });
+        if (group.presentedItems) {
+            group.presentedItems.forEach(item => {
+                if (item.type === ListPaneItemType.TOP_SPACER || item.type === ListPaneItemType.BOTTOM_SPACER) {
+                    return;
+                }
+                if (
+                    item.type === ListPaneItemType.PROVIDER_ROW &&
+                    typeof item.data === 'object' &&
+                    !uniqueRowKeys.has(
+                        `provider:${(item.data as NavigatorProvidedRow).providerId}:${(item.data as NavigatorProvidedRow).id}`
+                    )
+                ) {
+                    return;
+                }
+                additions.push({
+                    ...item,
+                    key: `search-type:${group.typeId}:${item.key}`,
+                    ...(item.type === ListPaneItemType.PROVIDER_ROW ? { providerTypeId: group.typeId } : {})
+                });
+            });
+            return;
+        }
         uniqueRows.forEach(row => {
             const key = `provider:${row.providerId}:${row.id}`;
             additions.push({ type: ListPaneItemType.PROVIDER_ROW, data: row, key, providerTypeId: group.typeId });

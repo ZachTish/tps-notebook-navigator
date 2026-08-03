@@ -134,6 +134,7 @@ export class TypesAPI {
     readonly calloutsId = TPS_NAVIGATOR_TYPE_IDS.CALLOUTS;
     readonly blockquotesId = TPS_NAVIGATOR_TYPE_IDS.BLOCKQUOTES;
     readonly tablesId = TPS_NAVIGATOR_TYPE_IDS.TABLES;
+    readonly webLinksId = TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS;
     readonly basesId = TPS_NAVIGATOR_TYPE_IDS.BASES;
     readonly canvasId = TPS_NAVIGATOR_TYPE_IDS.CANVAS;
     readonly drawingsId = TPS_NAVIGATOR_TYPE_IDS.DRAWINGS;

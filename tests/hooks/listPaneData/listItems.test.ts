@@ -1946,6 +1946,35 @@ describe('buildListItems property grouping', () => {
         const doneHeader = items.find(item => item.type === ListPaneItemType.HEADER && item.data === 'Done');
         expect(doneHeader?.groupFilePaths).toEqual([done.path, doneAgain.path]);
         expect(doneHeader?.collapseKey).toBe(createCollapseKey('property:status', 'property-value:Done'));
+
+        const mixedSearchItems = buildListItems({
+            app,
+            dayKey: '2026-03-07',
+            fileVisibility: FILE_VISIBILITY.DOCUMENTS,
+            files: [done, active, doneAgain, missing],
+            getDB: () => db,
+            getFileTimestamps: () => ({ created: 0, modified: 0 }),
+            hiddenFileState: new Map(),
+            hiddenTags: [],
+            listConfig: {
+                ...createListConfig({}),
+                groupBy: 'line-property:status'
+            },
+            searchMetaMap: new Map(),
+            selectedFolder: null,
+            selectedTag: null,
+            selectionType: ItemType.FOLDER,
+            showHiddenItems: false,
+            sortOption: 'title-asc'
+        });
+
+        // Native note rows always use frontmatter, even while the same stored encoding groups mixed structural rows by line fields.
+        expect(getHeaderItems(mixedSearchItems)).toEqual([
+            { data: 'Active', kind: 'property' },
+            { data: 'Done', kind: 'property' },
+            { data: 'None', kind: 'property' }
+        ]);
+        expect(getFileItems(mixedSearchItems).map(item => item.path)).toEqual([active.path, done.path, doneAgain.path, missing.path]);
     });
 
     it('orders groups descending while keeping the None group last and collapse keys direction-independent', () => {
@@ -1994,6 +2023,49 @@ describe('buildListItems property grouping', () => {
         expect(doneHeader?.collapseKey).toBe(createCollapseKey('property:status', 'property-value:Done'));
         expect(createCollapseKey('property-desc:status', 'property-value:Done')).toBe(
             createCollapseKey('property:status', 'property-value:Done')
+        );
+    });
+
+    it('can bucket frontmatter date-times by calendar day with separate collapse state from exact grouping', () => {
+        const morning = createTestTFile('notes/Morning.md');
+        const evening = createTestTFile('notes/Evening.md');
+        const tomorrow = createTestTFile('notes/Tomorrow.md');
+        const invalid = createTestTFile('notes/Invalid.md');
+        const app = createFrontmatterApp({
+            [morning.path]: { scheduled: '2026-08-03 09:00:00' },
+            [evening.path]: { scheduled: '2026-08-03T23:30:00Z' },
+            [tomorrow.path]: { scheduled: '2026-08-04 08:00:00' },
+            [invalid.path]: { scheduled: '2026-02-31 09:00:00' }
+        });
+        const db = createDb(
+            Object.fromEntries([morning, evening, tomorrow, invalid].map(file => [file.path, { tags: null, properties: null }]))
+        );
+
+        const items = buildListItems({
+            app,
+            dayKey: '2026-08-03',
+            fileVisibility: FILE_VISIBILITY.DOCUMENTS,
+            files: [morning, evening, tomorrow, invalid],
+            getDB: () => db,
+            getFileTimestamps: () => ({ created: 0, modified: 0 }),
+            hiddenFileState: new Map(),
+            hiddenTags: [],
+            listConfig: { ...createListConfig({}), groupBy: 'property-day:scheduled' },
+            searchMetaMap: new Map(),
+            selectedFolder: null,
+            selectedTag: null,
+            selectionType: ItemType.FOLDER,
+            showHiddenItems: false,
+            sortOption: 'title-asc'
+        });
+
+        expect(getHeaderItems(items)).toEqual([
+            { data: '2026-08-03', kind: 'property' },
+            { data: '2026-08-04', kind: 'property' },
+            { data: 'None', kind: 'property' }
+        ]);
+        expect(createCollapseKey('property-day:scheduled', 'property-day:2026-08-03')).not.toBe(
+            createCollapseKey('property:scheduled', 'property-value:2026-08-03')
         );
     });
 

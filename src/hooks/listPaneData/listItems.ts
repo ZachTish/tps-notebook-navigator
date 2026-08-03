@@ -26,11 +26,12 @@ import { FILE_VISIBILITY, type FileVisibility } from '../../utils/fileTypeUtils'
 import {
     compareByAlphaSortOrder,
     getDateField,
+    getPropertyDayGroupingValueFromRecord,
     getPropertyGroupingValueFromRecord,
     isDateSortOption,
     isPropertySortOption
 } from '../../utils/sortUtils';
-import { getPropertyGroupingDirection, getPropertyGroupingKey } from '../../settings/types';
+import { getPropertyGroupingDirection, getPropertyGroupingGranularity, getPropertyGroupingKey } from '../../settings/types';
 import { partitionPinnedFiles } from '../../utils/fileFinder';
 import {
     formatManualSortGroupHeaderLabel,
@@ -533,13 +534,19 @@ function buildListItemsInternal(
         // trimmed part values, so lists with different element boundaries such as ["a b", "c"] and
         // ["a", "b c"] stay in separate groups.
         const propertyGroupingDirection = getPropertyGroupingDirection(groupingMode) ?? 'asc';
-        const propertyGroups = new Map<string, { label: string; numericValue: number | null; files: TFile[] }>();
+        const propertyGroupingGranularity = getPropertyGroupingGranularity(groupingMode) ?? 'value';
+        const propertyGroups = new Map<
+            string,
+            { label: string; numericValue: number | null; daySortValue: number | null; files: TFile[] }
+        >();
         const ungroupedFiles: TFile[] = [];
 
         unpinnedFiles.forEach(file => {
             const groupingValue =
                 file.extension === 'md'
-                    ? getPropertyGroupingValueFromRecord(app.metadataCache.getFileCache(file)?.frontmatter, propertyGroupingKey)
+                    ? propertyGroupingGranularity === 'day'
+                        ? getPropertyDayGroupingValueFromRecord(app.metadataCache.getFileCache(file)?.frontmatter, propertyGroupingKey)
+                        : getPropertyGroupingValueFromRecord(app.metadataCache.getFileCache(file)?.frontmatter, propertyGroupingKey)
                     : null;
             if (groupingValue === null) {
                 ungroupedFiles.push(file);
@@ -557,7 +564,8 @@ function buildListItemsInternal(
             // matching how the first encountered value becomes the group key in Obsidian Bases.
             propertyGroups.set(bucketKey, {
                 label: groupingValue.parts.join(', '),
-                numericValue: groupingValue.numericValue,
+                numericValue: 'numericValue' in groupingValue ? groupingValue.numericValue : null,
+                daySortValue: 'sortValue' in groupingValue ? groupingValue.sortValue : null,
                 files: [file]
             });
         });
@@ -567,6 +575,9 @@ function buildListItemsInternal(
         const orderedPropertyGroups = Array.from(propertyGroups.entries())
             .map(([bucketKey, group]) => ({ bucketKey, ...group }))
             .sort((left, right) => {
+                if (left.daySortValue !== null && right.daySortValue !== null && left.daySortValue !== right.daySortValue) {
+                    return directionMultiplier * (left.daySortValue < right.daySortValue ? -1 : 1);
+                }
                 // The comparator must be a total order or the group order depends on file encounter
                 // order. Bases compares mixed numeric/text pairs by label, which turns intransitive
                 // once text labels mix with negative or decimal numbers (numerically -10 < -2 while
@@ -607,7 +618,7 @@ function buildListItemsInternal(
         // Group ids use the bucket key rather than the display label so collapse state and item
         // counts stay stable if the label formatting changes.
         orderedPropertyGroups.forEach(group => {
-            renderPropertyGroup(group.label, group.files, `property-value:${group.bucketKey}`);
+            renderPropertyGroup(group.label, group.files, `property-${propertyGroupingGranularity}:${group.bucketKey}`);
         });
 
         // Files without the property collect into one trailing group, matching the Bases "None" group placement.

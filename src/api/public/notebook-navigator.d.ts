@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 3.2.0
+ * Version: 3.3.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -282,7 +282,18 @@ export interface NavigatorListSortSpec {
     readonly option: NavigatorListSortOption;
     readonly propertyKey?: string;
 }
-export type NavigatorListGrouping = 'custom' | 'date' | 'folder' | `property:${string}` | `property-desc:${string}`;
+export type NavigatorListGrouping =
+    | 'custom'
+    | 'date'
+    | 'folder'
+    | `property:${string}`
+    | `property-desc:${string}`
+    | `property-day:${string}`
+    | `property-day-desc:${string}`
+    | `line-property:${string}`
+    | `line-property-desc:${string}`
+    | `line-property-day:${string}`
+    | `line-property-day-desc:${string}`;
 export type NavigatorListDisplayMode = 'standard' | 'compact';
 export interface NavigatorListSearchUpdate {
     readonly active?: boolean;
@@ -624,7 +635,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 3.2.0
+ * @version 3.3.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */
@@ -692,6 +703,7 @@ export interface NotebookNavigatorAPI {
         readonly calloutsId: 'structural:callout';
         readonly blockquotesId: 'structural:blockquote';
         readonly tablesId: 'structural:table';
+        readonly webLinksId: 'structural:web-link';
         readonly basesId: 'file:base';
         readonly canvasId: 'file:canvas';
         readonly drawingsId: 'file:drawing';

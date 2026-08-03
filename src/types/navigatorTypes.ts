@@ -15,6 +15,7 @@ export const TPS_NAVIGATOR_TYPE_IDS = {
     CALLOUTS: 'structural:callout',
     BLOCKQUOTES: 'structural:blockquote',
     TABLES: 'structural:table',
+    WEB_LINKS: 'structural:web-link',
     BASES: 'file:base',
     CANVAS: 'file:canvas',
     DRAWINGS: 'file:drawing',
@@ -39,7 +40,8 @@ export type TpsNavigatorMarkdownTypeId =
     | typeof TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS
     | typeof TPS_NAVIGATOR_TYPE_IDS.CALLOUTS
     | typeof TPS_NAVIGATOR_TYPE_IDS.BLOCKQUOTES
-    | typeof TPS_NAVIGATOR_TYPE_IDS.TABLES;
+    | typeof TPS_NAVIGATOR_TYPE_IDS.TABLES
+    | typeof TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS;
 export type TpsNavigatorLineTypeId = TpsNavigatorGcmLineTypeId | TpsNavigatorMarkdownTypeId;
 export type TpsNavigatorStructuralTypeId = TpsNavigatorFileTypeId | TpsNavigatorLineTypeId;
 /** @deprecated Kind values are metadata, not Navigator Types. Kept only to parse stale IDs safely. */
@@ -72,15 +74,24 @@ export interface TpsNavigatorTypeRecord {
     label: string;
     sourcePath: string;
     entityType: 'file' | 'note' | 'block';
-    lineKind?: 'task' | 'bullet' | 'heading' | 'code' | 'callout' | 'blockquote' | 'table';
+    lineKind?: 'task' | 'bullet' | 'heading' | 'code' | 'callout' | 'blockquote' | 'table' | 'web-link';
     /** One-based source line supplied by the entity index. */
     lineNumber?: number;
+    /** Zero-based source column when the parser publishes an exact position. */
+    columnNumber?: number;
+    /** UTF-16 source offsets used only for guarded content-backed activation. */
+    sourceOffset?: number;
+    sourceEndOffset?: number;
     /** One-based inclusive final source line for a multi-line Markdown structure. */
     lineEndNumber?: number;
     /** Existing source block id when Obsidian assigned one; never synthesized by the Navigator. */
     blockId?: string;
     locatorKey: string;
     referenceTarget: string;
+    /** Optional redacted text used for row search without exposing a complete target. */
+    searchText?: string;
+    /** Immutable raw inline fields supplied only for exact GCM-backed line entities. */
+    properties?: Readonly<Record<string, readonly string[]>>;
     /** Live task state, present only when GCM can hydrate this task line exactly. */
     task?: TpsNavigatorTypeTaskState;
     checked?: boolean;
@@ -95,6 +106,8 @@ export interface TpsNavigatorTypeTaskState {
     marker: string;
     status: string;
     isComplete: boolean;
+    /** Immutable task-local inline fields supplied by GCM when available. */
+    fields?: Readonly<Record<string, string>>;
     canMutateCheckbox: boolean;
     hasContextMenu: boolean;
 }
@@ -215,6 +228,12 @@ export const TPS_NAVIGATOR_MARKDOWN_TYPES: readonly Omit<TpsNavigatorTypeDescrip
         id: TPS_NAVIGATOR_TYPE_IDS.TABLES,
         label: 'Tables',
         icon: 'lucide-table-2',
+        category: 'structure'
+    },
+    {
+        id: TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS,
+        label: 'Web links',
+        icon: 'lucide-external-link',
         category: 'structure'
     }
 ]);

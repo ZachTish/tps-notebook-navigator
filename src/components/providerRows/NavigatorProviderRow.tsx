@@ -70,6 +70,7 @@ const TYPE_ROW_ICON_BY_KIND: Readonly<Record<string, string>> = Object.freeze({
     callout: 'lucide-message-square-warning',
     blockquote: 'lucide-quote',
     table: 'lucide-table-2',
+    'web-link': 'lucide-external-link',
     canvas: 'lucide-layout-dashboard',
     checkbox: 'lucide-square-check-big',
     drawing: 'lucide-brush',

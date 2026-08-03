@@ -2,16 +2,24 @@
 
 import type { TFile } from 'obsidian';
 import type { ListNoteGroupingOption } from '../../settings/types';
-import { getPropertyGroupingDirection, getPropertyGroupingKey } from '../../settings/types';
+import {
+    getPropertyGroupingDirection,
+    getPropertyGroupingGranularity,
+    getPropertyGroupingKey,
+    getPropertyGroupingSource,
+    replacePropertyGroupingSource
+} from '../../settings/types';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
 import { ItemType, ListPaneItemType } from '../../types';
-import type { TpsNavigatorLineTypeId } from '../../types/navigatorTypes';
+import { isTpsNavigatorGcmLineTypeId, type TpsNavigatorLineTypeId } from '../../types/navigatorTypes';
 import type { ListPaneItem } from '../../types/virtualization';
 import { DateUtils } from '../../utils/dateUtils';
 import { buildListGroupCollapseKey } from '../../utils/listGroupCollapse';
+import { findMatchingRecordKey, getMatchingRecordValue } from '../../utils/recordUtils';
 import {
-    getPropertyGroupingValueFromRecord,
-    getPropertySortValueFromRecord,
+    getPropertyDayGroupingValue,
+    getPropertyGroupingValue,
+    getPropertySortValue,
     isDateSortOption,
     naturalCompare,
     type EffectiveListSort
@@ -44,6 +52,21 @@ interface StructuralTypeRowGroup {
     label: string;
     kind: 'date' | 'property';
     rows: DecoratedStructuralTypeRow[];
+}
+
+/**
+ * Preserves a latent mixed-search line source without applying it to a standalone Navigator-owned range collection.
+ * GCM line Types have a real row-property contract and may keep the line source when search closes.
+ */
+export function getEffectiveStandaloneStructuralTypeGrouping(
+    selectedType: TpsNavigatorLineTypeId,
+    groupBy: ListNoteGroupingOption,
+    mixedStructuralSearchActive: boolean
+): ListNoteGroupingOption {
+    if (mixedStructuralSearchActive || isTpsNavigatorGcmLineTypeId(selectedType) || getPropertyGroupingSource(groupBy) !== 'line') {
+        return groupBy;
+    }
+    return replacePropertyGroupingSource(groupBy, 'note') ?? groupBy;
 }
 
 function compareStrings(left: string, right: string, descending: boolean): number {
@@ -87,6 +110,30 @@ function getFileTimestamp(entry: DecoratedStructuralTypeRow, field: 'created' | 
 
 function getFilename(entry: DecoratedStructuralTypeRow): string | null {
     return entry.file?.basename || null;
+}
+
+function getRowPropertyValue(entry: DecoratedStructuralTypeRow, propertyKey: string): { present: boolean; value: unknown } {
+    const rowProperties = entry.row.properties as Record<string, unknown> | undefined;
+    const rowPropertyKey = findMatchingRecordKey(rowProperties, propertyKey);
+    if (rowPropertyKey !== null && rowProperties) {
+        return { present: true, value: rowProperties[rowPropertyKey] };
+    }
+    return { present: false, value: undefined };
+}
+
+function getNotePropertyValue(entry: DecoratedStructuralTypeRow, propertyKey: string): unknown {
+    const frontmatter =
+        entry.frontmatter && typeof entry.frontmatter === 'object' && !Array.isArray(entry.frontmatter)
+            ? (entry.frontmatter as Record<string, unknown>)
+            : undefined;
+    return getMatchingRecordValue(frontmatter, propertyKey);
+}
+
+function getResolvedPropertySortValue(entry: DecoratedStructuralTypeRow, propertyKey: string): unknown {
+    const rowProperty = getRowPropertyValue(entry, propertyKey);
+    // Property sorting retains its established row-first behavior. Grouping source is encoded
+    // separately so changing a group never changes the active sort contract.
+    return rowProperty.present ? rowProperty.value : getNotePropertyValue(entry, propertyKey);
 }
 
 function compareStableIdentity(left: DecoratedStructuralTypeRow, right: DecoratedStructuralTypeRow): number {
@@ -142,8 +189,8 @@ function compareRows(left: DecoratedStructuralTypeRow, right: DecoratedStructura
     } else if (sort.option.startsWith('modified')) {
         result = compareOptional(getFileTimestamp(left, 'modified'), getFileTimestamp(right, 'modified'), descending, (a, b) => a - b);
     } else {
-        const leftValue = getPropertySortValueFromRecord(left.frontmatter, sort.propertyKey);
-        const rightValue = getPropertySortValueFromRecord(right.frontmatter, sort.propertyKey);
+        const leftValue = getPropertySortValue(getResolvedPropertySortValue(left, sort.propertyKey));
+        const rightValue = getPropertySortValue(getResolvedPropertySortValue(right, sort.propertyKey));
         result = compareOptional(leftValue, rightValue, descending, naturalCompare);
         if (result === 0 && leftValue !== null && rightValue !== null) {
             result = compareSecondary(left, right, sort, descending);
@@ -163,11 +210,17 @@ function orderPropertyGroups(
         return [];
     }
 
-    const grouped = new Map<string, { label: string; numericValue: number | null; rows: DecoratedStructuralTypeRow[] }>();
+    const granularity = getPropertyGroupingGranularity(groupBy) ?? 'value';
+    const source = getPropertyGroupingSource(groupBy) ?? 'note';
+    const grouped = new Map<
+        string,
+        { label: string; numericValue: number | null; daySortValue: number | null; rows: DecoratedStructuralTypeRow[] }
+    >();
     const missing: DecoratedStructuralTypeRow[] = [];
 
     entries.forEach(entry => {
-        const value = getPropertyGroupingValueFromRecord(entry.frontmatter, propertyKey);
+        const rawValue = source === 'line' ? getRowPropertyValue(entry, propertyKey).value : getNotePropertyValue(entry, propertyKey);
+        const value = granularity === 'day' ? getPropertyDayGroupingValue(rawValue) : getPropertyGroupingValue(rawValue);
         if (value === null) {
             missing.push(entry);
             return;
@@ -181,16 +234,21 @@ function orderPropertyGroups(
         }
         grouped.set(id, {
             label: value.parts.join(', '),
-            numericValue: value.numericValue,
+            numericValue: 'numericValue' in value ? value.numericValue : null,
+            daySortValue: 'sortValue' in value ? value.sortValue : null,
             rows: [entry]
         });
     });
 
     const descending = getPropertyGroupingDirection(groupBy) === 'desc';
     const direction = descending ? -1 : 1;
+    const groupIdPrefix = source === 'line' ? `line-property-${granularity}` : `property-${granularity}`;
     const groups: StructuralTypeRowGroup[] = Array.from(grouped.entries())
-        .map(([id, group]) => ({ id: `property-value:${id}`, kind: 'property' as const, ...group }))
+        .map(([id, group]) => ({ id: `${groupIdPrefix}:${id}`, kind: 'property' as const, ...group }))
         .sort((left, right) => {
+            if (left.daySortValue !== null && right.daySortValue !== null && left.daySortValue !== right.daySortValue) {
+                return direction * (left.daySortValue < right.daySortValue ? -1 : 1);
+            }
             if (left.numericValue !== null && right.numericValue !== null && left.numericValue !== right.numericValue) {
                 return direction * (left.numericValue < right.numericValue ? -1 : 1);
             }

@@ -4,12 +4,13 @@ import type { NavigatorProvidedRow } from './types';
 import type { GcmTaskMenuLike } from '../../integrations/gcm/gcmTaskApi';
 import type { FilterSearchTokens } from '../../utils/filterSearch';
 import { filterSearchMatchesTypeFacet, parseFilterSearchTokens } from '../../utils/filterSearch';
-import { foldSearchText } from '../../utils/recordUtils';
+import { casefold, foldSearchText } from '../../utils/recordUtils';
 import {
     isTpsNavigatorGcmLineTypeId,
     isTpsNavigatorMarkdownTypeId,
     type TpsNavigatorTypeId,
     type TpsNavigatorTypeRecord,
+    type TpsNavigatorTypeTaskState,
     type TpsNavigatorTypesSnapshot
 } from '../../types/navigatorTypes';
 
@@ -38,6 +39,41 @@ interface BuildTypeProviderRowsOptions {
     setTaskCheckbox: (record: TpsNavigatorTypeRecord, checked: boolean) => Promise<TypeTaskMutationResult>;
     addTaskContextMenuItems: (menu: GcmTaskMenuLike, record: TpsNavigatorTypeRecord) => boolean;
     onActivationFailure: (record: TpsNavigatorTypeRecord, result: TypeRecordActivationResult) => void;
+}
+
+function setPropertyCaseInsensitively(
+    properties: Record<string, string | readonly string[]>,
+    key: string,
+    value: string | readonly string[]
+): void {
+    const normalizedKey = casefold(key);
+    const matchingKeys = Object.keys(properties).filter(candidate => casefold(candidate) === normalizedKey);
+    const targetKey = matchingKeys[0] ?? key;
+    properties[targetKey] = value;
+    matchingKeys.slice(1).forEach(duplicateKey => delete properties[duplicateKey]);
+}
+
+function buildRowProperties(
+    rawProperties: Readonly<Record<string, readonly string[]>> | undefined,
+    task: TpsNavigatorTypeTaskState | undefined
+): NavigatorProvidedRow['properties'] | undefined {
+    const properties: Record<string, string | readonly string[]> = Object.create(null) as Record<string, string | readonly string[]>;
+    Object.entries(rawProperties ?? {}).forEach(([key, values]) => {
+        properties[key] = Object.freeze([...values]);
+    });
+
+    Object.entries(task?.fields ?? {}).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+            setPropertyCaseInsensitively(properties, key, value);
+        }
+    });
+
+    if (task) {
+        // Status is canonical task state even when a raw field or task fields record uses another casing.
+        setPropertyCaseInsensitively(properties, 'status', task.status);
+    }
+
+    return Object.keys(properties).length > 0 ? Object.freeze(properties) : undefined;
 }
 
 export function buildTypeProviderRows({
@@ -96,11 +132,14 @@ export function buildTypeProviderRows({
             if (allowedSourcePaths && !allowedSourcePaths.has(record.sourcePath)) {
                 return false;
             }
-            const haystack = foldSearchText(`${record.label}\n${record.sourcePath}`);
+            const haystack = foldSearchText(`${record.label}\n${record.sourcePath}\n${record.searchText ?? ''}`);
             return queryTerms.every(term => haystack.includes(term)) && excludedQueryTerms.every(term => !haystack.includes(term));
         })
         .map(record => {
             const task = record.lineKind === 'task' ? record.task : undefined;
+            const rawProperties =
+                isTpsNavigatorGcmLineTypeId(selectedType) && isTpsNavigatorGcmLineTypeId(record.typeId) ? record.properties : undefined;
+            const rowProperties = buildRowProperties(rawProperties, task);
             const sourceLocation = record.lineNumber
                 ? record.lineEndNumber && record.lineEndNumber > record.lineNumber
                     ? `${record.sourcePath} · lines ${record.lineNumber}–${record.lineEndNumber}`
@@ -120,6 +159,7 @@ export function buildTypeProviderRows({
                 tooltip,
                 sourcePath: record.sourcePath,
                 ...(record.lineNumber ? { sourceLineNumber: record.lineNumber - 1 } : {}),
+                ...(rowProperties ? { properties: rowProperties } : {}),
                 ...(task
                     ? {
                           indicator: {

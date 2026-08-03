@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildTypeProviderRows, type TypeRecordActivationResult } from '../../src/services/rows/typeProviderRows';
-import { TPS_NAVIGATOR_TYPE_IDS, type TpsNavigatorTypeRecord, type TpsNavigatorTypesSnapshot } from '../../src/types/navigatorTypes';
+import {
+    TPS_NAVIGATOR_TYPE_IDS,
+    type TpsNavigatorTypeId,
+    type TpsNavigatorTypeRecord,
+    type TpsNavigatorTypesSnapshot
+} from '../../src/types/navigatorTypes';
 import { parseFilterSearchTokens } from '../../src/utils/filterSearch';
 
 const selectedLineTypeId = TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES;
@@ -21,12 +26,13 @@ function createRecord(overrides: Partial<TpsNavigatorTypeRecord> = {}): TpsNavig
 function createSnapshot(
     records: readonly TpsNavigatorTypeRecord[],
     availability: TpsNavigatorTypesSnapshot['availability'] = 'ready',
-    message?: string
+    message?: string,
+    selectedType: TpsNavigatorTypeId = selectedLineTypeId
 ): TpsNavigatorTypesSnapshot {
     return {
         availability,
         descriptors: [],
-        recordsByType: new Map([[selectedLineTypeId, records]]),
+        recordsByType: new Map([[selectedType, records]]),
         revision: 3,
         ...(message ? { message } : {})
     };
@@ -40,14 +46,16 @@ function buildRows(options?: {
     searchTokens?: ReturnType<typeof parseFilterSearchTokens>;
     allowedSourcePaths?: ReadonlySet<string>;
     includeUnavailableStatus?: boolean;
+    selectedType?: TpsNavigatorTypeId;
     activate?: (record: TpsNavigatorTypeRecord) => Promise<TypeRecordActivationResult>;
     setTaskCheckbox?: (record: TpsNavigatorTypeRecord, checked: boolean) => Promise<{ ok: boolean; reason?: string }>;
     addTaskContextMenuItems?: (menu: { addItem: () => unknown; addSeparator: () => unknown }, record: TpsNavigatorTypeRecord) => boolean;
     onActivationFailure?: (record: TpsNavigatorTypeRecord, result: TypeRecordActivationResult) => void;
 }) {
+    const selectedType = options?.selectedType ?? selectedLineTypeId;
     return buildTypeProviderRows({
-        snapshot: createSnapshot(options?.records ?? [], options?.availability, options?.message),
-        selectedType: selectedLineTypeId,
+        snapshot: createSnapshot(options?.records ?? [], options?.availability, options?.message, selectedType),
+        selectedType,
         searchQuery: options?.searchQuery ?? '',
         searchTokens: options?.searchTokens,
         allowedSourcePaths: options?.allowedSourcePaths,
@@ -194,6 +202,42 @@ describe('buildTypeProviderRows', () => {
         });
     });
 
+    it.each([
+        [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, 'task'],
+        [TPS_NAVIGATOR_TYPE_IDS.BULLETS, 'bullet'],
+        [TPS_NAVIGATOR_TYPE_IDS.HEADINGS, 'heading']
+    ] as const)('publishes repeated and blank raw line properties for %s rows', (selectedType, lineKind) => {
+        const record = createRecord({
+            id: lineKind,
+            typeId: selectedType,
+            entityType: 'block',
+            lineKind,
+            lineNumber: 2,
+            properties: { Parents: ['Project A', '', 'Area B'], Empty: [''] }
+        });
+
+        const [result] = buildRows({ records: [record], selectedType });
+
+        expect(result.properties).toEqual({ Parents: ['Project A', '', 'Area B'], Empty: [''] });
+        expect(Object.isFrozen(result.properties)).toBe(true);
+        expect(Object.values(result.properties ?? {}).every(value => !Array.isArray(value) || Object.isFrozen(value))).toBe(true);
+    });
+
+    it('does not publish record properties for Navigator-owned Markdown range rows', () => {
+        const record = createRecord({
+            id: 'web-link',
+            typeId: TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS,
+            entityType: 'block',
+            lineKind: 'web-link',
+            lineNumber: 2,
+            properties: { secret: ['must-not-leak'] }
+        });
+
+        const [result] = buildRows({ records: [record], selectedType: TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS });
+
+        expect(result.properties).toBeUndefined();
+    });
+
     it('requires every case-insensitive search term while matching across both label and source path', () => {
         const matching = createRecord({ label: 'Buy weekly supplies', sourcePath: 'Shopping/Home.md' });
         const missingTerm = createRecord({
@@ -206,6 +250,22 @@ describe('buildTypeProviderRows', () => {
         const rows = buildRows({ records: [matching, missingTerm], searchQuery: '  BUY   home  ' });
 
         expect(rows.map(row => row.label)).toEqual(['Buy weekly supplies']);
+    });
+
+    it('searches a web link only by its redacted origin without indexing path, credentials, query values, or fragments', () => {
+        const webLink = createRecord({
+            id: 'web-link',
+            label: 'Product docs',
+            lineKind: 'web-link',
+            referenceTarget: 'https://user:password@example.com/docs/start?token=secret-token#private-fragment',
+            searchText: 'https://example.com'
+        });
+
+        expect(buildRows({ records: [webLink], searchQuery: 'example.com' })).toHaveLength(1);
+        expect(buildRows({ records: [webLink], searchQuery: 'start' })).toHaveLength(0);
+        expect(buildRows({ records: [webLink], searchQuery: 'password' })).toHaveLength(0);
+        expect(buildRows({ records: [webLink], searchQuery: 'secret-token' })).toHaveLength(0);
+        expect(buildRows({ records: [webLink], searchQuery: 'private-fragment' })).toHaveLength(0);
     });
 
     it('treats Type and owning-note metadata filters as facets instead of literal row text', () => {
@@ -288,6 +348,12 @@ describe('buildTypeProviderRows', () => {
             lineKind: 'task',
             lineNumber: 4,
             locatorKey: 'block:task-one',
+            properties: {
+                scheduled: ['2026-08-02 08:00:00'],
+                PRIORITY: ['low', 'medium'],
+                Status: ['waiting'],
+                Parents: ['Project A', '', 'Area B']
+            },
             task: {
                 lineNumber: 3,
                 rawLine: '- [ ] Ship it',
@@ -296,6 +362,7 @@ describe('buildTypeProviderRows', () => {
                 marker: ' ',
                 status: 'todo',
                 isComplete: false,
+                fields: { Scheduled: '2026-08-03 09:30:00', Priority: 'high', status: 'working', Owner: '' },
                 canMutateCheckbox: true,
                 hasContextMenu: true
             }
@@ -305,6 +372,15 @@ describe('buildTypeProviderRows', () => {
         const rows = buildRows({ records: [task], setTaskCheckbox, addTaskContextMenuItems });
 
         expect(rows[0].indicator).toMatchObject({ type: 'checkbox', checked: false, marker: ' ' });
+        expect(rows[0].properties).toEqual({
+            scheduled: '2026-08-03 09:30:00',
+            PRIORITY: 'high',
+            Status: 'todo',
+            Parents: ['Project A', '', 'Area B'],
+            Owner: ''
+        });
+        expect(Object.isFrozen(rows[0].properties)).toBe(true);
+        expect(Object.isFrozen(rows[0].properties?.Parents)).toBe(true);
         await rows[0].indicator?.onChange?.(true);
         expect(setTaskCheckbox).toHaveBeenCalledWith(task, true);
 

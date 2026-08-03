@@ -70,6 +70,8 @@ describe('prepareUpstreamSettingsImport', () => {
         current.tpsTypesNavigationEnabled = false;
         current.typeNavigationSortOrder = 'manual';
         current.rootTypeOrder = ['structural:table', 'entity:note'];
+        current.tpsResourceCreationTarget = 'specific-note';
+        current.tpsResourceCreationSpecificFile = 'Inbox/Capture.md';
         current.tpsGcmTaskRowsEnabled = true;
         current.tpsGcmTaskRowsIncludeCompleted = true;
         current.tpsGcmTaskRowsPerNote = 17;
@@ -83,6 +85,8 @@ describe('prepareUpstreamSettingsImport', () => {
                 tpsTypesNavigationEnabled: true,
                 typeNavigationSortOrder: 'alpha-desc',
                 rootTypeOrder: ['entity:note'],
+                tpsResourceCreationTarget: 'active-note',
+                tpsResourceCreationSpecificFile: 'Upstream.md',
                 tpsGcmTaskRowsEnabled: false,
                 tpsGcmTaskRowsIncludeCompleted: false,
                 tpsGcmTaskRowsPerNote: 1,
@@ -102,6 +106,8 @@ describe('prepareUpstreamSettingsImport', () => {
         expect(result.settingsRecord.tpsTypesNavigationEnabled).toBe(false);
         expect(result.settingsRecord.typeNavigationSortOrder).toBe('manual');
         expect(result.settingsRecord.rootTypeOrder).toEqual(['structural:table', 'entity:note']);
+        expect(result.settingsRecord.tpsResourceCreationTarget).toBe('specific-note');
+        expect(result.settingsRecord.tpsResourceCreationSpecificFile).toBe('Inbox/Capture.md');
         expect(result.settingsRecord.tpsGcmTaskRowsEnabled).toBe(true);
         expect(result.settingsRecord.tpsGcmTaskRowsIncludeCompleted).toBe(true);
         expect(result.settingsRecord.tpsGcmTaskRowsPerNote).toBe(17);

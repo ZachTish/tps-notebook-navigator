@@ -175,6 +175,27 @@ export class Modal {
     onClose(): void {}
 }
 
+export class AbstractInputSuggest<T> {
+    limit = 100;
+
+    constructor(
+        public app: App,
+        public inputEl: HTMLInputElement
+    ) {}
+
+    open(): void {}
+
+    close(): void {}
+
+    getSuggestions(_query: string): T[] {
+        return [];
+    }
+
+    renderSuggestion(_value: T, _el: HTMLElement): void {}
+
+    selectSuggestion(_value: T): void {}
+}
+
 export class Plugin {
     app: App;
     manifest: Record<string, unknown>;
@@ -416,6 +437,34 @@ export function parseYaml(yaml: string): Record<string, unknown> {
     }
 
     return result;
+}
+
+/** Minimal leading-frontmatter range helper matching Obsidian's public API shape. */
+export function getFrontMatterInfo(content: string): {
+    exists: boolean;
+    frontmatter: string;
+    from: number;
+    to: number;
+    contentStart: number;
+} {
+    const opening = /^(?:\uFEFF)?---[ \t]*(?:\r?\n|$)/u.exec(content);
+    if (!opening) {
+        return { exists: false, frontmatter: '', from: 0, to: 0, contentStart: 0 };
+    }
+    const from = opening[0].length;
+    const closingPattern = /^(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/gmu;
+    closingPattern.lastIndex = from;
+    const closing = closingPattern.exec(content);
+    if (!closing) {
+        return { exists: false, frontmatter: '', from: 0, to: 0, contentStart: 0 };
+    }
+    return {
+        exists: true,
+        frontmatter: content.slice(from, closing.index),
+        from,
+        to: closing.index,
+        contentStart: closing.index + closing[0].length
+    };
 }
 
 export type CachedMetadata = {

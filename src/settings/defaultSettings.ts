@@ -149,6 +149,8 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     // TPS integration
     tpsTypesNavigationEnabled: true,
     typeNavigationSortOrder: 'catalog',
+    tpsResourceCreationTarget: 'daily-note',
+    tpsResourceCreationSpecificFile: null,
     tpsGcmTaskRowsEnabled: false,
     tpsGcmTaskRowsIncludeCompleted: false,
     tpsGcmTaskRowsPerNote: TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT,
