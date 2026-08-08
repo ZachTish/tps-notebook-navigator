@@ -67,6 +67,36 @@ export interface SearchQueryUpdateOptions {
     focusSearch?: boolean;
 }
 
+type SearchTruthSelection = Pick<
+    ReturnType<typeof useSelectionState>,
+    'selectionType' | 'selectedTag' | 'selectedProperty' | 'selectedType'
+>;
+
+/** Materializes the visible navigation selection before another facet is added. */
+export function includeNavigationSelectionInSearchQuery(query: string, selection: SearchTruthSelection): string {
+    const tokens = parseFilterSearchTokens(query);
+    if (selection.selectionType === ItemType.TAG && selection.selectedTag) {
+        if (selection.selectedTag === TAGGED_TAG_ID) {
+            return tokens.requireTagged || /(?:^|\s)#(?:\s|$)/u.test(query) ? query.trim() : `${query.trim()} #`.trim();
+        }
+        if (selection.selectedTag === UNTAGGED_TAG_ID) {
+            return tokens.excludeTagged || /(?:^|\s)-#(?:\s|$)/u.test(query) ? query.trim() : `${query.trim()} -#`.trim();
+        }
+        const normalizedTag = normalizeTagPath(selection.selectedTag);
+        if (!normalizedTag) return query.trim();
+        return tokens.includedTagTokens.includes(normalizedTag)
+            ? query.trim()
+            : updateFilterQueryWithTag(query, normalizedTag, 'AND').query;
+    }
+    if (selection.selectionType === ItemType.PROPERTY && selection.selectedProperty !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID) {
+        const property = selection.selectedProperty ? parsePropertyNodeId(selection.selectedProperty) : null;
+        if (!property) return query.trim();
+        const alreadyIncluded = tokens.propertyTokens.some(token => token.key === property.key && token.value === property.valuePath);
+        return alreadyIncluded ? query.trim() : updateFilterQueryWithProperty(query, property.key, property.valuePath, 'AND').query;
+    }
+    return query.trim();
+}
+
 interface UseListPaneSearchParams {
     rootContainerRef: RefObject<HTMLDivElement | null>;
     onSearchTokensChange?: (state: SearchNavFilterState) => void;
@@ -499,11 +529,25 @@ export function useListPaneSearch({
             }
 
             updateSearchQuery(query => {
+                const queryWithVisibleSelection = includeNavigationSelectionInSearchQuery(query, {
+                    selectionType: selectionState.selectionType,
+                    selectedTag: selectionState.selectedTag,
+                    selectedProperty: selectionState.selectedProperty,
+                    selectedType: selectionState.selectedType
+                });
                 const selectedType = selectionState.selectionType === ItemType.TYPE ? selectionState.selectedType : null;
-                return updateFilterQueryWithTypeSelection(query, typeId, selectedType).query;
+                return updateFilterQueryWithTypeSelection(queryWithVisibleSelection, typeId, selectedType).query;
             }, options);
         },
-        [plugin, searchProvider, selectionState.selectedType, selectionState.selectionType, updateSearchQuery]
+        [
+            plugin,
+            searchProvider,
+            selectionState.selectedProperty,
+            selectionState.selectedTag,
+            selectionState.selectedType,
+            selectionState.selectionType,
+            updateSearchQuery
+        ]
     );
 
     const modifySearchWithDateToken = useCallback(

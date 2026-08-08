@@ -173,6 +173,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.8.0 — search-bar navigation source of truth
+
+- When a navigation selection is extended with a structural Type facet, the current selected tag or property value is first materialized in the search bar.
+- Selecting `status = todo` and then adding Checkboxes now shows `.status=todo type:structural:task`; special Tagged and Untagged selections use `#` and `-#` respectively.
+- Existing facets are detected and retained without duplication, so the visible query fully describes the displayed intersection. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.7.1 — structural row property filtering
 
 - Fixes property selections such as `.status=todo` showing no results under **Checkboxes** even when matching tasks are counted in Properties.

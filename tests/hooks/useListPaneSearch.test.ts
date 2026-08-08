@@ -19,7 +19,9 @@
 import { describe, expect, it } from 'vitest';
 import { App, TFolder } from 'obsidian';
 import { ShortcutStartType } from '../../src/types/shortcuts';
-import { resolveSearchShortcutStartFolderPath } from '../../src/hooks/useListPaneSearch';
+import { includeNavigationSelectionInSearchQuery, resolveSearchShortcutStartFolderPath } from '../../src/hooks/useListPaneSearch';
+import { ItemType, UNTAGGED_TAG_ID } from '../../src/types';
+import { buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 
 interface TestVaultRegistration {
     registerFolder(folder: TFolder): void;
@@ -40,5 +42,38 @@ describe('resolveSearchShortcutStartFolderPath', () => {
                 path: 'appLab/SKILLS-WORKFLOWS/mmgi'
             })
         ).toBe('applab/skills-workflows/mmgi');
+    });
+});
+
+describe('search-bar navigation source of truth', () => {
+    it('includes the selected property value before a Type facet is added', () => {
+        const query = includeNavigationSelectionInSearchQuery('type:structural:task', {
+            selectionType: ItemType.PROPERTY,
+            selectedTag: null,
+            selectedProperty: buildPropertyValueNodeId('status', 'todo'),
+            selectedType: null
+        });
+
+        expect(query).toBe('type:structural:task .status=todo');
+        expect(
+            includeNavigationSelectionInSearchQuery(query, {
+                selectionType: ItemType.PROPERTY,
+                selectedTag: null,
+                selectedProperty: buildPropertyValueNodeId('status', 'todo'),
+                selectedType: null
+            })
+        ).toBe(query);
+    });
+
+    it('represents the selected Untagged collection explicitly and idempotently', () => {
+        const selection = {
+            selectionType: ItemType.TAG,
+            selectedTag: UNTAGGED_TAG_ID,
+            selectedProperty: null,
+            selectedType: null
+        } as const;
+
+        expect(includeNavigationSelectionInSearchQuery('type:structural:task', selection)).toBe('type:structural:task -#');
+        expect(includeNavigationSelectionInSearchQuery('type:structural:task -#', selection)).toBe('type:structural:task -#');
     });
 });
