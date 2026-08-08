@@ -1,6 +1,11 @@
 import { App, TFile, TFolder } from 'obsidian';
 import { describe, expect, it } from 'vitest';
-import { collectFileBackedTypeFiles, composeTypeListItems, resolveTypeListMode } from '../../../src/hooks/listPaneData/typeListItems';
+import {
+    collectFileBackedTypeFiles,
+    composeTypeListItems,
+    getSelectedTypeSearchSourceScope,
+    resolveTypeListMode
+} from '../../../src/hooks/listPaneData/typeListItems';
 import { buildListItems, type ListPaneConfig } from '../../../src/hooks/listPaneData/listItems';
 import { buildSearchableNameData, filterListPaneFiles } from '../../../src/hooks/listPaneData/searchPipeline';
 import { DEFAULT_SETTINGS } from '../../../src/settings/defaultSettings';
@@ -40,6 +45,15 @@ const LINE_TYPE_IDS: readonly TpsNavigatorLineTypeId[] = [
     TPS_NAVIGATOR_TYPE_IDS.TABLES,
     TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS
 ];
+
+describe('selected Type source scope', () => {
+    it('does not reapply a stale allowlist when the visible Type snapshot is already populated', () => {
+        const staleEmptyScope = new Set<string>();
+
+        expect(getSelectedTypeSearchSourceScope(false, staleEmptyScope)).toBeUndefined();
+        expect(getSelectedTypeSearchSourceScope(true, staleEmptyScope)).toBe(staleEmptyScope);
+    });
+});
 
 function createDb(): IndexedDBStorage {
     return { getFile: () => null } as IndexedDBStorage;

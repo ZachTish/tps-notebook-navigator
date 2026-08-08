@@ -87,7 +87,12 @@ import { buildTypeProviderRows } from '../services/rows/typeProviderRows';
 import { collectTypeScopeVisibleFilePaths } from '../services/rows/providerScope';
 import { useNavigatorTypes } from './useNavigatorTypes';
 import { useNavigatorTypeRows } from './useNavigatorTypeRows';
-import { collectFileBackedTypeFiles, composeTypeListItems, resolveTypeListMode } from './listPaneData/typeListItems';
+import {
+    collectFileBackedTypeFiles,
+    composeTypeListItems,
+    getSelectedTypeSearchSourceScope,
+    resolveTypeListMode
+} from './listPaneData/typeListItems';
 import {
     buildStandaloneStructuralTypePresentation,
     getEffectiveStandaloneStructuralTypeGrouping
@@ -724,7 +729,11 @@ export function useListPaneData({
             selectedType,
             searchQuery: trimmedQuery,
             searchTokens: parsedSearchTokens ?? undefined,
-            allowedSourcePaths: structuralSourcePathSet,
+            // typeSnapshot already carries the authoritative visibility filter used by
+            // the navigation count. Reapplying a separately memoized path set here can
+            // transiently turn a populated Type into an empty list. Search facets still
+            // need their narrower owning-note scope.
+            allowedSourcePaths: getSelectedTypeSearchSourceScope(hasSearchQuery, structuralSourcePathSet),
             activate: activateTypeRecord,
             setTaskCheckbox: setTypeTaskCheckbox,
             addTaskContextMenuItems: addTypeTaskContextMenuItems,
@@ -743,6 +752,7 @@ export function useListPaneData({
         isProviderOwnedTypeSelection,
         isFileBackedTypeSelection,
         isTypeSelection,
+        hasSearchQuery,
         selectedType,
         setTypeTaskCheckbox,
         parsedSearchTokens,

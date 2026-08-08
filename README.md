@@ -173,6 +173,13 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.5.2 — populated Type selection reliability
+
+- Fixes built-in source-backed Types such as Checkboxes showing a populated navigation count but an empty list pane after selection.
+- The selected Type snapshot is already filtered by the same authoritative visibility scope used for its displayed count. Ordinary selection no longer applies a second independently memoized source allowlist that could transiently be empty or stale.
+- Active Filter Search still applies its narrower owning-note source scope, preserving folder, tag, property, date, and visibility facets during search.
+- This backward-compatible patch changes no settings or note data. Minimum Obsidian remains 1.11.0.
+
 ### 5.5.1 — line values in Properties
 
 - The Properties navigation tree now includes configured property values authored on visible tasks, bullets, and headings instead of indexing only owning-note frontmatter.

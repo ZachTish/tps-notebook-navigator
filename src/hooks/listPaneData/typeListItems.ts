@@ -44,6 +44,14 @@ export function collectFileBackedTypeFiles(app: App, visibleFiles: readonly TFil
     return visibleFiles.filter(file => isFileInTpsNavigatorType(app, file, selectedType));
 }
 
+/** A selected Type snapshot is already visibility-filtered; only active search may narrow its source scope again. */
+export function getSelectedTypeSearchSourceScope(
+    hasSearchQuery: boolean,
+    searchSourcePaths: ReadonlySet<string>
+): ReadonlySet<string> | undefined {
+    return hasSearchQuery ? searchSourcePaths : undefined;
+}
+
 interface ComposeTypeListItemsArgs {
     mode: TypeListMode;
     coreListItems: ListPaneItem[];
