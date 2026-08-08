@@ -287,7 +287,8 @@ export function useListPaneData({
         isTypeSelection,
         selectedType,
         hasSearchQuery,
-        useOmnisearch
+        useOmnisearch,
+        hasExplicitTypeFacets: hasTypeSearchFacets
     });
     const mixedStructuralSearchActive = isMixedStructuralSearchActive({
         enabled: settings.tpsTypesNavigationEnabled,

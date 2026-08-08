@@ -51,21 +51,30 @@ export function getStructuralTypeSearchCollections(tokens: FilterSearchTokens): 
     );
 }
 
-/** Fixed Type selections become an all-Type result surface while internal search is active. */
+/** A selected built-in Type stays scoped unless the query explicitly asks for Type facets. */
 export function shouldUseGlobalTypeSearch({
     enabled,
     isTypeSelection,
     selectedType,
     hasSearchQuery,
-    useOmnisearch
+    useOmnisearch,
+    hasExplicitTypeFacets
 }: {
     enabled: boolean;
     isTypeSelection: boolean;
     selectedType: TpsNavigatorTypeId | null;
     hasSearchQuery: boolean;
     useOmnisearch: boolean;
+    hasExplicitTypeFacets: boolean;
 }): boolean {
-    return enabled && isTypeSelection && isTpsNavigatorStructuralTypeId(selectedType) && hasSearchQuery && !useOmnisearch;
+    return (
+        enabled &&
+        isTypeSelection &&
+        isTpsNavigatorStructuralTypeId(selectedType) &&
+        hasSearchQuery &&
+        !useOmnisearch &&
+        hasExplicitTypeFacets
+    );
 }
 
 /**

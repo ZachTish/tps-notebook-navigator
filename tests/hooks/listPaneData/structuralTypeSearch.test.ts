@@ -62,11 +62,14 @@ describe('structural Type search helpers', () => {
         expect(getStructuralTypeSearchCollections(parseFilterSearchTokens('type:file:pdf'))).toEqual([]);
     });
 
-    it('turns a nonempty internal search from Notes or Checkboxes into an all-Type search', () => {
-        const base = { enabled: true, isTypeSelection: true, hasSearchQuery: true, useOmnisearch: false };
+    it('keeps ordinary searches scoped to the selected Type and expands only explicit Type-facet searches', () => {
+        const base = { enabled: true, isTypeSelection: true, hasSearchQuery: true, useOmnisearch: false, hasExplicitTypeFacets: false };
 
-        expect(shouldUseGlobalTypeSearch({ ...base, selectedType: TPS_NAVIGATOR_TYPE_IDS.NOTES })).toBe(true);
-        expect(shouldUseGlobalTypeSearch({ ...base, selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES })).toBe(true);
+        expect(shouldUseGlobalTypeSearch({ ...base, selectedType: TPS_NAVIGATOR_TYPE_IDS.NOTES })).toBe(false);
+        expect(shouldUseGlobalTypeSearch({ ...base, selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES })).toBe(false);
+        expect(shouldUseGlobalTypeSearch({ ...base, selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, hasExplicitTypeFacets: true })).toBe(
+            true
+        );
         expect(shouldUseGlobalTypeSearch({ ...base, hasSearchQuery: false, selectedType: TPS_NAVIGATOR_TYPE_IDS.NOTES })).toBe(false);
         expect(shouldUseGlobalTypeSearch({ ...base, useOmnisearch: true, selectedType: TPS_NAVIGATOR_TYPE_IDS.NOTES })).toBe(false);
         expect(

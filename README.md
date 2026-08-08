@@ -173,6 +173,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.6.2 — selected-Type search isolation
+
+- Keeps ordinary searches scoped to the selected Type, so filtering Checkboxes cannot inject Notes or other Type collections into the result list.
+- Explicit `type:` search facets can still request a mixed-Type result surface.
+- Adds focused regression coverage for ordinary and explicit multi-Type searches. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.6.1 — built-in Type row subscription repair
 
 - Fixes populated built-in Type counts opening an empty list, including Checkboxes.
