@@ -133,20 +133,17 @@ export function listItemUsesTypeProviderPresentation(
 
 /**
  * Sizes a standalone Type result with the same title/metadata rhythm as a file row.
- * Mobile reserves a 44px content target for the primary action and optional controls.
  */
 export function estimateTypeProviderRowHeight({
     heights,
     compactPaddingTotal,
     isCompactMode,
-    isMobile,
     titleRows,
     hasSecondaryLabel
 }: {
     heights: ListPaneMeasurements;
     compactPaddingTotal: number;
     isCompactMode: boolean;
-    isMobile: boolean;
     titleRows: number;
     hasSecondaryLabel: boolean;
 }): number {
@@ -154,10 +151,9 @@ export function estimateTypeProviderRowHeight({
     const titleHeight = heights.titleLineHeight * normalizedTitleRows;
     const metadataHeight = !isCompactMode && hasSecondaryLabel ? heights.singleTextLineHeight : 0;
     const contentHeight = titleHeight + metadataHeight;
-    const touchSafeContentHeight = isMobile ? Math.max(44, contentHeight) : contentHeight;
     const paddingTotal = isCompactMode ? compactPaddingTotal : heights.basePadding;
 
-    return paddingTotal + touchSafeContentHeight;
+    return paddingTotal + contentHeight;
 }
 
 export function getListPaneHeaderHeight(item: ListPaneItem | undefined, measurements: ListPaneMeasurements): number {

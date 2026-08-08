@@ -19,7 +19,11 @@
 import { describe, expect, it } from 'vitest';
 import { App, TFolder } from 'obsidian';
 import { ShortcutStartType } from '../../src/types/shortcuts';
-import { includeNavigationSelectionInSearchQuery, resolveSearchShortcutStartFolderPath } from '../../src/hooks/useListPaneSearch';
+import {
+    getSearchActivationQuery,
+    includeNavigationSelectionInSearchQuery,
+    resolveSearchShortcutStartFolderPath
+} from '../../src/hooks/useListPaneSearch';
 import { ItemType, UNTAGGED_TAG_ID } from '../../src/types';
 import { buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { updateFilterQueryWithTag } from '../../src/utils/filterSearch';
@@ -48,6 +52,17 @@ describe('resolveSearchShortcutStartFolderPath', () => {
 });
 
 describe('search-bar navigation source of truth', () => {
+    it('shows the selected Checkboxes Type as soon as Search opens', () => {
+        expect(
+            getSearchActivationQuery('', {
+                selectionType: ItemType.TYPE,
+                selectedTag: null,
+                selectedProperty: null,
+                selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
+            })
+        ).toBe('type:structural:task');
+    });
+
     it('includes the selected property value before a Type facet is added', () => {
         const query = includeNavigationSelectionInSearchQuery('type:structural:task', {
             selectionType: ItemType.PROPERTY,

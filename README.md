@@ -173,6 +173,13 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.8.5 — exact mobile row parity and visible Type scope
+
+- Makes Checkboxes and other structural Type results use the same mobile title, spacing, padding, icon-slot, and virtualization measurements as ordinary Notes; the checkbox is the only intentional leading-icon difference.
+- Removes the task-only 44–48 px control floor, forced two-line wrapping, and extra content padding that made checkbox rows visibly larger than note rows.
+- Opening Search while **Types / Checkboxes** is selected now immediately writes `type:structural:task` into the search bar, making the visible query the source of truth before any further text or facets are added.
+- Loads the always-required English locale through the normal module path so the complete test suite can validate search activation reliably. No settings or note data migrate. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.8.4 — native note-row control reset
 
 - Ensures task titles, source metadata, checkbox controls, and More actions blend into the same flat background as normal note rows under Obsidian and theme button rules.

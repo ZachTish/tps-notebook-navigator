@@ -86,7 +86,6 @@ describe('listPaneMeasurements layout helpers', () => {
                 heights: desktopHeights,
                 compactPaddingTotal: 8,
                 isCompactMode: false,
-                isMobile: false,
                 titleRows: 1,
                 hasSecondaryLabel: true
             })
@@ -96,7 +95,6 @@ describe('listPaneMeasurements layout helpers', () => {
                 heights: desktopHeights,
                 compactPaddingTotal: 8,
                 isCompactMode: false,
-                isMobile: false,
                 titleRows: 2,
                 hasSecondaryLabel: false
             })
@@ -109,7 +107,6 @@ describe('listPaneMeasurements layout helpers', () => {
                 heights: desktopHeights,
                 compactPaddingTotal: 8,
                 isCompactMode: true,
-                isMobile: false,
                 titleRows: 1,
                 hasSecondaryLabel: true
             })
@@ -119,14 +116,13 @@ describe('listPaneMeasurements layout helpers', () => {
                 heights: desktopHeights,
                 compactPaddingTotal: 8,
                 isCompactMode: true,
-                isMobile: false,
                 titleRows: Number.NaN,
                 hasSecondaryLabel: false
             })
         ).toBe(28);
     });
 
-    it('preserves 44px Type action targets inside the native mobile padding', () => {
+    it('sizes mobile Type results with exactly the same content rhythm as mobile files', () => {
         const mobileHeights = getListPaneMeasurements(true);
 
         expect(
@@ -134,27 +130,24 @@ describe('listPaneMeasurements layout helpers', () => {
                 heights: mobileHeights,
                 compactPaddingTotal: 16,
                 isCompactMode: true,
-                isMobile: true,
                 titleRows: 1,
                 hasSecondaryLabel: true
             })
-        ).toBe(60);
+        ).toBe(37);
         expect(
             estimateTypeProviderRowHeight({
                 heights: mobileHeights,
                 compactPaddingTotal: 16,
                 isCompactMode: false,
-                isMobile: true,
                 titleRows: 1,
                 hasSecondaryLabel: true
             })
-        ).toBe(68);
+        ).toBe(65);
         expect(
             estimateTypeProviderRowHeight({
                 heights: mobileHeights,
                 compactPaddingTotal: 16,
                 isCompactMode: false,
-                isMobile: true,
                 titleRows: 2,
                 hasSecondaryLabel: true
             })

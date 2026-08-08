@@ -21,7 +21,7 @@
  * Dynamically loads the appropriate language based on Obsidian's language setting
  */
 import { getLanguage } from 'obsidian';
-import type { STRINGS_EN } from './locales/en';
+import { STRINGS_EN } from './locales/en';
 
 // Type for the translation strings structure
 type TranslationStrings = typeof STRINGS_EN;
@@ -85,14 +85,9 @@ const SUPPORTED_LANGUAGES = new Set([
     'zh_tw'
 ]);
 
-let englishStrings: TranslationStrings | null = null;
-
 /* eslint-disable @typescript-eslint/no-require-imports -- Literal CommonJS requires keep locale modules bundled while deferring locale initialization. */
 function getEnglishStrings(): TranslationStrings {
-    if (!englishStrings) {
-        englishStrings = (require('./locales/en.ts') as typeof import('./locales/en')).STRINGS_EN;
-    }
-    return englishStrings;
+    return STRINGS_EN;
 }
 
 function loadLocaleOverrides(locale: string): TranslationStrings | undefined {

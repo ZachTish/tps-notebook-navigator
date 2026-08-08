@@ -93,31 +93,22 @@ describe('Type-mode list runtime behavior', () => {
         expect(shouldShowListCreateButton(ItemType.TYPE, true, false)).toBe(false);
     });
 
-    it('binds provider wrappers to their virtual height and keeps every mobile action target at least 44px', async () => {
+    it('binds provider wrappers to their virtual height without task-only mobile control sizing', async () => {
         const css = await readFile('src/styles/sections/list-provider-rows.css', 'utf8');
         const wrapperRule = css.match(/\.nn-virtual-provider-row\s*\{([^}]*)\}/u)?.[1];
-        const openRule = css.match(/\.notebook-navigator-mobile\s+\.nn-provider-row-open\s*\{([^}]*)\}/u)?.[1];
-        const checkboxRule = css.match(/\.notebook-navigator-mobile\s+\.nn-provider-row-checkbox\s*\{([^}]*)\}/u)?.[1];
-        const moreRule = css.match(/\.notebook-navigator-mobile\s+\.nn-provider-row-more\s*\{([^}]*)\}/u)?.[1];
 
         expect(wrapperRule).toMatch(/height:\s*var\(--item-height\)\s*;/u);
-        expect(openRule).toMatch(/min-height:\s*44px\s*;/u);
-        expect(openRule).toMatch(/align-self:\s*stretch\s*;/u);
-        for (const rule of [checkboxRule, moreRule]) {
-            expect(rule).toMatch(/width:\s*44px\s*;/u);
-            expect(rule).toMatch(/height:\s*44px\s*;/u);
-            expect(rule).toMatch(/flex-basis:\s*44px\s*;/u);
-        }
+        expect(css).not.toMatch(/\.notebook-navigator-mobile\s+\.nn-provider-row-(?:checkbox|open|more)\s*\{/u);
     });
 
-    it('uses a wrapped compact-card layout for mobile Type task rows', async () => {
+    it('uses ordinary file-row geometry and typography for mobile Type task rows', async () => {
         const css = await readFile('src/styles/sections/list-provider-rows.css', 'utf8');
 
         expect(css).toContain('.notebook-navigator-mobile .nn-provider-row--type {');
         expect(css).toContain('width: 100%;');
-        expect(css).toContain('-webkit-line-clamp: 2;');
-        expect(css).toContain('overflow-wrap: anywhere;');
         expect(css).toContain('background: transparent;');
+        expect(css).not.toContain('-webkit-line-clamp: 2;');
+        expect(css).not.toContain('overflow-wrap: anywhere;');
         expect(css).toContain('.nn-provider-row--type button.nn-provider-row-checkbox {');
         expect(css).toContain('.nn-provider-row--type button.nn-provider-row-more {');
     });
@@ -128,9 +119,7 @@ describe('Type-mode list runtime behavior', () => {
         const typeOpenRule = css.match(/\.nn-provider-row--type\s+button\.nn-provider-row-open\s*\{([^}]*)\}/u)?.[1];
         const typeSecondaryRule = css.match(/(?:^|\n)\.nn-provider-row--type\s+\.nn-provider-row-secondary\s*\{([^}]*)\}/u)?.[1];
         const selectedTypeSecondaryRule = css.match(/\.nn-file\.nn-selected\s+\.nn-provider-row-secondary\s*\{([^}]*)\}/u)?.[1];
-        const mobileCheckboxSlotRule = css.match(
-            /\.notebook-navigator-mobile\s+\.nn-provider-row--type\s+\.nn-provider-row-checkbox-slot\s*\{([^}]*)\}/u
-        )?.[1];
+        const checkboxSlotRule = css.match(/\.nn-provider-row--type\s+\.nn-provider-row-checkbox-slot\s*\{([^}]*)\}/u)?.[1];
 
         expect(typeRowRule).not.toMatch(/display:\s*flex/u);
         expect(typeRowRule).not.toMatch(/padding:/u);
@@ -143,7 +132,7 @@ describe('Type-mode list runtime behavior', () => {
         expect(typeSecondaryRule).toMatch(/var\(--nn-theme-file-parent-color\)/u);
         expect(typeSecondaryRule).toMatch(/var\(--nn-file-single-text-line-height\)/u);
         expect(selectedTypeSecondaryRule).toMatch(/var\(--nn-selected-file-parent-color\)/u);
-        expect(mobileCheckboxSlotRule).toMatch(/width:\s*44px\s*;/u);
-        expect(mobileCheckboxSlotRule).toMatch(/flex-basis:\s*44px\s*;/u);
+        expect(checkboxSlotRule).toMatch(/width:\s*var\(--nn-file-title-line-height\)\s*;/u);
+        expect(checkboxSlotRule).toMatch(/flex-basis:\s*var\(--nn-file-title-line-height\)\s*;/u);
     });
 });

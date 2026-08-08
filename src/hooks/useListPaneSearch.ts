@@ -103,6 +103,11 @@ export function includeNavigationSelectionInSearchQuery(query: string, selection
     return query.trim();
 }
 
+/** Makes the query shown when Search opens fully describe the active navigation scope. */
+export function getSearchActivationQuery(query: string, selection: SearchTruthSelection): string {
+    return includeNavigationSelectionInSearchQuery(query, selection);
+}
+
 interface UseListPaneSearchParams {
     rootContainerRef: RefObject<HTMLDivElement | null>;
     onSearchTokensChange?: (state: SearchNavFilterState) => void;
@@ -399,16 +404,6 @@ export function useListPaneSearch({
         [activateSearch, isSearchActive, plugin, searchProvider, setSearchActive, uiDispatch]
     );
 
-    const handleSearchToggle = useCallback(() => {
-        if (!isSearchActive) {
-            setShouldFocusSearch(true);
-            activateSearch();
-            return;
-        }
-
-        closeSearch();
-    }, [activateSearch, closeSearch, isSearchActive]);
-
     const handleSaveSearchShortcut = useCallback(() => {
         const normalizedQuery = searchQuery.trim();
         if (!normalizedQuery || isSavingSearchShortcut) {
@@ -503,6 +498,19 @@ export function useListPaneSearch({
         },
         [activateSearch]
     );
+
+    const openSearchWithNavigationSelection = useCallback(() => {
+        updateSearchQuery(query => getSearchActivationQuery(query, selectionState));
+    }, [selectionState, updateSearchQuery]);
+
+    const handleSearchToggle = useCallback(() => {
+        if (!isSearchActive) {
+            openSearchWithNavigationSelection();
+            return;
+        }
+
+        closeSearch();
+    }, [closeSearch, isSearchActive, openSearchWithNavigationSelection]);
 
     const modifySearchWithTag = useCallback(
         (tag: string, operator: InclusionOperator, options?: SearchQueryUpdateOptions) => {
@@ -639,9 +647,8 @@ export function useListPaneSearch({
             return;
         }
 
-        setShouldFocusSearch(true);
-        activateSearch();
-    }, [activateSearch, focusSearchInput, isSearchActive]);
+        openSearchWithNavigationSelection();
+    }, [focusSearchInput, isSearchActive, openSearchWithNavigationSelection]);
 
     const executeSearchShortcut = useCallback(
         async ({ searchShortcut }: ExecuteSearchShortcutParams) => {
