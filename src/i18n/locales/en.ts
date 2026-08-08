@@ -242,7 +242,7 @@ export const STRINGS_EN = {
                         '`-folder:/archive` Exclude notes only in `archive` (not subfolders).',
                         '`ext:md` Include notes with extension `md` (`ext:.md` is also supported).',
                         '`-ext:pdf` Exclude notes with extension `pdf`.',
-                        '`type:structural:task` Include Checkbox rows. Other fixed Type IDs work the same way.',
+                        '`type:<id>` Scope the filter to rows of that structural Type. Available Type IDs: `structural:task` (Checkboxes), `structural:bullet` (Bullets), `structural:heading` (Headings), `structural:code-block` (Code Blocks), `structural:callout` (Callouts), `structural:blockquote` (Blockquotes), `structural:table` (Tables), `structural:web-link` (Web Links), `entity:note` (Notes), `file:base` (Bases), `file:canvas` (Canvas), `file:drawing` (Drawings), `file:pdf` (PDFs), `file:image` (Images), `file:audio` (Audio), `file:video` (Video).',
                         'Multiple `type:` filters include any selected Type; tag, property, date, folder, and extension filters constrain the owning note.',
                         'Shift+Click a Type in navigation to add or remove it from Filter Search.',
                         'A nonempty Filter Search started from a built-in Type searches every built-in Type; Omnisearch remains file-only.',

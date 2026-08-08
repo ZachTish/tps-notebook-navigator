@@ -144,7 +144,8 @@ describe('PluginSettingsController Type presentation persistence', () => {
                     mode: 'compact',
                     titleRows: 4,
                     previewRows: 3,
-                    groupBy: 'line-property-day-desc:scheduled'
+                    groupBy: 'line-property-day-desc:scheduled',
+                    linePropertyInheritance: 'combine'
                 },
                 [TPS_NAVIGATOR_TYPE_IDS.CALLOUTS]: { groupBy: 'custom' },
                 [TPS_NAVIGATOR_TYPE_IDS.TABLES]: { groupBy: 'date' }
@@ -169,7 +170,7 @@ describe('PluginSettingsController Type presentation persistence', () => {
         });
         expect(first.settings.typeAppearances).toEqual({
             [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property:status' },
-            [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { groupBy: 'line-property-day-desc:scheduled' },
+            [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { groupBy: 'line-property-day-desc:scheduled', linePropertyInheritance: 'combine' },
             [TPS_NAVIGATOR_TYPE_IDS.CALLOUTS]: { groupBy: 'custom' },
             [TPS_NAVIGATOR_TYPE_IDS.TABLES]: { groupBy: 'date' }
         });

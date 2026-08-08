@@ -29,9 +29,22 @@ export interface FolderAppearance {
     titleRows?: number;
     previewRows?: number;
     groupBy?: ListNoteGroupingOption;
+    /** Property resolution for exact structural-line Type sorting and grouping. */
+    linePropertyInheritance?: LinePropertyInheritance;
 }
 
 export type TagAppearance = FolderAppearance;
+
+/** Determines how a structural line item's properties are inherited from its owning note. */
+export type LinePropertyInheritance = 'note-first' | 'line-first' | 'combine';
+
+export function isLinePropertyInheritance(value: unknown): value is LinePropertyInheritance {
+    return value === 'note-first' || value === 'line-first' || value === 'combine';
+}
+
+export function resolveLinePropertyInheritance(value: unknown): LinePropertyInheritance {
+    return isLinePropertyInheritance(value) ? value : 'line-first';
+}
 
 export interface ListPaneAppearanceSettings {
     mode: ListDisplayMode;

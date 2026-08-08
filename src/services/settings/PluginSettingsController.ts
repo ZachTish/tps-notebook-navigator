@@ -113,7 +113,7 @@ import {
     type LocalStorageKeys,
     type UXPreferences
 } from '../../types';
-import type { FolderAppearance } from '../../hooks/useListPaneAppearance';
+import { isLinePropertyInheritance, type FolderAppearance } from '../../hooks/useListPaneAppearance';
 import { isTpsNavigatorLineTypeId, isTpsNavigatorStructuralTypeId, isTpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { createSyncModeRegistry, type SyncModeRegistry } from './syncModeRegistry';
 import { getDefaultUXPreferences, isUXPreferencesRecord } from './uxPreferences';
@@ -1292,10 +1292,14 @@ export class PluginSettingsController {
                 }
                 if (isTpsNavigatorLineTypeId(key)) {
                     const groupBy = sanitized[key]?.groupBy;
-                    if (groupBy === undefined) {
+                    const linePropertyInheritance = sanitized[key]?.linePropertyInheritance;
+                    if (groupBy === undefined && !isLinePropertyInheritance(linePropertyInheritance)) {
                         delete sanitized[key];
                     } else {
-                        sanitized[key] = { groupBy };
+                        sanitized[key] = {
+                            ...(groupBy === undefined ? {} : { groupBy }),
+                            ...(isLinePropertyInheritance(linePropertyInheritance) ? { linePropertyInheritance } : {})
+                        };
                     }
                 }
             });

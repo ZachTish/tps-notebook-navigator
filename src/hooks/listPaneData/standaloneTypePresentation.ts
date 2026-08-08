@@ -10,6 +10,7 @@ import {
     replacePropertyGroupingSource
 } from '../../settings/types';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
+import type { LinePropertyInheritance } from '../useListPaneAppearance';
 import { ItemType, ListPaneItemType } from '../../types';
 import { isTpsNavigatorGcmLineTypeId, type TpsNavigatorLineTypeId } from '../../types/navigatorTypes';
 import type { ListPaneItem } from '../../types/virtualization';
@@ -37,6 +38,8 @@ export interface StructuralTypeRowPresentationArgs {
     getFrontmatter: (file: TFile) => unknown;
     getFileTimestamps: (file: TFile) => { created: number; modified: number };
     noValueLabel: string;
+    /** How row-local and owning-note values are inherited for property sort and grouping. */
+    linePropertyInheritance?: LinePropertyInheritance;
 }
 
 interface DecoratedStructuralTypeRow {
@@ -129,11 +132,29 @@ function getNotePropertyValue(entry: DecoratedStructuralTypeRow, propertyKey: st
     return getMatchingRecordValue(frontmatter, propertyKey);
 }
 
-function getResolvedPropertySortValue(entry: DecoratedStructuralTypeRow, propertyKey: string): unknown {
+function combinePropertyValues(noteValue: unknown, lineValue: unknown): unknown {
+    const noteValues: unknown[] = Array.isArray(noteValue) ? (noteValue as unknown[]) : [noteValue];
+    const lineValues: unknown[] = Array.isArray(lineValue) ? (lineValue as unknown[]) : [lineValue];
+    const values = [...noteValues, ...lineValues];
+    const seen = new Set<string>();
+    return values.filter(value => {
+        const key = `${typeof value}:${String(value)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+function getResolvedPropertyValue(
+    entry: DecoratedStructuralTypeRow,
+    propertyKey: string,
+    inheritance: LinePropertyInheritance
+): unknown {
     const rowProperty = getRowPropertyValue(entry, propertyKey);
-    // Property sorting retains its established row-first behavior. Grouping source is encoded
-    // separately so changing a group never changes the active sort contract.
-    return rowProperty.present ? rowProperty.value : getNotePropertyValue(entry, propertyKey);
+    const noteValue = getNotePropertyValue(entry, propertyKey);
+    if (inheritance === 'note-first') return noteValue === undefined ? rowProperty.value : noteValue;
+    if (inheritance === 'combine') return combinePropertyValues(noteValue, rowProperty.value);
+    return rowProperty.present ? rowProperty.value : noteValue;
 }
 
 function compareStableIdentity(left: DecoratedStructuralTypeRow, right: DecoratedStructuralTypeRow): number {
@@ -176,7 +197,12 @@ function compareSecondary(
     }
 }
 
-function compareRows(left: DecoratedStructuralTypeRow, right: DecoratedStructuralTypeRow, sort: EffectiveListSort): number {
+function compareRows(
+    left: DecoratedStructuralTypeRow,
+    right: DecoratedStructuralTypeRow,
+    sort: EffectiveListSort,
+    inheritance: LinePropertyInheritance
+): number {
     const descending = sort.option.endsWith('-desc');
     let result = 0;
 
@@ -189,8 +215,8 @@ function compareRows(left: DecoratedStructuralTypeRow, right: DecoratedStructura
     } else if (sort.option.startsWith('modified')) {
         result = compareOptional(getFileTimestamp(left, 'modified'), getFileTimestamp(right, 'modified'), descending, (a, b) => a - b);
     } else {
-        const leftValue = getPropertySortValue(getResolvedPropertySortValue(left, sort.propertyKey));
-        const rightValue = getPropertySortValue(getResolvedPropertySortValue(right, sort.propertyKey));
+        const leftValue = getPropertySortValue(getResolvedPropertyValue(left, sort.propertyKey, inheritance));
+        const rightValue = getPropertySortValue(getResolvedPropertyValue(right, sort.propertyKey, inheritance));
         result = compareOptional(leftValue, rightValue, descending, naturalCompare);
         if (result === 0 && leftValue !== null && rightValue !== null) {
             result = compareSecondary(left, right, sort, descending);
@@ -203,7 +229,8 @@ function compareRows(left: DecoratedStructuralTypeRow, right: DecoratedStructura
 function orderPropertyGroups(
     entries: readonly DecoratedStructuralTypeRow[],
     groupBy: ListNoteGroupingOption,
-    noValueLabel: string
+    noValueLabel: string,
+    inheritance: LinePropertyInheritance
 ): StructuralTypeRowGroup[] {
     const propertyKey = getPropertyGroupingKey(groupBy);
     if (propertyKey === null) {
@@ -219,7 +246,7 @@ function orderPropertyGroups(
     const missing: DecoratedStructuralTypeRow[] = [];
 
     entries.forEach(entry => {
-        const rawValue = source === 'line' ? getRowPropertyValue(entry, propertyKey).value : getNotePropertyValue(entry, propertyKey);
+        const rawValue = getResolvedPropertyValue(entry, propertyKey, inheritance);
         const value = granularity === 'day' ? getPropertyDayGroupingValue(rawValue) : getPropertyGroupingValue(rawValue);
         if (value === null) {
             missing.push(entry);
@@ -378,9 +405,10 @@ export function buildStandaloneStructuralTypePresentation(args: StructuralTypeRo
         }
         return { row, inputIndex, ...source };
     });
-    entries.sort((left, right) => compareRows(left, right, args.sort));
+    const inheritance = args.linePropertyInheritance ?? 'line-first';
+    entries.sort((left, right) => compareRows(left, right, args.sort, inheritance));
 
-    const propertyGroups = orderPropertyGroups(entries, args.groupBy, args.noValueLabel);
+    const propertyGroups = orderPropertyGroups(entries, args.groupBy, args.noValueLabel, inheritance);
     if (propertyGroups.length > 0 || getPropertyGroupingKey(args.groupBy) !== null) {
         return buildGroupedItems(propertyGroups, args);
     }

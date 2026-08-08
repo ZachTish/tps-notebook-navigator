@@ -766,7 +766,8 @@ export function useListPaneData({
             resolveFile: sourcePath => app.vault.getFileByPath(sourcePath),
             getFrontmatter: file => app.metadataCache.getFileCache(file)?.frontmatter ?? null,
             getFileTimestamps,
-            noValueLabel: strings.listPane.propertyGroupNoValue
+            noValueLabel: strings.listPane.propertyGroupNoValue,
+            linePropertyInheritance: settings.typeAppearances?.[selectedType]?.linePropertyInheritance
         });
     }, [
         app.metadataCache,
@@ -778,6 +779,7 @@ export function useListPaneData({
         isLineBackedTypeSelection,
         mixedStructuralSearchActive,
         selectedType,
+        settings.typeAppearances,
         sortSpec,
         typeRows
     ]);
@@ -866,7 +868,8 @@ export function useListPaneData({
                               resolveFile: sourcePath => app.vault.getFileByPath(sourcePath),
                               getFrontmatter: file => app.metadataCache.getFileCache(file)?.frontmatter ?? null,
                               getFileTimestamps,
-                              noValueLabel: strings.listPane.propertyGroupNoValue
+                              noValueLabel: strings.listPane.propertyGroupNoValue,
+                              linePropertyInheritance: settings.typeAppearances?.[typeId]?.linePropertyInheritance
                           })
                       }
                   ];
@@ -883,6 +886,7 @@ export function useListPaneData({
         mixedStructuralSearchActive,
         parsedSearchTokens,
         setTypeTaskCheckbox,
+        settings.typeAppearances,
         sortSpec,
         structuralSourcePathSet,
         trimmedQuery,
