@@ -29,9 +29,16 @@ describe('structural Type search helpers', () => {
         expect(sourceTokens.excludeNameTokens).toEqual([]);
         expect(sourceTokens.typeTokens).toEqual([]);
         expect(sourceTokens.tagTokens).toEqual(['shopping']);
-        expect(sourceTokens.propertyTokens).toEqual([{ key: 'status', value: 'open' }]);
+        expect(sourceTokens.propertyTokens).toEqual([]);
+        expect(sourceTokens.excludePropertyTokens).toEqual([]);
         expect(sourceTokens.folderTokens).toEqual([{ mode: 'segment', value: 'areas' }]);
         expect(filterSearchHasActiveCriteria(sourceTokens)).toBe(true);
+    });
+
+    it('does not reject structural rows because a line property is absent from owning-note frontmatter', () => {
+        const sourceTokens = getStructuralTypeSourceSearchTokens(parseFilterSearchTokens('.status=todo'));
+
+        expect(filterSearchHasActiveCriteria(sourceTokens)).toBe(false);
     });
 
     it('makes a name-and-Type-only query inactive for owning-note metadata filtering', () => {

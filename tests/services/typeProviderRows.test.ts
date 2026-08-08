@@ -45,6 +45,8 @@ function buildRows(options?: {
     searchQuery?: string;
     searchTokens?: ReturnType<typeof parseFilterSearchTokens>;
     allowedSourcePaths?: ReadonlySet<string>;
+    getNoteProperties?: (sourcePath: string) => Readonly<Record<string, unknown>> | undefined;
+    linePropertyInheritance?: 'note-first' | 'line-first' | 'combine';
     includeUnavailableStatus?: boolean;
     selectedType?: TpsNavigatorTypeId;
     activate?: (record: TpsNavigatorTypeRecord) => Promise<TypeRecordActivationResult>;
@@ -59,6 +61,8 @@ function buildRows(options?: {
         searchQuery: options?.searchQuery ?? '',
         searchTokens: options?.searchTokens,
         allowedSourcePaths: options?.allowedSourcePaths,
+        getNoteProperties: options?.getNoteProperties,
+        linePropertyInheritance: options?.linePropertyInheritance,
         includeUnavailableStatus: options?.includeUnavailableStatus,
         activate: options?.activate ?? (async () => ({ ok: true })),
         setTaskCheckbox: options?.setTaskCheckbox ?? (async () => ({ ok: true })),
@@ -291,6 +295,45 @@ describe('buildTypeProviderRows', () => {
         const rows = buildRows({ records: [matching, excluded], searchQuery: query, searchTokens: parseFilterSearchTokens(query) });
 
         expect(rows.map(row => row.label)).toEqual(['Résumé checklist']);
+    });
+
+    it('matches checkbox status against effective line properties instead of requiring note frontmatter', () => {
+        const todo = createRecord({
+            id: 'todo',
+            label: 'Open task',
+            entityType: 'block',
+            lineKind: 'task',
+            task: {
+                lineNumber: 0,
+                rawLine: '- [ ] Open task',
+                title: 'Open task',
+                checkbox: '[ ]',
+                marker: ' ',
+                status: 'todo',
+                isComplete: false,
+                fields: {},
+                canMutateCheckbox: true,
+                hasContextMenu: true
+            }
+        });
+        const complete = createRecord({
+            ...todo,
+            id: 'complete',
+            locatorKey: 'complete',
+            label: 'Closed task',
+            task: { ...todo.task!, status: 'complete', isComplete: true }
+        });
+        const query = '.status=todo';
+
+        const rows = buildRows({
+            records: [todo, complete],
+            searchQuery: query,
+            searchTokens: parseFilterSearchTokens(query),
+            getNoteProperties: () => ({ status: 'complete' }),
+            linePropertyInheritance: 'line-first'
+        });
+
+        expect(rows.map(row => row.label)).toEqual(['Open task']);
     });
 
     it('returns no rows when the selected collection does not match the Type facet', () => {

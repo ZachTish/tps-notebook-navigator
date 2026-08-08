@@ -4,6 +4,8 @@ import type { NavigatorProvidedRow } from './types';
 import type { GcmTaskMenuLike } from '../../integrations/gcm/gcmTaskApi';
 import type { FilterSearchTokens } from '../../utils/filterSearch';
 import { filterSearchMatchesTypeFacet, parseFilterSearchTokens } from '../../utils/filterSearch';
+import { propertyTokenMatches } from '../../utils/filterSearchExpression';
+import type { LinePropertyInheritance } from '../../hooks/useListPaneAppearance';
 import { casefold, foldSearchText } from '../../utils/recordUtils';
 import {
     isTpsNavigatorGcmLineTypeId,
@@ -33,12 +35,49 @@ interface BuildTypeProviderRowsOptions {
     searchTokens?: FilterSearchTokens;
     /** Optional source-note scope after navigation and owning-note metadata filters. */
     allowedSourcePaths?: ReadonlySet<string>;
+    /** Owning-note properties used only as the configured fallback/priority for row property search. */
+    getNoteProperties?: (sourcePath: string) => Readonly<Record<string, unknown>> | undefined;
+    linePropertyInheritance?: LinePropertyInheritance;
     /** Standalone Type views show source failures; mixed search sections omit them. */
     includeUnavailableStatus?: boolean;
     activate: (record: TpsNavigatorTypeRecord) => Promise<TypeRecordActivationResult>;
     setTaskCheckbox: (record: TpsNavigatorTypeRecord, checked: boolean) => Promise<TypeTaskMutationResult>;
     addTaskContextMenuItems: (menu: GcmTaskMenuLike, record: TpsNavigatorTypeRecord) => boolean;
     onActivationFailure: (record: TpsNavigatorTypeRecord, result: TypeRecordActivationResult) => void;
+}
+
+function addSearchPropertyValues(target: Map<string, string[]>, properties: Readonly<Record<string, unknown>> | undefined): void {
+    Object.entries(properties ?? {}).forEach(([key, rawValue]) => {
+        const normalizedKey = foldSearchText(key.trim());
+        if (!normalizedKey) return;
+        const values = (Array.isArray(rawValue) ? rawValue : [rawValue]).map(value => foldSearchText(String(value ?? ''))).filter(Boolean);
+        target.set(normalizedKey, values);
+    });
+}
+
+function buildEffectiveSearchProperties(
+    rowProperties: NavigatorProvidedRow['properties'],
+    noteProperties: Readonly<Record<string, unknown>> | undefined,
+    inheritance: LinePropertyInheritance
+): Map<string, string[]> {
+    const note = new Map<string, string[]>();
+    const line = new Map<string, string[]>();
+    addSearchPropertyValues(note, noteProperties);
+    addSearchPropertyValues(line, rowProperties);
+    if (inheritance === 'note-first') {
+        line.forEach((values, key) => {
+            if (!note.has(key)) note.set(key, values);
+        });
+        return note;
+    }
+    if (inheritance === 'combine') {
+        line.forEach((values, key) => note.set(key, [...new Set([...(note.get(key) ?? []), ...values])]));
+        return note;
+    }
+    note.forEach((values, key) => {
+        if (!line.has(key)) line.set(key, values);
+    });
+    return line;
 }
 
 function setPropertyCaseInsensitively(
@@ -82,6 +121,8 @@ export function buildTypeProviderRows({
     searchQuery,
     searchTokens,
     allowedSourcePaths,
+    getNoteProperties,
+    linePropertyInheritance = 'line-first',
     includeUnavailableStatus = true,
     activate,
     setTaskCheckbox,
@@ -133,7 +174,23 @@ export function buildTypeProviderRows({
                 return false;
             }
             const haystack = foldSearchText(`${record.label}\n${record.sourcePath}\n${record.searchText ?? ''}`);
-            return queryTerms.every(term => haystack.includes(term)) && excludedQueryTerms.every(term => !haystack.includes(term));
+            if (!queryTerms.every(term => haystack.includes(term)) || !excludedQueryTerms.every(term => !haystack.includes(term))) {
+                return false;
+            }
+            if (!tokens || (tokens.propertyTokens.length === 0 && tokens.excludePropertyTokens.length === 0)) {
+                return true;
+            }
+            const task = record.lineKind === 'task' ? record.task : undefined;
+            const rawProperties = isTpsNavigatorGcmLineTypeId(record.typeId) ? record.properties : undefined;
+            const effectiveProperties = buildEffectiveSearchProperties(
+                buildRowProperties(rawProperties, task),
+                getNoteProperties?.(record.sourcePath),
+                linePropertyInheritance
+            );
+            return (
+                tokens.propertyTokens.every(token => propertyTokenMatches(effectiveProperties, token)) &&
+                tokens.excludePropertyTokens.every(token => !propertyTokenMatches(effectiveProperties, token))
+            );
         })
         .map(record => {
             const task = record.lineKind === 'task' ? record.task : undefined;

@@ -744,6 +744,13 @@ export function useListPaneData({
             // transiently turn a populated Type into an empty list. Search facets still
             // need their narrower owning-note scope.
             allowedSourcePaths: getSelectedTypeSearchSourceScope(hasSearchQuery, structuralSourcePathSet),
+            getNoteProperties: sourcePath => {
+                const file = app.vault.getFileByPath(sourcePath);
+                return file ? app.metadataCache.getFileCache(file)?.frontmatter : undefined;
+            },
+            linePropertyInheritance: isTpsNavigatorStructuralTypeId(selectedType)
+                ? settings.typeAppearances?.[selectedType]?.linePropertyInheritance
+                : undefined,
             activate: activateTypeRecord,
             setTaskCheckbox: setTypeTaskCheckbox,
             addTaskContextMenuItems: addTypeTaskContextMenuItems,
@@ -759,6 +766,8 @@ export function useListPaneData({
     }, [
         activateTypeRecord,
         addTypeTaskContextMenuItems,
+        app.metadataCache,
+        app.vault,
         isProviderOwnedTypeSelection,
         isFileBackedTypeSelection,
         isTypeSelection,
@@ -767,6 +776,7 @@ export function useListPaneData({
         setTypeTaskCheckbox,
         parsedSearchTokens,
         structuralSourcePathSet,
+        settings.typeAppearances,
         trimmedQuery,
         typeSnapshot
     ]);
@@ -860,6 +870,11 @@ export function useListPaneData({
                 searchQuery: trimmedQuery,
                 searchTokens: parsedSearchTokens,
                 allowedSourcePaths: structuralSourcePathSet,
+                getNoteProperties: sourcePath => {
+                    const file = app.vault.getFileByPath(sourcePath);
+                    return file ? app.metadataCache.getFileCache(file)?.frontmatter : undefined;
+                },
+                linePropertyInheritance: settings.typeAppearances?.[typeId]?.linePropertyInheritance,
                 includeUnavailableStatus: false,
                 activate: activateTypeRecord,
                 setTaskCheckbox: setTypeTaskCheckbox,

@@ -12,19 +12,23 @@ import { isFileInTpsNavigatorType } from '../../services/types/vaultFileTypes';
  * describe its owning note. Type facets are evaluated against the row collection itself.
  */
 export function getStructuralTypeSourceSearchTokens(tokens: FilterSearchTokens): FilterSearchTokens {
+    const sourceExpression = tokens.expression.filter(token => token.kind !== 'property' && token.kind !== 'notProperty');
     const hasInclusions =
         tokens.tagTokens.length > 0 ||
-        tokens.propertyTokens.length > 0 ||
         tokens.folderTokens.length > 0 ||
         tokens.extensionTokens.length > 0 ||
         tokens.dateRanges.length > 0 ||
         tokens.requireTagged ||
         tokens.requireUnfinishedTasks ||
-        (tokens.mode === 'tag' && tokens.expression.length > 0);
+        (tokens.mode === 'tag' && sourceExpression.length > 0);
 
     return {
         ...tokens,
+        expression: sourceExpression,
         hasInclusions,
+        propertyTokens: [],
+        excludePropertyTokens: [],
+        requiresProperties: false,
         nameTokens: [],
         excludeNameTokens: [],
         typeTokens: [],

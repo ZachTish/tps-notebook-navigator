@@ -173,6 +173,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.7.1 — structural row property filtering
+
+- Fixes property selections such as `.status=todo` showing no results under **Checkboxes** even when matching tasks are counted in Properties.
+- Structural Types now evaluate property clauses against each row's effective line/note properties using the selected inheritance mode instead of requiring the owning note to carry the value.
+- No settings or note-data migration is required. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.7.0 — mobile task-list layout
 
 - Makes Checkboxes and other exact-line Type results read as compact task cards on mobile instead of compressed desktop rows.
