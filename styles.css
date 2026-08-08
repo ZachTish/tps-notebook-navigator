@@ -4441,6 +4441,8 @@ button.tps-nn-navigation-calendar-day {
     padding: 0;
     border: 0;
     background: transparent;
+    box-shadow: none;
+    appearance: none;
     color: var(--text-on-accent);
     font: inherit;
     font-size: 12px;
@@ -4583,6 +4585,8 @@ button.tps-nn-navigation-calendar-day {
     border: 0;
     border-radius: 4px;
     background: transparent;
+    box-shadow: none;
+    appearance: none;
     color: var(--tps-nn-theme-foreground-muted);
     cursor: pointer;
 }
@@ -4630,16 +4634,16 @@ button.tps-nn-navigation-calendar-day {
     width: 44px;
     height: 44px;
     flex-basis: 44px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--background-modifier-hover) 72%, transparent);
+    border-radius: 6px;
+    background: transparent;
 }
 
-/* Mobile Type results read as compact task cards instead of compressed desktop file rows. */
+/* Mobile Type results stay visually quiet while retaining readable wrapping and touch targets. */
 .tps-notebook-navigator-mobile .tps-nn-provider-row--type {
-    margin-inline: 6px;
-    width: calc(100% - 12px);
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--background-secondary) 62%, transparent);
+    margin-inline: 0;
+    width: 100%;
+    border-radius: 0;
+    background: transparent;
 }
 
 .tps-notebook-navigator-mobile .tps-nn-provider-row--type .tps-nn-file-content {
@@ -4655,6 +4659,9 @@ button.tps-nn-navigation-calendar-day {
     min-height: 48px;
     padding-block: 6px;
     justify-content: center;
+    background: transparent;
+    box-shadow: none;
+    appearance: none;
 }
 
 .tps-notebook-navigator-mobile .tps-nn-provider-row--type .tps-nn-file-name {

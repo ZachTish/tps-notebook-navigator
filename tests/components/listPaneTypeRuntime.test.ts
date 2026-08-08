@@ -114,10 +114,10 @@ describe('Type-mode list runtime behavior', () => {
         const css = await readFile('src/styles/sections/list-provider-rows.css', 'utf8');
 
         expect(css).toContain('.notebook-navigator-mobile .nn-provider-row--type {');
-        expect(css).toContain('width: calc(100% - 12px);');
+        expect(css).toContain('width: 100%;');
         expect(css).toContain('-webkit-line-clamp: 2;');
         expect(css).toContain('overflow-wrap: anywhere;');
-        expect(css).toContain('background: color-mix(in srgb, var(--background-secondary) 62%, transparent);');
+        expect(css).toContain('background: transparent;');
     });
 
     it('keeps standalone Type rows on native file chrome while preserving restrained provider controls', async () => {

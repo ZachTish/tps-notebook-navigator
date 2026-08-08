@@ -173,6 +173,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.8.3 — quiet mobile task rows
+
+- Removes the stacked gray card/button treatment from mobile checkbox rows and restores a clean, full-width list appearance.
+- Title/source, checkbox, and More actions controls explicitly use transparent, shadowless native-reset surfaces; hover, focus, and selected states remain visible.
+- Two-line title wrapping, readable source metadata, and touch-sized controls remain unchanged. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.8.2 — exact task-tag grouping
 
 - Fixes tagged checkbox rows appearing under `None` or an owning-note tag even though the task context menu shows the task's exact tags.
