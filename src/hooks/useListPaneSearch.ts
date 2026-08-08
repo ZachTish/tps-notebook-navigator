@@ -44,6 +44,7 @@ import {
     updateFilterQueryWithDateToken,
     updateFilterQueryWithProperty,
     updateFilterQueryWithTag,
+    updateFilterQueryWithType,
     updateFilterQueryWithTypeSelection,
     type InclusionOperator
 } from '../utils/filterSearch';
@@ -93,6 +94,11 @@ export function includeNavigationSelectionInSearchQuery(query: string, selection
         if (!property) return query.trim();
         const alreadyIncluded = tokens.propertyTokens.some(token => token.key === property.key && token.value === property.valuePath);
         return alreadyIncluded ? query.trim() : updateFilterQueryWithProperty(query, property.key, property.valuePath, 'AND').query;
+    }
+    if (selection.selectionType === ItemType.TYPE && selection.selectedType) {
+        return tokens.typeTokens.includes(selection.selectedType)
+            ? query.trim()
+            : updateFilterQueryWithType(query, selection.selectedType).query;
     }
     return query.trim();
 }
@@ -505,9 +511,13 @@ export function useListPaneSearch({
                 return;
             }
 
-            updateSearchQuery(query => updateFilterQueryWithTag(query, normalizedTag, operator).query, options);
+            updateSearchQuery(
+                query =>
+                    updateFilterQueryWithTag(includeNavigationSelectionInSearchQuery(query, selectionState), normalizedTag, operator).query,
+                options
+            );
         },
-        [updateSearchQuery]
+        [selectionState, updateSearchQuery]
     );
 
     const modifySearchWithProperty = useCallback(
@@ -517,9 +527,18 @@ export function useListPaneSearch({
                 return;
             }
 
-            updateSearchQuery(query => updateFilterQueryWithProperty(query, normalizedKey, value, operator).query, options);
+            updateSearchQuery(
+                query =>
+                    updateFilterQueryWithProperty(
+                        includeNavigationSelectionInSearchQuery(query, selectionState),
+                        normalizedKey,
+                        value,
+                        operator
+                    ).query,
+                options
+            );
         },
-        [updateSearchQuery]
+        [selectionState, updateSearchQuery]
     );
 
     const modifySearchWithType = useCallback(
@@ -561,9 +580,13 @@ export function useListPaneSearch({
                 plugin.setSearchProvider('internal');
             }
 
-            updateSearchQuery(query => updateFilterQueryWithDateToken(query, normalizedToken).query, options);
+            updateSearchQuery(
+                query =>
+                    updateFilterQueryWithDateToken(includeNavigationSelectionInSearchQuery(query, selectionState), normalizedToken).query,
+                options
+            );
         },
-        [plugin, searchProvider, updateSearchQuery]
+        [plugin, searchProvider, selectionState, updateSearchQuery]
     );
 
     const waitForNextFrame = useCallback(() => {

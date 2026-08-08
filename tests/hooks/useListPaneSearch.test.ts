@@ -22,6 +22,8 @@ import { ShortcutStartType } from '../../src/types/shortcuts';
 import { includeNavigationSelectionInSearchQuery, resolveSearchShortcutStartFolderPath } from '../../src/hooks/useListPaneSearch';
 import { ItemType, UNTAGGED_TAG_ID } from '../../src/types';
 import { buildPropertyValueNodeId } from '../../src/utils/propertyTree';
+import { updateFilterQueryWithTag } from '../../src/utils/filterSearch';
+import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 interface TestVaultRegistration {
     registerFolder(folder: TFolder): void;
@@ -75,5 +77,16 @@ describe('search-bar navigation source of truth', () => {
 
         expect(includeNavigationSelectionInSearchQuery('type:structural:task', selection)).toBe('type:structural:task -#');
         expect(includeNavigationSelectionInSearchQuery('type:structural:task -#', selection)).toBe('type:structural:task -#');
+    });
+
+    it('includes the selected Checkboxes Type before adding a tag facet', () => {
+        const selectedTypeQuery = includeNavigationSelectionInSearchQuery('', {
+            selectionType: ItemType.TYPE,
+            selectedTag: null,
+            selectedProperty: null,
+            selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
+        });
+
+        expect(updateFilterQueryWithTag(selectedTypeQuery, 'hca', 'AND').query).toBe('type:structural:task #hca');
     });
 });

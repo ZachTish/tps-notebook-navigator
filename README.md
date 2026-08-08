@@ -173,6 +173,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.8.1 — symmetric search-bar scope synchronization
+
+- Fixes the reverse source-of-truth path: adding a tag, property, or date while Checkboxes is selected now preserves `type:structural:task` explicitly in the search bar.
+- The exact Checkboxes → `#hca` sequence now produces `type:structural:task #hca` instead of leaving the Type scope implicit.
+- This backward-compatible patch changes no settings or note data. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.8.0 — search-bar navigation source of truth
 
 - When a navigation selection is extended with a structural Type facet, the current selected tag or property value is first materialized in the search bar.
