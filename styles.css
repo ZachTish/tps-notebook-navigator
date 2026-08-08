@@ -4627,6 +4627,60 @@ button.tps-nn-navigation-calendar-day {
 .tps-notebook-navigator-mobile .tps-nn-provider-row--type .tps-nn-provider-row-more {
     opacity: 1;
     pointer-events: auto;
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--background-modifier-hover) 72%, transparent);
+}
+
+/* Mobile Type results read as compact task cards instead of compressed desktop file rows. */
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type {
+    margin-inline: 6px;
+    width: calc(100% - 12px);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--background-secondary) 62%, transparent);
+}
+
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type .tps-nn-file-content {
+    padding-inline: 8px 4px;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type .tps-nn-file-inner-content {
+    align-items: center;
+    gap: 4px;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type button.tps-nn-provider-row-open {
+    min-height: 48px;
+    padding-block: 6px;
+    justify-content: center;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type .tps-nn-file-name {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.35;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type .tps-nn-file-second-line {
+    margin-top: 3px;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type .tps-nn-provider-row-secondary {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.82;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type.tps-nn-selected {
+    background: var(--tps-nn-selected-file-bg-color);
 }
 
 .tps-nn-provider-row-label,

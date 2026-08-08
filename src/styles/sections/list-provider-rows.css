@@ -229,6 +229,60 @@
 .notebook-navigator-mobile .nn-provider-row--type .nn-provider-row-more {
     opacity: 1;
     pointer-events: auto;
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--background-modifier-hover) 72%, transparent);
+}
+
+/* Mobile Type results read as compact task cards instead of compressed desktop file rows. */
+.notebook-navigator-mobile .nn-provider-row--type {
+    margin-inline: 6px;
+    width: calc(100% - 12px);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--background-secondary) 62%, transparent);
+}
+
+.notebook-navigator-mobile .nn-provider-row--type .nn-file-content {
+    padding-inline: 8px 4px;
+}
+
+.notebook-navigator-mobile .nn-provider-row--type .nn-file-inner-content {
+    align-items: center;
+    gap: 4px;
+}
+
+.notebook-navigator-mobile .nn-provider-row--type button.nn-provider-row-open {
+    min-height: 48px;
+    padding-block: 6px;
+    justify-content: center;
+}
+
+.notebook-navigator-mobile .nn-provider-row--type .nn-file-name {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.35;
+}
+
+.notebook-navigator-mobile .nn-provider-row--type .nn-file-second-line {
+    margin-top: 3px;
+}
+
+.notebook-navigator-mobile .nn-provider-row--type .nn-provider-row-secondary {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.82;
+}
+
+.notebook-navigator-mobile .nn-provider-row--type.nn-selected {
+    background: var(--nn-selected-file-bg-color);
 }
 
 .nn-provider-row-label,

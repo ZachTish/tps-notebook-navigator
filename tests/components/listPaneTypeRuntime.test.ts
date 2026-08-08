@@ -110,11 +110,21 @@ describe('Type-mode list runtime behavior', () => {
         }
     });
 
+    it('uses a wrapped compact-card layout for mobile Type task rows', async () => {
+        const css = await readFile('src/styles/sections/list-provider-rows.css', 'utf8');
+
+        expect(css).toContain('.notebook-navigator-mobile .nn-provider-row--type {');
+        expect(css).toContain('width: calc(100% - 12px);');
+        expect(css).toContain('-webkit-line-clamp: 2;');
+        expect(css).toContain('overflow-wrap: anywhere;');
+        expect(css).toContain('background: color-mix(in srgb, var(--background-secondary) 62%, transparent);');
+    });
+
     it('keeps standalone Type rows on native file chrome while preserving restrained provider controls', async () => {
         const css = await readFile('src/styles/sections/list-provider-rows.css', 'utf8');
         const typeRowRule = css.match(/\.nn-provider-row--type\s*\{([^}]*)\}/u)?.[1];
         const typeOpenRule = css.match(/\.nn-provider-row--type\s+button\.nn-provider-row-open\s*\{([^}]*)\}/u)?.[1];
-        const typeSecondaryRule = css.match(/\.nn-provider-row--type\s+\.nn-provider-row-secondary\s*\{([^}]*)\}/u)?.[1];
+        const typeSecondaryRule = css.match(/(?:^|\n)\.nn-provider-row--type\s+\.nn-provider-row-secondary\s*\{([^}]*)\}/u)?.[1];
         const selectedTypeSecondaryRule = css.match(/\.nn-file\.nn-selected\s+\.nn-provider-row-secondary\s*\{([^}]*)\}/u)?.[1];
         const mobileCheckboxSlotRule = css.match(
             /\.notebook-navigator-mobile\s+\.nn-provider-row--type\s+\.nn-provider-row-checkbox-slot\s*\{([^}]*)\}/u

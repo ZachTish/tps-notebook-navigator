@@ -173,6 +173,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.7.0 — mobile task-list layout
+
+- Makes Checkboxes and other exact-line Type results read as compact task cards on mobile instead of compressed desktop rows.
+- Allows task titles to wrap to two lines, keeps source metadata legible, and gives the primary row and More actions control reliable touch targets.
+- Keeps desktop presentation and task behavior unchanged. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.6.2 — selected-Type search isolation
 
 - Keeps ordinary searches scoped to the selected Type, so filtering Checkboxes cannot inject Notes or other Type collections into the result list.
