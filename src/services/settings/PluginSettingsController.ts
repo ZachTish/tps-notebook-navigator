@@ -113,7 +113,7 @@ import {
     type LocalStorageKeys,
     type UXPreferences
 } from '../../types';
-import { isLinePropertyInheritance, type FolderAppearance } from '../../hooks/useListPaneAppearance';
+import { isLinePropertyInheritance, isMultiValueGrouping, type FolderAppearance } from '../../hooks/useListPaneAppearance';
 import { isTpsNavigatorLineTypeId, isTpsNavigatorStructuralTypeId, isTpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { createSyncModeRegistry, type SyncModeRegistry } from './syncModeRegistry';
 import { getDefaultUXPreferences, isUXPreferencesRecord } from './uxPreferences';
@@ -1267,6 +1267,7 @@ export class PluginSettingsController {
             Object.values(sanitized).forEach(appearance => {
                 delete (appearance as Record<string, unknown>)['notePropertyType'];
                 normalizeAppearanceGroupBy(appearance);
+                if (!isMultiValueGrouping(appearance.multiValueGrouping)) delete appearance.multiValueGrouping;
             });
             return sanitized;
         };
@@ -1293,12 +1294,18 @@ export class PluginSettingsController {
                 if (isTpsNavigatorLineTypeId(key)) {
                     const groupBy = sanitized[key]?.groupBy;
                     const linePropertyInheritance = sanitized[key]?.linePropertyInheritance;
-                    if (groupBy === undefined && !isLinePropertyInheritance(linePropertyInheritance)) {
+                    const multiValueGrouping = sanitized[key]?.multiValueGrouping;
+                    if (
+                        groupBy === undefined &&
+                        !isLinePropertyInheritance(linePropertyInheritance) &&
+                        !isMultiValueGrouping(multiValueGrouping)
+                    ) {
                         delete sanitized[key];
                     } else {
                         sanitized[key] = {
                             ...(groupBy === undefined ? {} : { groupBy }),
-                            ...(isLinePropertyInheritance(linePropertyInheritance) ? { linePropertyInheritance } : {})
+                            ...(isLinePropertyInheritance(linePropertyInheritance) ? { linePropertyInheritance } : {}),
+                            ...(isMultiValueGrouping(multiValueGrouping) ? { multiValueGrouping } : {})
                         };
                     }
                 }

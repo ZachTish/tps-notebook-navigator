@@ -10,7 +10,7 @@ import {
     replacePropertyGroupingSource
 } from '../../settings/types';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
-import type { LinePropertyInheritance } from '../useListPaneAppearance';
+import type { LinePropertyInheritance, MultiValueGrouping } from '../useListPaneAppearance';
 import { ItemType, ListPaneItemType } from '../../types';
 import { isTpsNavigatorGcmLineTypeId, type TpsNavigatorLineTypeId } from '../../types/navigatorTypes';
 import type { ListPaneItem } from '../../types/virtualization';
@@ -19,7 +19,9 @@ import { buildListGroupCollapseKey } from '../../utils/listGroupCollapse';
 import { findMatchingRecordKey, getMatchingRecordValue } from '../../utils/recordUtils';
 import {
     getPropertyDayGroupingValue,
+    getPropertyDayGroupingValues,
     getPropertyGroupingValue,
+    getPropertyGroupingValues,
     getPropertySortValue,
     isDateSortOption,
     naturalCompare,
@@ -40,6 +42,7 @@ export interface StructuralTypeRowPresentationArgs {
     noValueLabel: string;
     /** How row-local and owning-note values are inherited for property sort and grouping. */
     linePropertyInheritance?: LinePropertyInheritance;
+    multiValueGrouping?: MultiValueGrouping;
 }
 
 interface DecoratedStructuralTypeRow {
@@ -226,7 +229,8 @@ function orderPropertyGroups(
     entries: readonly DecoratedStructuralTypeRow[],
     groupBy: ListNoteGroupingOption,
     noValueLabel: string,
-    inheritance: LinePropertyInheritance
+    inheritance: LinePropertyInheritance,
+    multiValueGrouping: MultiValueGrouping
 ): StructuralTypeRowGroup[] {
     const propertyKey = getPropertyGroupingKey(groupBy);
     if (propertyKey === null) {
@@ -243,23 +247,31 @@ function orderPropertyGroups(
 
     entries.forEach(entry => {
         const rawValue = getResolvedPropertyValue(entry, propertyKey, inheritance);
-        const value = granularity === 'day' ? getPropertyDayGroupingValue(rawValue) : getPropertyGroupingValue(rawValue);
-        if (value === null) {
+        const values =
+            multiValueGrouping === 'separate'
+                ? granularity === 'day'
+                    ? getPropertyDayGroupingValues(rawValue)
+                    : getPropertyGroupingValues(rawValue)
+                : [granularity === 'day' ? getPropertyDayGroupingValue(rawValue) : getPropertyGroupingValue(rawValue)].filter(
+                      value => value !== null
+                  );
+        if (values.length === 0) {
             missing.push(entry);
             return;
         }
-
-        const id = value.parts.join('\u0000');
-        const existing = grouped.get(id);
-        if (existing) {
-            existing.rows.push(entry);
-            return;
-        }
-        grouped.set(id, {
-            label: value.parts.join(', '),
-            numericValue: 'numericValue' in value ? value.numericValue : null,
-            daySortValue: 'sortValue' in value ? value.sortValue : null,
-            rows: [entry]
+        values.forEach(value => {
+            const id = value.parts.join('\u0000');
+            const existing = grouped.get(id);
+            if (existing) {
+                existing.rows.push(entry);
+            } else {
+                grouped.set(id, {
+                    label: value.parts.join(', '),
+                    numericValue: 'numericValue' in value ? value.numericValue : null,
+                    daySortValue: 'sortValue' in value ? value.sortValue : null,
+                    rows: [entry]
+                });
+            }
         });
     });
 
@@ -330,11 +342,11 @@ function orderDateGroups(
     return result;
 }
 
-function rowItem(entry: DecoratedStructuralTypeRow, selectedType: TpsNavigatorLineTypeId): ListPaneItem {
+function rowItem(entry: DecoratedStructuralTypeRow, selectedType: TpsNavigatorLineTypeId, instanceId = ''): ListPaneItem {
     return {
         type: ListPaneItemType.PROVIDER_ROW,
         data: entry.row,
-        key: `provider:${entry.row.providerId}:${entry.row.id}`,
+        key: `provider:${entry.row.providerId}:${entry.row.id}${instanceId}`,
         providerTypeId: selectedType
     };
 }
@@ -371,7 +383,7 @@ function buildGroupedItems(
             groupFilePaths: group.rows.map(entry => entry.row.sourcePath)
         });
         if (!isCollapsed) {
-            items.push(...group.rows.map(entry => rowItem(entry, args.selectedType)));
+            items.push(...group.rows.map(entry => rowItem(entry, args.selectedType, `:group:${group.id}`)));
         }
     });
 
@@ -404,7 +416,13 @@ export function buildStandaloneStructuralTypePresentation(args: StructuralTypeRo
     const inheritance = args.linePropertyInheritance ?? 'line-first';
     entries.sort((left, right) => compareRows(left, right, args.sort, inheritance));
 
-    const propertyGroups = orderPropertyGroups(entries, args.groupBy, args.noValueLabel, inheritance);
+    const propertyGroups = orderPropertyGroups(
+        entries,
+        args.groupBy,
+        args.noValueLabel,
+        inheritance,
+        args.multiValueGrouping ?? 'separate'
+    );
     if (propertyGroups.length > 0 || getPropertyGroupingKey(args.groupBy) !== null) {
         return buildGroupedItems(propertyGroups, args);
     }

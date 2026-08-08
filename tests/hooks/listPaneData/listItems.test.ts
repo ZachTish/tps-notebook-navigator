@@ -1926,7 +1926,8 @@ describe('buildListItems property grouping', () => {
             hiddenTags: [],
             listConfig: {
                 ...createListConfig({}),
-                groupBy: 'property:status'
+                groupBy: 'property:status',
+                multiValueGrouping: 'combine'
             },
             searchMetaMap: new Map(),
             selectedFolder: null,
@@ -2069,7 +2070,7 @@ describe('buildListItems property grouping', () => {
         );
     });
 
-    it('groups list values under their joined string and skips property rows for collapsed groups', () => {
+    it('defaults to one group per list value and skips property rows for collapsed groups', () => {
         const listValued = createTestTFile('notes/List.md');
         const scalar = createTestTFile('notes/Scalar.md');
         const app = createFrontmatterApp({
@@ -2106,7 +2107,7 @@ describe('buildListItems property grouping', () => {
 
         expect(getHeaderItems(items)).toEqual([
             { data: 'Active', kind: 'property' },
-            { data: 'Active, Waiting', kind: 'property' }
+            { data: 'Waiting', kind: 'property' }
         ]);
         expect(getFileItems(items).map(item => item.path)).toEqual([listValued.path]);
         expect(findCollapsedListGroupRevealTarget(items, scalar.path, true)).toEqual({ type: 'list-group', collapseKey });
@@ -2295,7 +2296,8 @@ describe('buildListItems property grouping', () => {
             hiddenTags: [],
             listConfig: {
                 ...createListConfig({}),
-                groupBy: 'property:status'
+                groupBy: 'property:status',
+                multiValueGrouping: 'combine'
             },
             searchMetaMap: new Map(),
             selectedFolder: null,

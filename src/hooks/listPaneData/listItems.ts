@@ -27,7 +27,9 @@ import {
     compareByAlphaSortOrder,
     getDateField,
     getPropertyDayGroupingValueFromRecord,
+    getPropertyDayGroupingValues,
     getPropertyGroupingValueFromRecord,
+    getPropertyGroupingValues,
     isDateSortOption,
     isPropertySortOption
 } from '../../utils/sortUtils';
@@ -52,11 +54,13 @@ import type { PropertySelectionNodeId } from '../../utils/propertyTree';
 import type { ListPaneFolderPathSegment } from '../../types/virtualization';
 import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { getNavigatorPinContext } from '../../utils/selectionUtils';
+import { getMatchingRecordValue } from '../../utils/recordUtils';
 
 export interface ListPaneConfig {
     filterPinnedByFolder: boolean;
     folderGroupSortOrder: AlphaSortOrder;
     groupBy: ListNoteGroupingOption;
+    multiValueGrouping?: import('../useListPaneAppearance').MultiValueGrouping;
     pinnedGroupExpanded: boolean;
     pinnedNotes: NotebookNavigatorSettings['pinnedNotes'];
     showCurrentFolderFilesAtBottom: boolean;
@@ -291,7 +295,7 @@ function buildListItemsInternal(
             'type' | 'data' | 'fileIndex' | 'hasTags' | 'isHidden' | 'key' | 'matchedAliases' | 'matchedProperties' | 'searchMeta'
         >
     >;
-    const pushFileItem = (file: TFile, overrides: FileItemOverrides = {}) => {
+    const pushFileItem = (file: TFile, overrides: FileItemOverrides = {}, instanceKey?: string) => {
         activeGroupHeaderItem?.groupFilePaths?.push(file.path);
         if (activeGroupHeaderKey && groupItemCountByKey) {
             groupItemCountByKey.set(activeGroupHeaderKey, (groupItemCountByKey.get(activeGroupHeaderKey) ?? 0) + 1);
@@ -324,7 +328,7 @@ function buildListItemsInternal(
             type: ListPaneItemType.FILE,
             data: file,
             parentFolder: selectedFolder?.path,
-            key: file.path,
+            key: instanceKey ?? file.path,
             fileIndex: fileIndexCounter++,
             matchedAliases: matchedAliases?.get(file.path),
             matchedProperties: matchedProperties?.get(file.path),
@@ -542,31 +546,45 @@ function buildListItemsInternal(
         const ungroupedFiles: TFile[] = [];
 
         unpinnedFiles.forEach(file => {
-            const groupingValue =
+            const rawValue =
                 file.extension === 'md'
+                    ? getMatchingRecordValue(app.metadataCache.getFileCache(file)?.frontmatter, propertyGroupingKey)
+                    : undefined;
+            const groupingValues =
+                listConfig.multiValueGrouping !== 'combine'
                     ? propertyGroupingGranularity === 'day'
-                        ? getPropertyDayGroupingValueFromRecord(app.metadataCache.getFileCache(file)?.frontmatter, propertyGroupingKey)
-                        : getPropertyGroupingValueFromRecord(app.metadataCache.getFileCache(file)?.frontmatter, propertyGroupingKey)
-                    : null;
-            if (groupingValue === null) {
+                        ? getPropertyDayGroupingValues(rawValue)
+                        : getPropertyGroupingValues(rawValue)
+                    : [
+                          file.extension === 'md'
+                              ? propertyGroupingGranularity === 'day'
+                                  ? getPropertyDayGroupingValueFromRecord(
+                                        app.metadataCache.getFileCache(file)?.frontmatter,
+                                        propertyGroupingKey
+                                    )
+                                  : getPropertyGroupingValueFromRecord(
+                                        app.metadataCache.getFileCache(file)?.frontmatter,
+                                        propertyGroupingKey
+                                    )
+                              : null
+                      ].filter(value => value !== null);
+            if (groupingValues.length === 0) {
                 ungroupedFiles.push(file);
                 return;
             }
-
-            const bucketKey = groupingValue.parts.join('\u0000');
-            const group = propertyGroups.get(bucketKey);
-            if (group) {
-                group.files.push(file);
-                return;
-            }
-
-            // The first file to create a bucket decides whether the group carries a numeric key,
-            // matching how the first encountered value becomes the group key in Obsidian Bases.
-            propertyGroups.set(bucketKey, {
-                label: groupingValue.parts.join(', '),
-                numericValue: 'numericValue' in groupingValue ? groupingValue.numericValue : null,
-                daySortValue: 'sortValue' in groupingValue ? groupingValue.sortValue : null,
-                files: [file]
+            groupingValues.forEach(groupingValue => {
+                const bucketKey = groupingValue.parts.join('\u0000');
+                const group = propertyGroups.get(bucketKey);
+                if (group) {
+                    group.files.push(file);
+                } else {
+                    propertyGroups.set(bucketKey, {
+                        label: groupingValue.parts.join(', '),
+                        numericValue: 'numericValue' in groupingValue ? groupingValue.numericValue : null,
+                        daySortValue: 'sortValue' in groupingValue ? groupingValue.sortValue : null,
+                        files: [file]
+                    });
+                }
             });
         });
 
@@ -611,7 +629,7 @@ function buildListItemsInternal(
                 groupFiles
             });
             groupFiles.forEach(file => {
-                pushFileItem(file);
+                pushFileItem(file, {}, `${file.path}:group:${groupId}`);
             });
         };
 

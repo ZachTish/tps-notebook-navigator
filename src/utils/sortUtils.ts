@@ -272,6 +272,15 @@ export function getPropertyDayGroupingValue(value: unknown): PropertyDayGrouping
     return { parts: days.map(day => day.key), sortValue: days[0].timestamp };
 }
 
+export function getPropertyDayGroupingValues(value: unknown): PropertyDayGroupingValue[] {
+    const combined = getPropertyDayGroupingValue(value);
+    if (!combined) return [];
+    return combined.parts.flatMap(part => {
+        const day = getPropertyDayGroupingValue(part);
+        return day ? [day] : [];
+    });
+}
+
 export function getPropertyDayGroupingValueFromRecord(frontmatter: unknown, propertyKey: string): PropertyDayGroupingValue | null {
     if (!isRecord(frontmatter)) {
         return null;
@@ -296,6 +305,25 @@ export function getPropertyGroupingValue(rawValue: unknown): PropertyGroupingVal
         parts,
         numericValue: typeof rawValue === 'number' && Number.isFinite(rawValue) ? rawValue : null
     };
+}
+
+/** Expands a multi-valued property into distinct grouping buckets, preserving first occurrence order. */
+export function getPropertyGroupingValues(rawValue: unknown): PropertyGroupingValue[] {
+    if (!Array.isArray(rawValue)) {
+        const value = getPropertyGroupingValue(rawValue);
+        return value ? [value] : [];
+    }
+    const values: PropertyGroupingValue[] = [];
+    const seen = new Set<string>();
+    for (const entry of rawValue) {
+        const value = getPropertyGroupingValue(entry);
+        if (!value) continue;
+        const id = value.parts.join('\u0000');
+        if (seen.has(id)) continue;
+        seen.add(id);
+        values.push(value);
+    }
+    return values;
 }
 
 export function getPropertyGroupingValueFromRecord(frontmatter: unknown, propertyKey: string): PropertyGroupingValue | null {

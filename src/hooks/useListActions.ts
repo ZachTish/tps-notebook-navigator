@@ -66,8 +66,8 @@ import {
     supportsDayPropertyGroupingForSelection,
     supportsLinePropertyGroupingSourceForSelection
 } from '../components/listPane/typeModeRuntime';
-import { getDefaultListMode, resolveLinePropertyInheritance } from './useListPaneAppearance';
-import type { FolderAppearance, LinePropertyInheritance } from './useListPaneAppearance';
+import { getDefaultListMode, resolveLinePropertyInheritance, resolveMultiValueGrouping } from './useListPaneAppearance';
+import type { FolderAppearance, LinePropertyInheritance, MultiValueGrouping } from './useListPaneAppearance';
 import { getFilesForFolder } from '../utils/fileFinder';
 import { runAsyncAction } from '../utils/async';
 import { FILE_VISIBILITY } from '../utils/fileTypeUtils';
@@ -1084,6 +1084,19 @@ export function useListActions({
         [defaultMode, getSelectionSortTarget, updateSettings]
     );
 
+    const setMultiValueGrouping = useCallback(
+        async (mode: MultiValueGrouping) => {
+            const target = getSelectionSortTarget();
+            if (!target) return;
+            await updateSettings(current => {
+                const next = getAppearancesForTarget(current, target);
+                next[target.key] = { ...(next[target.key] ?? {}), multiValueGrouping: mode };
+                setAppearancesForTarget(current, target, next);
+            });
+        },
+        [getSelectionSortTarget, updateSettings]
+    );
+
     const openManualSortConfirm = useCallback(
         (propertyKey: string, affectedCount: number, onConfirm: () => Promise<void>) => {
             new ConfirmModal(
@@ -2094,6 +2107,37 @@ export function useListActions({
                             });
                     });
                 });
+                menu.addSeparator();
+                menu.addItem(item => item.setTitle('Multi-value grouping').setIcon('lucide-layers-3').setDisabled(true));
+                const currentMultiValueGrouping = resolveMultiValueGrouping(
+                    selectionState.selectionType === ItemType.FOLDER
+                        ? settings.folderAppearances?.[selectionState.selectedFolder?.path ?? '']?.multiValueGrouping
+                        : selectionState.selectionType === ItemType.TAG
+                          ? settings.tagAppearances?.[selectionState.selectedTag ?? '']?.multiValueGrouping
+                          : selectionState.selectionType === ItemType.PROPERTY
+                            ? settings.propertyAppearances?.[selectionState.selectedProperty ?? '']?.multiValueGrouping
+                            : selectionState.selectedType && isTpsNavigatorStructuralTypeId(selectionState.selectedType)
+                              ? settings.typeAppearances?.[selectionState.selectedType]?.multiValueGrouping
+                              : undefined
+                );
+                (
+                    [
+                        ['separate', 'Show an instance in each group'],
+                        ['combine', 'Combine values into one group']
+                    ] as const
+                ).forEach(([mode, title]) => {
+                    menu.addItem(item =>
+                        item
+                            .setTitle(`    ${title}`)
+                            .setChecked(currentMultiValueGrouping === mode)
+                            .onClick(() => {
+                                runAsyncAction(async () => {
+                                    await setMultiValueGrouping(mode);
+                                    app.workspace.requestSaveLayout();
+                                });
+                            })
+                    );
+                });
             }
 
             if (canApplyToDescendants) {
@@ -2163,9 +2207,13 @@ export function useListActions({
             selectionDescendantLabel,
             selectionSortTarget,
             selectionSortOverride,
+            selectionState.selectedFolder?.path,
+            selectionState.selectedProperty,
+            selectionState.selectedTag,
             selectionState.selectedType,
             selectionState.selectionType,
             setSelectionGroupOverride,
+            setMultiValueGrouping,
             setSelectionSortOverride,
             settings,
             updateSettings,

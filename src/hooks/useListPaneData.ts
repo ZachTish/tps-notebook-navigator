@@ -131,6 +131,7 @@ interface UseListPaneDataParams {
     activeProfile: ActiveProfileState;
     /** Effective grouping for the current list selection */
     groupBy: ListNoteGroupingOption;
+    multiValueGrouping: import('./useListPaneAppearance').MultiValueGrouping;
     /** Whether the pinned section is expanded in the current context */
     pinnedGroupExpanded: boolean;
     /** Collapsed list group keys for the current vault */
@@ -195,6 +196,7 @@ export function useListPaneData({
     settings,
     activeProfile,
     groupBy,
+    multiValueGrouping,
     pinnedGroupExpanded,
     collapsedListGroups,
     searchProvider,
@@ -349,12 +351,14 @@ export function useListPaneData({
             showFolderGroupPaths: settings.showFolderGroupPaths,
             showCurrentFolderFilesAtBottom: settings.showCurrentFolderFilesAtBottom,
             groupBy,
+            multiValueGrouping,
             folderGroupSortOrder: selectedFolderGroupSortOrder
         }),
         [
             settings.filterPinnedByFolder,
             selectedFolderGroupSortOrder,
             groupBy,
+            multiValueGrouping,
             pinnedGroupExpanded,
             settings.pinnedNotes,
             settings.showCurrentFolderFilesAtBottom,
@@ -777,7 +781,8 @@ export function useListPaneData({
             getFrontmatter: file => app.metadataCache.getFileCache(file)?.frontmatter ?? null,
             getFileTimestamps,
             noValueLabel: strings.listPane.propertyGroupNoValue,
-            linePropertyInheritance: settings.typeAppearances?.[selectedType]?.linePropertyInheritance
+            linePropertyInheritance: settings.typeAppearances?.[selectedType]?.linePropertyInheritance,
+            multiValueGrouping
         });
     }, [
         app.metadataCache,
@@ -785,6 +790,7 @@ export function useListPaneData({
         collapsedListGroups,
         dayKey,
         groupBy,
+        multiValueGrouping,
         getFileTimestamps,
         isLineBackedTypeSelection,
         mixedStructuralSearchActive,

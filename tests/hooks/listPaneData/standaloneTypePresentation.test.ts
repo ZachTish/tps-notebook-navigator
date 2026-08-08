@@ -53,7 +53,8 @@ function present({
     propertySortSecondary = 'title',
     groupBy = 'custom',
     collapsedListGroups,
-    linePropertyInheritance
+    linePropertyInheritance,
+    multiValueGrouping
 }: {
     rows: readonly NavigatorProvidedRow[];
     files: readonly FixtureFile[];
@@ -73,6 +74,7 @@ function present({
     groupBy?: ListNoteGroupingOption;
     collapsedListGroups?: ReadonlySet<string>;
     linePropertyInheritance?: 'note-first' | 'line-first' | 'combine';
+    multiValueGrouping?: 'separate' | 'combine';
 }): ListPaneItem[] {
     const sourceByPath = new Map(files.map(entry => [entry.file.path, entry]));
     return buildStandaloneStructuralTypePresentation({
@@ -86,7 +88,8 @@ function present({
         getFrontmatter: target => sourceByPath.get(target.path)?.frontmatter ?? null,
         getFileTimestamps: target => ({ created: target.stat.ctime, modified: target.stat.mtime }),
         noValueLabel: 'No value',
-        linePropertyInheritance
+        linePropertyInheritance,
+        multiValueGrouping
     });
 }
 
@@ -195,7 +198,13 @@ describe('standalone structural Type presentation', () => {
         expect(headersFrom(lineFirst).map(header => header.groupFilePaths?.length)).toEqual([1, 1, 1]);
         expect(rowsFrom(lineFirst).map(item => item.id)).toEqual(['local', 'fallback', 'empty']);
 
-        const combined = present({ rows: input, files, groupBy: 'line-property:priority', linePropertyInheritance: 'combine' });
+        const combined = present({
+            rows: input,
+            files,
+            groupBy: 'line-property:priority',
+            linePropertyInheritance: 'combine',
+            multiValueGrouping: 'combine'
+        });
         expect(headersFrom(combined).map(header => header.data)).toEqual(['owner', 'owner, alpha']);
         expect(rowsFrom(combined).map(item => item.id)).toEqual(['empty', 'fallback', 'local']);
         expect(
@@ -214,8 +223,12 @@ describe('standalone structural Type presentation', () => {
 
         const grouped = present({ rows: input, files, groupBy: 'line-property:parents' });
 
-        expect(headersFrom(grouped).map(header => header.data)).toEqual(['Project A, Area B', 'No value']);
-        expect(rowsFrom(grouped).map(item => item.id)).toEqual(['parents', 'blank']);
+        expect(headersFrom(grouped).map(header => header.data)).toEqual(['Area B', 'Project A', 'No value']);
+        expect(rowsFrom(grouped).map(item => item.id)).toEqual(['parents', 'parents', 'blank']);
+        expect(new Set(grouped.map(item => item.key)).size).toBe(grouped.length);
+
+        const combined = present({ rows: input, files, groupBy: 'line-property:parents', multiValueGrouping: 'combine' });
+        expect(headersFrom(combined).map(header => header.data)).toEqual(['Project A, Area B', 'No value']);
     });
 
     it('groups property values in deterministic direction, counts rows, trails missing values, and honors collapse state', () => {

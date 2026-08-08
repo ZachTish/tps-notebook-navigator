@@ -31,12 +31,23 @@ export interface FolderAppearance {
     groupBy?: ListNoteGroupingOption;
     /** Property resolution for exact structural-line Type sorting and grouping. */
     linePropertyInheritance?: LinePropertyInheritance;
+    /** Whether multi-valued properties create one group per value or one combined group. */
+    multiValueGrouping?: MultiValueGrouping;
 }
 
 export type TagAppearance = FolderAppearance;
 
 /** Determines how a structural line item's properties are inherited from its owning note. */
 export type LinePropertyInheritance = 'note-first' | 'line-first' | 'combine';
+export type MultiValueGrouping = 'separate' | 'combine';
+
+export function isMultiValueGrouping(value: unknown): value is MultiValueGrouping {
+    return value === 'separate' || value === 'combine';
+}
+
+export function resolveMultiValueGrouping(value: unknown): MultiValueGrouping {
+    return isMultiValueGrouping(value) ? value : 'separate';
+}
 
 export function isLinePropertyInheritance(value: unknown): value is LinePropertyInheritance {
     return value === 'note-first' || value === 'line-first' || value === 'combine';
@@ -54,6 +65,7 @@ export interface ListPaneAppearanceSettings {
     showPreview: boolean;
     showImage: boolean;
     groupBy: ListNoteGroupingOption;
+    multiValueGrouping: MultiValueGrouping;
 }
 
 export function getDefaultListMode(settings: NotebookNavigatorSettings): ListDisplayMode {
@@ -126,6 +138,7 @@ export function useListPaneAppearance() {
     const selectedTitleRows = isSelectedLineType ? undefined : selectedAppearance?.titleRows;
     const selectedPreviewRows = isSelectedLineType ? undefined : selectedAppearance?.previewRows;
     const selectedGroupBy = selectedAppearance?.groupBy;
+    const selectedMultiValueGrouping = selectedAppearance?.multiValueGrouping;
     const { defaultListMode, fileNameRows, noteGrouping, previewRows, showFeatureImage, showFileDate, showFilePreview } = settings;
 
     return useMemo<ListPaneAppearanceSettings>(() => {
@@ -149,7 +162,8 @@ export function useListPaneAppearance() {
             showDate: visibility.showDate,
             showPreview: visibility.showPreview,
             showImage: visibility.showImage,
-            groupBy: grouping.effectiveGrouping
+            groupBy: grouping.effectiveGrouping,
+            multiValueGrouping: resolveMultiValueGrouping(selectedMultiValueGrouping)
         };
     }, [
         defaultListMode,
@@ -160,6 +174,7 @@ export function useListPaneAppearance() {
         selectedTitleRows,
         selectedPreviewRows,
         selectedGroupBy,
+        selectedMultiValueGrouping,
         showFeatureImage,
         showFileDate,
         showFilePreview,
