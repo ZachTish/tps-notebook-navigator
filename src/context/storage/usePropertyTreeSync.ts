@@ -16,7 +16,16 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { useCallback, useEffect, useMemo, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useSyncExternalStore,
+    type Dispatch,
+    type MutableRefObject,
+    type SetStateAction
+} from 'react';
 import { App, TAbstractFile, TFile, TFolder } from 'obsidian';
 import type { PropertyTreeService } from '../../services/PropertyTreeService';
 import { getDBInstance } from '../../storage/fileOperations';
@@ -29,11 +38,13 @@ import {
     buildPropertyKeyNodeId,
     buildPropertyTreeFromDatabase,
     isPropertyFeatureEnabled,
-    registerPropertyKeyDirectPaths
+    registerPropertyKeyDirectPaths,
+    mergeLinePropertiesIntoPropertyTree
 } from '../../utils/propertyTree';
 import { casefold } from '../../utils/recordUtils';
 import type { PropertyTreeNode } from '../../types/storage';
 import { clonePropertyKeys, getActivePropertyFields, getActivePropertyKeySet, getActiveVaultProfile } from '../../utils/vaultProfiles';
+import { getNavigatorTypesStore } from '../../integrations/gcm/useGcmEntityTypes';
 
 type SchedulePropertyTreeRebuildOptions = {
     flush?: boolean;
@@ -128,6 +139,13 @@ export function usePropertyTreeSync(params: {
     const isPropertyTreeEnabled = useMemo(() => shouldEnablePropertyTree(settings), [settings]);
     const propertyTreeRebuildReadyGateRef = useRef(false);
     const activePropertyFields = getActivePropertyFields(settings);
+    const navigatorTypesStore = useMemo(() => getNavigatorTypesStore(app), [app]);
+    const subscribeToLineProperties = useCallback(
+        (listener: () => void) => (isPropertyTreeEnabled ? navigatorTypesStore.subscribe(listener) : () => undefined),
+        [isPropertyTreeEnabled, navigatorTypesStore]
+    );
+    const getTypesSnapshot = useCallback(() => navigatorTypesStore.getSnapshot(), [navigatorTypesStore]);
+    const typesSnapshot = useSyncExternalStore(subscribeToLineProperties, getTypesSnapshot, getTypesSnapshot);
 
     useEffect(() => {
         hiddenFoldersRef.current = hiddenFolders;
@@ -156,6 +174,7 @@ export function usePropertyTreeSync(params: {
             const excludedFolderPatterns = showHiddenItems ? [] : hiddenFoldersRef.current;
             const visibleFiles = getVisibleFiles ? getVisibleFiles() : getVisibleMarkdownFiles();
             const visibleMarkdownPaths = visibleFiles.map(file => file.path);
+            const visibleMarkdownPathSet = new Set(visibleMarkdownPaths);
             const propertyTree = buildPropertyTreeFromDatabase(
                 {
                     forEachFile: callback => {
@@ -173,13 +192,21 @@ export function usePropertyTreeSync(params: {
                     includedPropertyKeys
                 }
             );
+            const lineRecords = Array.from(typesSnapshot.recordsByType.values())
+                .flat()
+                .filter(record => record.entityType === 'block' && (record.properties || record.task?.status))
+                .map(record => ({ sourcePath: record.sourcePath, properties: record.properties, taskStatus: record.task?.status }));
+            mergeLinePropertiesIntoPropertyTree(propertyTree, lineRecords, {
+                includedPaths: visibleMarkdownPathSet,
+                includedPropertyKeys
+            });
             includeConfiguredPropertyKeys(propertyTree, configuredDisplayByKey);
 
             setFileData(previous => ({ ...previous, propertyTree }));
             propertyTreeService?.updatePropertyTree(propertyTree);
             return propertyTree;
         },
-        [clearPropertyTree, getVisibleMarkdownFiles, latestSettingsRef, propertyTreeService, setFileData, showHiddenItems]
+        [clearPropertyTree, getVisibleMarkdownFiles, latestSettingsRef, propertyTreeService, setFileData, showHiddenItems, typesSnapshot]
     );
 
     // Exposes the latest rebuild implementation to the shared scheduler. rebuildPropertyTree clears the
@@ -237,7 +264,8 @@ export function usePropertyTreeSync(params: {
         fileVisibility,
         profileId,
         activePropertyFields,
-        settings.showProperties
+        settings.showProperties,
+        typesSnapshot.revision
     ]);
 
     useEffect(() => {

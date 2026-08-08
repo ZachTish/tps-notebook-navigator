@@ -145,11 +145,7 @@ function combinePropertyValues(noteValue: unknown, lineValue: unknown): unknown 
     });
 }
 
-function getResolvedPropertyValue(
-    entry: DecoratedStructuralTypeRow,
-    propertyKey: string,
-    inheritance: LinePropertyInheritance
-): unknown {
+function getResolvedPropertyValue(entry: DecoratedStructuralTypeRow, propertyKey: string, inheritance: LinePropertyInheritance): unknown {
     const rowProperty = getRowPropertyValue(entry, propertyKey);
     const noteValue = getNotePropertyValue(entry, propertyKey);
     if (inheritance === 'note-first') return noteValue === undefined ? rowProperty.value : noteValue;

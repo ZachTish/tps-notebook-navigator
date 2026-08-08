@@ -27,6 +27,7 @@ import {
     buildPropertyKeyNodeId,
     buildPropertyTreeFromFilePaths,
     buildPropertyTreeFromDatabase,
+    mergeLinePropertiesIntoPropertyTree,
     buildPropertyValueNodeId,
     collectPropertyKeyFilePaths,
     collectPropertyValueFilePaths,
@@ -92,6 +93,29 @@ function createLookupDb(files: MockFile[]) {
 }
 
 describe('buildPropertyTreeFromDatabase', () => {
+    it('includes configured values authored only on exact task lines', () => {
+        const tree = buildPropertyTreeFromDatabase(
+            createMockDb([{ path: 'Tasks.md', properties: [{ fieldKey: 'Project', value: 'App support' }] }]),
+            { includedPropertyKeys: new Set(['status']) }
+        );
+
+        mergeLinePropertiesIntoPropertyTree(
+            tree,
+            [
+                { sourcePath: 'Tasks.md', taskStatus: 'todo' },
+                { sourcePath: 'Hidden.md', properties: { Status: ['blocked'] } }
+            ],
+            {
+                includedPaths: new Set(['Tasks.md']),
+                includedPropertyKeys: new Set(['status'])
+            }
+        );
+
+        const statusNode = tree.get('status');
+        expect(statusNode?.children.get(buildPropertyValueNodeId('status', 'todo'))?.name).toBe('todo');
+        expect(statusNode?.children.get(buildPropertyValueNodeId('status', 'todo'))?.notesWithValue).toEqual(new Set(['Tasks.md']));
+        expect(statusNode?.children.has(buildPropertyValueNodeId('status', 'blocked'))).toBe(false);
+    });
     it('builds flat key/value nodes and preserves first-seen display casing', () => {
         const db = createMockDb([
             {

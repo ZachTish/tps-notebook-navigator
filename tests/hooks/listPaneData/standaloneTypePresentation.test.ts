@@ -199,9 +199,9 @@ describe('standalone structural Type presentation', () => {
         expect(headersFrom(combined).map(header => header.data)).toEqual(['owner', 'owner, alpha']);
         expect(rowsFrom(combined).map(item => item.id)).toEqual(['empty', 'fallback', 'local']);
         expect(
-            rowsFrom(present({ rows: input, files, option: 'property-asc', propertyKey: 'priority', linePropertyInheritance: 'note-first' })).map(
-                item => item.id
-            )
+            rowsFrom(
+                present({ rows: input, files, option: 'property-asc', propertyKey: 'priority', linePropertyInheritance: 'note-first' })
+            ).map(item => item.id)
         ).toEqual(['empty', 'fallback', 'local']);
     });
 

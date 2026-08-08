@@ -173,6 +173,13 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.5.1 — line values in Properties
+
+- The Properties navigation tree now includes configured property values authored on visible tasks, bullets, and headings instead of indexing only owning-note frontmatter.
+- Mapped task workflow status is included even when GCM intentionally avoids writing a redundant inline `status` field, so tasks in the `todo` state expose **Status → todo**.
+- Line-derived values retain the existing vault visibility rules and point back to their owning source note. Authored line Status takes precedence over the derived task status, and duplicate values collapse into one option.
+- This backward-compatible patch requires TPS Global Context Menu Entity Index v3 for exact-line values. Without GCM, ordinary note-property navigation remains unchanged. Minimum Obsidian remains 1.11.0.
+
 ### 5.5.0 — structural line-property inheritance
 
 - Fixes Checkboxes, Bullets, and Headings so their property sort and grouping resolve the line's own GCM fields by default instead of grouping every line by its owning note's frontmatter.

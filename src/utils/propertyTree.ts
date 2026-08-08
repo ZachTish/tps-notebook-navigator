@@ -54,6 +54,13 @@ export interface PropertyTreeFileLookupDatabaseLike {
     getFile: (path: string) => FileData | null;
 }
 
+export interface LinePropertyTreeRecord {
+    sourcePath: string;
+    properties?: Readonly<Record<string, readonly string[]>>;
+    /** Effective mapped task status when it is not redundantly authored inline. */
+    taskStatus?: string;
+}
+
 type PropertyTreeFilePropertyEntry = NonNullable<FileData['properties']>[number];
 export type PropertyNodeSourceFile = { data: FileData };
 
@@ -958,6 +965,40 @@ export function buildPropertyTreeFromDatabase(
             registerPropertyTreeEntry(tree, path, propertyEntry, includedPropertyKeys, shouldFilterPropertyKeys);
         }
     });
+
+    return sortPropertyTreeNodes(tree);
+}
+
+/**
+ * Adds authored exact-line property values to an existing note property tree.
+ * A line value points back to its owning source note so existing property
+ * navigation remains file-backed while exposing values that exist only on
+ * tasks, bullets, or headings.
+ */
+export function mergeLinePropertiesIntoPropertyTree(
+    tree: Map<string, PropertyTreeNode>,
+    records: readonly LinePropertyTreeRecord[],
+    options: Pick<BuildPropertyTreeOptions, 'includedPaths' | 'includedPropertyKeys'> = {}
+): Map<string, PropertyTreeNode> {
+    const includedPropertyKeys = normalizeIncludedPropertyKeySet(options.includedPropertyKeys);
+    const shouldFilterPropertyKeys = options.includedPropertyKeys !== undefined && options.includedPropertyKeys.size > 0;
+
+    for (const record of records) {
+        const sourcePath = record.sourcePath.trim();
+        if (!sourcePath || (options.includedPaths && !options.includedPaths.has(sourcePath))) {
+            continue;
+        }
+        const properties: Record<string, readonly string[]> = { ...(record.properties ?? {}) };
+        const hasAuthoredStatus = Object.keys(properties).some(key => casefold(key) === 'status');
+        if (!hasAuthoredStatus && record.taskStatus?.trim()) {
+            properties.Status = [record.taskStatus.trim()];
+        }
+        for (const [fieldKey, values] of Object.entries(properties)) {
+            for (const value of values) {
+                registerPropertyTreeEntry(tree, sourcePath, { fieldKey, value }, includedPropertyKeys, shouldFilterPropertyKeys);
+            }
+        }
+    }
 
     return sortPropertyTreeNodes(tree);
 }

@@ -1898,14 +1898,22 @@ export function useListActions({
                 menu.addItem(item => {
                     item.setTitle('Property inheritance (sort and group)').setIcon('lucide-git-merge').setDisabled(true);
                 });
-                ([
-                    ['note-first', 'Inherit and prioritize note properties'],
-                    ['line-first', 'Inherit note properties but prioritize line properties'],
-                    ['combine', 'Inherit and combine properties']
-                ] as const).forEach(([inheritance, title]) => {
+                (
+                    [
+                        ['note-first', 'Inherit and prioritize note properties'],
+                        ['line-first', 'Inherit note properties but prioritize line properties'],
+                        ['combine', 'Inherit and combine properties']
+                    ] as const
+                ).forEach(([inheritance, title]) => {
                     menu.addItem(item => {
                         item.setTitle(`    ${title}`)
-                            .setIcon(inheritance === 'combine' ? 'lucide-merge' : inheritance === 'note-first' ? 'lucide-file-text' : 'lucide-list-tree')
+                            .setIcon(
+                                inheritance === 'combine'
+                                    ? 'lucide-merge'
+                                    : inheritance === 'note-first'
+                                      ? 'lucide-file-text'
+                                      : 'lucide-list-tree'
+                            )
                             .setChecked(linePropertyInheritance === inheritance)
                             .onClick(() => setLinePropertyInheritance(inheritance));
                     });
