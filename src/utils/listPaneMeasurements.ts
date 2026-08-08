@@ -131,6 +131,15 @@ export function listItemUsesTypeProviderPresentation(
     );
 }
 
+/** Mobile checkbox rows use file-row presentation even when attached to a non-Type collection. */
+export function listItemUsesMobileCheckboxFilePresentation(item: ListPaneItem | null | undefined, isMobile: boolean): boolean {
+    if (!isMobile || item?.type !== ListPaneItemType.PROVIDER_ROW || item.data === null || typeof item.data !== 'object') {
+        return false;
+    }
+
+    return (item.data as { indicator?: { type?: unknown } }).indicator?.type === 'checkbox';
+}
+
 /**
  * Sizes a standalone Type result with the same title/metadata rhythm as a file row.
  */

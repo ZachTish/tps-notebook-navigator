@@ -363,7 +363,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
     const checkboxClassName = `nn-provider-row-checkbox${displayedChecked ? ' is-checked' : ''}${
         checkboxPresentation.hasVisibleMarker ? ' has-marker' : ''
     }`;
-    const isMobileTypePresentation = presentation === 'type' && Platform.isMobile;
+    const isMobileTypePresentation = Platform.isMobile && (presentation === 'type' || row.indicator?.type === 'checkbox');
     const mobileControlStyle = isMobileTypePresentation ? MOBILE_STRUCTURAL_CONTROL_RESET : undefined;
 
     const checkboxControl =
@@ -416,7 +416,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
         </button>
     ) : null;
 
-    if (presentation === 'type') {
+    if (presentation === 'type' || isMobileTypePresentation) {
         const effectiveTitleRows = isMobileTypePresentation ? 1 : Number.isFinite(titleRows) ? Math.max(1, Math.trunc(titleRows)) : 1;
         const fileClasses = [
             'nn-provider-row',

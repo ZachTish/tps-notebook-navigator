@@ -27,6 +27,7 @@ import {
     getSelectedTagPillToHide,
     hasVisibleTagPills,
     getPropertyRowCount,
+    listItemUsesMobileCheckboxFilePresentation,
     listItemUsesTypeProviderPresentation,
     shouldShowExtensionBadgeThumbnail,
     shouldShowFeatureImageArea,
@@ -34,6 +35,7 @@ import {
     usesStandaloneTypeProviderPresentation
 } from '../../src/utils/listPaneMeasurements';
 import { ItemType, ListPaneItemType } from '../../src/types';
+import type { ListPaneItem } from '../../src/types/virtualization';
 import { buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { createHiddenTagVisibility } from '../../src/utils/tagPrefixMatcher';
 import { createTestTFile } from './createTestTFile';
@@ -78,6 +80,23 @@ describe('listPaneMeasurements layout helpers', () => {
         expect(listItemUsesTypeProviderPresentation(row, ItemType.TAG, null)).toBe(true);
         expect(listItemUsesTypeProviderPresentation({ ...row, providerTypeId: undefined }, ItemType.TAG, null)).toBe(false);
         expect(listItemUsesTypeProviderPresentation({ ...row, providerTypeId: undefined }, ItemType.TYPE, 'structural:task')).toBe(true);
+    });
+
+    it('promotes attached checkbox rows to file presentation only on mobile', () => {
+        const row = {
+            type: ListPaneItemType.PROVIDER_ROW,
+            key: 'provider:tps/tasks:task-1',
+            data: {
+                providerId: 'tps/tasks',
+                id: 'task-1',
+                label: 'Ship release',
+                sourcePath: 'Projects/Atlas.md',
+                indicator: { type: 'checkbox', checked: false }
+            }
+        } as ListPaneItem;
+
+        expect(listItemUsesMobileCheckboxFilePresentation(row, true)).toBe(true);
+        expect(listItemUsesMobileCheckboxFilePresentation(row, false)).toBe(false);
     });
 
     it('sizes standard Type results with the native file title and source-line rhythm', () => {

@@ -17,7 +17,7 @@
  */
 
 import React, { useCallback, useMemo, useSyncExternalStore } from 'react';
-import { App, Menu, TFile, TFolder } from 'obsidian';
+import { App, Menu, Platform, TFile, TFolder } from 'obsidian';
 import { Virtualizer } from '@tanstack/react-virtual';
 import { useFileSystemOps, useMetadataService, useServices } from '../../context/ServicesContext';
 import { strings } from '../../i18n';
@@ -52,7 +52,7 @@ import { createNavigatorRowMenuTarget } from '../../utils/contextMenu/providerRo
 import { NavigatorProviderRow, type NavigatorProviderRowMenuHost } from '../providerRows/NavigatorProviderRow';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
 import { getNavigatorRowSelectionKey } from '../../services/rows/rowSelection';
-import { listItemUsesTypeProviderPresentation } from '../../utils/listPaneMeasurements';
+import { listItemUsesMobileCheckboxFilePresentation, listItemUsesTypeProviderPresentation } from '../../utils/listPaneMeasurements';
 
 export interface PointerClientPosition {
     clientX: number;
@@ -1235,7 +1235,9 @@ export function ListPaneVirtualContent({
                             const nextItem = getItemAt(listItems, virtualItem.index + 1);
                             const previousItem = getItemAt(listItems, virtualItem.index - 1);
                             const isFileRow = isFileListItem(item);
-                            const isTypeProviderRow = listItemUsesTypeProviderPresentation(item, selectionType, selectedType);
+                            const isTypeProviderRow =
+                                listItemUsesTypeProviderPresentation(item, selectionType, selectedType) ||
+                                listItemUsesMobileCheckboxFilePresentation(item, Platform.isMobile);
                             const providerRowKey = getProviderListItemSelectionKey(item);
                             const isSelected =
                                 (isFileRow && isFileVisuallySelected(item.data)) ||
@@ -1243,11 +1245,13 @@ export function ListPaneVirtualContent({
                             const isPreviousFileSelected = isFileListItem(previousItem) && isFileVisuallySelected(previousItem.data);
                             const isNextFileSelected = isFileListItem(nextItem) && isFileVisuallySelected(nextItem.data);
                             const isPreviousTypeProviderSelected =
-                                listItemUsesTypeProviderPresentation(previousItem, selectionType, selectedType) &&
+                                (listItemUsesTypeProviderPresentation(previousItem, selectionType, selectedType) ||
+                                    listItemUsesMobileCheckboxFilePresentation(previousItem, Platform.isMobile)) &&
                                 selectedProviderRowKey !== null &&
                                 getProviderListItemSelectionKey(previousItem) === selectedProviderRowKey;
                             const isNextTypeProviderSelected =
-                                listItemUsesTypeProviderPresentation(nextItem, selectionType, selectedType) &&
+                                (listItemUsesTypeProviderPresentation(nextItem, selectionType, selectedType) ||
+                                    listItemUsesMobileCheckboxFilePresentation(nextItem, Platform.isMobile)) &&
                                 selectedProviderRowKey !== null &&
                                 getProviderListItemSelectionKey(nextItem) === selectedProviderRowKey;
                             const isPreviousVisualRowSelected = isPreviousFileSelected || isPreviousTypeProviderSelected;

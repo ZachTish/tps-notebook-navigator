@@ -77,6 +77,7 @@ import {
     shouldShowExtensionBadgeThumbnail,
     shouldShowFeatureImageArea,
     shouldShowFileItemParentFolderLine,
+    listItemUsesMobileCheckboxFilePresentation,
     listItemUsesTypeProviderPresentation
 } from '../utils/listPaneMeasurements';
 import type { NavigatorProvidedRow } from '../services/rows/types';
@@ -835,7 +836,8 @@ export function useListPaneScroll({
 
             if (
                 item.type === ListPaneItemType.PROVIDER_ROW &&
-                listItemUsesTypeProviderPresentation(item, rowSizingConfig.selectionType, rowSizingConfig.selectedType) &&
+                (listItemUsesTypeProviderPresentation(item, rowSizingConfig.selectionType, rowSizingConfig.selectedType) ||
+                    listItemUsesMobileCheckboxFilePresentation(item, isMobile)) &&
                 item.data !== null &&
                 typeof item.data === 'object'
             ) {

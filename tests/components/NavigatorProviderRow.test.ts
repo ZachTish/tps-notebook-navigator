@@ -336,7 +336,7 @@ describe('NavigatorProviderRow', () => {
             const markup = renderToStaticMarkup(
                 React.createElement(NavigatorProviderRow, {
                     row: mobileRow,
-                    presentation: 'type',
+                    presentation: 'attached',
                     isCompactMode: false,
                     titleRows: 2
                 })
