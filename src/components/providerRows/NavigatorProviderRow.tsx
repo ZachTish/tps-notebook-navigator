@@ -2,7 +2,7 @@
  * TPS Notebook Navigator - neutral rendering for transient provider rows.
  */
 
-import { Menu } from 'obsidian';
+import { Menu, Platform } from 'obsidian';
 import React, { useCallback, useEffect, useState } from 'react';
 import type { NavigatorRowMenuExtensionContext, NavigatorRowMenuTarget } from '../../api/types';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
@@ -80,6 +80,15 @@ const TYPE_ROW_ICON_BY_KIND: Readonly<Record<string, string>> = Object.freeze({
     note: 'lucide-file-text',
     pdf: 'lucide-file-text',
     task: 'lucide-square-check-big'
+});
+
+const MOBILE_STRUCTURAL_CONTROL_RESET: React.CSSProperties = Object.freeze({
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    background: 'transparent',
+    backgroundColor: 'transparent',
+    border: 0,
+    boxShadow: 'none'
 });
 
 /** Resolves the restrained leading-icon twist for a file-styled Type result. */
@@ -354,6 +363,8 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
     const checkboxClassName = `nn-provider-row-checkbox${displayedChecked ? ' is-checked' : ''}${
         checkboxPresentation.hasVisibleMarker ? ' has-marker' : ''
     }`;
+    const isMobileTypePresentation = presentation === 'type' && Platform.isMobile;
+    const mobileControlStyle = isMobileTypePresentation ? MOBILE_STRUCTURAL_CONTROL_RESET : undefined;
 
     const checkboxControl =
         row.indicator?.type === 'checkbox' ? (
@@ -361,6 +372,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                 <button
                     type="button"
                     className={`${checkboxClassName} is-interactive`}
+                    style={mobileControlStyle}
                     role="checkbox"
                     aria-checked={displayedChecked}
                     aria-busy={checkboxBusy || undefined}
@@ -392,6 +404,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
         <button
             type="button"
             className="nn-provider-row-more"
+            style={mobileControlStyle}
             aria-label={`More actions for ${row.label}`}
             aria-haspopup="menu"
             title="More actions"
@@ -404,7 +417,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
     ) : null;
 
     if (presentation === 'type') {
-        const effectiveTitleRows = Number.isFinite(titleRows) ? Math.max(1, Math.trunc(titleRows)) : 1;
+        const effectiveTitleRows = isMobileTypePresentation ? 1 : Number.isFinite(titleRows) ? Math.max(1, Math.trunc(titleRows)) : 1;
         const fileClasses = [
             'nn-provider-row',
             'nn-provider-row--type',
@@ -433,6 +446,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                 data-provider-kind={row.kind}
                 data-source-path={row.sourcePath}
                 data-provider-context-menu={hasContextMenu ? 'true' : undefined}
+                data-mobile-structural-row={isMobileTypePresentation ? 'true' : undefined}
                 onContextMenu={handleContextMenu}
             >
                 <div className="nn-file-content">
@@ -449,6 +463,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                         <button
                             type="button"
                             className={`nn-provider-row-open ${textContentClassName}`}
+                            style={mobileControlStyle}
                             title={row.tooltip}
                             aria-label={primaryActionLabel}
                             onClick={handleActivate}
@@ -456,7 +471,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                             onKeyUp={event => routeProviderRowKeyboardPropagation('primary', event)}
                         >
                             {isCompactMode ? <span className="nn-compact-file-header">{title}</span> : title}
-                            {!isCompactMode && row.secondaryLabel ? (
+                            {!isMobileTypePresentation && !isCompactMode && row.secondaryLabel ? (
                                 <span className="nn-file-second-line">
                                     <span className="nn-provider-row-secondary">{row.secondaryLabel}</span>
                                 </span>

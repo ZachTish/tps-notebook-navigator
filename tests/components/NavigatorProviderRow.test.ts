@@ -1,6 +1,7 @@
 /* TPS Notebook Navigator - provider row accessibility and interaction rendering. */
 
 import React from 'react';
+import { Platform } from 'obsidian';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -322,6 +323,35 @@ describe('NavigatorProviderRow', () => {
         expect(markup).toContain('aria-label="Select Review navigator in Inbox/Tasks.md"');
         expect(markup).not.toContain('tps-nn-file-second-line');
         expect(markup).not.toContain('tps-nn-provider-row-secondary');
+    });
+
+    it('enforces the one-line transparent-control contract in mobile Type markup', () => {
+        const previousIsMobile = Platform.isMobile;
+        Platform.isMobile = true;
+        try {
+            const mobileRow: NavigatorProvidedRow = {
+                ...row(vi.fn(), () => undefined),
+                secondaryLabel: 'Inbox/Tasks.md · line 4'
+            };
+            const markup = renderToStaticMarkup(
+                React.createElement(NavigatorProviderRow, {
+                    row: mobileRow,
+                    presentation: 'type',
+                    isCompactMode: false,
+                    titleRows: 2
+                })
+            );
+
+            expect(markup).toContain('data-mobile-structural-row="true"');
+            expect(markup).toContain('data-title-rows="1"');
+            expect(markup).not.toContain('tps-nn-file-second-line');
+            expect(markup).not.toContain('Inbox/Tasks.md · line 4');
+            expect(markup.match(/background-color:transparent/g)).toHaveLength(3);
+            expect(markup.match(/-webkit-appearance:none/g)).toHaveLength(3);
+            expect(markup.match(/box-shadow:none/g)).toHaveLength(3);
+        } finally {
+            Platform.isMobile = previousIsMobile;
+        }
     });
 
     it('keeps the provider checkbox in the native leading slot even when ordinary Type icons are hidden', () => {
