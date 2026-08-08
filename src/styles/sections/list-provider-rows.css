@@ -51,6 +51,14 @@
     line-height: 1;
 }
 
+/* Provider task controls are file-row chrome, never Obsidian command buttons. */
+.nn-provider-row--type button.nn-provider-row-checkbox {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    appearance: none;
+}
+
 .nn-provider-row-checkbox > span {
     width: 16px;
     height: 16px;
@@ -193,6 +201,13 @@
     cursor: pointer;
 }
 
+.nn-provider-row--type button.nn-provider-row-more {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    appearance: none;
+}
+
 .nn-provider-row-more:hover {
     background: var(--background-modifier-hover);
     color: var(--nn-theme-foreground);
@@ -261,6 +276,7 @@
     min-height: 48px;
     padding-block: 6px;
     justify-content: center;
+    border: 0;
     background: transparent;
     box-shadow: none;
     appearance: none;

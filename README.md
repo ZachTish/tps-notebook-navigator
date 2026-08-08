@@ -173,6 +173,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.8.4 — native note-row control reset
+
+- Ensures task titles, source metadata, checkbox controls, and More actions blend into the same flat background as normal note rows under Obsidian and theme button rules.
+- Higher-specificity file-row resets remove inherited borders, fills, shadows, and native button appearance without relying on `!important`.
+- The checkbox remains the only visual replacement for the normal leading file icon. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.8.3 — quiet mobile task rows
 
 - Removes the stacked gray card/button treatment from mobile checkbox rows and restores a clean, full-width list appearance.

@@ -118,6 +118,8 @@ describe('Type-mode list runtime behavior', () => {
         expect(css).toContain('-webkit-line-clamp: 2;');
         expect(css).toContain('overflow-wrap: anywhere;');
         expect(css).toContain('background: transparent;');
+        expect(css).toContain('.nn-provider-row--type button.nn-provider-row-checkbox {');
+        expect(css).toContain('.nn-provider-row--type button.nn-provider-row-more {');
     });
 
     it('keeps standalone Type rows on native file chrome while preserving restrained provider controls', async () => {
