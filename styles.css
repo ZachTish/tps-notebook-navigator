@@ -4633,15 +4633,61 @@ button.tps-nn-navigation-calendar-day {
     background: transparent;
 }
 
+/* stylelint-disable declaration-no-important -- Obsidian iOS/theme button chrome can load after plugin styles. */
 .tps-notebook-navigator-mobile .tps-nn-provider-row--type button.tps-nn-provider-row-open {
+    all: unset;
+    box-sizing: border-box;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: stretch;
+    order: 1;
+    min-width: 0;
     min-height: 0;
     padding: 0;
     justify-content: flex-start;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    appearance: none;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    appearance: none !important;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
 }
+
+/* Mobile structural rows are always one compact line, matching the Notes list. */
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type .tps-nn-file-name {
+    display: block;
+    overflow: hidden;
+    max-height: var(--tps-nn-file-title-line-height);
+    white-space: nowrap;
+    word-break: normal;
+    -webkit-line-clamp: 1;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type .tps-nn-file-second-line {
+    display: none;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type button.tps-nn-provider-row-checkbox,
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type button.tps-nn-provider-row-more {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    appearance: none !important;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type button.tps-nn-provider-row-checkbox {
+    border-radius: 0 !important;
+}
+
+.tps-notebook-navigator-mobile .tps-nn-provider-row--type button.tps-nn-provider-row-more {
+    border-radius: 4px !important;
+}
+/* stylelint-enable declaration-no-important */
 
 .tps-notebook-navigator-mobile .tps-nn-provider-row--type.tps-nn-selected {
     background: var(--tps-nn-selected-file-bg-color);

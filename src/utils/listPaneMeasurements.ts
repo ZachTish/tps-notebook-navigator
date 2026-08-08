@@ -138,18 +138,20 @@ export function estimateTypeProviderRowHeight({
     heights,
     compactPaddingTotal,
     isCompactMode,
+    isMobile,
     titleRows,
     hasSecondaryLabel
 }: {
     heights: ListPaneMeasurements;
     compactPaddingTotal: number;
     isCompactMode: boolean;
+    isMobile: boolean;
     titleRows: number;
     hasSecondaryLabel: boolean;
 }): number {
-    const normalizedTitleRows = Number.isFinite(titleRows) ? Math.max(1, Math.trunc(titleRows)) : 1;
+    const normalizedTitleRows = isMobile ? 1 : Number.isFinite(titleRows) ? Math.max(1, Math.trunc(titleRows)) : 1;
     const titleHeight = heights.titleLineHeight * normalizedTitleRows;
-    const metadataHeight = !isCompactMode && hasSecondaryLabel ? heights.singleTextLineHeight : 0;
+    const metadataHeight = !isMobile && !isCompactMode && hasSecondaryLabel ? heights.singleTextLineHeight : 0;
     const contentHeight = titleHeight + metadataHeight;
     const paddingTotal = isCompactMode ? compactPaddingTotal : heights.basePadding;
 

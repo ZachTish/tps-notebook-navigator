@@ -86,6 +86,7 @@ describe('listPaneMeasurements layout helpers', () => {
                 heights: desktopHeights,
                 compactPaddingTotal: 8,
                 isCompactMode: false,
+                isMobile: false,
                 titleRows: 1,
                 hasSecondaryLabel: true
             })
@@ -95,6 +96,7 @@ describe('listPaneMeasurements layout helpers', () => {
                 heights: desktopHeights,
                 compactPaddingTotal: 8,
                 isCompactMode: false,
+                isMobile: false,
                 titleRows: 2,
                 hasSecondaryLabel: false
             })
@@ -107,6 +109,7 @@ describe('listPaneMeasurements layout helpers', () => {
                 heights: desktopHeights,
                 compactPaddingTotal: 8,
                 isCompactMode: true,
+                isMobile: false,
                 titleRows: 1,
                 hasSecondaryLabel: true
             })
@@ -116,6 +119,7 @@ describe('listPaneMeasurements layout helpers', () => {
                 heights: desktopHeights,
                 compactPaddingTotal: 8,
                 isCompactMode: true,
+                isMobile: false,
                 titleRows: Number.NaN,
                 hasSecondaryLabel: false
             })
@@ -130,6 +134,7 @@ describe('listPaneMeasurements layout helpers', () => {
                 heights: mobileHeights,
                 compactPaddingTotal: 16,
                 isCompactMode: true,
+                isMobile: true,
                 titleRows: 1,
                 hasSecondaryLabel: true
             })
@@ -139,19 +144,21 @@ describe('listPaneMeasurements layout helpers', () => {
                 heights: mobileHeights,
                 compactPaddingTotal: 16,
                 isCompactMode: false,
+                isMobile: true,
                 titleRows: 1,
                 hasSecondaryLabel: true
             })
-        ).toBe(65);
+        ).toBe(45);
         expect(
             estimateTypeProviderRowHeight({
                 heights: mobileHeights,
                 compactPaddingTotal: 16,
                 isCompactMode: false,
+                isMobile: true,
                 titleRows: 2,
                 hasSecondaryLabel: true
             })
-        ).toBe(86);
+        ).toBe(45);
     });
 
     it('uses explicit compact mode instead of inferring it from hidden date, preview, and image sections', () => {

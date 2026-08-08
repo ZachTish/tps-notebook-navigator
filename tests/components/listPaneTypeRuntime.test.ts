@@ -103,12 +103,25 @@ describe('Type-mode list runtime behavior', () => {
 
     it('uses ordinary file-row geometry and typography for mobile Type task rows', async () => {
         const css = await readFile('src/styles/sections/list-provider-rows.css', 'utf8');
+        const mobileOpenRule = css.match(
+            /\.notebook-navigator-mobile\s+\.nn-provider-row--type\s+button\.nn-provider-row-open\s*\{([^}]*)\}/u
+        )?.[1];
+        const mobileTitleRule = css.match(/\.notebook-navigator-mobile\s+\.nn-provider-row--type\s+\.nn-file-name\s*\{([^}]*)\}/u)?.[1];
+        const mobileSecondLineRule = css.match(
+            /\.notebook-navigator-mobile\s+\.nn-provider-row--type\s+\.nn-file-second-line\s*\{([^}]*)\}/u
+        )?.[1];
 
         expect(css).toContain('.notebook-navigator-mobile .nn-provider-row--type {');
         expect(css).toContain('width: 100%;');
         expect(css).toContain('background: transparent;');
         expect(css).not.toContain('-webkit-line-clamp: 2;');
         expect(css).not.toContain('overflow-wrap: anywhere;');
+        expect(mobileOpenRule).toMatch(/all:\s*unset\s*;/u);
+        expect(mobileOpenRule).toMatch(/background:\s*transparent\s*!important\s*;/u);
+        expect(mobileOpenRule).toMatch(/box-shadow:\s*none\s*!important\s*;/u);
+        expect(mobileTitleRule).toMatch(/white-space:\s*nowrap\s*;/u);
+        expect(mobileTitleRule).toMatch(/-webkit-line-clamp:\s*1\s*;/u);
+        expect(mobileSecondLineRule).toMatch(/display:\s*none\s*;/u);
         expect(css).toContain('.nn-provider-row--type button.nn-provider-row-checkbox {');
         expect(css).toContain('.nn-provider-row--type button.nn-provider-row-more {');
     });

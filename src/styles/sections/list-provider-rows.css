@@ -235,15 +235,61 @@
     background: transparent;
 }
 
+/* stylelint-disable declaration-no-important -- Obsidian iOS/theme button chrome can load after plugin styles. */
 .notebook-navigator-mobile .nn-provider-row--type button.nn-provider-row-open {
+    all: unset;
+    box-sizing: border-box;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: stretch;
+    order: 1;
+    min-width: 0;
     min-height: 0;
     padding: 0;
     justify-content: flex-start;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    appearance: none;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    appearance: none !important;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
 }
+
+/* Mobile structural rows are always one compact line, matching the Notes list. */
+.notebook-navigator-mobile .nn-provider-row--type .nn-file-name {
+    display: block;
+    overflow: hidden;
+    max-height: var(--nn-file-title-line-height);
+    white-space: nowrap;
+    word-break: normal;
+    -webkit-line-clamp: 1;
+}
+
+.notebook-navigator-mobile .nn-provider-row--type .nn-file-second-line {
+    display: none;
+}
+
+.notebook-navigator-mobile .nn-provider-row--type button.nn-provider-row-checkbox,
+.notebook-navigator-mobile .nn-provider-row--type button.nn-provider-row-more {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    appearance: none !important;
+}
+
+.notebook-navigator-mobile .nn-provider-row--type button.nn-provider-row-checkbox {
+    border-radius: 0 !important;
+}
+
+.notebook-navigator-mobile .nn-provider-row--type button.nn-provider-row-more {
+    border-radius: 4px !important;
+}
+/* stylelint-enable declaration-no-important */
 
 .notebook-navigator-mobile .nn-provider-row--type.nn-selected {
     background: var(--nn-selected-file-bg-color);

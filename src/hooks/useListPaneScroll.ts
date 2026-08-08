@@ -844,6 +844,7 @@ export function useListPaneScroll({
                     heights,
                     compactPaddingTotal: rowSizingConfig.compactPaddingTotal,
                     isCompactMode: rowSizingConfig.isCompactMode,
+                    isMobile,
                     titleRows: rowSizingConfig.titleRows,
                     hasSecondaryLabel: typeof row.secondaryLabel === 'string' && row.secondaryLabel.length > 0
                 });
