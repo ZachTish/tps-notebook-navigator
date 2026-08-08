@@ -373,6 +373,7 @@ function toNavigatorRecord(
                       marker: task.marker,
                       status: task.status,
                       isComplete: task.isComplete,
+                      tags: Object.freeze([...task.tags]),
                       ...(taskFields !== undefined ? { fields: taskFields } : {}),
                       canMutateCheckbox: capabilities.canMutateCheckbox,
                       hasContextMenu: capabilities.hasContextMenu

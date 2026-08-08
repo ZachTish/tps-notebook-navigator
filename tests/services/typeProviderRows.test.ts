@@ -405,6 +405,7 @@ describe('buildTypeProviderRows', () => {
                 marker: ' ',
                 status: 'todo',
                 isComplete: false,
+                tags: ['hca'],
                 fields: { Scheduled: '2026-08-03 09:30:00', Priority: 'high', status: 'working', Owner: '' },
                 canMutateCheckbox: true,
                 hasContextMenu: true
@@ -419,6 +420,7 @@ describe('buildTypeProviderRows', () => {
             scheduled: '2026-08-03 09:30:00',
             PRIORITY: 'high',
             Status: 'todo',
+            tags: ['hca'],
             Parents: ['Project A', '', 'Area B'],
             Owner: ''
         });

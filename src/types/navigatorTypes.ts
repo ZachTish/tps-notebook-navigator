@@ -106,6 +106,8 @@ export interface TpsNavigatorTypeTaskState {
     marker: string;
     status: string;
     isComplete: boolean;
+    /** Exact task-local hashtags supplied by GCM, without the leading hash. */
+    tags?: readonly string[];
     /** Immutable task-local inline fields supplied by GCM when available. */
     fields?: Readonly<Record<string, string>>;
     canMutateCheckbox: boolean;

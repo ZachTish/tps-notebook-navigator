@@ -173,6 +173,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.8.2 — exact task-tag grouping
+
+- Fixes tagged checkbox rows appearing under `None` or an owning-note tag even though the task context menu shows the task's exact tags.
+- Hydrated tasks now carry GCM's task-local hashtags into the structural row `tags` property, so line-first and combined grouping use the real task values.
+- Tasks without local tags still inherit note tags according to the configured inheritance mode. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.8.1 — symmetric search-bar scope synchronization
 
 - Fixes the reverse source-of-truth path: adding a tag, property, or date while Checkboxes is selected now preserves `type:structural:task` explicitly in the search bar.

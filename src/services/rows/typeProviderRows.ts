@@ -110,6 +110,11 @@ function buildRowProperties(
     if (task) {
         // Status is canonical task state even when a raw field or task fields record uses another casing.
         setPropertyCaseInsensitively(properties, 'status', task.status);
+        // GCM publishes Markdown hashtags separately from inline fields. Keep them on the
+        // row so tag/property grouping uses the exact task instead of only its owning note.
+        if (task.tags && task.tags.length > 0) {
+            setPropertyCaseInsensitively(properties, 'tags', task.tags);
+        }
     }
 
     return Object.keys(properties).length > 0 ? Object.freeze(properties) : undefined;
