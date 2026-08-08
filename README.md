@@ -173,6 +173,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.6.1 — built-in Type row subscription repair
+
+- Fixes populated built-in Type counts opening an empty list, including Checkboxes.
+- Built-in rows and their task actions now consume the same direct shared index snapshot; external provider Types continue through the aggregate API.
+- Adds focused routing regression coverage. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.6.0 — multi-value group instances
 
 - Adds a per-view multi-value grouping choice to the Sort and Group menu.

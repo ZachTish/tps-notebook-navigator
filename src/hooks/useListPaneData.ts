@@ -91,6 +91,7 @@ import {
     collectFileBackedTypeFiles,
     composeTypeListItems,
     getSelectedTypeSearchSourceScope,
+    resolveTypeListSnapshot,
     resolveTypeListMode
 } from './listPaneData/typeListItems';
 import {
@@ -218,10 +219,14 @@ export function useListPaneData({
     const hasSearchQuery = trimmedQuery.length > 0;
     const rawTypeSnapshot = useNavigatorTypes(plugin.api);
     const {
+        snapshot: builtinTypeSnapshot,
         activate: activateTypeRecord,
         setTaskCheckbox: setTypeTaskCheckbox,
         addTaskContextMenuItems: addTypeTaskContextMenuItems
     } = useGcmEntityTypes(app, settings.tpsTypesNavigationEnabled);
+    // Built-in rows and their actions must come from the same direct store subscription.
+    // The aggregate API remains authoritative for externally provided Type collections.
+    const selectedRawTypeSnapshot = resolveTypeListSnapshot(typeListMode, builtinTypeSnapshot, rawTypeSnapshot);
     const visibleTypeFiles = useMemo(() => {
         void updateKey;
         if (!settings.tpsTypesNavigationEnabled || (!isTypeSelection && !hasSearchQuery)) {
@@ -231,8 +236,8 @@ export function useListPaneData({
     }, [app, hasSearchQuery, isTypeSelection, settings, showHiddenItems, updateKey]);
     const visibleTypeSourcePaths = useMemo(() => new Set(visibleTypeFiles.map(file => file.path)), [visibleTypeFiles]);
     const typeSnapshot = useMemo(
-        () => filterTpsNavigatorTypesSnapshot(rawTypeSnapshot, visibleTypeSourcePaths),
-        [rawTypeSnapshot, visibleTypeSourcePaths]
+        () => filterTpsNavigatorTypesSnapshot(selectedRawTypeSnapshot, visibleTypeSourcePaths),
+        [selectedRawTypeSnapshot, visibleTypeSourcePaths]
     );
 
     const allowedTypeSourcePaths = useMemo(() => Object.freeze([...visibleTypeSourcePaths]), [visibleTypeSourcePaths]);

@@ -4,6 +4,7 @@ import {
     collectFileBackedTypeFiles,
     composeTypeListItems,
     getSelectedTypeSearchSourceScope,
+    resolveTypeListSnapshot,
     resolveTypeListMode
 } from '../../../src/hooks/listPaneData/typeListItems';
 import { buildListItems, type ListPaneConfig } from '../../../src/hooks/listPaneData/listItems';
@@ -99,6 +100,24 @@ function setRootFiles(app: App, files: TFile[]): void {
 }
 
 describe('Type list routing', () => {
+    it('uses the direct built-in snapshot for built-in selections and the aggregate snapshot for provider Types', () => {
+        const builtinSnapshot = { revision: 1 } as never;
+        const aggregateSnapshot = { revision: 2 } as never;
+
+        expect(
+            resolveTypeListSnapshot(
+                resolveTypeListMode(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES),
+                builtinSnapshot,
+                aggregateSnapshot
+            )
+        ).toBe(builtinSnapshot);
+        const providerTypeId = createTpsNavigatorProviderTypeId('example/provider', 'inbox');
+        expect(providerTypeId).not.toBeNull();
+        expect(resolveTypeListSnapshot(resolveTypeListMode(ItemType.TYPE, providerTypeId), builtinSnapshot, aggregateSnapshot)).toBe(
+            aggregateSnapshot
+        );
+    });
+
     it.each(FILE_TYPE_CASES)('collects only visible files in %s', (typeId, matchingPath) => {
         const app = new App();
         const matching = createTestTFile(matchingPath);

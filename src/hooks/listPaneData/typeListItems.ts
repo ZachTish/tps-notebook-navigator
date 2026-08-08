@@ -17,6 +17,7 @@ import {
     type StructuralTypeSearchGroup
 } from '../../services/rows/providerListItems';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
+import type { TpsNavigatorTypesSnapshot } from '../../types/navigatorTypes';
 import { isFileInTpsNavigatorType } from '../../services/types/vaultFileTypes';
 
 export interface TypeListMode {
@@ -34,6 +35,15 @@ export function resolveTypeListMode(selectionType: ItemType | null, selectedType
         isLineBackedTypeSelection: isTypeSelection && isTpsNavigatorLineTypeId(selectedType),
         isProviderOwnedTypeSelection: isTypeSelection && parseTpsNavigatorProviderTypeId(selectedType) !== null
     };
+}
+
+/** Keeps built-in row data on its direct index subscription while external Types use the aggregate API. */
+export function resolveTypeListSnapshot(
+    mode: Pick<TypeListMode, 'isProviderOwnedTypeSelection'>,
+    builtinSnapshot: TpsNavigatorTypesSnapshot,
+    aggregateSnapshot: TpsNavigatorTypesSnapshot
+): TpsNavigatorTypesSnapshot {
+    return mode.isProviderOwnedTypeSelection ? aggregateSnapshot : builtinSnapshot;
 }
 
 /** Applies the selected file bucket only after normal Navigator visibility has produced the input scope. */
