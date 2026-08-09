@@ -82,7 +82,7 @@ const TYPE_ROW_ICON_BY_KIND: Readonly<Record<string, string>> = Object.freeze({
     task: 'lucide-square-check-big'
 });
 
-const MOBILE_STRUCTURAL_CONTROL_RESET: React.CSSProperties = Object.freeze({
+const STRUCTURAL_CONTROL_RESET: React.CSSProperties = Object.freeze({
     appearance: 'none',
     WebkitAppearance: 'none',
     background: 'transparent',
@@ -90,6 +90,16 @@ const MOBILE_STRUCTURAL_CONTROL_RESET: React.CSSProperties = Object.freeze({
     border: 0,
     boxShadow: 'none'
 });
+
+/** Publishes a task as Markdown text and keeps it out of Navigator's file drag pipeline. */
+export function startProviderRowTextDrag(
+    event: Pick<React.DragEvent, 'dataTransfer' | 'stopPropagation'>,
+    dragText: string
+): void {
+    event.stopPropagation();
+    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.setData('text/plain', dragText);
+}
 
 /** Resolves the restrained leading-icon twist for a file-styled Type result. */
 export function getProviderTypeRowIcon(kind: string): string {
@@ -364,7 +374,15 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
         checkboxPresentation.hasVisibleMarker ? ' has-marker' : ''
     }`;
     const isMobileTypePresentation = Platform.isMobile && (presentation === 'type' || row.indicator?.type === 'checkbox');
-    const mobileControlStyle = isMobileTypePresentation ? MOBILE_STRUCTURAL_CONTROL_RESET : undefined;
+    const structuralControlStyle = STRUCTURAL_CONTROL_RESET;
+    const handleDragStart = useCallback(
+        (event: React.DragEvent<HTMLDivElement>) => {
+            if (row.dragText) {
+                startProviderRowTextDrag(event, row.dragText);
+            }
+        },
+        [row.dragText]
+    );
 
     const checkboxControl =
         row.indicator?.type === 'checkbox' ? (
@@ -372,7 +390,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                 <button
                     type="button"
                     className={`${checkboxClassName} is-interactive`}
-                    style={mobileControlStyle}
+                    style={structuralControlStyle}
                     role="checkbox"
                     aria-checked={displayedChecked}
                     aria-busy={checkboxBusy || undefined}
@@ -404,7 +422,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
         <button
             type="button"
             className="nn-provider-row-more"
-            style={mobileControlStyle}
+            style={structuralControlStyle}
             aria-label={`More actions for ${row.label}`}
             aria-haspopup="menu"
             title="More actions"
@@ -447,6 +465,9 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                 data-source-path={row.sourcePath}
                 data-provider-context-menu={hasContextMenu ? 'true' : undefined}
                 data-mobile-structural-row={isMobileTypePresentation ? 'true' : undefined}
+                draggable={row.dragText ? true : undefined}
+                data-provider-text-drag={row.dragText ? 'true' : undefined}
+                onDragStart={handleDragStart}
                 onContextMenu={handleContextMenu}
             >
                 <div className="nn-file-content">
@@ -463,7 +484,7 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
                         <button
                             type="button"
                             className={`nn-provider-row-open ${textContentClassName}`}
-                            style={mobileControlStyle}
+                            style={structuralControlStyle}
                             title={row.tooltip}
                             aria-label={primaryActionLabel}
                             onClick={handleActivate}
@@ -493,12 +514,16 @@ export const NavigatorProviderRow = React.memo(function NavigatorProviderRow({
             data-provider-kind={row.kind}
             data-source-path={row.sourcePath}
             data-provider-context-menu={hasContextMenu ? 'true' : undefined}
+            draggable={row.dragText ? true : undefined}
+            data-provider-text-drag={row.dragText ? 'true' : undefined}
+            onDragStart={handleDragStart}
             onContextMenu={handleContextMenu}
         >
             {checkboxControl}
             <button
                 type="button"
                 className="nn-provider-row-open"
+                style={structuralControlStyle}
                 title={row.tooltip}
                 aria-label={primaryActionLabel}
                 onClick={handleActivate}

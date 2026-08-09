@@ -16,6 +16,7 @@ import {
     requestProviderRowActivation,
     requestSelectedProviderRowActivation,
     routeProviderRowKeyboardPropagation,
+    startProviderRowTextDrag,
     stopProviderRowKeyboardPropagation
 } from '../../src/components/providerRows/NavigatorProviderRow';
 import type { NavigatorRowMenuTarget } from '../../src/api/types';
@@ -66,6 +67,31 @@ function rowMenuHost(overrides: Partial<NavigatorProviderRowMenuHost> = {}): Nav
 }
 
 describe('NavigatorProviderRow', () => {
+    it('drags task Markdown as text without entering the file drag pipeline', () => {
+        const setData = vi.fn();
+        const stopPropagation = vi.fn();
+        const dataTransfer = { effectAllowed: 'all', setData } as unknown as DataTransfer;
+
+        startProviderRowTextDrag({ dataTransfer, stopPropagation }, '- [ ] Review navigator #project');
+
+        expect(stopPropagation).toHaveBeenCalledOnce();
+        expect(dataTransfer.effectAllowed).toBe('copy');
+        expect(setData).toHaveBeenCalledWith('text/plain', '- [ ] Review navigator #project');
+    });
+
+    it('marks built-in task rows as text-draggable without file drag attributes', () => {
+        const markup = renderToStaticMarkup(
+            React.createElement(NavigatorProviderRow, {
+                row: { ...row(), dragText: '- [ ] Review navigator' }
+            })
+        );
+
+        expect(markup).toContain('draggable="true"');
+        expect(markup).toContain('data-provider-text-drag="true"');
+        expect(markup).not.toContain('data-draggable=');
+        expect(markup).not.toContain('data-drag-type=');
+    });
+
     it('runs the first-party activation callback only for an actionable row', () => {
         const events: string[] = [];
         const activate = vi.fn(() => events.push('activate'));

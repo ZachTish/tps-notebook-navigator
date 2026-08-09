@@ -4450,11 +4450,12 @@ button.tps-nn-navigation-calendar-day {
 }
 
 /* Provider task controls are file-row chrome, never Obsidian command buttons. */
-.tps-nn-provider-row--type button.tps-nn-provider-row-checkbox {
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    appearance: none;
+/* stylelint-disable declaration-no-important -- Obsidian/theme button chrome can load after plugin styles. */
+.tps-nn-provider-row button.tps-nn-provider-row-checkbox {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    appearance: none !important;
 }
 
 .tps-nn-provider-row-checkbox > span {
@@ -4542,15 +4543,15 @@ button.tps-nn-navigation-calendar-day {
     outline-offset: 2px;
 }
 
-.tps-nn-provider-row--type button.tps-nn-provider-row-open {
+.tps-nn-provider-row button.tps-nn-provider-row-open {
     align-self: stretch;
     justify-content: flex-start;
     gap: 0;
     margin: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    appearance: none;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    appearance: none !important;
 }
 
 .tps-nn-provider-row--type .tps-nn-provider-row-open.tps-nn-file-text-content,
@@ -4581,12 +4582,13 @@ button.tps-nn-navigation-calendar-day {
     cursor: pointer;
 }
 
-.tps-nn-provider-row--type button.tps-nn-provider-row-more {
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    appearance: none;
+.tps-nn-provider-row button.tps-nn-provider-row-more {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    appearance: none !important;
 }
+/* stylelint-enable declaration-no-important */
 
 .tps-nn-provider-row-more:hover {
     background: var(--background-modifier-hover);
@@ -4647,6 +4649,7 @@ button.tps-nn-navigation-calendar-day {
     min-height: 0;
     padding: 0;
     justify-content: flex-start;
+    gap: 0;
     border: 0 !important;
     border-radius: 0 !important;
     background: transparent !important;

@@ -77,6 +77,7 @@ function isUsableCandidate(candidate: unknown): candidate is NavigatorProvidedRo
         row.sourcePath.trim().length > 0 &&
         isOptionalString(row.secondaryLabel) &&
         isOptionalString(row.tooltip) &&
+        isOptionalString(row.dragText) &&
         (row.sourceLineNumber === undefined ||
             (typeof row.sourceLineNumber === 'number' && Number.isSafeInteger(row.sourceLineNumber) && row.sourceLineNumber >= 0)) &&
         isUsableCheckboxIndicator(row.indicator) &&

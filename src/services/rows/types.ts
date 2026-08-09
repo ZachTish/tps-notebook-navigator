@@ -24,9 +24,11 @@ export interface NavigatorProvidedRow extends NavigatorRowDefinition {
     providerId: string;
     /** Built-in row-local values used for presentation; intentionally unavailable to external row providers. */
     readonly properties?: Readonly<Record<string, string | number | boolean | readonly (string | number | boolean)[]>>;
+    /** Built-in source text that can be dragged into an editor without impersonating the containing file. */
+    readonly dragText?: string;
 }
 
-export type NavigatorProvidedRowCandidate = NavigatorRowDefinition;
+export type NavigatorProvidedRowCandidate = NavigatorRowDefinition & { readonly dragText?: string };
 
 /** Hard ceiling for all provider contributions to one composed list. */
 export const NAVIGATOR_ROW_PROVIDER_MAX_ROWS = 1_000;

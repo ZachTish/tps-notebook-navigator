@@ -148,10 +148,10 @@ describe('Type-mode list runtime behavior', () => {
         expect(typeRowRule).not.toMatch(/padding:/u);
         expect(typeRowRule).not.toMatch(/border(?:-bottom)?:/u);
         expect(typeOpenRule).toMatch(/gap:\s*0\s*;/u);
-        expect(typeOpenRule).toMatch(/border-radius:\s*0\s*;/u);
-        expect(typeOpenRule).toMatch(/background:\s*transparent\s*;/u);
-        expect(typeOpenRule).toMatch(/box-shadow:\s*none\s*;/u);
-        expect(typeOpenRule).toMatch(/appearance:\s*none\s*;/u);
+        expect(typeOpenRule).toMatch(/border-radius:\s*0(?:\s*!important)?\s*;/u);
+        expect(typeOpenRule).toMatch(/background:\s*transparent(?:\s*!important)?\s*;/u);
+        expect(typeOpenRule).toMatch(/box-shadow:\s*none(?:\s*!important)?\s*;/u);
+        expect(typeOpenRule).toMatch(/appearance:\s*none(?:\s*!important)?\s*;/u);
         expect(typeSecondaryRule).toMatch(/var\(--nn-theme-file-parent-color\)/u);
         expect(typeSecondaryRule).toMatch(/var\(--nn-file-single-text-line-height\)/u);
         expect(selectedTypeSecondaryRule).toMatch(/var\(--nn-selected-file-parent-color\)/u);

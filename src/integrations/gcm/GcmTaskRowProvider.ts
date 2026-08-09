@@ -500,6 +500,7 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
             tooltip: `${task.path}:${oneBasedLine}`,
             sourcePath: task.path,
             sourceLineNumber: task.lineNumber,
+            dragText: task.rawLine,
             properties: {
                 tags: Object.freeze([...task.tags]),
                 ...task.fields,

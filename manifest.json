@@ -1,7 +1,7 @@
 {
   "id": "tps-notebook-navigator",
   "name": "TPS Notebook Navigator",
-  "version": "5.10.3",
+  "version": "5.11.0",
   "minAppVersion": "1.11.0",
   "description": "Experimental, co-installable TPS fork of Notebook Navigator with optional TPS integrations.",
   "author": "Zach Tish; based on Notebook Navigator by Johan Sanneblad",
