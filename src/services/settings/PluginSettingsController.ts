@@ -468,6 +468,16 @@ export class PluginSettingsController {
         // Deep-clone the defaults so later in-place normalization (e.g. ensureVaultProfiles) cannot mutate DEFAULT_SETTINGS
         // through nested references when stored data omits a key.
         this.currentSettings = { ...structuredClone(DEFAULT_SETTINGS), ...(storedSettings ?? {}) };
+        let migratedLinePropertyInheritanceDefault = false;
+        if (storedData?.['tpsLinePropertyInheritanceVersion'] !== 1) {
+            Object.entries(this.currentSettings.typeAppearances ?? {}).forEach(([typeId, appearance]) => {
+                if (isTpsNavigatorLineTypeId(typeId) && appearance?.linePropertyInheritance === 'line-first') {
+                    appearance.linePropertyInheritance = 'none';
+                    migratedLinePropertyInheritanceDefault = true;
+                }
+            });
+            this.currentSettings.tpsLinePropertyInheritanceVersion = 1;
+        }
         const hadLegacySearchProviderInSettings = Boolean(storedData && 'searchProvider' in storedData);
         const hadLegacyLastAnnouncedReleaseInSettings = Boolean(storedData && 'lastAnnouncedRelease' in storedData);
         const storedSearchProvider = localStorage.get<unknown>(this.options.keys.searchProviderKey);
@@ -719,6 +729,7 @@ export class PluginSettingsController {
             migratedReleaseState ||
             migratedRecentColors ||
             migratedCollapsedPinnedContexts ||
+            migratedLinePropertyInheritanceDefault ||
             hadLocalValuesInSettings ||
             hadLegacySearchProviderInSettings ||
             hadLegacyLastAnnouncedReleaseInSettings ||

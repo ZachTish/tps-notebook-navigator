@@ -106,6 +106,11 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.10.2',
+        date: '2026-08-08',
+        fixed: ['Existing vaults now migrate the former line-first default to task-local property grouping once.']
+    },
+    {
         version: '5.10.1',
         date: '2026-08-08',
         fixed: ['Untagged tasks no longer retain an owning-note tag and appear in that tag group.']

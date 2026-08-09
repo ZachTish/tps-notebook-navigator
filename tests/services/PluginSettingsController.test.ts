@@ -131,6 +131,29 @@ describe('PluginSettingsController.normalizeNavigationSeparatorSettings', () => 
 });
 
 describe('PluginSettingsController Type presentation persistence', () => {
+    it('migrates the legacy line-first default to task-local properties once', async () => {
+        let storedData: Record<string, unknown> = {
+            typeAppearances: {
+                [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { linePropertyInheritance: 'line-first' },
+                [TPS_NAVIGATOR_TYPE_IDS.BULLETS]: { linePropertyInheritance: 'note-first' }
+            }
+        };
+        const controller = new PluginSettingsController({
+            keys: STORAGE_KEYS,
+            loadData: vi.fn(async () => structuredClone(storedData)),
+            saveData: vi.fn(async data => {
+                storedData = structuredClone(data) as Record<string, unknown>;
+            }),
+            mirrorUXPreferences: vi.fn()
+        });
+
+        await controller.loadSettings();
+
+        expect(controller.settings.typeAppearances?.[TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]?.linePropertyInheritance).toBe('none');
+        expect(controller.settings.typeAppearances?.[TPS_NAVIGATOR_TYPE_IDS.BULLETS]?.linePropertyInheritance).toBe('note-first');
+        expect(controller.settings.tpsLinePropertyInheritanceVersion).toBe(1);
+    });
+
     it('round-trips structural Type sort/group settings while discarding unsupported line appearance fields', async () => {
         let storedData: Record<string, unknown> = {
             propertySortKey: 'priority, status, scheduled',

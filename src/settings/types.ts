@@ -1001,6 +1001,8 @@ export interface NotebookNavigatorSettings {
     propertyAppearances: Record<string, FolderAppearance>;
     typeSortOverrides?: Partial<Record<TpsNavigatorStructuralTypeId, ListSortOverrideValue>>;
     typeAppearances?: Partial<Record<TpsNavigatorStructuralTypeId, FolderAppearance>>;
+    /** TPS migration marker for the task-local property inheritance default. */
+    tpsLinePropertyInheritanceVersion?: number;
     virtualFolderColors: Record<string, string>;
     virtualFolderBackgroundColors: Record<string, string>;
     navigationSeparators: Record<string, boolean>;

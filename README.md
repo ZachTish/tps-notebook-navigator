@@ -174,6 +174,11 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.10.2 — legacy inheritance-default migration
+
+- Migrates a persisted `line-first` value left by the former default to `none` once, so existing vaults actually receive task-local grouping after upgrading.
+- Preserves explicitly different `note-first` and `combine` choices; users can select `line-first` again after migration. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.10.1 — untagged task grouping correction
 
 - Treats an empty GCM task tag list as authoritative, preventing an untagged task from retaining the owning note's raw `tags` value and appearing in that note-tag group.

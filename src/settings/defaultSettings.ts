@@ -464,6 +464,7 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     propertyAppearances: sanitizeRecord<FolderAppearance>(undefined),
     typeSortOverrides: {},
     typeAppearances: {},
+    tpsLinePropertyInheritanceVersion: 1,
     virtualFolderColors: sanitizeRecord<string>(undefined),
     virtualFolderBackgroundColors: sanitizeRecord<string>(undefined),
     navigationSeparators: sanitizeRecord<boolean>(undefined),
