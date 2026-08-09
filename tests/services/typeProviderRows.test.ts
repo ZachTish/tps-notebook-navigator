@@ -350,6 +350,34 @@ describe('buildTypeProviderRows', () => {
         expect(buildRows({ ...options, linePropertyInheritance: 'line-first' }).map(row => row.label)).toEqual(['Task without local team']);
     });
 
+    it('clears a raw owning-note tag from an explicitly untagged task row', () => {
+        const task = createRecord({
+            id: 'untagged-task',
+            label: 'Untagged task',
+            entityType: 'block',
+            lineKind: 'task',
+            properties: { tags: ['dailynote'] },
+            task: {
+                lineNumber: 0,
+                rawLine: '- [ ] Untagged task',
+                title: 'Untagged task',
+                checkbox: '[ ]',
+                marker: ' ',
+                status: 'todo',
+                isComplete: false,
+                tags: [],
+                fields: {},
+                canMutateCheckbox: true,
+                hasContextMenu: true
+            }
+        });
+
+        const [result] = buildRows({ records: [task] });
+
+        expect(result.properties).toMatchObject({ tags: [] });
+        expect(result.properties?.tags).not.toContain('dailynote');
+    });
+
     it('returns no rows when the selected collection does not match the Type facet', () => {
         const query = 'type:structural:heading';
         const rows = buildRows({ records: [createRecord()], searchQuery: query, searchTokens: parseFilterSearchTokens(query) });

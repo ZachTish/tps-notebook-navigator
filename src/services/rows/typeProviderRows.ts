@@ -115,7 +115,9 @@ function buildRowProperties(
         setPropertyCaseInsensitively(properties, 'status', task.status);
         // GCM publishes Markdown hashtags separately from inline fields. Keep them on the
         // row so tag/property grouping uses the exact task instead of only its owning note.
-        if (task.tags && task.tags.length > 0) {
+        // An empty task tag list is authoritative too. Without this overwrite, a raw
+        // Tags value inherited from the owning note survives on an untagged task.
+        if (task.tags) {
             setPropertyCaseInsensitively(properties, 'tags', task.tags);
         }
     }

@@ -106,6 +106,11 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.10.1',
+        date: '2026-08-08',
+        fixed: ['Untagged tasks no longer retain an owning-note tag and appear in that tag group.']
+    },
+    {
         version: '5.10.0',
         date: '2026-08-08',
         new: ['Property grouping can now place the No value group at the top or bottom.'],

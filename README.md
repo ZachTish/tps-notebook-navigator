@@ -174,6 +174,11 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.10.1 — untagged task grouping correction
+
+- Treats an empty GCM task tag list as authoritative, preventing an untagged task from retaining the owning note's raw `tags` value and appearing in that note-tag group.
+- Adds a regression for an untagged task whose raw record contains `dailynote`. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.10.0 — unmatched group placement
 
 - Adds **No value group position** to the property grouping menu with **Top** and **Bottom** choices.
