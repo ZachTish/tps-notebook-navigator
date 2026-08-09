@@ -336,6 +336,20 @@ describe('buildTypeProviderRows', () => {
         expect(rows.map(row => row.label)).toEqual(['Open task']);
     });
 
+    it('does not use owning-note properties for task filtering unless inheritance is explicitly enabled', () => {
+        const task = createRecord({ id: 'task', label: 'Task without local team' });
+        const query = '.team=daily';
+        const options = {
+            records: [task],
+            searchQuery: query,
+            searchTokens: parseFilterSearchTokens(query),
+            getNoteProperties: () => ({ team: 'daily' })
+        };
+
+        expect(buildRows(options)).toEqual([]);
+        expect(buildRows({ ...options, linePropertyInheritance: 'line-first' }).map(row => row.label)).toEqual(['Task without local team']);
+    });
+
     it('returns no rows when the selected collection does not match the Type facet', () => {
         const query = 'type:structural:heading';
         const rows = buildRows({ records: [createRecord()], searchQuery: query, searchTokens: parseFilterSearchTokens(query) });

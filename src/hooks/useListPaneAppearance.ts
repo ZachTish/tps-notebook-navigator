@@ -38,7 +38,7 @@ export interface FolderAppearance {
 export type TagAppearance = FolderAppearance;
 
 /** Determines how a structural line item's properties are inherited from its owning note. */
-export type LinePropertyInheritance = 'note-first' | 'line-first' | 'combine';
+export type LinePropertyInheritance = 'none' | 'note-first' | 'line-first' | 'combine';
 export type MultiValueGrouping = 'separate' | 'combine';
 
 export function isMultiValueGrouping(value: unknown): value is MultiValueGrouping {
@@ -50,11 +50,11 @@ export function resolveMultiValueGrouping(value: unknown): MultiValueGrouping {
 }
 
 export function isLinePropertyInheritance(value: unknown): value is LinePropertyInheritance {
-    return value === 'note-first' || value === 'line-first' || value === 'combine';
+    return value === 'none' || value === 'note-first' || value === 'line-first' || value === 'combine';
 }
 
 export function resolveLinePropertyInheritance(value: unknown): LinePropertyInheritance {
-    return isLinePropertyInheritance(value) ? value : 'line-first';
+    return isLinePropertyInheritance(value) ? value : 'none';
 }
 
 export interface ListPaneAppearanceSettings {

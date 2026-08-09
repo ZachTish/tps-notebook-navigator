@@ -106,6 +106,15 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.9.0',
+        date: '2026-08-08',
+        changed: [
+            'Checkboxes, Bullets, and Headings now use only properties written on the line by default.',
+            'The sort and group menu now always shows the property inheritance choice for line-backed Types.'
+        ],
+        fixed: ['Tasks without their own tag no longer inherit the owning note tag into a group unless inheritance is explicitly enabled.']
+    },
+    {
         version: '5.4.0',
         date: '2026-08-03',
         showOnUpdate: true,

@@ -161,18 +161,16 @@ describe('standalone structural Type presentation', () => {
             row('b', 'Alpha', 'B.md', 1)
         ];
 
-        expect(rowsFrom(present({ rows: input, files, option: 'property-asc', propertyKey: 'Priority' })).map(item => item.id)).toEqual([
-            'b',
-            'd',
-            'a',
-            'c'
-        ]);
-        expect(rowsFrom(present({ rows: input, files, option: 'property-desc', propertyKey: 'Priority' })).map(item => item.id)).toEqual([
-            'a',
-            'd',
-            'b',
-            'c'
-        ]);
+        expect(
+            rowsFrom(
+                present({ rows: input, files, option: 'property-asc', propertyKey: 'Priority', linePropertyInheritance: 'line-first' })
+            ).map(item => item.id)
+        ).toEqual(['b', 'd', 'a', 'c']);
+        expect(
+            rowsFrom(
+                present({ rows: input, files, option: 'property-desc', propertyKey: 'Priority', linePropertyInheritance: 'line-first' })
+            ).map(item => item.id)
+        ).toEqual(['a', 'd', 'b', 'c']);
     });
 
     it('uses the selected inheritance mode for both property sorting and grouping', () => {
@@ -185,9 +183,13 @@ describe('standalone structural Type presentation', () => {
 
         expect(rowsFrom(present({ rows: input, files, option: 'property-asc', propertyKey: 'priority' })).map(item => item.id)).toEqual([
             'local',
-            'fallback',
-            'empty'
+            'empty',
+            'fallback'
         ]);
+
+        const noInheritance = present({ rows: input, files, groupBy: 'line-property:priority' });
+        expect(headersFrom(noInheritance).map(header => header.data)).toEqual(['alpha', 'No value']);
+        expect(headersFrom(noInheritance).map(header => header.data)).not.toContain('owner');
 
         const noteFirst = present({ rows: input, files, groupBy: 'line-property:priority', linePropertyInheritance: 'note-first' });
         expect(headersFrom(noteFirst).map(header => header.data)).toEqual(['owner']);
@@ -239,16 +241,16 @@ describe('standalone structural Type presentation', () => {
             row('missing', 'Missing', 'Missing.md', 1),
             row('alpha-1', 'Alpha 1', 'Alpha.md', 1)
         ];
-        const ascending = present({ rows: input, files, groupBy: 'property:lane' });
+        const ascending = present({ rows: input, files, groupBy: 'property:lane', linePropertyInheritance: 'line-first' });
 
         expect(headersFrom(ascending).map(header => header.data)).toEqual(['2', 'Alpha', 'No value']);
         expect(headersFrom(ascending).map(header => header.groupFilePaths?.length)).toEqual([1, 2, 1]);
         expect(rowsFrom(ascending).map(item => item.id)).toEqual(['numeric', 'alpha-1', 'alpha-2', 'missing']);
-        expect(headersFrom(present({ rows: input, files, groupBy: 'property-desc:lane' })).map(header => header.data)).toEqual([
-            'Alpha',
-            '2',
-            'No value'
-        ]);
+        expect(
+            headersFrom(present({ rows: input, files, groupBy: 'property-desc:lane', linePropertyInheritance: 'line-first' })).map(
+                header => header.data
+            )
+        ).toEqual(['Alpha', '2', 'No value']);
 
         const alphaCollapseKey = buildListGroupCollapseKey({
             selectionType: ItemType.TYPE,
@@ -259,7 +261,13 @@ describe('standalone structural Type presentation', () => {
             groupingMode: 'property:lane',
             groupId: 'property-value:Alpha'
         });
-        const collapsed = present({ rows: input, files, groupBy: 'property:lane', collapsedListGroups: new Set([alphaCollapseKey]) });
+        const collapsed = present({
+            rows: input,
+            files,
+            groupBy: 'property:lane',
+            collapsedListGroups: new Set([alphaCollapseKey]),
+            linePropertyInheritance: 'line-first'
+        });
         const alphaHeader = headersFrom(collapsed).find(header => header.data === 'Alpha');
 
         expect(alphaHeader).toMatchObject({ collapseKey: alphaCollapseKey, isCollapsed: true, headerKind: 'property' });
@@ -276,23 +284,36 @@ describe('standalone structural Type presentation', () => {
             { ...row('day-3-morning', 'Morning', 'Source.md', 1), properties: { scheduled: '2026-08-03 09:00:00' } }
         ];
 
-        const ascending = present({ rows: input, files, groupBy: 'line-property-day:scheduled' });
+        const ascending = present({
+            rows: input,
+            files,
+            groupBy: 'line-property-day:scheduled',
+            linePropertyInheritance: 'line-first'
+        });
         expect(headersFrom(ascending).map(header => header.data)).toEqual(['2026-08-03', '2026-08-04', '2026-08-05', 'No value']);
         expect(headersFrom(ascending).map(header => header.groupFilePaths?.length)).toEqual([2, 1, 1, 1]);
         expect(rowsFrom(ascending).map(item => item.id)).toEqual(['day-3-evening', 'day-3-morning', 'day-4', 'fallback', 'invalid']);
         expect(
-            headersFrom(present({ rows: input, files, groupBy: 'line-property-day-desc:scheduled' })).map(header => header.data)
+            headersFrom(
+                present({
+                    rows: input,
+                    files,
+                    groupBy: 'line-property-day-desc:scheduled',
+                    linePropertyInheritance: 'line-first'
+                })
+            ).map(header => header.data)
         ).toEqual(['2026-08-05', '2026-08-04', '2026-08-03', 'No value']);
 
-        const exactHeaders = headersFrom(present({ rows: input, files, groupBy: 'line-property:scheduled' })).map(header => header.data);
+        const exactHeaders = headersFrom(
+            present({ rows: input, files, groupBy: 'line-property:scheduled', linePropertyInheritance: 'line-first' })
+        ).map(header => header.data);
         expect(exactHeaders).toContain('2026-08-03 09:00:00');
         expect(exactHeaders).toContain('2026-08-03T23:30:00Z');
-        expect(headersFrom(present({ rows: input, files, groupBy: 'property-day:scheduled' })).map(header => header.data)).toEqual([
-            '2026-08-03',
-            '2026-08-04',
-            '2026-08-05',
-            'No value'
-        ]);
+        expect(
+            headersFrom(present({ rows: input, files, groupBy: 'property-day:scheduled', linePropertyInheritance: 'line-first' })).map(
+                header => header.data
+            )
+        ).toEqual(['2026-08-03', '2026-08-04', '2026-08-05', 'No value']);
     });
 
     it('groups date-sorted rows by the owning file timestamp with missing timestamps last and collapsible row counts', () => {

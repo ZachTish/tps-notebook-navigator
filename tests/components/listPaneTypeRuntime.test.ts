@@ -16,6 +16,14 @@ import { ItemType } from '../../src/types';
 import { createTpsNavigatorProviderTypeId, TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 describe('Type-mode list runtime behavior', () => {
+    it('exposes no-inheritance as the single default-capable sort/group menu choice', async () => {
+        const source = await readFile('src/hooks/useListActions.ts', 'utf8');
+
+        expect(source.match(/Do not inherit note properties/g)).toHaveLength(1);
+        expect(source).toContain("['none', 'Do not inherit note properties']");
+        expect(source).toContain("item.setTitle('Property inheritance (sort and group)')");
+    });
+
     it('disables calendar interactions only for Type selections', () => {
         expect(supportsCalendarInteractionsForSelection(ItemType.TYPE)).toBe(false);
         expect(supportsCalendarInteractionsForSelection(ItemType.FOLDER)).toBe(true);

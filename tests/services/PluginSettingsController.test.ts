@@ -148,7 +148,7 @@ describe('PluginSettingsController Type presentation persistence', () => {
                     linePropertyInheritance: 'combine'
                 },
                 [TPS_NAVIGATOR_TYPE_IDS.CALLOUTS]: { groupBy: 'custom' },
-                [TPS_NAVIGATOR_TYPE_IDS.TABLES]: { groupBy: 'date' }
+                [TPS_NAVIGATOR_TYPE_IDS.TABLES]: { groupBy: 'date', linePropertyInheritance: 'none' }
             }
         };
         const saveData = vi.fn(async data => {
@@ -172,7 +172,7 @@ describe('PluginSettingsController Type presentation persistence', () => {
             [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property:status' },
             [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: { groupBy: 'line-property-day-desc:scheduled', linePropertyInheritance: 'combine' },
             [TPS_NAVIGATOR_TYPE_IDS.CALLOUTS]: { groupBy: 'custom' },
-            [TPS_NAVIGATOR_TYPE_IDS.TABLES]: { groupBy: 'date' }
+            [TPS_NAVIGATOR_TYPE_IDS.TABLES]: { groupBy: 'date', linePropertyInheritance: 'none' }
         });
 
         await first.saveSettings();

@@ -64,6 +64,9 @@ function buildEffectiveSearchProperties(
     const line = new Map<string, string[]>();
     addSearchPropertyValues(note, noteProperties);
     addSearchPropertyValues(line, rowProperties);
+    if (inheritance === 'none') {
+        return line;
+    }
     if (inheritance === 'note-first') {
         line.forEach((values, key) => {
             if (!note.has(key)) note.set(key, values);
@@ -127,7 +130,7 @@ export function buildTypeProviderRows({
     searchTokens,
     allowedSourcePaths,
     getNoteProperties,
-    linePropertyInheritance = 'line-first',
+    linePropertyInheritance = 'none',
     includeUnavailableStatus = true,
     activate,
     setTaskCheckbox,

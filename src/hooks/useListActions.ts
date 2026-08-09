@@ -1097,6 +1097,25 @@ export function useListActions({
         [getSelectionSortTarget, updateSettings]
     );
 
+    const setLinePropertyInheritance = useCallback(
+        (inheritance: LinePropertyInheritance): void => {
+            if (selectionState.selectionType !== ItemType.TYPE || !isTpsNavigatorStructuralTypeId(selectionState.selectedType)) {
+                return;
+            }
+            const typeId = selectionState.selectedType;
+            runAsyncAction(async () => {
+                await updateSettings(current => {
+                    const appearances = sanitizeRecord(ensureRecord(current.typeAppearances));
+                    const existing = appearances[typeId] ?? {};
+                    appearances[typeId] = { ...existing, linePropertyInheritance: inheritance };
+                    current.typeAppearances = appearances;
+                });
+                app.workspace.requestSaveLayout();
+            });
+        },
+        [app.workspace, selectionState.selectedType, selectionState.selectionType, updateSettings]
+    );
+
     const openManualSortConfirm = useCallback(
         (propertyKey: string, affectedCount: number, onConfirm: () => Promise<void>) => {
             new ConfirmModal(
@@ -1788,26 +1807,6 @@ export function useListActions({
                 ? countMarkdownFilesWithManualSortProperty(app, manualSortPropertyFiles, manualSortPropertyKey)
                 : 0;
             const isPropertySortActive = currentField === 'property';
-            const linePropertyInheritance = resolveLinePropertyInheritance(
-                selectionState.selectionType === ItemType.TYPE && isTpsNavigatorStructuralTypeId(selectionState.selectedType)
-                    ? settings.typeAppearances?.[selectionState.selectedType]?.linePropertyInheritance
-                    : undefined
-            );
-            const setLinePropertyInheritance = (inheritance: LinePropertyInheritance): void => {
-                if (selectionState.selectionType !== ItemType.TYPE || !isTpsNavigatorStructuralTypeId(selectionState.selectedType)) {
-                    return;
-                }
-                const typeId = selectionState.selectedType;
-                runAsyncAction(async () => {
-                    await updateSettings(current => {
-                        const appearances = sanitizeRecord(ensureRecord(current.typeAppearances));
-                        const existing = appearances[typeId] ?? {};
-                        appearances[typeId] = { ...existing, linePropertyInheritance: inheritance };
-                        current.typeAppearances = appearances;
-                    });
-                    app.workspace.requestSaveLayout();
-                });
-            };
             const isManualSortActive =
                 supportsManualSort && isPropertySortActive && isManualSortPropertyKey(settings, currentSortSpec.propertyKey);
             const sortFieldLabels: Record<SortField, string> = {
@@ -1903,33 +1902,6 @@ export function useListActions({
             if (propertySortKeys.length === 0) {
                 menu.addItem(item => {
                     item.setTitle(getSortFieldLabel('property')).setIcon(getSortFieldMenuIcon('property')).setDisabled(true);
-                });
-            }
-
-            if (hasLineBackedTypeSelection && isPropertySortActive) {
-                menu.addSeparator();
-                menu.addItem(item => {
-                    item.setTitle('Property inheritance (sort and group)').setIcon('lucide-git-merge').setDisabled(true);
-                });
-                (
-                    [
-                        ['note-first', 'Inherit and prioritize note properties'],
-                        ['line-first', 'Inherit note properties but prioritize line properties'],
-                        ['combine', 'Inherit and combine properties']
-                    ] as const
-                ).forEach(([inheritance, title]) => {
-                    menu.addItem(item => {
-                        item.setTitle(`    ${title}`)
-                            .setIcon(
-                                inheritance === 'combine'
-                                    ? 'lucide-merge'
-                                    : inheritance === 'note-first'
-                                      ? 'lucide-file-text'
-                                      : 'lucide-list-tree'
-                            )
-                            .setChecked(linePropertyInheritance === inheritance)
-                            .onClick(() => setLinePropertyInheritance(inheritance));
-                    });
                 });
             }
 
@@ -2140,6 +2112,41 @@ export function useListActions({
                 });
             }
 
+            if (hasLineBackedTypeSelection) {
+                const linePropertyInheritance = resolveLinePropertyInheritance(
+                    selectionState.selectedType && isTpsNavigatorStructuralTypeId(selectionState.selectedType)
+                        ? settings.typeAppearances?.[selectionState.selectedType]?.linePropertyInheritance
+                        : undefined
+                );
+                menu.addSeparator();
+                menu.addItem(item => {
+                    item.setTitle('Property inheritance (sort and group)').setIcon('lucide-git-merge').setDisabled(true);
+                });
+                (
+                    [
+                        ['none', 'Do not inherit note properties'],
+                        ['note-first', 'Inherit and prioritize note properties'],
+                        ['line-first', 'Inherit note properties but prioritize line properties'],
+                        ['combine', 'Inherit and combine properties']
+                    ] as const
+                ).forEach(([inheritance, title]) => {
+                    menu.addItem(item => {
+                        item.setTitle(`    ${title}`)
+                            .setIcon(
+                                inheritance === 'none'
+                                    ? 'lucide-list-filter'
+                                    : inheritance === 'combine'
+                                      ? 'lucide-merge'
+                                      : inheritance === 'note-first'
+                                        ? 'lucide-file-text'
+                                        : 'lucide-list-tree'
+                            )
+                            .setChecked(linePropertyInheritance === inheritance)
+                            .onClick(() => setLinePropertyInheritance(inheritance));
+                    });
+                });
+            }
+
             if (canApplyToDescendants) {
                 menu.addSeparator();
                 menu.addItem(item => {
@@ -2214,6 +2221,7 @@ export function useListActions({
             selectionState.selectionType,
             setSelectionGroupOverride,
             setMultiValueGrouping,
+            setLinePropertyInheritance,
             setSelectionSortOverride,
             settings,
             updateSettings,

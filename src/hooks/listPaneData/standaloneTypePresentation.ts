@@ -151,6 +151,7 @@ function combinePropertyValues(noteValue: unknown, lineValue: unknown): unknown 
 function getResolvedPropertyValue(entry: DecoratedStructuralTypeRow, propertyKey: string, inheritance: LinePropertyInheritance): unknown {
     const rowProperty = getRowPropertyValue(entry, propertyKey);
     const noteValue = getNotePropertyValue(entry, propertyKey);
+    if (inheritance === 'none') return rowProperty.value;
     if (inheritance === 'note-first') return noteValue === undefined ? rowProperty.value : noteValue;
     if (inheritance === 'combine') return combinePropertyValues(noteValue, rowProperty.value);
     return rowProperty.present ? rowProperty.value : noteValue;
@@ -413,7 +414,7 @@ export function buildStandaloneStructuralTypePresentation(args: StructuralTypeRo
         }
         return { row, inputIndex, ...source };
     });
-    const inheritance = args.linePropertyInheritance ?? 'line-first';
+    const inheritance = args.linePropertyInheritance ?? 'none';
     entries.sort((left, right) => compareRows(left, right, args.sort, inheritance));
 
     const propertyGroups = orderPropertyGroups(
