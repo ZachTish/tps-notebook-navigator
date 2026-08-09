@@ -60,11 +60,24 @@ describe('List pane measurements stay in sync with CSS', () => {
         const listCss = readTextFile('src/styles/sections/list-files.css');
         const iosCss = readTextFile('src/styles/sections/platform-ios.css');
         const horizontalPaneRule = extractRuleBlock(paneCss, '.tps-nn-split-container.tps-nn-orientation-horizontal .tps-nn-list-pane');
+        const desktopHorizontalPaneRule = extractRuleBlock(
+            paneCss,
+            '.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal .tps-nn-list-pane'
+        );
+        const desktopPanelRule = extractRuleBlock(
+            paneCss,
+            '.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal .tps-nn-list-pane > .tps-nn-list-pane-panel'
+        );
         const panelRule = extractRuleBlock(listCss, '.tps-nn-list-pane-panel');
         const scrollerRule = extractRuleBlock(listCss, '.tps-nn-list-pane-scroller');
 
         expect(horizontalPaneRule).toMatch(/(^|\n)\s*height:\s*100%\s*;/m);
         expect(horizontalPaneRule).toMatch(/(^|\n)\s*min-height:\s*0\s*;/m);
+        expect(desktopHorizontalPaneRule).toMatch(/(^|\n)\s*display:\s*grid\s*;/m);
+        expect(desktopHorizontalPaneRule).toMatch(/(^|\n)\s*grid-template-rows:\s*auto minmax\(0, 1fr\) auto auto\s*;/m);
+        expect(desktopPanelRule).toMatch(/(^|\n)\s*grid-row:\s*2\s*;/m);
+        expect(desktopPanelRule).toMatch(/(^|\n)\s*height:\s*100%\s*;/m);
+        expect(desktopPanelRule).toMatch(/(^|\n)\s*min-height:\s*0\s*;/m);
         expect(panelRule).toMatch(/(^|\n)\s*flex:\s*1 1 0\s*;/m);
         expect(panelRule).toMatch(/(^|\n)\s*min-height:\s*0\s*;/m);
         expect(panelRule).not.toMatch(/(^|\n)\s*overflow:\s*hidden\s*;/m);

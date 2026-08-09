@@ -41,6 +41,33 @@
     min-height: 0;
 }
 
+/* Desktop leaves can change height independently of the list's intrinsic content
+   (workspace resize, search chrome, tab/header changes). Use an explicit grid track
+   for the panel so it always receives the complete remainder and cannot retain a
+   stale flex-computed height that leaves a dead strip below the scroller. */
+.nn-split-container.nn-desktop.nn-orientation-horizontal .nn-list-pane {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+
+.nn-split-container.nn-desktop.nn-orientation-horizontal .nn-list-pane > .nn-list-pane-chrome {
+    grid-row: 1;
+}
+
+.nn-split-container.nn-desktop.nn-orientation-horizontal .nn-list-pane > .nn-list-pane-panel {
+    grid-row: 2;
+    height: 100%;
+    min-height: 0;
+}
+
+.nn-split-container.nn-desktop.nn-orientation-horizontal .nn-list-pane > .nn-navigation-calendar-overlay {
+    grid-row: 3;
+}
+
+.nn-split-container.nn-desktop.nn-orientation-horizontal .nn-list-pane > .nn-pane-bottom-toolbar {
+    grid-row: 4;
+}
+
 /* Override backgrounds when desktop background mode is set to primary or secondary */
 /* Primary mode: use list background for navigation pane */
 .nn-split-container.nn-desktop.nn-bg-primary {

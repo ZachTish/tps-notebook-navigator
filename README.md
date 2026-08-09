@@ -178,6 +178,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.14.1 — stable full-height list viewport
+
+- Replaces the desktop horizontal list pane's partial percentage-height/flex workaround with explicit grid rows for the title/search chrome, scroll panel, optional calendar, and toolbar.
+- Keeps the scroll panel in the complete remaining-height track when the Obsidian leaf, header, or search bar changes size, preventing the scroller from retaining an earlier shorter height and leaving a blank strip at the bottom.
+- Preserves the dedicated mobile, vertical, and single-pane layouts and adds generated-namespace-aware regression coverage for the complete pane-to-scroller height contract. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.14.0 — constructible search creation
 
 - Adds **New matching item** for Filter Searches that select one supported Type and contain only deterministic positive requirements.

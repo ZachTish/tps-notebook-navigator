@@ -106,6 +106,13 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.14.1',
+        date: '2026-08-09',
+        fixed: [
+            'The desktop horizontal list pane now assigns its changing header, scroll viewport, optional calendar, and toolbar to explicit grid rows, preventing the scroll viewport from retaining an older height and leaving a blank strip at the bottom.'
+        ]
+    },
+    {
         version: '5.14.0',
         date: '2026-08-09',
         new: [
