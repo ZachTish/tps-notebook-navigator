@@ -106,6 +106,12 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.10.0',
+        date: '2026-08-08',
+        new: ['Property grouping can now place the No value group at the top or bottom.'],
+        changed: ['The No value placement is saved independently for each folder, tag, property, or Type appearance.']
+    },
+    {
         version: '5.9.0',
         date: '2026-08-08',
         changed: [

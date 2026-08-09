@@ -61,6 +61,7 @@ export interface ListPaneConfig {
     folderGroupSortOrder: AlphaSortOrder;
     groupBy: ListNoteGroupingOption;
     multiValueGrouping?: import('../useListPaneAppearance').MultiValueGrouping;
+    noValueGroupPosition?: import('../useListPaneAppearance').NoValueGroupPosition;
     pinnedGroupExpanded: boolean;
     pinnedNotes: NotebookNavigatorSettings['pinnedNotes'];
     showCurrentFolderFilesAtBottom: boolean;
@@ -635,13 +636,15 @@ function buildListItemsInternal(
 
         // Group ids use the bucket key rather than the display label so collapse state and item
         // counts stay stable if the label formatting changes.
+        const renderNoValueGroup = (): void => {
+            renderPropertyGroup(strings.listPane.propertyGroupNoValue, ungroupedFiles, 'property-none');
+        };
+        if (ungroupedFiles.length > 0 && listConfig.noValueGroupPosition === 'top') renderNoValueGroup();
         orderedPropertyGroups.forEach(group => {
             renderPropertyGroup(group.label, group.files, `property-${propertyGroupingGranularity}:${group.bucketKey}`);
         });
-
-        // Files without the property collect into one trailing group, matching the Bases "None" group placement.
-        if (ungroupedFiles.length > 0) {
-            renderPropertyGroup(strings.listPane.propertyGroupNoValue, ungroupedFiles, 'property-none');
+        if (ungroupedFiles.length > 0 && listConfig.noValueGroupPosition !== 'top') {
+            renderNoValueGroup();
         }
     } else {
         const baseFolderPath = selectedFolder?.path ?? null;

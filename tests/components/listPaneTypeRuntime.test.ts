@@ -22,6 +22,8 @@ describe('Type-mode list runtime behavior', () => {
         expect(source.match(/Do not inherit note properties/g)).toHaveLength(1);
         expect(source).toContain("['none', 'Do not inherit note properties']");
         expect(source).toContain("item.setTitle('Property inheritance (sort and group)')");
+        expect(source).toContain("item.setTitle('No value group position')");
+        expect(source).toContain("(['top', 'bottom'] as const)");
     });
 
     it('disables calendar interactions only for Type selections', () => {

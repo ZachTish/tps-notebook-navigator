@@ -822,6 +822,7 @@ export const ListPane = React.memo(
             activeProfile,
             groupBy: effectiveAppearanceSettings.groupBy,
             multiValueGrouping: effectiveAppearanceSettings.multiValueGrouping,
+            noValueGroupPosition: effectiveAppearanceSettings.noValueGroupPosition,
             pinnedGroupExpanded,
             collapsedListGroups,
             searchProvider,

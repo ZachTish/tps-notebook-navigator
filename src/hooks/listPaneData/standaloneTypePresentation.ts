@@ -10,7 +10,7 @@ import {
     replacePropertyGroupingSource
 } from '../../settings/types';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
-import type { LinePropertyInheritance, MultiValueGrouping } from '../useListPaneAppearance';
+import type { LinePropertyInheritance, MultiValueGrouping, NoValueGroupPosition } from '../useListPaneAppearance';
 import { ItemType, ListPaneItemType } from '../../types';
 import { isTpsNavigatorGcmLineTypeId, type TpsNavigatorLineTypeId } from '../../types/navigatorTypes';
 import type { ListPaneItem } from '../../types/virtualization';
@@ -43,6 +43,7 @@ export interface StructuralTypeRowPresentationArgs {
     /** How row-local and owning-note values are inherited for property sort and grouping. */
     linePropertyInheritance?: LinePropertyInheritance;
     multiValueGrouping?: MultiValueGrouping;
+    noValueGroupPosition?: NoValueGroupPosition;
 }
 
 interface DecoratedStructuralTypeRow {
@@ -231,7 +232,8 @@ function orderPropertyGroups(
     groupBy: ListNoteGroupingOption,
     noValueLabel: string,
     inheritance: LinePropertyInheritance,
-    multiValueGrouping: MultiValueGrouping
+    multiValueGrouping: MultiValueGrouping,
+    noValueGroupPosition: NoValueGroupPosition
 ): StructuralTypeRowGroup[] {
     const propertyKey = getPropertyGroupingKey(groupBy);
     if (propertyKey === null) {
@@ -300,7 +302,9 @@ function orderPropertyGroups(
         .map(({ id, label, kind, rows }) => ({ id, label, kind, rows }));
 
     if (missing.length > 0) {
-        groups.push({ id: 'property-none', label: noValueLabel, kind: 'property', rows: missing });
+        const noValueGroup = { id: 'property-none', label: noValueLabel, kind: 'property' as const, rows: missing };
+        if (noValueGroupPosition === 'top') groups.unshift(noValueGroup);
+        else groups.push(noValueGroup);
     }
     return groups;
 }
@@ -422,7 +426,8 @@ export function buildStandaloneStructuralTypePresentation(args: StructuralTypeRo
         args.groupBy,
         args.noValueLabel,
         inheritance,
-        args.multiValueGrouping ?? 'separate'
+        args.multiValueGrouping ?? 'separate',
+        args.noValueGroupPosition ?? 'bottom'
     );
     if (propertyGroups.length > 0 || getPropertyGroupingKey(args.groupBy) !== null) {
         return buildGroupedItems(propertyGroups, args);

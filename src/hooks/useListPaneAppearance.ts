@@ -33,6 +33,7 @@ export interface FolderAppearance {
     linePropertyInheritance?: LinePropertyInheritance;
     /** Whether multi-valued properties create one group per value or one combined group. */
     multiValueGrouping?: MultiValueGrouping;
+    noValueGroupPosition?: NoValueGroupPosition;
 }
 
 export type TagAppearance = FolderAppearance;
@@ -40,6 +41,15 @@ export type TagAppearance = FolderAppearance;
 /** Determines how a structural line item's properties are inherited from its owning note. */
 export type LinePropertyInheritance = 'none' | 'note-first' | 'line-first' | 'combine';
 export type MultiValueGrouping = 'separate' | 'combine';
+export type NoValueGroupPosition = 'top' | 'bottom';
+
+export function isNoValueGroupPosition(value: unknown): value is NoValueGroupPosition {
+    return value === 'top' || value === 'bottom';
+}
+
+export function resolveNoValueGroupPosition(value: unknown): NoValueGroupPosition {
+    return isNoValueGroupPosition(value) ? value : 'bottom';
+}
 
 export function isMultiValueGrouping(value: unknown): value is MultiValueGrouping {
     return value === 'separate' || value === 'combine';
@@ -66,6 +76,7 @@ export interface ListPaneAppearanceSettings {
     showImage: boolean;
     groupBy: ListNoteGroupingOption;
     multiValueGrouping: MultiValueGrouping;
+    noValueGroupPosition: NoValueGroupPosition;
 }
 
 export function getDefaultListMode(settings: NotebookNavigatorSettings): ListDisplayMode {
@@ -139,6 +150,7 @@ export function useListPaneAppearance() {
     const selectedPreviewRows = isSelectedLineType ? undefined : selectedAppearance?.previewRows;
     const selectedGroupBy = selectedAppearance?.groupBy;
     const selectedMultiValueGrouping = selectedAppearance?.multiValueGrouping;
+    const selectedNoValueGroupPosition = selectedAppearance?.noValueGroupPosition;
     const { defaultListMode, fileNameRows, noteGrouping, previewRows, showFeatureImage, showFileDate, showFilePreview } = settings;
 
     return useMemo<ListPaneAppearanceSettings>(() => {
@@ -163,7 +175,8 @@ export function useListPaneAppearance() {
             showPreview: visibility.showPreview,
             showImage: visibility.showImage,
             groupBy: grouping.effectiveGrouping,
-            multiValueGrouping: resolveMultiValueGrouping(selectedMultiValueGrouping)
+            multiValueGrouping: resolveMultiValueGrouping(selectedMultiValueGrouping),
+            noValueGroupPosition: resolveNoValueGroupPosition(selectedNoValueGroupPosition)
         };
     }, [
         defaultListMode,
@@ -175,6 +188,7 @@ export function useListPaneAppearance() {
         selectedPreviewRows,
         selectedGroupBy,
         selectedMultiValueGrouping,
+        selectedNoValueGroupPosition,
         showFeatureImage,
         showFileDate,
         showFilePreview,

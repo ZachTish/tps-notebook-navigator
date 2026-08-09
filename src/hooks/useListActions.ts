@@ -66,8 +66,13 @@ import {
     supportsDayPropertyGroupingForSelection,
     supportsLinePropertyGroupingSourceForSelection
 } from '../components/listPane/typeModeRuntime';
-import { getDefaultListMode, resolveLinePropertyInheritance, resolveMultiValueGrouping } from './useListPaneAppearance';
-import type { FolderAppearance, LinePropertyInheritance, MultiValueGrouping } from './useListPaneAppearance';
+import {
+    getDefaultListMode,
+    resolveLinePropertyInheritance,
+    resolveMultiValueGrouping,
+    resolveNoValueGroupPosition
+} from './useListPaneAppearance';
+import type { FolderAppearance, LinePropertyInheritance, MultiValueGrouping, NoValueGroupPosition } from './useListPaneAppearance';
 import { getFilesForFolder } from '../utils/fileFinder';
 import { runAsyncAction } from '../utils/async';
 import { FILE_VISIBILITY } from '../utils/fileTypeUtils';
@@ -1097,6 +1102,19 @@ export function useListActions({
         [getSelectionSortTarget, updateSettings]
     );
 
+    const setNoValueGroupPosition = useCallback(
+        async (position: NoValueGroupPosition) => {
+            const target = getSelectionSortTarget();
+            if (!target) return;
+            await updateSettings(current => {
+                const next = getAppearancesForTarget(current, target);
+                next[target.key] = { ...(next[target.key] ?? {}), noValueGroupPosition: position };
+                setAppearancesForTarget(current, target, next);
+            });
+        },
+        [getSelectionSortTarget, updateSettings]
+    );
+
     const setLinePropertyInheritance = useCallback(
         (inheritance: LinePropertyInheritance): void => {
             if (selectionState.selectionType !== ItemType.TYPE || !isTpsNavigatorStructuralTypeId(selectionState.selectedType)) {
@@ -2110,6 +2128,34 @@ export function useListActions({
                             })
                     );
                 });
+                menu.addSeparator();
+                menu.addItem(item =>
+                    item.setTitle('No value group position').setIcon('lucide-align-vertical-space-around').setDisabled(true)
+                );
+                const currentNoValueGroupPosition = resolveNoValueGroupPosition(
+                    selectionState.selectionType === ItemType.FOLDER
+                        ? settings.folderAppearances?.[selectionState.selectedFolder?.path ?? '']?.noValueGroupPosition
+                        : selectionState.selectionType === ItemType.TAG
+                          ? settings.tagAppearances?.[selectionState.selectedTag ?? '']?.noValueGroupPosition
+                          : selectionState.selectionType === ItemType.PROPERTY
+                            ? settings.propertyAppearances?.[selectionState.selectedProperty ?? '']?.noValueGroupPosition
+                            : selectionState.selectedType && isTpsNavigatorStructuralTypeId(selectionState.selectedType)
+                              ? settings.typeAppearances?.[selectionState.selectedType]?.noValueGroupPosition
+                              : undefined
+                );
+                (['top', 'bottom'] as const).forEach(position => {
+                    menu.addItem(item =>
+                        item
+                            .setTitle(`    ${position === 'top' ? 'Top' : 'Bottom'}`)
+                            .setChecked(currentNoValueGroupPosition === position)
+                            .onClick(() => {
+                                runAsyncAction(async () => {
+                                    await setNoValueGroupPosition(position);
+                                    app.workspace.requestSaveLayout();
+                                });
+                            })
+                    );
+                });
             }
 
             if (hasLineBackedTypeSelection) {
@@ -2221,6 +2267,7 @@ export function useListActions({
             selectionState.selectionType,
             setSelectionGroupOverride,
             setMultiValueGrouping,
+            setNoValueGroupPosition,
             setLinePropertyInheritance,
             setSelectionSortOverride,
             settings,

@@ -1948,6 +1948,29 @@ describe('buildListItems property grouping', () => {
         expect(doneHeader?.groupFilePaths).toEqual([done.path, doneAgain.path]);
         expect(doneHeader?.collapseKey).toBe(createCollapseKey('property:status', 'property-value:Done'));
 
+        const topItems = buildListItems({
+            app,
+            dayKey: '2026-03-07',
+            fileVisibility: FILE_VISIBILITY.DOCUMENTS,
+            files: [done, active, doneAgain, missing],
+            getDB: () => db,
+            getFileTimestamps: () => ({ created: 0, modified: 0 }),
+            hiddenFileState: new Map(),
+            hiddenTags: [],
+            listConfig: {
+                ...createListConfig({}),
+                groupBy: 'property:status',
+                noValueGroupPosition: 'top'
+            },
+            searchMetaMap: new Map(),
+            selectedFolder: null,
+            selectedTag: null,
+            selectionType: ItemType.FOLDER,
+            showHiddenItems: false,
+            sortOption: 'title-asc'
+        });
+        expect(getHeaderItems(topItems).map(item => item.data)).toEqual(['None', 'Active', 'Done']);
+
         const mixedSearchItems = buildListItems({
             app,
             dayKey: '2026-03-07',

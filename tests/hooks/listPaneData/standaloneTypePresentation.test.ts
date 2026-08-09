@@ -54,7 +54,8 @@ function present({
     groupBy = 'custom',
     collapsedListGroups,
     linePropertyInheritance,
-    multiValueGrouping
+    multiValueGrouping,
+    noValueGroupPosition
 }: {
     rows: readonly NavigatorProvidedRow[];
     files: readonly FixtureFile[];
@@ -75,6 +76,7 @@ function present({
     collapsedListGroups?: ReadonlySet<string>;
     linePropertyInheritance?: 'note-first' | 'line-first' | 'combine';
     multiValueGrouping?: 'separate' | 'combine';
+    noValueGroupPosition?: 'top' | 'bottom';
 }): ListPaneItem[] {
     const sourceByPath = new Map(files.map(entry => [entry.file.path, entry]));
     return buildStandaloneStructuralTypePresentation({
@@ -89,7 +91,8 @@ function present({
         getFileTimestamps: target => ({ created: target.stat.ctime, modified: target.stat.mtime }),
         noValueLabel: 'No value',
         linePropertyInheritance,
-        multiValueGrouping
+        multiValueGrouping,
+        noValueGroupPosition
     });
 }
 
@@ -244,6 +247,17 @@ describe('standalone structural Type presentation', () => {
         const ascending = present({ rows: input, files, groupBy: 'property:lane', linePropertyInheritance: 'line-first' });
 
         expect(headersFrom(ascending).map(header => header.data)).toEqual(['2', 'Alpha', 'No value']);
+        expect(
+            headersFrom(
+                present({
+                    rows: input,
+                    files,
+                    groupBy: 'property:lane',
+                    linePropertyInheritance: 'line-first',
+                    noValueGroupPosition: 'top'
+                })
+            ).map(header => header.data)
+        ).toEqual(['No value', '2', 'Alpha']);
         expect(headersFrom(ascending).map(header => header.groupFilePaths?.length)).toEqual([1, 2, 1]);
         expect(rowsFrom(ascending).map(item => item.id)).toEqual(['numeric', 'alpha-1', 'alpha-2', 'missing']);
         expect(

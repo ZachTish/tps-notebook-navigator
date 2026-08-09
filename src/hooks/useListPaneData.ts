@@ -133,6 +133,7 @@ interface UseListPaneDataParams {
     /** Effective grouping for the current list selection */
     groupBy: ListNoteGroupingOption;
     multiValueGrouping: import('./useListPaneAppearance').MultiValueGrouping;
+    noValueGroupPosition: import('./useListPaneAppearance').NoValueGroupPosition;
     /** Whether the pinned section is expanded in the current context */
     pinnedGroupExpanded: boolean;
     /** Collapsed list group keys for the current vault */
@@ -198,6 +199,7 @@ export function useListPaneData({
     activeProfile,
     groupBy,
     multiValueGrouping,
+    noValueGroupPosition,
     pinnedGroupExpanded,
     collapsedListGroups,
     searchProvider,
@@ -358,6 +360,7 @@ export function useListPaneData({
             showCurrentFolderFilesAtBottom: settings.showCurrentFolderFilesAtBottom,
             groupBy,
             multiValueGrouping,
+            noValueGroupPosition,
             folderGroupSortOrder: selectedFolderGroupSortOrder
         }),
         [
@@ -365,6 +368,7 @@ export function useListPaneData({
             selectedFolderGroupSortOrder,
             groupBy,
             multiValueGrouping,
+            noValueGroupPosition,
             pinnedGroupExpanded,
             settings.pinnedNotes,
             settings.showCurrentFolderFilesAtBottom,
@@ -798,7 +802,8 @@ export function useListPaneData({
             getFileTimestamps,
             noValueLabel: strings.listPane.propertyGroupNoValue,
             linePropertyInheritance: settings.typeAppearances?.[selectedType]?.linePropertyInheritance,
-            multiValueGrouping
+            multiValueGrouping,
+            noValueGroupPosition
         });
     }, [
         app.metadataCache,
@@ -807,6 +812,7 @@ export function useListPaneData({
         dayKey,
         groupBy,
         multiValueGrouping,
+        noValueGroupPosition,
         getFileTimestamps,
         isLineBackedTypeSelection,
         mixedStructuralSearchActive,
