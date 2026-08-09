@@ -27,6 +27,7 @@ import {
     getSelectedTagPillToHide,
     hasVisibleTagPills,
     getPropertyRowCount,
+    listItemUsesCompactProviderFilePresentation,
     listItemUsesMobileCheckboxFilePresentation,
     listItemUsesTypeProviderPresentation,
     shouldShowExtensionBadgeThumbnail,
@@ -97,6 +98,28 @@ describe('listPaneMeasurements layout helpers', () => {
 
         expect(listItemUsesMobileCheckboxFilePresentation(row, true)).toBe(true);
         expect(listItemUsesMobileCheckboxFilePresentation(row, false)).toBe(false);
+    });
+
+    it('uses native compact file presentation for attached provider rows', () => {
+        const providerRow = {
+            type: ListPaneItemType.PROVIDER_ROW,
+            key: 'provider:tps/tasks:task-1',
+            data: {
+                providerId: 'tps/tasks',
+                id: 'task-1',
+                label: 'Ship release',
+                sourcePath: 'Projects/Atlas.md'
+            }
+        } as ListPaneItem;
+        const fileRow = {
+            type: ListPaneItemType.FILE,
+            key: 'file:Projects/Atlas.md',
+            data: createTestTFile('Projects/Atlas.md')
+        } as ListPaneItem;
+
+        expect(listItemUsesCompactProviderFilePresentation(providerRow, true)).toBe(true);
+        expect(listItemUsesCompactProviderFilePresentation(providerRow, false)).toBe(false);
+        expect(listItemUsesCompactProviderFilePresentation(fileRow, true)).toBe(false);
     });
 
     it('sizes standard Type results with the native file title and source-line rhythm', () => {

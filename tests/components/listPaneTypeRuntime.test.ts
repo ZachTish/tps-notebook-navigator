@@ -3,6 +3,8 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import {
+    isVaultRootResourceScope,
+    resolveIncludeDescendantResources,
     resolveRenderedPropertyGroupingForSelection,
     shouldShowListCreateButton,
     shouldCollapseMobileDrawerForTypeProviderActivation,
@@ -16,6 +18,34 @@ import { ItemType } from '../../src/types';
 import { createTpsNavigatorProviderTypeId, TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 describe('Type-mode list runtime behavior', () => {
+    it('treats the vault root as the mixed all-resources scope', () => {
+        expect(isVaultRootResourceScope(ItemType.FOLDER, '/')).toBe(true);
+        expect(isVaultRootResourceScope(ItemType.FOLDER, 'Projects')).toBe(false);
+        expect(isVaultRootResourceScope(ItemType.TYPE, '/')).toBe(false);
+
+        expect(
+            resolveIncludeDescendantResources({
+                selectionType: ItemType.FOLDER,
+                selectedFolderPath: '/',
+                includeDescendants: false
+            })
+        ).toBe(true);
+        expect(
+            resolveIncludeDescendantResources({
+                selectionType: ItemType.FOLDER,
+                selectedFolderPath: 'Projects',
+                includeDescendants: false
+            })
+        ).toBe(false);
+        expect(
+            resolveIncludeDescendantResources({
+                selectionType: ItemType.FOLDER,
+                selectedFolderPath: 'Projects',
+                includeDescendants: true
+            })
+        ).toBe(true);
+    });
+
     it('exposes no-inheritance as the single default-capable sort/group menu choice', async () => {
         const source = await readFile('src/hooks/useListActions.ts', 'utf8');
 

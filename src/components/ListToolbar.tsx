@@ -27,6 +27,7 @@ import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
 import { ItemType } from '../types';
 import {
+    isVaultRootResourceScope,
     shouldShowListCreateButton,
     supportsListSortAndGroupingForSelection,
     supportsNativeListPresentationForSelection
@@ -92,6 +93,11 @@ export function ListToolbar({
     const supportsListSortAndGrouping = supportsListSortAndGroupingForSelection(selectionState.selectionType, selectionState.selectedType);
     const showSearchButton = listVisibility.search;
     const showDescendantsButton = !isTypeSelection && listVisibility.descendants;
+    const isVaultRootScope = isVaultRootResourceScope(selectionState.selectionType, selectionState.selectedFolder?.path);
+    const effectiveIncludeDescendants = includeDescendantNotes || isVaultRootScope;
+    const effectiveDescendantsTooltip = isVaultRootScope
+        ? 'All visible resources from subfolders are included at the vault root'
+        : descendantsTooltip;
     const showGroupExpansionButton = supportsListSortAndGrouping && listVisibility.groupExpansion;
     const showSortButton = supportsListSortAndGrouping && listVisibility.sort;
     const showAppearanceButton = supportsNativeListPresentation && listVisibility.appearance;
@@ -148,10 +154,10 @@ export function ListToolbar({
         showDescendantsButton ? (
             <button
                 key="descendants"
-                className={`${leftButtonBaseClassName}${includeDescendantNotes ? ' nn-mobile-toolbar-button-active' : ''}`}
-                aria-label={descendantsTooltip}
+                className={`${leftButtonBaseClassName}${effectiveIncludeDescendants ? ' nn-mobile-toolbar-button-active' : ''}`}
+                aria-label={effectiveDescendantsTooltip}
                 onClick={handleToggleDescendants}
-                disabled={!hasNavigationSelection}
+                disabled={!hasNavigationSelection || isVaultRootScope}
                 tabIndex={-1}
             >
                 <ServiceIcon iconId={resolveUXIcon(settings.interfaceIcons, 'list-descendants')} />

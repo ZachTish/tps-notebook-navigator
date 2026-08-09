@@ -140,6 +140,11 @@ export function listItemUsesMobileCheckboxFilePresentation(item: ListPaneItem | 
     return (item.data as { indicator?: { type?: unknown } }).indicator?.type === 'checkbox';
 }
 
+/** Compact mode is a list-wide density contract, including provider rows attached to mixed scopes. */
+export function listItemUsesCompactProviderFilePresentation(item: ListPaneItem | null | undefined, isCompactMode: boolean): boolean {
+    return isCompactMode && item?.type === ListPaneItemType.PROVIDER_ROW;
+}
+
 /**
  * Sizes a standalone Type result with the same title/metadata rhythm as a file row.
  */

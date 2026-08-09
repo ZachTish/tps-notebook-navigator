@@ -106,6 +106,21 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.12.0',
+        date: '2026-08-09',
+        changed: [
+            'Selecting the vault root now shows resources from the complete visible vault instead of only direct children.',
+            'Compact appearance now condenses attached task and provider rows together with ordinary file rows.'
+        ],
+        fixed: ['The root descendants control now reflects that the all-resources root scope always includes subfolders.']
+    },
+    {
+        version: '5.11.0',
+        date: '2026-08-09',
+        changed: ['Hydrated desktop task rows can be dragged into an editor as their complete Markdown task line.'],
+        fixed: ['Task-row checkbox, title, and More controls retain transparent native row chrome.']
+    },
+    {
         version: '5.10.3',
         date: '2026-08-09',
         fixed: ['Task rows attached to ordinary note lists now group by task-local properties instead of the source note group.']

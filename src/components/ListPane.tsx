@@ -129,6 +129,7 @@ import { createBuiltInRowProviderSelection } from '../integrations/rowProviderIn
 import { useExternalRowProviderSelection } from '../hooks/useProviderRows';
 import { mergeNavigatorRowProviderSelections } from '../services/rows/providerSelections';
 import {
+    resolveIncludeDescendantResources,
     resolveRenderedPropertyGroupingForSelection,
     shouldCollapseMobileDrawerForTypeProviderActivation,
     supportsCalendarInteractionsForSelection
@@ -507,7 +508,12 @@ export const ListPane = React.memo(
         const selectedFolderPath = selectionType === ItemType.FOLDER ? (selectedFolder?.path ?? null) : null;
         const shouldForceSearchDescendants =
             forceSearchDescendants && isSearchActive && selectionType === ItemType.FOLDER && selectedFolderPath === '/';
-        const effectiveIncludeDescendantNotes = includeDescendantNotes || shouldForceSearchDescendants;
+        const effectiveIncludeDescendantNotes = resolveIncludeDescendantResources({
+            selectionType,
+            selectedFolderPath,
+            includeDescendants: includeDescendantNotes,
+            forceWholeVaultSearch: shouldForceSearchDescendants
+        });
         const effectiveSortSpec = getEffectiveListSort(
             settings,
             selectionType,

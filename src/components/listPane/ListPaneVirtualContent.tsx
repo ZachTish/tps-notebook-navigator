@@ -52,7 +52,11 @@ import { createNavigatorRowMenuTarget } from '../../utils/contextMenu/providerRo
 import { NavigatorProviderRow, type NavigatorProviderRowMenuHost } from '../providerRows/NavigatorProviderRow';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
 import { getNavigatorRowSelectionKey } from '../../services/rows/rowSelection';
-import { listItemUsesMobileCheckboxFilePresentation, listItemUsesTypeProviderPresentation } from '../../utils/listPaneMeasurements';
+import {
+    listItemUsesCompactProviderFilePresentation,
+    listItemUsesMobileCheckboxFilePresentation,
+    listItemUsesTypeProviderPresentation
+} from '../../utils/listPaneMeasurements';
 
 export interface PointerClientPosition {
     clientX: number;
@@ -1237,7 +1241,8 @@ export function ListPaneVirtualContent({
                             const isFileRow = isFileListItem(item);
                             const isTypeProviderRow =
                                 listItemUsesTypeProviderPresentation(item, selectionType, selectedType) ||
-                                listItemUsesMobileCheckboxFilePresentation(item, Platform.isMobile);
+                                listItemUsesMobileCheckboxFilePresentation(item, Platform.isMobile) ||
+                                listItemUsesCompactProviderFilePresentation(item, appearanceSettings.mode === 'compact');
                             const providerRowKey = getProviderListItemSelectionKey(item);
                             const isSelected =
                                 (isFileRow && isFileVisuallySelected(item.data)) ||
@@ -1246,12 +1251,14 @@ export function ListPaneVirtualContent({
                             const isNextFileSelected = isFileListItem(nextItem) && isFileVisuallySelected(nextItem.data);
                             const isPreviousTypeProviderSelected =
                                 (listItemUsesTypeProviderPresentation(previousItem, selectionType, selectedType) ||
-                                    listItemUsesMobileCheckboxFilePresentation(previousItem, Platform.isMobile)) &&
+                                    listItemUsesMobileCheckboxFilePresentation(previousItem, Platform.isMobile) ||
+                                    listItemUsesCompactProviderFilePresentation(previousItem, appearanceSettings.mode === 'compact')) &&
                                 selectedProviderRowKey !== null &&
                                 getProviderListItemSelectionKey(previousItem) === selectedProviderRowKey;
                             const isNextTypeProviderSelected =
                                 (listItemUsesTypeProviderPresentation(nextItem, selectionType, selectedType) ||
-                                    listItemUsesMobileCheckboxFilePresentation(nextItem, Platform.isMobile)) &&
+                                    listItemUsesMobileCheckboxFilePresentation(nextItem, Platform.isMobile) ||
+                                    listItemUsesCompactProviderFilePresentation(nextItem, appearanceSettings.mode === 'compact')) &&
                                 selectedProviderRowKey !== null &&
                                 getProviderListItemSelectionKey(nextItem) === selectedProviderRowKey;
                             const isPreviousVisualRowSelected = isPreviousFileSelected || isPreviousTypeProviderSelected;

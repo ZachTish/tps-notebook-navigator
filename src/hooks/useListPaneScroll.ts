@@ -74,6 +74,7 @@ import {
     getListPaneHeaderHeight,
     getListPaneMeasurements,
     getPropertyRowCount,
+    listItemUsesCompactProviderFilePresentation,
     shouldShowExtensionBadgeThumbnail,
     shouldShowFeatureImageArea,
     shouldShowFileItemParentFolderLine,
@@ -837,7 +838,8 @@ export function useListPaneScroll({
             if (
                 item.type === ListPaneItemType.PROVIDER_ROW &&
                 (listItemUsesTypeProviderPresentation(item, rowSizingConfig.selectionType, rowSizingConfig.selectedType) ||
-                    listItemUsesMobileCheckboxFilePresentation(item, isMobile)) &&
+                    listItemUsesMobileCheckboxFilePresentation(item, isMobile) ||
+                    listItemUsesCompactProviderFilePresentation(item, rowSizingConfig.isCompactMode)) &&
                 item.data !== null &&
                 typeof item.data === 'object'
             ) {
