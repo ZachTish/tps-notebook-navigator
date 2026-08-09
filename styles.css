@@ -672,51 +672,6 @@ body {
     min-height: 0;
 }
 
-/* Desktop leaves can change height independently of the list's intrinsic content
-   (workspace resize, search chrome, tab/header changes). Use an explicit grid track
-   for the panel so it always receives the complete remainder and cannot retain a
-   stale flex-computed height that leaves a dead strip below the scroller. */
-.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal .tps-nn-list-pane {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
-}
-
-.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal .tps-nn-list-pane > .tps-nn-list-pane-chrome {
-    grid-row: 1;
-}
-
-.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal .tps-nn-list-pane > .tps-nn-list-pane-panel {
-    grid-row: 2;
-    height: 100%;
-    min-height: 0;
-    display: grid;
-    grid-template-rows: minmax(0, 1fr) auto;
-}
-
-.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal
-    .tps-nn-list-pane
-    > .tps-nn-list-pane-panel
-    > .tps-nn-list-pane-scroller {
-    grid-row: 1;
-    height: 100%;
-    min-height: 0;
-}
-
-.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal
-    .tps-nn-list-pane
-    > .tps-nn-list-pane-panel
-    > .tps-nn-pane-bottom-toolbar {
-    grid-row: 2;
-}
-
-.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal .tps-nn-list-pane > .tps-nn-navigation-calendar-overlay {
-    grid-row: 3;
-}
-
-.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal .tps-nn-list-pane > .tps-nn-pane-bottom-toolbar {
-    grid-row: 4;
-}
-
 /* Override backgrounds when desktop background mode is set to primary or secondary */
 /* Primary mode: use list background for navigation pane */
 .tps-nn-split-container.tps-nn-desktop.tps-nn-bg-primary {
@@ -7441,6 +7396,15 @@ body.tps-nn-resizing {
     position: relative;
     height: var(--item-height);
     contain: layout style paint;
+}
+
+/* Electron can retain a stale raster boundary for an opaque virtualized scroller
+   after an Obsidian leaf grows. The rows remain mounted and correctly positioned,
+   but rows below the old boundary are not painted, leaving a blank strip. Give the
+   small overscanned desktop row set independent compositing layers so each row is
+   invalidated when the viewport changes. */
+.tps-nn-split-container.tps-nn-desktop .tps-nn-list-pane .tps-nn-virtual-item {
+    transform: translateZ(0);
 }
 /* Source: src/styles/sections/settings-page.css */
 

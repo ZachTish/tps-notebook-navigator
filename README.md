@@ -178,6 +178,13 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.14.3 — virtual-row paint invalidation
+
+- Corrects the diagnosis behind the persistent desktop blank strip: later rows were still mounted and positioned, but Electron retained the virtual scroller's earlier raster boundary after the Obsidian leaf grew.
+- Gives the small overscanned set of desktop virtual rows independent compositing layers so rows below the previous boundary repaint immediately.
+- Removes the ineffective desktop grid override and duplicate viewport-remeasurement observer introduced in 5.14.1 and 5.14.2, restoring the established flex and TanStack measurement paths instead of stacking more layout state.
+- Keeps mobile, vertical, and single-pane behavior unchanged and adds a generated-namespace-aware paint-contract regression. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.14.2 — virtual viewport resize correction
 
 - Fixes the remaining failure after 5.14.1: the outer pane could fill correctly while the virtualizer continued rendering only the rows calculated for its earlier, shorter viewport.

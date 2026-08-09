@@ -5,8 +5,9 @@ import { getLatestReleaseNotes, getReleaseNotesBetweenVersions } from '../src/re
 
 describe('TPS release notes', () => {
     it('keeps the current plugin release first and available in the 4.1 to current update range', () => {
-        expect(getLatestReleaseNotes(1).map(note => note.version)).toEqual(['5.14.2']);
-        expect(getReleaseNotesBetweenVersions('4.1.0', '5.14.2').map(note => note.version)).toEqual([
+        expect(getLatestReleaseNotes(1).map(note => note.version)).toEqual(['5.14.3']);
+        expect(getReleaseNotesBetweenVersions('4.1.0', '5.14.3').map(note => note.version)).toEqual([
+            '5.14.3',
             '5.14.2',
             '5.14.1',
             '5.14.0',

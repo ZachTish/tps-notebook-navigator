@@ -106,6 +106,16 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.14.3',
+        date: '2026-08-09',
+        changed: [
+            'Removed the ineffective desktop grid and duplicate virtualizer-resize machinery from the two previous blank-strip patches.'
+        ],
+        fixed: [
+            'Desktop virtual rows now invalidate their own paint layers after an Obsidian leaf changes size, preventing correctly mounted rows below the previous raster boundary from remaining invisible.'
+        ]
+    },
+    {
         version: '5.14.2',
         date: '2026-08-09',
         fixed: [

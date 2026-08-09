@@ -1,6 +1,6 @@
 {
   "name": "tps-notebook-navigator",
-  "version": "5.14.2",
+  "version": "5.14.3",
   "description": "Experimental, co-installable TPS fork of Notebook Navigator with optional TPS integrations.",
   "main": "main.js",
   "engines": {

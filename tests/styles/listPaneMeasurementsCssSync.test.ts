@@ -55,38 +55,26 @@ function extractCalcAddPx(css: string, variableName: string, baseVariableName: s
 }
 
 describe('List pane measurements stay in sync with CSS', () => {
+    test('desktop virtual rows independently invalidate their paint layers', () => {
+        const virtualListCss = readTextFile('src/styles/sections/layout-virtual-list.css');
+        const desktopVirtualRowRule = extractRuleBlock(
+            virtualListCss,
+            '.tps-nn-split-container.tps-nn-desktop .tps-nn-list-pane .tps-nn-virtual-item'
+        );
+
+        expect(desktopVirtualRowRule).toMatch(/(^|\n)\s*transform:\s*translateZ\(0\)\s*;/m);
+    });
+
     test('desktop horizontal list pane keeps its scroller on the full pane height', () => {
         const paneCss = readTextFile('src/styles/sections/layout-panes.css');
         const listCss = readTextFile('src/styles/sections/list-files.css');
         const iosCss = readTextFile('src/styles/sections/platform-ios.css');
         const horizontalPaneRule = extractRuleBlock(paneCss, '.tps-nn-split-container.tps-nn-orientation-horizontal .tps-nn-list-pane');
-        const desktopHorizontalPaneRule = extractRuleBlock(
-            paneCss,
-            '.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal .tps-nn-list-pane'
-        );
-        const desktopPanelRule = extractRuleBlock(
-            paneCss,
-            '.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal .tps-nn-list-pane > .tps-nn-list-pane-panel'
-        );
-        const desktopScrollerRule = extractRuleBlock(
-            paneCss,
-            '.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal .tps-nn-list-pane > .tps-nn-list-pane-panel > .tps-nn-list-pane-scroller'
-        );
         const panelRule = extractRuleBlock(listCss, '.tps-nn-list-pane-panel');
         const scrollerRule = extractRuleBlock(listCss, '.tps-nn-list-pane-scroller');
 
         expect(horizontalPaneRule).toMatch(/(^|\n)\s*height:\s*100%\s*;/m);
         expect(horizontalPaneRule).toMatch(/(^|\n)\s*min-height:\s*0\s*;/m);
-        expect(desktopHorizontalPaneRule).toMatch(/(^|\n)\s*display:\s*grid\s*;/m);
-        expect(desktopHorizontalPaneRule).toMatch(/(^|\n)\s*grid-template-rows:\s*auto minmax\(0, 1fr\) auto auto\s*;/m);
-        expect(desktopPanelRule).toMatch(/(^|\n)\s*grid-row:\s*2\s*;/m);
-        expect(desktopPanelRule).toMatch(/(^|\n)\s*height:\s*100%\s*;/m);
-        expect(desktopPanelRule).toMatch(/(^|\n)\s*min-height:\s*0\s*;/m);
-        expect(desktopPanelRule).toMatch(/(^|\n)\s*display:\s*grid\s*;/m);
-        expect(desktopPanelRule).toMatch(/(^|\n)\s*grid-template-rows:\s*minmax\(0, 1fr\) auto\s*;/m);
-        expect(desktopScrollerRule).toMatch(/(^|\n)\s*grid-row:\s*1\s*;/m);
-        expect(desktopScrollerRule).toMatch(/(^|\n)\s*height:\s*100%\s*;/m);
-        expect(desktopScrollerRule).toMatch(/(^|\n)\s*min-height:\s*0\s*;/m);
         expect(panelRule).toMatch(/(^|\n)\s*flex:\s*1 1 0\s*;/m);
         expect(panelRule).toMatch(/(^|\n)\s*min-height:\s*0\s*;/m);
         expect(panelRule).not.toMatch(/(^|\n)\s*overflow:\s*hidden\s*;/m);
