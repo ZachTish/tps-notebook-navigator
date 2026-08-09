@@ -106,6 +106,11 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.10.3',
+        date: '2026-08-09',
+        fixed: ['Task rows attached to ordinary note lists now group by task-local properties instead of the source note group.']
+    },
+    {
         version: '5.10.2',
         date: '2026-08-08',
         fixed: ['Existing vaults now migrate the former line-first default to task-local property grouping once.']

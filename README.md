@@ -174,6 +174,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.10.3 — attached task property grouping
+
+- Groups optional GCM task rows in ordinary note, folder, tag, property, and shortcut lists by the task row's own local properties instead of inserting them beneath the source note after grouping.
+- An untagged task from a `dailynote` note now enters **No value**; a locally tagged task enters its matching tag group. Newly task-only groups respect the configured **No value group position**.
+- Adds a production-shaped regression with an untagged and `career` task sourced from a `dailynote` note. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.10.2 — legacy inheritance-default migration
 
 - Migrates a persisted `line-first` value left by the former default to `none` once, so existing vaults actually receive task-local grouping after upgrading.

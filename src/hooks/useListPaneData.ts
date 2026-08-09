@@ -44,7 +44,7 @@ import {
     filterSearchNeedsPropertyLookup,
     filterSearchNeedsTagLookup
 } from '../utils/filterSearch';
-import type { ListNoteGroupingOption, NotebookNavigatorSettings } from '../settings/types';
+import { getPropertyGroupingKey, type ListNoteGroupingOption, type NotebookNavigatorSettings } from '../settings/types';
 import type { FilterSearchTokens } from '../utils/filterSearch';
 import type { SearchResultMeta } from '../types/search';
 import type { ActiveProfileState } from '../context/SettingsContext';
@@ -943,9 +943,29 @@ export function useListPaneData({
             providerRows,
             presentedTypeListItems,
             searchTypeGroups,
-            globalTypeSearch: useGlobalTypeSearch
+            globalTypeSearch: useGlobalTypeSearch,
+            providerPropertyGrouping: (() => {
+                const propertyKey = getPropertyGroupingKey(groupBy);
+                return propertyKey
+                    ? {
+                          propertyKey,
+                          noValueLabel: strings.listPane.propertyGroupNoValue,
+                          noValuePosition: noValueGroupPosition
+                      }
+                    : undefined;
+            })()
         });
-    }, [coreListItems, presentedTypeListItems, providerRows, searchTypeGroups, typeListMode, typeRows, useGlobalTypeSearch]);
+    }, [
+        coreListItems,
+        groupBy,
+        noValueGroupPosition,
+        presentedTypeListItems,
+        providerRows,
+        searchTypeGroups,
+        typeListMode,
+        typeRows,
+        useGlobalTypeSearch
+    ]);
 
     const filePathToIndex = useMemo(() => {
         return buildFilePathToIndexMap(listItems);

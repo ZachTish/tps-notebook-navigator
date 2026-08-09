@@ -500,6 +500,11 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
             tooltip: `${task.path}:${oneBasedLine}`,
             sourcePath: task.path,
             sourceLineNumber: task.lineNumber,
+            properties: {
+                tags: Object.freeze([...task.tags]),
+                ...task.fields,
+                status: task.status
+            },
             indicator: {
                 type: 'checkbox',
                 checked: task.isComplete,

@@ -73,4 +73,52 @@ describe('mergeProviderRowsIntoList', () => {
         const listItems: ListPaneItem[] = [{ type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom' }];
         expect(mergeProviderRowsIntoList(listItems, [])).toBe(listItems);
     });
+
+    it('groups property-bearing task rows by their own tags instead of their source note group', () => {
+        const daily = createTestTFile('Daily.md');
+        const listItems: ListPaneItem[] = [
+            { type: ListPaneItemType.TOP_SPACER, data: '', key: 'top' },
+            { type: ListPaneItemType.HEADER, data: 'dailynote', key: 'daily-header', headerKind: 'property' },
+            { type: ListPaneItemType.FILE, data: daily, key: 'daily-file' },
+            { type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom' }
+        ];
+        const rows = [
+            {
+                providerId: 'tps/gcm-tasks',
+                id: 'untagged',
+                kind: 'tps/gcm-task',
+                label: 'Untagged task',
+                sourcePath: daily.path,
+                properties: { tags: [] }
+            },
+            {
+                providerId: 'tps/gcm-tasks',
+                id: 'career',
+                kind: 'tps/gcm-task',
+                label: 'Career task',
+                sourcePath: daily.path,
+                properties: { tags: ['career'] }
+            }
+        ];
+
+        const merged = mergeProviderRowsIntoList(listItems, rows, {
+            propertyKey: 'tags',
+            noValueLabel: 'None',
+            noValuePosition: 'bottom'
+        });
+
+        const groupByRow = new Map<string, string>();
+        let group = '';
+        merged.forEach(item => {
+            if (item.type === ListPaneItemType.HEADER) group = typeof item.data === 'string' ? item.data : '';
+            if (item.type === ListPaneItemType.PROVIDER_ROW) groupByRow.set(String((item.data as { id: string }).id), group);
+        });
+        expect(groupByRow).toEqual(
+            new Map([
+                ['career', 'career'],
+                ['untagged', 'None']
+            ])
+        );
+        expect(groupByRow.has('dailynote')).toBe(false);
+    });
 });

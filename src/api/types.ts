@@ -239,6 +239,8 @@ export interface NavigatorRowDefinition {
     readonly sourcePath: string;
     /** Optional zero-based source line. */
     readonly sourceLineNumber?: number;
+    /** Optional row-local values used when an attached row participates in property grouping. */
+    readonly properties?: Readonly<Record<string, string | number | boolean | readonly (string | number | boolean)[]>>;
     readonly indicator?: NavigatorRowCheckboxIndicator;
     readonly activate?: () => void | Promise<void>;
     /** Optional synchronous builder for right-click, long-press, and keyboard-accessible row actions. */

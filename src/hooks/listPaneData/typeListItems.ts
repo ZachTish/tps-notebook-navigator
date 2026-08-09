@@ -17,6 +17,7 @@ import {
     type StructuralTypeSearchGroup
 } from '../../services/rows/providerListItems';
 import type { NavigatorProvidedRow } from '../../services/rows/types';
+import type { ProviderPropertyGrouping } from '../../services/rows/providerListItems';
 import type { TpsNavigatorTypesSnapshot } from '../../types/navigatorTypes';
 import { isFileInTpsNavigatorType } from '../../services/types/vaultFileTypes';
 
@@ -70,6 +71,7 @@ interface ComposeTypeListItemsArgs {
     presentedTypeListItems?: readonly ListPaneItem[];
     searchTypeGroups?: readonly StructuralTypeSearchGroup[];
     globalTypeSearch?: boolean;
+    providerPropertyGrouping?: ProviderPropertyGrouping;
 }
 
 /**
@@ -83,10 +85,11 @@ export function composeTypeListItems({
     providerRows,
     presentedTypeListItems,
     searchTypeGroups = [],
-    globalTypeSearch = false
+    globalTypeSearch = false,
+    providerPropertyGrouping
 }: ComposeTypeListItemsArgs): ListPaneItem[] {
     if (globalTypeSearch || !mode.isTypeSelection || mode.isFileBackedTypeSelection) {
-        const merged = mergeProviderRowsIntoList(coreListItems, providerRows);
+        const merged = mergeProviderRowsIntoList(coreListItems, providerRows, providerPropertyGrouping);
         return searchTypeGroups.length === 0 ? merged : appendStructuralTypeSearchGroups(merged, searchTypeGroups);
     }
     if (mode.isLineBackedTypeSelection && presentedTypeListItems) {

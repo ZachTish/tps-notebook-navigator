@@ -7,6 +7,14 @@ import { ListPaneItemType } from '../../types';
 import type { ListPaneItem } from '../../types/virtualization';
 import type { TpsNavigatorLineTypeId } from '../../types/navigatorTypes';
 import { NAVIGATOR_ROW_PROVIDER_MAX_ROWS, type NavigatorProvidedRow } from './types';
+import { getPropertyGroupingValues } from '../../utils/sortUtils';
+import { getMatchingRecordValue } from '../../utils/recordUtils';
+
+export interface ProviderPropertyGrouping {
+    propertyKey: string;
+    noValueLabel: string;
+    noValuePosition: 'top' | 'bottom';
+}
 
 /**
  * Builds a complete virtualized Types list from rows that are not attached to file rows.
@@ -59,13 +67,19 @@ export function buildStandaloneProviderListItems(
     ];
 }
 
-export function mergeProviderRowsIntoList(listItems: ListPaneItem[], providerRows: readonly NavigatorProvidedRow[]): ListPaneItem[] {
+export function mergeProviderRowsIntoList(
+    listItems: ListPaneItem[],
+    providerRows: readonly NavigatorProvidedRow[],
+    propertyGrouping?: ProviderPropertyGrouping
+): ListPaneItem[] {
     if (providerRows.length === 0) {
         return listItems;
     }
 
+    const propertyRows = propertyGrouping ? providerRows.filter(row => row.properties !== undefined) : [];
+    const attachedRows = propertyRows.length === 0 ? providerRows : providerRows.filter(row => row.properties === undefined);
     const rowsBySourcePath = new Map<string, NavigatorProvidedRow[]>();
-    for (const row of providerRows) {
+    for (const row of attachedRows) {
         const rows = rowsBySourcePath.get(row.sourcePath) ?? [];
         rows.push(row);
         rowsBySourcePath.set(row.sourcePath, rows);
@@ -90,7 +104,78 @@ export function mergeProviderRowsIntoList(listItems: ListPaneItem[], providerRow
         }
     }
 
-    return merged;
+    if (!propertyGrouping || propertyRows.length === 0) return merged;
+
+    const rowsByGroup = new Map<string, NavigatorProvidedRow[]>();
+    propertyRows.forEach(row => {
+        const rawValue = getMatchingRecordValue(row.properties, propertyGrouping.propertyKey);
+        const values = getPropertyGroupingValues(rawValue);
+        const labels = values.length > 0 ? values.map(value => value.parts.join(', ')) : [propertyGrouping.noValueLabel];
+        labels.forEach(label => {
+            const rows = rowsByGroup.get(label) ?? [];
+            rows.push(row);
+            rowsByGroup.set(label, rows);
+        });
+    });
+
+    const result: ListPaneItem[] = [];
+    let currentPropertyLabel: string | null = null;
+    const renderedLabels = new Set<string>();
+    const flush = () => {
+        if (currentPropertyLabel === null) return;
+        const rows = rowsByGroup.get(currentPropertyLabel) ?? [];
+        rows.forEach(row => {
+            result.push({
+                type: ListPaneItemType.PROVIDER_ROW,
+                data: row,
+                key: `provider:${row.providerId}:${row.id}:${currentPropertyLabel}`
+            });
+        });
+        if (rows.length > 0) renderedLabels.add(currentPropertyLabel);
+        currentPropertyLabel = null;
+    };
+    merged.forEach(item => {
+        if (item.type === ListPaneItemType.HEADER && item.headerKind === 'property') {
+            flush();
+            currentPropertyLabel = typeof item.data === 'string' ? item.data : '';
+        } else if (item.type === ListPaneItemType.BOTTOM_SPACER) {
+            flush();
+        }
+        result.push(item);
+    });
+    flush();
+
+    const missingLabels = Array.from(rowsByGroup.keys()).filter(label => !renderedLabels.has(label));
+    const bottomIndex = result.findIndex(item => item.type === ListPaneItemType.BOTTOM_SPACER);
+    const additions: ListPaneItem[] = missingLabels.flatMap(label => [
+        {
+            type: ListPaneItemType.HEADER,
+            data: label,
+            key: `header-provider-property:${propertyGrouping.propertyKey}:${label}`,
+            headerKind: 'property' as const,
+            groupFilePaths: (rowsByGroup.get(label) ?? []).map(row => row.sourcePath)
+        },
+        ...(rowsByGroup.get(label) ?? []).map(row => ({
+            type: ListPaneItemType.PROVIDER_ROW,
+            data: row,
+            key: `provider:${row.providerId}:${row.id}:${label}`
+        }))
+    ]);
+    if (additions.length === 0) return result;
+    const insertionIndex = bottomIndex === -1 ? result.length : bottomIndex;
+    if (propertyGrouping.noValuePosition === 'top' && missingLabels.includes(propertyGrouping.noValueLabel)) {
+        const firstHeader = result.findIndex(item => item.type === ListPaneItemType.HEADER && item.headerKind === 'property');
+        const noValueAdditions = additions.filter(
+            item => item.data === propertyGrouping.noValueLabel || item.key.endsWith(`:${propertyGrouping.noValueLabel}`)
+        );
+        const otherAdditions = additions.filter(item => !noValueAdditions.includes(item));
+        const topIndex = firstHeader === -1 ? insertionIndex : firstHeader;
+        result.splice(topIndex, 0, ...noValueAdditions);
+        result.splice(insertionIndex + noValueAdditions.length, 0, ...otherAdditions);
+        return result;
+    }
+    result.splice(insertionIndex, 0, ...additions);
+    return result;
 }
 
 /** Appends transient augmenting rows to an already-built standalone list without disturbing its headers. */
