@@ -55,14 +55,10 @@ function extractCalcAddPx(css: string, variableName: string, baseVariableName: s
 }
 
 describe('List pane measurements stay in sync with CSS', () => {
-    test('desktop virtual rows independently invalidate their paint layers', () => {
+    test('desktop virtual rows do not carry a speculative compositor workaround', () => {
         const virtualListCss = readTextFile('src/styles/sections/layout-virtual-list.css');
-        const desktopVirtualRowRule = extractRuleBlock(
-            virtualListCss,
-            '.tps-nn-split-container.tps-nn-desktop .tps-nn-list-pane .tps-nn-virtual-item'
-        );
 
-        expect(desktopVirtualRowRule).toMatch(/(^|\n)\s*transform:\s*translateZ\(0\)\s*;/m);
+        expect(virtualListCss).not.toMatch(/translateZ\(0\)/);
     });
 
     test('desktop horizontal list pane keeps its scroller on the full pane height', () => {

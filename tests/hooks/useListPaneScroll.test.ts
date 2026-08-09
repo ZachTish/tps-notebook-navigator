@@ -27,6 +27,7 @@ import {
     createRemeasureScheduler,
     getStickyHeaderHeightBeforeIndex,
     isListRowHeightAffectingContentChange,
+    observeListPaneViewportRect,
     type ListRowHeightAffectingContentChangeConfig,
     resolveListFileRowHeightInputs,
     type ListFileRowSizingConfig
@@ -437,6 +438,103 @@ describe('createRemeasureScheduler', () => {
         expect(animationFrameStub.cancelAnimationFrame).toHaveBeenCalledWith(1);
         expect(animationFrameStub.runNextFrame()).toBe(false);
         expect(measure).not.toHaveBeenCalled();
+    });
+});
+
+describe('observeListPaneViewportRect', () => {
+    function createViewportObserverHarness(initialWidth = 320, initialHeight = 400) {
+        let width = initialWidth;
+        let height = initialHeight;
+        let nextFrameId = 1;
+        const frames = new Map<number, FrameRequestCallback>();
+        const resizeListeners = new Set<EventListenerOrEventListenerObject>();
+        const observedElements: Element[] = [];
+        const disconnect = vi.fn();
+
+        class ResizeObserverStub {
+            observe(element: Element) {
+                observedElements.push(element);
+            }
+
+            disconnect() {
+                disconnect();
+            }
+        }
+
+        const targetWindow = {
+            ResizeObserver: ResizeObserverStub,
+            requestAnimationFrame: vi.fn((callback: FrameRequestCallback) => {
+                const id = nextFrameId;
+                nextFrameId += 1;
+                frames.set(id, callback);
+                return id;
+            }),
+            cancelAnimationFrame: vi.fn((id: number) => frames.delete(id)),
+            addEventListener: vi.fn((type: string, listener: EventListenerOrEventListenerObject) => {
+                if (type === 'resize') resizeListeners.add(listener);
+            }),
+            removeEventListener: vi.fn((type: string, listener: EventListenerOrEventListenerObject) => {
+                if (type === 'resize') resizeListeners.delete(listener);
+            })
+        } as unknown as Window;
+        const classList = { contains: vi.fn(() => false) };
+        const parent = { classList, parentElement: null } as unknown as HTMLElement;
+        const element = {
+            get clientWidth() {
+                return width;
+            },
+            get clientHeight() {
+                return height;
+            },
+            classList,
+            parentElement: parent
+        } as unknown as HTMLElement;
+
+        return {
+            element,
+            targetWindow,
+            observedElements,
+            disconnect,
+            setSize(nextWidth: number, nextHeight: number) {
+                width = nextWidth;
+                height = nextHeight;
+            },
+            runNextFrame() {
+                const next = frames.entries().next();
+                if (next.done) return false;
+                const [id, callback] = next.value;
+                frames.delete(id);
+                callback(0);
+                return true;
+            },
+            remainingFrames: () => frames.size
+        };
+    }
+
+    it('corrects a missed flex-layout resize during initialization', () => {
+        const harness = createViewportObserverHarness(320, 400);
+        const onRect = vi.fn();
+        const dispose = observeListPaneViewportRect(harness.element, harness.targetWindow, onRect, 3);
+
+        expect(onRect).toHaveBeenLastCalledWith({ width: 320, height: 400 });
+        harness.setSize(320, 680);
+        expect(harness.runNextFrame()).toBe(true);
+
+        expect(onRect).toHaveBeenLastCalledWith({ width: 320, height: 680 });
+        dispose();
+    });
+
+    it('observes the scroll element and ancestors and cleans up every signal', () => {
+        const harness = createViewportObserverHarness();
+        const dispose = observeListPaneViewportRect(harness.element, harness.targetWindow, vi.fn(), 2);
+
+        expect(harness.observedElements).toHaveLength(2);
+        expect(harness.remainingFrames()).toBe(1);
+        dispose();
+
+        expect(harness.disconnect).toHaveBeenCalledTimes(1);
+        expect(harness.remainingFrames()).toBe(0);
+        expect(harness.targetWindow.removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
     });
 });
 

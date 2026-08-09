@@ -106,6 +106,16 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.14.4',
+        date: '2026-08-09',
+        changed: [
+            'Removed the ineffective per-row compositor workaround from 5.14.3; the established row renderer and measurements remain unchanged.'
+        ],
+        fixed: [
+            'The list virtualizer now receives the scroll element’s actual viewport rectangle after a missed flex-layout resize, so rows continue mounting to the visible bottom after an Obsidian leaf grows.'
+        ]
+    },
+    {
         version: '5.14.3',
         date: '2026-08-09',
         changed: [

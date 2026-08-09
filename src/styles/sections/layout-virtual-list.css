@@ -40,12 +40,3 @@
     height: var(--item-height);
     contain: layout style paint;
 }
-
-/* Electron can retain a stale raster boundary for an opaque virtualized scroller
-   after an Obsidian leaf grows. The rows remain mounted and correctly positioned,
-   but rows below the old boundary are not painted, leaving a blank strip. Give the
-   small overscanned desktop row set independent compositing layers so each row is
-   invalidated when the viewport changes. */
-.nn-split-container.nn-desktop .nn-list-pane .nn-virtual-item {
-    transform: translateZ(0);
-}

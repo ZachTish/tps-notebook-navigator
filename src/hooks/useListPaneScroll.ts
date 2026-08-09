@@ -438,6 +438,94 @@ export function createRemeasureScheduler(measure: () => void): { schedule: () =>
     };
 }
 
+const LIST_VIEWPORT_STABILIZATION_FRAMES = 180;
+
+/**
+ * Observe the list viewport itself rather than only remeasuring its rows.
+ *
+ * TanStack Virtual uses this rectangle to decide which indexes to mount. Chromium can miss a
+ * ResizeObserver delivery while Obsidian is settling a newly opened flex leaf, leaving the
+ * virtualizer with the shorter bootstrap height even though the scroll element later fills the
+ * pane. Row measurement cannot repair that cached rectangle. The short startup sampler closes
+ * that gap, while the element/ancestor observers and window listener cover later workspace
+ * changes without polling for the lifetime of the view.
+ */
+export function observeListPaneViewportRect(
+    element: HTMLElement,
+    targetWindow: Window & { ResizeObserver?: typeof ResizeObserver },
+    onRect: (rect: { width: number; height: number }) => void,
+    stabilizationFrames = LIST_VIEWPORT_STABILIZATION_FRAMES
+): () => void {
+    let lastWidth = -1;
+    let lastHeight = -1;
+    let eventFrameId: number | null = null;
+    let stabilizationFrameId: number | null = null;
+    let remainingStabilizationFrames = Math.max(0, Math.floor(stabilizationFrames));
+
+    const emitCurrentRect = () => {
+        const width = Math.round(element.clientWidth);
+        const height = Math.round(element.clientHeight);
+        if (width === lastWidth && height === lastHeight) {
+            return;
+        }
+
+        lastWidth = width;
+        lastHeight = height;
+        onRect({ width, height });
+    };
+
+    const scheduleRectRead = () => {
+        if (eventFrameId !== null) {
+            return;
+        }
+        eventFrameId = targetWindow.requestAnimationFrame(() => {
+            eventFrameId = null;
+            emitCurrentRect();
+        });
+    };
+
+    const sampleDuringInitialization = () => {
+        stabilizationFrameId = null;
+        emitCurrentRect();
+        remainingStabilizationFrames -= 1;
+        if (remainingStabilizationFrames > 0) {
+            stabilizationFrameId = targetWindow.requestAnimationFrame(sampleDuringInitialization);
+        }
+    };
+
+    emitCurrentRect();
+    if (remainingStabilizationFrames > 0) {
+        stabilizationFrameId = targetWindow.requestAnimationFrame(sampleDuringInitialization);
+    }
+
+    const resizeObserver = targetWindow.ResizeObserver ? new targetWindow.ResizeObserver(scheduleRectRead) : null;
+    if (resizeObserver) {
+        let observedElement: HTMLElement | null = element;
+        let observedAncestorCount = 0;
+        while (observedElement && observedAncestorCount < 12) {
+            resizeObserver.observe(observedElement);
+            if (observedElement.classList.contains('workspace-leaf-content')) {
+                break;
+            }
+            observedElement = observedElement.parentElement;
+            observedAncestorCount += 1;
+        }
+    }
+
+    targetWindow.addEventListener('resize', scheduleRectRead);
+
+    return () => {
+        resizeObserver?.disconnect();
+        targetWindow.removeEventListener('resize', scheduleRectRead);
+        if (eventFrameId !== null) {
+            targetWindow.cancelAnimationFrame(eventFrameId);
+        }
+        if (stabilizationFrameId !== null) {
+            targetWindow.cancelAnimationFrame(stabilizationFrameId);
+        }
+    };
+}
+
 export function getStickyHeaderHeightBeforeIndex(
     listItems: ListPaneItem[],
     index: number,
@@ -799,6 +887,15 @@ export function useListPaneScroll({
             return element;
         },
         enabled,
+        observeElementRect: (instance, onRect) => {
+            const element = instance.scrollElement;
+            const targetWindow = instance.targetWindow;
+            if (!element || !targetWindow) {
+                return undefined;
+            }
+
+            return observeListPaneViewportRect(element, targetWindow, onRect);
+        },
         // Align virtualizer scroll math with the start of the file rows (excluding overlay chrome).
         scrollMargin: effectiveScrollMargin,
         // Ensure scrollToIndex aligns items below the overlay chrome instead of under it.

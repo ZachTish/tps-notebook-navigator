@@ -178,6 +178,13 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.14.4 — authoritative virtual viewport sizing
+
+- Fixes the persistent desktop blank strip at its virtualizer boundary: the scroll element could finish growing while TanStack Virtual retained its shorter bootstrap viewport rectangle and therefore stopped mounting rows before the visible bottom.
+- Replaces row remeasurement and compositor workarounds with one viewport-rect observer that reports the scroll element's real client size, watches the element and its workspace ancestors, responds to window resizes, and samples the brief initialization window for a missed flex-layout delivery.
+- Removes the ineffective per-row `translateZ(0)` rule from 5.14.3; standard and Compact rows continue through the same renderer and measurement path.
+- Adds focused regression coverage for a silent 400-to-680 px viewport growth, observer cleanup, and the absence of the speculative compositor rule. The root mixed-resource list was also initialized in a short test-vault window and verified after the window grew. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.14.3 — virtual-row paint invalidation
 
 - Corrects the diagnosis behind the persistent desktop blank strip: later rows were still mounted and positioned, but Electron retained the virtual scroller's earlier raster boundary after the Obsidian leaf grew.
