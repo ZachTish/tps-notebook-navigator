@@ -106,6 +106,14 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.12.1',
+        date: '2026-08-09',
+        fixed: [
+            'The vault root now includes the canonical Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and Web links collections alongside visible files.',
+            'Canonical root Checkboxes replace the optional attached task feed without duplicating the same tasks; the attached feed remains the fallback when Checkboxes are unavailable.'
+        ]
+    },
+    {
         version: '5.12.0',
         date: '2026-08-09',
         changed: [

@@ -29,7 +29,7 @@ The integration surface is intentionally modular. The navigator owns presentatio
 
 The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.15.0 remains the completion-capability baseline; 1.18.0 is the tested baseline for this release's generic task, bullet, and heading line-property grouping. Task checkboxes complete or reopen the exact task through GCM's configured status/checkbox rules, selecting the title re-resolves and opens its source line, and right-click, mobile long-press, or **More actions** opens the same guarded GCM task menu available in Types. Desktop task rows can be dragged into an editor as their complete Markdown task line; the isolated text payload never enters Navigator's file/folder/tag mutation pipeline. Custom checkbox markers remain visible instead of being flattened to a binary checkmark. Generic row providers can also add their own synchronous context-menu actions without granting the navigator access to provider internals. Older structurally compatible APIs without a safe task mutation, menu, or raw-line-property path degrade only that capability. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
 
-The visible vault root is the mixed all-resources scope. Selecting it always traverses the complete visible vault, even when the ordinary descendant preference is off, while continuing to respect the active profile's file-visibility, hidden-content, and excluded-descendant rules. The descendant toolbar control therefore remains visibly active and non-toggleable at the root; ordinary folders, tags, and properties keep the user's descendant preference. File-backed resources and provider rows share the same selected appearance, so **Compact** condenses attached task/provider rows as well as native file rows.
+The visible vault root is the mixed all-resources scope. Selecting it always traverses the complete visible vault, even when the ordinary descendant preference is off, while continuing to respect the active profile's file-visibility, hidden-content, and excluded-descendant rules. It renders every visible file plus the canonical Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and Web links collections under labeled sections. Canonical Checkboxes replace the optional attached GCM task feed when available so tasks are not duplicated; the attached feed remains a compatibility fallback. The descendant toolbar control remains visibly active and non-toggleable at the root; ordinary folders, tags, and properties keep the user's descendant preference. File-backed resources and provider rows share the same selected appearance, so **Compact** condenses attached task/provider rows as well as native file rows.
 
 ### Types navigation
 
@@ -175,6 +175,13 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 5.12.1 — complete structural root aggregation
+
+- Adds all eight canonical structural collections to the vault-root mixed view: Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and Web links.
+- Uses the same visibility-filtered records, source actions, task completion, context menus, and Type section labels as dedicated Type views.
+- Suppresses the optional attached GCM task feed only when canonical Checkbox rows are present, avoiding duplicates while preserving fallback behavior.
+- Adds focused catalog-selection and provider-deduplication regressions. Minimum supported Obsidian version remains 1.11.0.
 
 ### 5.12.0 — complete root scope and compact provider rows
 

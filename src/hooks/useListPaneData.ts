@@ -50,7 +50,7 @@ import type { SearchResultMeta } from '../types/search';
 import type { ActiveProfileState } from '../context/SettingsContext';
 import type { SearchProvider } from '../types/search';
 import type { PropertySelectionNodeId } from '../utils/propertyTree';
-import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
+import { TPS_NAVIGATOR_TYPE_IDS, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 import { getFilesForNavigationSelection, getVisibleVaultFiles } from '../utils/selectionUtils';
 import { sortNavigationFiles } from '../utils/fileFinder';
 import {
@@ -90,7 +90,9 @@ import { useNavigatorTypeRows } from './useNavigatorTypeRows';
 import {
     collectFileBackedTypeFiles,
     composeTypeListItems,
+    filterDuplicateRootProviderRows,
     getSelectedTypeSearchSourceScope,
+    resolveMixedStructuralTypeCollections,
     resolveTypeListSnapshot,
     resolveTypeListMode
 } from './listPaneData/typeListItems';
@@ -99,9 +101,10 @@ import {
     getEffectiveStandaloneStructuralTypeGrouping
 } from './listPaneData/standaloneTypePresentation';
 import { isTpsNavigatorLineTypeId } from '../types/navigatorTypes';
+import { isVaultRootResourceScope } from '../components/listPane/typeModeRuntime';
+import { GCM_TASK_ROW_PROVIDER_ID } from '../integrations/gcm/GcmTaskRowProvider';
 import {
     fileMatchesStructuralTypeSearch,
-    getStructuralTypeSearchCollections,
     getStructuralTypeSourceSearchTokens,
     isMixedStructuralSearchActive,
     shouldUseGlobalTypeSearch
@@ -219,6 +222,10 @@ export function useListPaneData({
     const { isTypeSelection, isFileBackedTypeSelection, isLineBackedTypeSelection, isProviderOwnedTypeSelection } = typeListMode;
     const trimmedQuery = searchQuery?.trim() ?? '';
     const hasSearchQuery = trimmedQuery.length > 0;
+    const isVaultRootAggregate =
+        settings.tpsTypesNavigationEnabled &&
+        !hasSearchQuery &&
+        isVaultRootResourceScope(selectionType, selectionType === ItemType.FOLDER ? selectedFolder?.path : null);
     const rawTypeSnapshot = useNavigatorTypes(plugin.api);
     const {
         snapshot: builtinTypeSnapshot,
@@ -231,11 +238,11 @@ export function useListPaneData({
     const selectedRawTypeSnapshot = resolveTypeListSnapshot(typeListMode, builtinTypeSnapshot, rawTypeSnapshot);
     const visibleTypeFiles = useMemo(() => {
         void updateKey;
-        if (!settings.tpsTypesNavigationEnabled || (!isTypeSelection && !hasSearchQuery)) {
+        if (!settings.tpsTypesNavigationEnabled || (!isTypeSelection && !hasSearchQuery && !isVaultRootAggregate)) {
             return [];
         }
         return getVisibleVaultFiles(settings, showHiddenItems, app);
-    }, [app, hasSearchQuery, isTypeSelection, settings, showHiddenItems, updateKey]);
+    }, [app, hasSearchQuery, isTypeSelection, isVaultRootAggregate, settings, showHiddenItems, updateKey]);
     const visibleTypeSourcePaths = useMemo(() => new Set(visibleTypeFiles.map(file => file.path)), [visibleTypeFiles]);
     const typeSnapshot = useMemo(
         () => filterTpsNavigatorTypesSnapshot(selectedRawTypeSnapshot, visibleTypeSourcePaths),
@@ -863,18 +870,19 @@ export function useListPaneData({
         scope: providerScope,
         selection: rowProviderSelection
     });
-    const searchTypeGroups = useMemo(() => {
-        if (!mixedStructuralSearchActive || !parsedSearchTokens) {
+    const structuralTypeGroups = useMemo(() => {
+        if (!mixedStructuralSearchActive && !isVaultRootAggregate) {
             return [];
         }
 
         const descriptorLabelById = new Map(typeSnapshot.descriptors.map(descriptor => [descriptor.id, descriptor.label] as const));
-        return getStructuralTypeSearchCollections(parsedSearchTokens).flatMap(typeId => {
+        const typeIds = resolveMixedStructuralTypeCollections(isVaultRootAggregate, parsedSearchTokens);
+        return typeIds.flatMap(typeId => {
             const rows = buildTypeProviderRows({
                 snapshot: typeSnapshot,
                 selectedType: typeId,
                 searchQuery: trimmedQuery,
-                searchTokens: parsedSearchTokens,
+                searchTokens: parsedSearchTokens ?? undefined,
                 allowedSourcePaths: structuralSourcePathSet,
                 getNoteProperties: sourcePath => {
                     const file = app.vault.getFileByPath(sourcePath);
@@ -926,6 +934,7 @@ export function useListPaneData({
         dayKey,
         getFileTimestamps,
         groupBy,
+        isVaultRootAggregate,
         mixedStructuralSearchActive,
         parsedSearchTokens,
         setTypeTaskCheckbox,
@@ -935,14 +944,20 @@ export function useListPaneData({
         trimmedQuery,
         typeSnapshot
     ]);
+    const visibleProviderRows = useMemo(() => {
+        const rootHasCanonicalCheckboxRows =
+            isVaultRootAggregate &&
+            structuralTypeGroups.some(group => group.typeId === TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES && group.rows.length > 0);
+        return filterDuplicateRootProviderRows(providerRows, rootHasCanonicalCheckboxRows, GCM_TASK_ROW_PROVIDER_ID);
+    }, [isVaultRootAggregate, providerRows, structuralTypeGroups]);
     const listItems = useMemo(() => {
         return composeTypeListItems({
             mode: typeListMode,
             coreListItems,
             typeRows,
-            providerRows,
+            providerRows: visibleProviderRows,
             presentedTypeListItems,
-            searchTypeGroups,
+            searchTypeGroups: structuralTypeGroups,
             globalTypeSearch: useGlobalTypeSearch,
             providerPropertyGrouping: (() => {
                 const propertyKey = getPropertyGroupingKey(groupBy);
@@ -960,11 +975,11 @@ export function useListPaneData({
         groupBy,
         noValueGroupPosition,
         presentedTypeListItems,
-        providerRows,
-        searchTypeGroups,
+        structuralTypeGroups,
         typeListMode,
         typeRows,
-        useGlobalTypeSearch
+        useGlobalTypeSearch,
+        visibleProviderRows
     ]);
 
     const filePathToIndex = useMemo(() => {

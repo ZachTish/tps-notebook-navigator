@@ -7,8 +7,12 @@ import {
     isTpsNavigatorFileTypeId,
     isTpsNavigatorLineTypeId,
     parseTpsNavigatorProviderTypeId,
+    TPS_NAVIGATOR_LINE_TYPES,
+    type TpsNavigatorLineTypeId,
     type TpsNavigatorTypeId
 } from '../../types/navigatorTypes';
+import type { FilterSearchTokens } from '../../utils/filterSearch';
+import { getStructuralTypeSearchCollections } from './structuralTypeSearch';
 import {
     appendProviderRowsToStandaloneList,
     appendStructuralTypeSearchGroups,
@@ -61,6 +65,26 @@ export function getSelectedTypeSearchSourceScope(
     searchSourcePaths: ReadonlySet<string>
 ): ReadonlySet<string> | undefined {
     return hasSearchQuery ? searchSourcePaths : undefined;
+}
+
+/** Root aggregation uses the complete fixed structural catalog; active search keeps its facet-selected subset. */
+export function resolveMixedStructuralTypeCollections(
+    isVaultRootAggregate: boolean,
+    searchTokens: FilterSearchTokens | null
+): TpsNavigatorLineTypeId[] {
+    if (isVaultRootAggregate) {
+        return TPS_NAVIGATOR_LINE_TYPES.map(descriptor => descriptor.id as TpsNavigatorLineTypeId);
+    }
+    return searchTokens ? getStructuralTypeSearchCollections(searchTokens) : [];
+}
+
+/** Avoid rendering the attached task feed twice when the canonical Checkboxes collection is present at root. */
+export function filterDuplicateRootProviderRows(
+    rows: readonly NavigatorProvidedRow[],
+    rootHasCanonicalCheckboxRows: boolean,
+    duplicateProviderId: string
+): readonly NavigatorProvidedRow[] {
+    return rootHasCanonicalCheckboxRows ? rows.filter(row => row.providerId !== duplicateProviderId) : rows;
 }
 
 interface ComposeTypeListItemsArgs {

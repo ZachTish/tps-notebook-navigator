@@ -19,7 +19,7 @@ export function shouldCollapseMobileDrawerForTypeProviderActivation(selectionTyp
 
 /** The visible vault root is the mixed all-resources scope, not a direct-child folder query. */
 export function isVaultRootResourceScope(
-    selectionType: NavigationItemType | null | undefined,
+    selectionType: ItemType | null | undefined,
     selectedFolderPath: string | null | undefined
 ): boolean {
     return selectionType === ItemType.FOLDER && selectedFolderPath === '/';
@@ -32,7 +32,7 @@ export function resolveIncludeDescendantResources({
     includeDescendants,
     forceWholeVaultSearch = false
 }: {
-    selectionType: NavigationItemType | null | undefined;
+    selectionType: ItemType | null | undefined;
     selectedFolderPath: string | null | undefined;
     includeDescendants: boolean;
     forceWholeVaultSearch?: boolean;
