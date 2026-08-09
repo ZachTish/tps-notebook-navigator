@@ -106,6 +106,14 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.13.0',
+        date: '2026-08-09',
+        new: ['Bases and Canvas Type views now expose New base and New canvas actions.'],
+        changed: [
+            'File-backed Type creation reuses the native folder creation operations, creates in the vault root, opens the result, and starts the normal rename flow.'
+        ]
+    },
+    {
         version: '5.12.1',
         date: '2026-08-09',
         fixed: [

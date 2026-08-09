@@ -113,6 +113,12 @@ import {
     getTpsResourceCreationActionLabel,
     isTpsNavigatorCreatableResourceTypeId
 } from '../services/types/markdownResourceCreation';
+import {
+    createTpsNavigatorFileResource,
+    getTpsFileResourceCreationActionLabel,
+    isTpsNavigatorCreatableFileTypeId
+} from '../services/types/fileResourceCreation';
+import { getInternalPlugin } from '../utils/typeGuards';
 
 type SelectionSortTarget =
     | { type: typeof ItemType.FOLDER; key: string }
@@ -580,8 +586,13 @@ export function useListActions({
         selectionState.selectedType,
         mixedStructuralSearchActive
     );
-    const hasCreatableTypeSelection =
+    const hasCreatableLineTypeSelection =
         selectionState.selectionType === ItemType.TYPE && isTpsNavigatorCreatableResourceTypeId(selectionState.selectedType);
+    const hasCreatableFileTypeSelection =
+        selectionState.selectionType === ItemType.TYPE &&
+        isTpsNavigatorCreatableFileTypeId(selectionState.selectedType) &&
+        (selectionState.selectedType !== TPS_NAVIGATOR_TYPE_IDS.BASES || Boolean(getInternalPlugin(app, 'bases')?.enabled));
+    const hasCreatableTypeSelection = hasCreatableLineTypeSelection || hasCreatableFileTypeSelection;
     const hasCreatablePropertySelection = hasPropertySelection && selectionState.selectedProperty !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID;
     const hasAppearanceOrSortSelection =
         hasFolderSelection || hasTagSelection || hasPropertySelection || hasFileBackedTypeSelection || hasLineBackedTypeSelection;
@@ -598,8 +609,16 @@ export function useListActions({
             ? hasCreatableTypeSelection
             : Boolean(selectionState.selectedFolder) || hasCreatableTagSelection || hasCreatablePropertySelection;
     const newItemLabel = hasCreatableTypeSelection
-        ? (getTpsResourceCreationActionLabel(selectionState.selectedType) ?? strings.paneHeader.newNote)
+        ? (getTpsResourceCreationActionLabel(selectionState.selectedType) ??
+          getTpsFileResourceCreationActionLabel(selectionState.selectedType) ??
+          strings.paneHeader.newNote)
         : strings.paneHeader.newNote;
+    const newItemIcon =
+        selectionState.selectedType === TPS_NAVIGATOR_TYPE_IDS.BASES
+            ? 'lucide-database'
+            : selectionState.selectedType === TPS_NAVIGATOR_TYPE_IDS.CANVAS
+              ? 'lucide-layout-grid'
+              : resolveUXIcon(settings.interfaceIcons, 'list-new-note');
     const getRevealableActiveFile = useCallback((): TFile | null => {
         const activeFile = app.workspace.getActiveFile();
         return activeFile?.parent ? activeFile : null;
@@ -631,7 +650,7 @@ export function useListActions({
     const handleNewFile = useCallback(async () => {
         try {
             const selectedType = selectionState.selectedType;
-            if (hasCreatableTypeSelection && isTpsNavigatorCreatableResourceTypeId(selectedType)) {
+            if (hasCreatableLineTypeSelection && isTpsNavigatorCreatableResourceTypeId(selectedType)) {
                 const createResource = async (taskTitle?: string) => {
                     const result = await createTpsNavigatorResource(
                         app,
@@ -655,6 +674,14 @@ export function useListActions({
                 }
 
                 await createResource();
+                return;
+            }
+
+            if (hasCreatableFileTypeSelection && isTpsNavigatorCreatableFileTypeId(selectedType)) {
+                const createdFile = await createTpsNavigatorFileResource(selectedType, app.vault.getRoot(), fileSystemOps);
+                if (createdFile) {
+                    selectionDispatch({ type: 'SET_SELECTED_FILE', file: createdFile });
+                }
                 return;
             }
 
@@ -695,13 +722,15 @@ export function useListActions({
         selectionState.selectedType,
         hasCreatableTagSelection,
         hasCreatablePropertySelection,
-        hasCreatableTypeSelection,
+        hasCreatableLineTypeSelection,
+        hasCreatableFileTypeSelection,
         settings.createNewNotesInNewTab,
         settings.tpsResourceCreationTarget,
         settings.tpsResourceCreationSpecificFile,
         getManualSortNewFileContext,
         fileSystemOps,
-        app
+        app,
+        selectionDispatch
     ]);
 
     const handleRevealFile = useCallback(async () => {
@@ -2366,6 +2395,7 @@ export function useListActions({
         handleNewFile,
         canCreateNewFile,
         newItemLabel,
+        newItemIcon,
         handleRevealFile,
         canRevealFile,
         handleAppearanceMenu,

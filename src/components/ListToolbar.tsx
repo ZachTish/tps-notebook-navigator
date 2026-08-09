@@ -68,6 +68,7 @@ export function ListToolbar({
         handleNewFile,
         canCreateNewFile,
         newItemLabel,
+        newItemIcon,
         handleRevealFile,
         canRevealFile,
         handleAppearanceMenu,
@@ -215,7 +216,7 @@ export function ListToolbar({
             disabled={!canCreateNewFile}
             tabIndex={-1}
         >
-            <ServiceIcon iconId={resolveUXIcon(settings.interfaceIcons, 'list-new-note')} />
+            <ServiceIcon iconId={newItemIcon} />
         </button>
     ) : null;
 

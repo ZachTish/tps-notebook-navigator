@@ -101,6 +101,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         handleNewFile,
         canCreateNewFile,
         newItemLabel,
+        newItemIcon,
         handleRevealFile,
         canRevealFile,
         handleAppearanceMenu,
@@ -507,7 +508,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                             disabled={actionsDisabled || !canCreateNewFile}
                             tabIndex={-1}
                         >
-                            <ServiceIcon iconId={resolveUXIcon(settings.interfaceIcons, 'list-new-note')} />
+                            <ServiceIcon iconId={newItemIcon} />
                         </button>
                     ) : null}
                 </div>
