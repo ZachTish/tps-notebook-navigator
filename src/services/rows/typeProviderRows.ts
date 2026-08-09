@@ -4,7 +4,7 @@ import type { NavigatorProvidedRow } from './types';
 import type { GcmTaskMenuLike } from '../../integrations/gcm/gcmTaskApi';
 import type { FilterSearchTokens } from '../../utils/filterSearch';
 import { filterSearchMatchesTypeFacet, parseFilterSearchTokens } from '../../utils/filterSearch';
-import { propertyTokenMatches } from '../../utils/filterSearchExpression';
+import { evaluateTagExpression, propertyTokenMatches, tagMatchesToken } from '../../utils/filterSearchExpression';
 import type { LinePropertyInheritance } from '../../hooks/useListPaneAppearance';
 import { casefold, foldSearchText } from '../../utils/recordUtils';
 import {
@@ -125,6 +125,40 @@ function buildRowProperties(
     return Object.keys(properties).length > 0 ? Object.freeze(properties) : undefined;
 }
 
+function getRowLocalTags(task: TpsNavigatorTypeTaskState | undefined, properties: Map<string, string[]>, isTaskRow: boolean): string[] {
+    const values = isTaskRow ? (task?.tags ?? []) : (properties.get('tags') ?? []);
+    return values.map(tag => foldSearchText(tag.replace(/^#+/u, '').trim())).filter(Boolean);
+}
+
+function rowMatchesTagAndPropertyFacets(
+    tokens: FilterSearchTokens,
+    task: TpsNavigatorTypeTaskState | undefined,
+    properties: Map<string, string[]>,
+    isTaskRow: boolean
+): boolean {
+    const tags = getRowLocalTags(task, properties, isTaskRow);
+    if (tokens.mode === 'tag') {
+        return evaluateTagExpression(tokens.expression, tags, properties);
+    }
+
+    if (tokens.excludeTagged && tags.length > 0) {
+        return false;
+    }
+    if (tokens.excludeTagTokens.some(token => tags.some(tag => tagMatchesToken(tag, token)))) {
+        return false;
+    }
+    if (tokens.requireTagged && tags.length === 0) {
+        return false;
+    }
+    if (tokens.tagTokens.some(token => !tags.some(tag => tagMatchesToken(tag, token)))) {
+        return false;
+    }
+    if (tokens.excludePropertyTokens.some(token => propertyTokenMatches(properties, token))) {
+        return false;
+    }
+    return tokens.propertyTokens.every(token => propertyTokenMatches(properties, token));
+}
+
 export function buildTypeProviderRows({
     snapshot,
     selectedType,
@@ -187,7 +221,7 @@ export function buildTypeProviderRows({
             if (!queryTerms.every(term => haystack.includes(term)) || !excludedQueryTerms.every(term => !haystack.includes(term))) {
                 return false;
             }
-            if (!tokens || (tokens.propertyTokens.length === 0 && tokens.excludePropertyTokens.length === 0)) {
+            if (!tokens) {
                 return true;
             }
             const task = record.lineKind === 'task' ? record.task : undefined;
@@ -197,10 +231,7 @@ export function buildTypeProviderRows({
                 getNoteProperties?.(record.sourcePath),
                 linePropertyInheritance
             );
-            return (
-                tokens.propertyTokens.every(token => propertyTokenMatches(effectiveProperties, token)) &&
-                tokens.excludePropertyTokens.every(token => !propertyTokenMatches(effectiveProperties, token))
-            );
+            return rowMatchesTagAndPropertyFacets(tokens, task, effectiveProperties, record.lineKind === 'task');
         })
         .map(record => {
             const task = record.lineKind === 'task' ? record.task : undefined;

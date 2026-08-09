@@ -2,6 +2,7 @@ import { App } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import {
     fileMatchesStructuralTypeSearch,
+    getStructuralLineTypeSourceSearchTokens,
     getStructuralTypeSearchCollections,
     getStructuralTypeSourceSearchTokens,
     isMixedStructuralSearchActive,
@@ -39,6 +40,18 @@ describe('structural Type search helpers', () => {
         const sourceTokens = getStructuralTypeSourceSearchTokens(parseFilterSearchTokens('.status=todo'));
 
         expect(filterSearchHasActiveCriteria(sourceTokens)).toBe(false);
+    });
+
+    it('keeps exact-line tags out of owning-note source filtering', () => {
+        const sourceTokens = getStructuralLineTypeSourceSearchTokens(
+            parseFilterSearchTokens('#hca -#blocked folder:projects type:structural:task')
+        );
+
+        expect(sourceTokens.tagTokens).toEqual([]);
+        expect(sourceTokens.excludeTagTokens).toEqual([]);
+        expect(sourceTokens.requiresTags).toBe(false);
+        expect(sourceTokens.folderTokens).toEqual([{ mode: 'segment', value: 'projects' }]);
+        expect(filterSearchHasActiveCriteria(sourceTokens)).toBe(true);
     });
 
     it('makes a name-and-Type-only query inactive for owning-note metadata filtering', () => {
@@ -106,7 +119,7 @@ describe('structural Type search helpers', () => {
         expect(isMixedStructuralSearchActive({ ...base, enabled: false })).toBe(false);
     });
 
-    it('keeps a normally selected tag as scope while Shift-adding Checkboxes and another tag', () => {
+    it('keeps the navigation scope while enforcing Shift-added tags on each exact task line', () => {
         const app = new App();
         const shoppingAndErrands = createTestTFile('Notes/Store.md');
         const shoppingOnly = createTestTFile('Notes/Wishlist.md');
@@ -122,7 +135,7 @@ describe('structural Type search helpers', () => {
         const withCheckbox = updateFilterQueryWithType('', TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES).query;
         const query = updateFilterQueryWithTag(withCheckbox, 'errands', 'AND').query;
         const tokens = parseFilterSearchTokens(query);
-        const sourceTokens = getStructuralTypeSourceSearchTokens(tokens);
+        const sourceTokens = getStructuralLineTypeSourceSearchTokens(tokens);
         const sourceFiles = filterListPaneFiles({
             app,
             baseFiles: selectedShoppingScope,
@@ -153,7 +166,20 @@ describe('structural Type search helpers', () => {
                         lineKind: 'task' as const,
                         lineNumber: index + 1,
                         locatorKey: `locator-${index}`,
-                        referenceTarget: file.path
+                        referenceTarget: file.path,
+                        task: {
+                            lineNumber: index,
+                            rawLine: `- [ ] Task ${index + 1}`,
+                            title: `Task ${index + 1}`,
+                            checkbox: '[ ]',
+                            marker: ' ',
+                            status: 'todo',
+                            isComplete: false,
+                            tags: index === 1 ? ['errands'] : [],
+                            fields: {},
+                            canMutateCheckbox: true,
+                            hasContextMenu: true
+                        }
                     }))
                 ]
             ]),
@@ -172,7 +198,7 @@ describe('structural Type search helpers', () => {
         });
 
         expect(query).toBe(`type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES} #errands`);
-        expect(sourceFiles).toEqual([shoppingAndErrands]);
-        expect(rows.map(row => row.sourcePath)).toEqual([shoppingAndErrands.path]);
+        expect(sourceFiles).toEqual(selectedShoppingScope);
+        expect(rows.map(row => row.sourcePath)).toEqual([shoppingOnly.path]);
     });
 });

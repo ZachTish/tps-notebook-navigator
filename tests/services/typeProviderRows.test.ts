@@ -272,19 +272,88 @@ describe('buildTypeProviderRows', () => {
         expect(buildRows({ records: [webLink], searchQuery: 'private-fragment' })).toHaveLength(0);
     });
 
-    it('treats Type and owning-note metadata filters as facets instead of literal row text', () => {
-        const shopping = createRecord({ id: 'shopping', label: 'Buy milk', sourcePath: 'Areas/Home.md' });
-        const work = createRecord({ id: 'work', label: 'Buy servers', sourcePath: 'Areas/Work.md' });
+    it('enforces tag facets against authoritative task-local tags instead of the owning note', () => {
+        const taskState = {
+            lineNumber: 0,
+            rawLine: '- [ ] Task',
+            title: 'Task',
+            checkbox: '[ ]',
+            marker: ' ',
+            status: 'todo',
+            isComplete: false,
+            fields: {},
+            canMutateCheckbox: true,
+            hasContextMenu: true
+        } as const;
+        const shopping = createRecord({
+            id: 'shopping',
+            label: 'Buy milk',
+            sourcePath: 'Areas/Home.md',
+            entityType: 'block',
+            lineKind: 'task',
+            task: { ...taskState, tags: ['shopping'] }
+        });
+        const work = createRecord({
+            id: 'work',
+            label: 'Buy servers',
+            sourcePath: 'Areas/Work.md',
+            locatorKey: 'task:work',
+            entityType: 'block',
+            lineKind: 'task',
+            task: { ...taskState, tags: [] }
+        });
         const query = '#shopping type:structural:task';
 
         const rows = buildRows({
             records: [shopping, work],
             searchQuery: query,
             searchTokens: parseFilterSearchTokens(query),
-            allowedSourcePaths: new Set([shopping.sourcePath])
+            allowedSourcePaths: new Set([shopping.sourcePath, work.sourcePath]),
+            getNoteProperties: sourcePath => ({ tags: sourcePath === work.sourcePath ? ['shopping'] : [] }),
+            linePropertyInheritance: 'line-first'
         });
 
         expect(rows.map(row => row.label)).toEqual(['Buy milk']);
+    });
+
+    it('supports nested, negative, and untagged task-local tag facets', () => {
+        const createTask = (id: string, tags: readonly string[]) =>
+            createRecord({
+                id,
+                locatorKey: `task:${id}`,
+                label: id,
+                entityType: 'block',
+                lineKind: 'task',
+                task: {
+                    lineNumber: 0,
+                    rawLine: `- [ ] ${id}`,
+                    title: id,
+                    checkbox: '[ ]',
+                    marker: ' ',
+                    status: 'todo',
+                    isComplete: false,
+                    tags,
+                    fields: {},
+                    canMutateCheckbox: true,
+                    hasContextMenu: true
+                }
+            });
+        const records = [createTask('nested', ['hca/support']), createTask('excluded', ['hca', 'blocked']), createTask('untagged', [])];
+
+        expect(
+            buildRows({
+                records,
+                searchQuery: '#hca -#blocked type:structural:task',
+                searchTokens: parseFilterSearchTokens('#hca -#blocked type:structural:task')
+            }).map(row => row.label)
+        ).toEqual(['nested']);
+        expect(
+            buildRows({
+                records,
+                searchQuery: '-# type:structural:task',
+                searchTokens: parseFilterSearchTokens('-# type:structural:task')
+            }).map(row => row.label)
+        ).toEqual(['untagged']);
     });
 
     it('applies positive and negative row text terms after folding', () => {

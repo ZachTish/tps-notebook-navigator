@@ -81,7 +81,7 @@ import { useProviderRows } from './useProviderRows';
 import { navigatorRowProviderRegistry } from '../services/rows/defaultRegistry';
 import type { NavigatorRowProviderSelection, NavigatorRowScope } from '../services/rows/types';
 import { useGcmEntityTypes } from '../integrations/gcm/useGcmEntityTypes';
-import { filterTpsNavigatorTypesSnapshot, isTpsNavigatorStructuralTypeId } from '../types/navigatorTypes';
+import { filterTpsNavigatorTypesSnapshot, isTpsNavigatorGcmLineTypeId, isTpsNavigatorStructuralTypeId } from '../types/navigatorTypes';
 import { showNotice } from '../utils/noticeUtils';
 import { buildTypeProviderRows } from '../services/rows/typeProviderRows';
 import { collectTypeScopeVisibleFilePaths } from '../services/rows/providerScope';
@@ -105,6 +105,7 @@ import { isVaultRootResourceScope } from '../components/listPane/typeModeRuntime
 import { GCM_TASK_ROW_PROVIDER_ID } from '../integrations/gcm/GcmTaskRowProvider';
 import {
     fileMatchesStructuralTypeSearch,
+    getStructuralLineTypeSourceSearchTokens,
     getStructuralTypeSourceSearchTokens,
     isMixedStructuralSearchActive,
     shouldUseGlobalTypeSearch
@@ -538,6 +539,45 @@ export function useListPaneData({
         () => new Set(structuralSourceFilterResult.map(file => file.path)),
         [structuralSourceFilterResult]
     );
+    const structuralLineSourceSearchTokens = useMemo(
+        () => (parsedSearchTokens ? getStructuralLineTypeSourceSearchTokens(parsedSearchTokens) : null),
+        [parsedSearchTokens]
+    );
+    const structuralLineSourceFilterResult = useMemo(() => {
+        const structuralBaseFiles = isTypeSelection ? visibleTypeFiles : selectionBaseFiles;
+        if (!hasSearchQuery || !structuralLineSourceSearchTokens || !filterSearchHasActiveCriteria(structuralLineSourceSearchTokens)) {
+            return structuralBaseFiles;
+        }
+        return filterListPaneFiles({
+            app,
+            baseFiles: structuralBaseFiles,
+            getDB,
+            getFileTimestamps,
+            omnisearchResult: null,
+            searchTokens: structuralLineSourceSearchTokens,
+            searchableNames: new Map(),
+            settings: filterSettings,
+            sortOption,
+            trimmedQuery,
+            useOmnisearch: false
+        }).files;
+    }, [
+        app,
+        filterSettings,
+        getDB,
+        getFileTimestamps,
+        hasSearchQuery,
+        isTypeSelection,
+        selectionBaseFiles,
+        sortOption,
+        structuralLineSourceSearchTokens,
+        trimmedQuery,
+        visibleTypeFiles
+    ]);
+    const structuralLineSourcePathSet = useMemo(
+        () => new Set(structuralLineSourceFilterResult.map(file => file.path)),
+        [structuralLineSourceFilterResult]
+    );
 
     const filterResult = useMemo(() => {
         return filterListPaneFiles({
@@ -754,7 +794,10 @@ export function useListPaneData({
             // the navigation count. Reapplying a separately memoized path set here can
             // transiently turn a populated Type into an empty list. Search facets still
             // need their narrower owning-note scope.
-            allowedSourcePaths: getSelectedTypeSearchSourceScope(hasSearchQuery, structuralSourcePathSet),
+            allowedSourcePaths: getSelectedTypeSearchSourceScope(
+                hasSearchQuery,
+                isTpsNavigatorGcmLineTypeId(selectedType) ? structuralLineSourcePathSet : structuralSourcePathSet
+            ),
             getNoteProperties: sourcePath => {
                 const file = app.vault.getFileByPath(sourcePath);
                 return file ? app.metadataCache.getFileCache(file)?.frontmatter : undefined;
@@ -786,6 +829,7 @@ export function useListPaneData({
         selectedType,
         setTypeTaskCheckbox,
         parsedSearchTokens,
+        structuralLineSourcePathSet,
         structuralSourcePathSet,
         settings.typeAppearances,
         trimmedQuery,
@@ -883,7 +927,7 @@ export function useListPaneData({
                 selectedType: typeId,
                 searchQuery: trimmedQuery,
                 searchTokens: parsedSearchTokens ?? undefined,
-                allowedSourcePaths: structuralSourcePathSet,
+                allowedSourcePaths: isTpsNavigatorGcmLineTypeId(typeId) ? structuralLineSourcePathSet : structuralSourcePathSet,
                 getNoteProperties: sourcePath => {
                     const file = app.vault.getFileByPath(sourcePath);
                     return file ? app.metadataCache.getFileCache(file)?.frontmatter : undefined;
@@ -940,6 +984,7 @@ export function useListPaneData({
         setTypeTaskCheckbox,
         settings.typeAppearances,
         sortSpec,
+        structuralLineSourcePathSet,
         structuralSourcePathSet,
         trimmedQuery,
         typeSnapshot

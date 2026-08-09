@@ -106,6 +106,14 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.13.1',
+        date: '2026-08-09',
+        fixed: [
+            'Tag filters on exact task, bullet, and heading rows now evaluate the line-local GCM tag list instead of accepting rows merely because their owning note has the tag.',
+            'Exact-line tag filters preserve folder, date, extension, task-state, and navigation scope while supporting nested tags, exclusions, untagged queries, and tag/property expressions.'
+        ]
+    },
+    {
         version: '5.13.0',
         date: '2026-08-09',
         new: ['Bases and Canvas Type views now expose New base and New canvas actions.'],

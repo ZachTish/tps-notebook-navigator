@@ -36,6 +36,34 @@ export function getStructuralTypeSourceSearchTokens(tokens: FilterSearchTokens):
     };
 }
 
+/**
+ * Exact GCM-backed line rows own their tag and property facets. Keep only file-scope criteria here so
+ * a tagged task can match inside an untagged note and an untagged task cannot inherit its note's tags.
+ */
+export function getStructuralLineTypeSourceSearchTokens(tokens: FilterSearchTokens): FilterSearchTokens {
+    const sourceTokens = getStructuralTypeSourceSearchTokens(tokens);
+    const hasInclusions =
+        sourceTokens.folderTokens.length > 0 ||
+        sourceTokens.extensionTokens.length > 0 ||
+        sourceTokens.dateRanges.length > 0 ||
+        sourceTokens.requireUnfinishedTasks;
+
+    return {
+        ...sourceTokens,
+        mode: 'filter',
+        expression: [],
+        hasInclusions,
+        requiresTags: false,
+        allRequireTags: false,
+        includedTagTokens: [],
+        tagTokens: [],
+        requireTagged: false,
+        includeUntagged: false,
+        excludeTagTokens: [],
+        excludeTagged: false
+    };
+}
+
 /** Applies only file-backed Type facets to native file results; line-backed facets are rendered separately. */
 export function fileMatchesStructuralTypeSearch(app: App, file: TFile, tokens: FilterSearchTokens): boolean {
     const matchingFileTypes = tokens.typeTokens.filter(isTpsNavigatorFileTypeId);
