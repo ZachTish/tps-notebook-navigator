@@ -24,9 +24,12 @@ import { getListPaneMeasurements } from '../../src/utils/listPaneMeasurements';
 import { createHiddenTagVisibility } from '../../src/utils/tagPrefixMatcher';
 import type { FileContentChange, IndexedDBStorage } from '../../src/storage/IndexedDBStorage';
 import {
+    applyListViewportResize,
     createRemeasureScheduler,
     getStickyHeaderHeightBeforeIndex,
+    hasListViewportSizeChanged,
     isListRowHeightAffectingContentChange,
+    normalizeListViewportSize,
     type ListRowHeightAffectingContentChangeConfig,
     resolveListFileRowHeightInputs,
     type ListFileRowSizingConfig
@@ -437,6 +440,34 @@ describe('createRemeasureScheduler', () => {
         expect(animationFrameStub.cancelAnimationFrame).toHaveBeenCalledWith(1);
         expect(animationFrameStub.runNextFrame()).toBe(false);
         expect(measure).not.toHaveBeenCalled();
+    });
+});
+
+describe('list viewport resize remeasurement', () => {
+    it('normalizes subpixel sizes and detects a changed usable viewport', () => {
+        const initial = normalizeListViewportSize(312.4, 481.2);
+        const unchanged = normalizeListViewportSize(312.49, 481.4);
+        const expanded = normalizeListViewportSize(312.4, 642.7);
+
+        expect(initial).toEqual({ width: 312, height: 481 });
+        expect(hasListViewportSizeChanged(null, initial)).toBe(true);
+        expect(hasListViewportSizeChanged(initial, unchanged)).toBe(false);
+        expect(hasListViewportSizeChanged(initial, expanded)).toBe(true);
+    });
+
+    it('remeasures only a visible viewport whose rounded size changed', () => {
+        const reportVisibility = vi.fn();
+        const scheduleRemeasure = vi.fn();
+
+        const initial = applyListViewportResize(null, 312.4, 481.2, reportVisibility, scheduleRemeasure);
+        const unchanged = applyListViewportResize(initial, 312.49, 481.4, reportVisibility, scheduleRemeasure);
+        const hidden = applyListViewportResize(unchanged, 312, 0, reportVisibility, scheduleRemeasure);
+        const expanded = applyListViewportResize(hidden, 312, 643, reportVisibility, scheduleRemeasure);
+
+        expect(initial).toEqual({ width: 312, height: 481 });
+        expect(reportVisibility.mock.calls).toEqual([[true], [true], [false], [true]]);
+        expect(scheduleRemeasure).toHaveBeenCalledTimes(2);
+        expect(expanded).toEqual({ width: 312, height: 643 });
     });
 });
 

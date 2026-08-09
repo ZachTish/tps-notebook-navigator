@@ -438,6 +438,39 @@ export function createRemeasureScheduler(measure: () => void): { schedule: () =>
     };
 }
 
+export interface ListViewportSize {
+    width: number;
+    height: number;
+}
+
+export function normalizeListViewportSize(width: number, height: number): ListViewportSize {
+    return {
+        width: Math.max(0, Math.round(width)),
+        height: Math.max(0, Math.round(height))
+    };
+}
+
+export function hasListViewportSizeChanged(previous: ListViewportSize | null, next: ListViewportSize): boolean {
+    return previous === null || previous.width !== next.width || previous.height !== next.height;
+}
+
+export function applyListViewportResize(
+    previous: ListViewportSize | null,
+    width: number,
+    height: number,
+    reportVisibility: (visible: boolean) => void,
+    scheduleRemeasure: () => void
+): ListViewportSize {
+    const nextSize = normalizeListViewportSize(width, height);
+    const sizeChanged = hasListViewportSizeChanged(previous, nextSize);
+    const isVisible = nextSize.width > 0 && nextSize.height > 0;
+    reportVisibility(isVisible);
+    if (isVisible && sizeChanged) {
+        scheduleRemeasure();
+    }
+    return nextSize;
+}
+
 export function getStickyHeaderHeightBeforeIndex(
     listItems: ListPaneItem[],
     index: number,
@@ -630,6 +663,7 @@ export function useListPaneScroll({
     const [scrollContainerEl, setScrollContainerEl] = useState<HTMLDivElement | null>(null);
     const [containerVisible, setContainerVisible] = useState<boolean>(false);
     const containerVisibleRef = useRef(false);
+    const scrollContainerSizeRef = useRef<ListViewportSize | null>(null);
     const onVirtualizerScrollingChangeRef = useRef(onVirtualizerScrollingChange);
     const onScrollContainerVisibilityChangeRef = useRef(onScrollContainerVisibilityChange);
 
@@ -918,10 +952,19 @@ export function useListPaneScroll({
             return;
         }
 
+        const applyViewportSize = (width: number, height: number) => {
+            scrollContainerSizeRef.current = applyListViewportResize(
+                scrollContainerSizeRef.current,
+                width,
+                height,
+                visible => reportContainerVisibility(visible, element),
+                () => remeasureSchedulerRef.current?.schedule()
+            );
+        };
+
         const updateVisibility = () => {
             const rect = element.getBoundingClientRect();
-            const isContainerVisible = rect.width > 0 && rect.height > 0;
-            reportContainerVisibility(isContainerVisible, element);
+            applyViewportSize(rect.width, rect.height);
         };
 
         updateVisibility();
@@ -931,6 +974,8 @@ export function useListPaneScroll({
             window.addEventListener('resize', handleWindowResize);
             return () => {
                 window.removeEventListener('resize', handleWindowResize);
+                scrollContainerSizeRef.current = null;
+                remeasureSchedulerRef.current?.cancel();
             };
         }
 
@@ -939,14 +984,19 @@ export function useListPaneScroll({
             if (!entry) {
                 return;
             }
-            const { width, height } = entry.contentRect;
-            const isContainerVisible = width > 0 && height > 0;
-            reportContainerVisibility(isContainerVisible, element);
+            // TanStack observes the same element, but the pane's own observer may run first.
+            // Remeasure on the next frame so its scrollRect has the final grid-track size before
+            // the virtual range is recalculated and rendered.
+            applyViewportSize(entry.contentRect.width, entry.contentRect.height);
         });
 
         observer.observe(element);
 
-        return () => observer.disconnect();
+        return () => {
+            observer.disconnect();
+            scrollContainerSizeRef.current = null;
+            remeasureSchedulerRef.current?.cancel();
+        };
     }, [enabled, reportContainerVisibility, scrollContainerEl]);
 
     // Container is ready when both the list pane and the physical container are visible

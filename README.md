@@ -178,6 +178,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.14.2 — virtual viewport resize correction
+
+- Fixes the remaining failure after 5.14.1: the outer pane could fill correctly while the virtualizer continued rendering only the rows calculated for its earlier, shorter viewport.
+- Gives the desktop scroll panel and scroller their own definite remaining-height grid track, then observes the actual scroller dimensions and coalesces a virtualizer remeasurement onto the next animation frame after each real size change.
+- Prevents resize loops by comparing rounded width and height, preserves mobile/vertical/single-pane contracts, and adds focused viewport-change and generated-CSS coverage. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.14.1 — stable full-height list viewport
 
 - Replaces the desktop horizontal list pane's partial percentage-height/flex workaround with explicit grid rows for the title/search chrome, scroll panel, optional calendar, and toolbar.

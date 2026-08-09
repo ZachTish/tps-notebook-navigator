@@ -106,6 +106,13 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.14.2',
+        date: '2026-08-09',
+        fixed: [
+            'The desktop list now remeasures its virtual row window after the usable scroll viewport changes, so rows continue rendering through the full pane instead of stopping at the previous height.'
+        ]
+    },
+    {
         version: '5.14.1',
         date: '2026-08-09',
         fixed: [

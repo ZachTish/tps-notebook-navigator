@@ -58,6 +58,18 @@
     grid-row: 2;
     height: 100%;
     min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.nn-split-container.nn-desktop.nn-orientation-horizontal .nn-list-pane > .nn-list-pane-panel > .nn-list-pane-scroller {
+    grid-row: 1;
+    height: 100%;
+    min-height: 0;
+}
+
+.nn-split-container.nn-desktop.nn-orientation-horizontal .nn-list-pane > .nn-list-pane-panel > .nn-pane-bottom-toolbar {
+    grid-row: 2;
 }
 
 .nn-split-container.nn-desktop.nn-orientation-horizontal .nn-list-pane > .nn-navigation-calendar-overlay {

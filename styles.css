@@ -689,6 +689,24 @@ body {
     grid-row: 2;
     height: 100%;
     min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal
+    .tps-nn-list-pane
+    > .tps-nn-list-pane-panel
+    > .tps-nn-list-pane-scroller {
+    grid-row: 1;
+    height: 100%;
+    min-height: 0;
+}
+
+.tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal
+    .tps-nn-list-pane
+    > .tps-nn-list-pane-panel
+    > .tps-nn-pane-bottom-toolbar {
+    grid-row: 2;
 }
 
 .tps-nn-split-container.tps-nn-desktop.tps-nn-orientation-horizontal .tps-nn-list-pane > .tps-nn-navigation-calendar-overlay {
