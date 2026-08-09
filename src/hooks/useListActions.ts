@@ -118,6 +118,7 @@ import {
     getTpsFileResourceCreationActionLabel,
     isTpsNavigatorCreatableFileTypeId
 } from '../services/types/fileResourceCreation';
+import { resolveSearchResourceCreation } from '../services/types/searchResourceCreation';
 import { getInternalPlugin } from '../utils/typeGuards';
 
 type SelectionSortTarget =
@@ -147,6 +148,8 @@ interface UseListActionsOptions {
     getManualSortNewFileContext?: () => ManualSortNewFilePlacementContext | null;
     trackRevealFileAvailability?: boolean;
     mixedStructuralSearchActive?: boolean;
+    creationSearchQuery?: string;
+    creationSearchSupported?: boolean;
 }
 
 const BIDI_ISOLATE_START = '\u2068'; // First Strong Isolate
@@ -552,7 +555,9 @@ export function useListActions({
     onManualSortStart,
     getManualSortNewFileContext,
     trackRevealFileAvailability = false,
-    mixedStructuralSearchActive = false
+    mixedStructuralSearchActive = false,
+    creationSearchQuery = '',
+    creationSearchSupported = true
 }: UseListActionsOptions = {}) {
     const { app, plugin, tagTreeService, propertyTreeService } = useServices();
     const settings = useSettingsState();
@@ -593,6 +598,21 @@ export function useListActions({
         isTpsNavigatorCreatableFileTypeId(selectionState.selectedType) &&
         (selectionState.selectedType !== TPS_NAVIGATOR_TYPE_IDS.BASES || Boolean(getInternalPlugin(app, 'bases')?.enabled));
     const hasCreatableTypeSelection = hasCreatableLineTypeSelection || hasCreatableFileTypeSelection;
+    const activeCreationSearchQuery = creationSearchQuery.trim();
+    const searchCreationResolution = useMemo(
+        () =>
+            activeCreationSearchQuery
+                ? creationSearchSupported
+                    ? resolveSearchResourceCreation(activeCreationSearchQuery)
+                    : { ok: false as const, reason: 'New item unavailable: this search provider cannot guarantee a matching item.' }
+                : null,
+        [activeCreationSearchQuery, creationSearchSupported]
+    );
+    const searchCreationPlan = searchCreationResolution?.ok ? searchCreationResolution : null;
+    const canCreateFromSearch = Boolean(
+        searchCreationPlan &&
+        (searchCreationPlan.typeId !== TPS_NAVIGATOR_TYPE_IDS.BASES || Boolean(getInternalPlugin(app, 'bases')?.enabled))
+    );
     const hasCreatablePropertySelection = hasPropertySelection && selectionState.selectedProperty !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID;
     const hasAppearanceOrSortSelection =
         hasFolderSelection || hasTagSelection || hasPropertySelection || hasFileBackedTypeSelection || hasLineBackedTypeSelection;
@@ -604,19 +624,26 @@ export function useListActions({
     const openDefaultListAppearanceSettings = useCallback(() => {
         plugin.openSettings();
     }, [plugin]);
-    const canCreateNewFile =
-        selectionState.selectionType === ItemType.TYPE
-            ? hasCreatableTypeSelection
-            : Boolean(selectionState.selectedFolder) || hasCreatableTagSelection || hasCreatablePropertySelection;
-    const newItemLabel = hasCreatableTypeSelection
-        ? (getTpsResourceCreationActionLabel(selectionState.selectedType) ??
-          getTpsFileResourceCreationActionLabel(selectionState.selectedType) ??
-          strings.paneHeader.newNote)
-        : strings.paneHeader.newNote;
+    const canCreateNewFile = activeCreationSearchQuery
+        ? canCreateFromSearch
+        : selectionState.selectionType === ItemType.TYPE
+          ? hasCreatableTypeSelection
+          : Boolean(selectionState.selectedFolder) || hasCreatableTagSelection || hasCreatablePropertySelection;
+    const effectiveCreationType = searchCreationPlan?.typeId ?? selectionState.selectedType;
+    const typeCreationLabel =
+        getTpsResourceCreationActionLabel(effectiveCreationType) ?? getTpsFileResourceCreationActionLabel(effectiveCreationType);
+    const newItemLabel = searchCreationPlan
+        ? (typeCreationLabel?.replace(/^New /u, 'New matching ') ?? 'New matching item')
+        : activeCreationSearchQuery && searchCreationResolution && !searchCreationResolution.ok
+          ? searchCreationResolution.reason
+          : hasCreatableTypeSelection
+            ? (typeCreationLabel ?? strings.paneHeader.newNote)
+            : strings.paneHeader.newNote;
+    const newItemTooltip = newItemLabel;
     const newItemIcon =
-        selectionState.selectedType === TPS_NAVIGATOR_TYPE_IDS.BASES
+        effectiveCreationType === TPS_NAVIGATOR_TYPE_IDS.BASES
             ? 'lucide-database'
-            : selectionState.selectedType === TPS_NAVIGATOR_TYPE_IDS.CANVAS
+            : effectiveCreationType === TPS_NAVIGATOR_TYPE_IDS.CANVAS
               ? 'lucide-layout-grid'
               : resolveUXIcon(settings.interfaceIcons, 'list-new-note');
     const getRevealableActiveFile = useCallback((): TFile | null => {
@@ -650,23 +677,38 @@ export function useListActions({
     const handleNewFile = useCallback(async () => {
         try {
             const selectedType = selectionState.selectedType;
-            if (hasCreatableLineTypeSelection && isTpsNavigatorCreatableResourceTypeId(selectedType)) {
+            const lineCreationType =
+                searchCreationPlan && isTpsNavigatorCreatableResourceTypeId(searchCreationPlan.typeId)
+                    ? searchCreationPlan.typeId
+                    : hasCreatableLineTypeSelection && isTpsNavigatorCreatableResourceTypeId(selectedType)
+                      ? selectedType
+                      : null;
+            if (lineCreationType) {
                 const createResource = async (taskTitle?: string) => {
                     const result = await createTpsNavigatorResource(
                         app,
-                        selectedType,
+                        lineCreationType,
                         {
                             target: settings.tpsResourceCreationTarget,
                             specificFile: settings.tpsResourceCreationSpecificFile
                         },
-                        { taskTitle }
+                        {
+                            taskTitle,
+                            ...(searchCreationPlan
+                                ? {
+                                      taskTags: searchCreationPlan.tags,
+                                      taskFields: searchCreationPlan.fields,
+                                      taskStatus: searchCreationPlan.status
+                                  }
+                                : {})
+                        }
                     );
                     if (!result.ok) {
                         showNotice(result.message, { variant: 'warning' });
                     }
                 };
 
-                if (selectedType === TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES) {
+                if (lineCreationType === TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES) {
                     new InputModal(app, 'New checkbox', 'Task title', value => createResource(value), '', {
                         submitButtonText: 'Create'
                     }).open();
@@ -677,11 +719,21 @@ export function useListActions({
                 return;
             }
 
-            if (hasCreatableFileTypeSelection && isTpsNavigatorCreatableFileTypeId(selectedType)) {
-                const createdFile = await createTpsNavigatorFileResource(selectedType, app.vault.getRoot(), fileSystemOps);
+            const fileCreationType =
+                searchCreationPlan && isTpsNavigatorCreatableFileTypeId(searchCreationPlan.typeId)
+                    ? searchCreationPlan.typeId
+                    : hasCreatableFileTypeSelection && isTpsNavigatorCreatableFileTypeId(selectedType)
+                      ? selectedType
+                      : null;
+            if (fileCreationType) {
+                const createdFile = await createTpsNavigatorFileResource(fileCreationType, app.vault.getRoot(), fileSystemOps);
                 if (createdFile) {
                     selectionDispatch({ type: 'SET_SELECTED_FILE', file: createdFile });
                 }
+                return;
+            }
+
+            if (activeCreationSearchQuery) {
                 return;
             }
 
@@ -724,6 +776,8 @@ export function useListActions({
         hasCreatablePropertySelection,
         hasCreatableLineTypeSelection,
         hasCreatableFileTypeSelection,
+        activeCreationSearchQuery,
+        searchCreationPlan,
         settings.createNewNotesInNewTab,
         settings.tpsResourceCreationTarget,
         settings.tpsResourceCreationSpecificFile,
@@ -2395,7 +2449,9 @@ export function useListActions({
         handleNewFile,
         canCreateNewFile,
         newItemLabel,
+        newItemTooltip,
         newItemIcon,
+        hasActiveCreationSearch: Boolean(activeCreationSearchQuery),
         handleRevealFile,
         canRevealFile,
         handleAppearanceMenu,

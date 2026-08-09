@@ -185,12 +185,18 @@ describe('TPS Markdown resource creation', () => {
 
         await expect(
             createTpsNavigatorResource(context.app, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, SPECIFIC_TARGET, {
-                taskTitle: '  Ship   release  '
+                taskTitle: '  Ship   release  ',
+                taskTags: ['hca', 'idea'],
+                taskFields: { priority: 'high' },
+                taskStatus: 'todo'
             })
         ).resolves.toMatchObject({ ok: true, file: context.file, lineNumber: 5 });
         expect(create).toHaveBeenCalledWith({
             title: 'Ship release',
             targetFile: context.file,
+            tags: ['hca', 'idea'],
+            fields: { priority: 'high' },
+            status: 'todo',
             placement: 'end',
             focus: true,
             notice: true

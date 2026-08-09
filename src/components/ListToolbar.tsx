@@ -42,6 +42,8 @@ interface ListToolbarProps {
     shouldCollapseGroups: boolean;
     onToggleGroupExpansion: () => boolean;
     mixedStructuralSearchActive?: boolean;
+    creationSearchQuery?: string;
+    creationSearchSupported?: boolean;
     useFloatingLayout?: boolean;
 }
 
@@ -54,6 +56,8 @@ export function ListToolbar({
     shouldCollapseGroups,
     onToggleGroupExpansion,
     mixedStructuralSearchActive = false,
+    creationSearchQuery = '',
+    creationSearchSupported = true,
     useFloatingLayout = false
 }: ListToolbarProps) {
     const uxPreferences = useUXPreferences();
@@ -68,7 +72,9 @@ export function ListToolbar({
         handleNewFile,
         canCreateNewFile,
         newItemLabel,
+        newItemTooltip,
         newItemIcon,
+        hasActiveCreationSearch,
         handleRevealFile,
         canRevealFile,
         handleAppearanceMenu,
@@ -83,7 +89,9 @@ export function ListToolbar({
         onManualSortStart,
         getManualSortNewFileContext,
         trackRevealFileAvailability: showRevealButton,
-        mixedStructuralSearchActive
+        mixedStructuralSearchActive,
+        creationSearchQuery,
+        creationSearchSupported
     });
 
     const isTypeSelection = selectionState.selectionType === ItemType.TYPE && Boolean(selectionState.selectedType);
@@ -102,7 +110,12 @@ export function ListToolbar({
     const showGroupExpansionButton = supportsListSortAndGrouping && listVisibility.groupExpansion;
     const showSortButton = supportsListSortAndGrouping && listVisibility.sort;
     const showAppearanceButton = supportsNativeListPresentation && listVisibility.appearance;
-    const showNewNoteButton = shouldShowListCreateButton(selectionState.selectionType, canCreateNewFile, listVisibility.newNote);
+    const showNewNoteButton = shouldShowListCreateButton(
+        selectionState.selectionType,
+        canCreateNewFile,
+        listVisibility.newNote,
+        hasActiveCreationSearch
+    );
     const showEffectiveRevealButton = !isTypeSelection && showRevealButton;
     const hasNavigationSelection = Boolean(
         selectionState.selectedFolder || selectionState.selectedTag || selectionState.selectedProperty || selectionState.selectedType
@@ -210,6 +223,7 @@ export function ListToolbar({
             key="new-note"
             className="nn-mobile-toolbar-button nn-mobile-toolbar-button-circle"
             aria-label={newItemLabel}
+            title={newItemTooltip}
             onClick={() => {
                 runAsyncAction(() => handleNewFile());
             }}

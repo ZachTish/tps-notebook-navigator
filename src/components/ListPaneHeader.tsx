@@ -54,6 +54,8 @@ interface ListPaneHeaderProps {
     shouldCollapseGroups: boolean;
     onToggleGroupExpansion: () => boolean;
     mixedStructuralSearchActive?: boolean;
+    creationSearchQuery?: string;
+    creationSearchSupported?: boolean;
     actionsDisabled?: boolean;
     desktopTitle: string;
     breadcrumbSegments: BreadcrumbSegment[];
@@ -71,6 +73,8 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     shouldCollapseGroups,
     onToggleGroupExpansion,
     mixedStructuralSearchActive = false,
+    creationSearchQuery = '',
+    creationSearchSupported = true,
     actionsDisabled = false,
     desktopTitle,
     breadcrumbSegments,
@@ -101,7 +105,9 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         handleNewFile,
         canCreateNewFile,
         newItemLabel,
+        newItemTooltip,
         newItemIcon,
+        hasActiveCreationSearch,
         handleRevealFile,
         canRevealFile,
         handleAppearanceMenu,
@@ -116,7 +122,9 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         onManualSortStart,
         getManualSortNewFileContext,
         trackRevealFileAvailability: !useMobileChrome && showRevealButton,
-        mixedStructuralSearchActive
+        mixedStructuralSearchActive,
+        creationSearchQuery,
+        creationSearchSupported
     });
     const showBackButton = listToolbarVisibility.back && uiState.singlePane;
     const isTypeSelection = selectionState.selectionType === ItemType.TYPE && Boolean(selectionState.selectedType);
@@ -135,7 +143,12 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     const showGroupExpansionButton = supportsListSortAndGrouping && listToolbarVisibility.groupExpansion;
     const showSortButton = supportsListSortAndGrouping && listToolbarVisibility.sort;
     const showAppearanceButton = supportsNativeListPresentation && listToolbarVisibility.appearance;
-    const showNewNoteButton = shouldShowListCreateButton(selectionState.selectionType, canCreateNewFile, listToolbarVisibility.newNote);
+    const showNewNoteButton = shouldShowListCreateButton(
+        selectionState.selectionType,
+        canCreateNewFile,
+        listToolbarVisibility.newNote,
+        hasActiveCreationSearch
+    );
     const showEffectiveRevealButton = !isTypeSelection && showRevealButton;
     const hasNavigationSelection = Boolean(
         selectionState.selectedFolder || selectionState.selectedTag || selectionState.selectedProperty || selectionState.selectedType
@@ -502,6 +515,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                         <button
                             className="nn-icon-button"
                             aria-label={newItemLabel}
+                            title={newItemTooltip}
                             onClick={() => {
                                 runAsyncAction(() => handleNewFile());
                             }}

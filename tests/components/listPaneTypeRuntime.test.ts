@@ -130,6 +130,7 @@ describe('Type-mode list runtime behavior', () => {
         expect(shouldShowListCreateButton(ItemType.TYPE, false, true)).toBe(false);
         expect(shouldShowListCreateButton(ItemType.FOLDER, false, true)).toBe(true);
         expect(shouldShowListCreateButton(ItemType.TAG, false, true)).toBe(true);
+        expect(shouldShowListCreateButton(ItemType.TYPE, false, true, true)).toBe(true);
         expect(shouldShowListCreateButton(ItemType.TYPE, true, false)).toBe(false);
     });
 

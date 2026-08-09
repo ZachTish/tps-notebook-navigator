@@ -293,6 +293,8 @@ interface ListPaneTitleChromeProps {
     shouldCollapseGroups: boolean;
     onToggleGroupExpansion: () => boolean;
     mixedStructuralSearchActive: boolean;
+    creationSearchQuery?: string;
+    creationSearchSupported?: boolean;
     actionsDisabled?: boolean;
     shouldShowDesktopTitleArea: boolean;
     children: React.ReactNode;
@@ -308,6 +310,8 @@ function ListPaneTitleChrome({
     shouldCollapseGroups,
     onToggleGroupExpansion,
     mixedStructuralSearchActive,
+    creationSearchQuery,
+    creationSearchSupported,
     actionsDisabled,
     shouldShowDesktopTitleArea,
     children
@@ -325,6 +329,8 @@ function ListPaneTitleChrome({
                 shouldCollapseGroups={shouldCollapseGroups}
                 onToggleGroupExpansion={onToggleGroupExpansion}
                 mixedStructuralSearchActive={mixedStructuralSearchActive}
+                creationSearchQuery={creationSearchQuery}
+                creationSearchSupported={creationSearchSupported}
                 actionsDisabled={actionsDisabled}
                 desktopTitle={desktopTitle}
                 breadcrumbSegments={breadcrumbSegments}
@@ -1973,6 +1979,8 @@ export const ListPane = React.memo(
                     shouldCollapseGroups={listGroupExpansionToggleState.shouldCollapse}
                     onToggleGroupExpansion={toggleGroupExpansion}
                     mixedStructuralSearchActive={mixedStructuralSearchActive}
+                    creationSearchQuery={isSearchActive ? searchQuery : ''}
+                    creationSearchSupported={searchProvider === 'internal'}
                     useFloatingLayout={shouldUseFloatingToolbars}
                 />
             );
@@ -1984,6 +1992,8 @@ export const ListPane = React.memo(
             listGroupExpansionToggleState.canToggle,
             listGroupExpansionToggleState.shouldCollapse,
             mixedStructuralSearchActive,
+            searchQuery,
+            searchProvider,
             shouldUseFloatingToolbars,
             toggleGroupExpansion
         ]);
@@ -2149,6 +2159,8 @@ export const ListPane = React.memo(
                         shouldCollapseGroups={listGroupExpansionToggleState.shouldCollapse}
                         onToggleGroupExpansion={toggleGroupExpansion}
                         mixedStructuralSearchActive={mixedStructuralSearchActive}
+                        creationSearchQuery={isSearchActive ? searchQuery : ''}
+                        creationSearchSupported={searchProvider === 'internal'}
                         actionsDisabled={isManualSortEditActive}
                         shouldShowDesktopTitleArea={shouldShowDesktopTitleArea}
                     >

@@ -213,7 +213,12 @@ export async function createTpsNavigatorResource(
     app: App,
     typeId: TpsNavigatorTypeId,
     targetSettings: TpsResourceCreationTargetSettings,
-    options: { taskTitle?: string } = {}
+    options: {
+        taskTitle?: string;
+        taskTags?: readonly string[];
+        taskFields?: Readonly<Record<string, string>>;
+        taskStatus?: string;
+    } = {}
 ): Promise<TpsResourceCreationResult> {
     const descriptor = getDescriptor(typeId);
     if (!descriptor) {
@@ -253,6 +258,9 @@ export async function createTpsNavigatorResource(
             result = await taskApi.create({
                 title: taskTitle,
                 targetFile: target,
+                ...(options.taskTags?.length ? { tags: [...options.taskTags] } : {}),
+                ...(options.taskFields && Object.keys(options.taskFields).length > 0 ? { fields: { ...options.taskFields } } : {}),
+                ...(options.taskStatus ? { status: options.taskStatus } : {}),
                 placement: 'end',
                 focus: true,
                 notice: true

@@ -106,6 +106,17 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.14.0',
+        date: '2026-08-09',
+        new: [
+            'Constructible Filter Searches expose a New matching item action when one supported Type and every positive requirement can be applied deterministically.'
+        ],
+        changed: [
+            'A nonempty search now overrides navigation-selection creation. Ambiguous searches keep the action disabled instead of falling through to unrelated note creation.',
+            'Matching checkbox creation applies required task-local tags, exact inline fields, and canonical status through the GCM task API.'
+        ]
+    },
+    {
         version: '5.13.1',
         date: '2026-08-09',
         fixed: [

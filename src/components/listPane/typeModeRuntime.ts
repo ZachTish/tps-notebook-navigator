@@ -92,13 +92,15 @@ export function supportsDayPropertyGroupingForSelection(
 }
 
 /**
- * Ordinary scopes retain the existing (possibly disabled) New note control.
- * Type scopes expose it only when the selected Type has a real create action.
+ * Ordinary scopes retain the existing (possibly disabled) New note control. Type scopes expose it only
+ * when the selected Type has a real create action, except that an active search keeps the disabled control
+ * visible so its constructibility reason remains discoverable.
  */
 export function shouldShowListCreateButton(
     selectionType: NavigationItemType | null,
     canCreateSelectedItem: boolean,
-    settingVisible: boolean
+    settingVisible: boolean,
+    hasActiveCreationSearch = false
 ): boolean {
-    return settingVisible && (selectionType !== ItemType.TYPE || canCreateSelectedItem);
+    return settingVisible && (hasActiveCreationSearch || selectionType !== ItemType.TYPE || canCreateSelectedItem);
 }
