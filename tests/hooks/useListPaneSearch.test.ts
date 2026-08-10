@@ -21,12 +21,13 @@ import { App, TFolder } from 'obsidian';
 import { ShortcutStartType } from '../../src/types/shortcuts';
 import {
     getSearchActivationQuery,
+    getTypeFacetQueryWithNavigationSelection,
     includeNavigationSelectionInSearchQuery,
     resolveSearchShortcutStartFolderPath
 } from '../../src/hooks/useListPaneSearch';
 import { ItemType, UNTAGGED_TAG_ID } from '../../src/types';
 import { buildPropertyValueNodeId } from '../../src/utils/propertyTree';
-import { updateFilterQueryWithTag } from '../../src/utils/filterSearch';
+import { updateFilterQueryWithTag, updateFilterQueryWithType } from '../../src/utils/filterSearch';
 import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 interface TestVaultRegistration {
@@ -92,6 +93,19 @@ describe('search-bar navigation source of truth', () => {
 
         expect(includeNavigationSelectionInSearchQuery('type:structural:task', selection)).toBe('type:structural:task -#');
         expect(includeNavigationSelectionInSearchQuery('type:structural:task -#', selection)).toBe('type:structural:task -#');
+    });
+
+    it('keeps a selected tag as the source scope when adding an exact-line Type facet', () => {
+        const selection = {
+            selectionType: ItemType.TAG,
+            selectedTag: 'projects/active',
+            selectedProperty: null,
+            selectedType: null
+        } as const;
+
+        const baseQuery = getTypeFacetQueryWithNavigationSelection('', selection);
+        expect(baseQuery).toBe('');
+        expect(updateFilterQueryWithType(baseQuery, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES).query).toBe('type:structural:task');
     });
 
     it('includes the selected Checkboxes Type before adding a tag facet', () => {

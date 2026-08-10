@@ -103,6 +103,15 @@ export function includeNavigationSelectionInSearchQuery(query: string, selection
     return query.trim();
 }
 
+/**
+ * A selected navigation tag already constrains the source-file scope. Keeping it out of a Type
+ * query is important for exact-line Types, whose explicit `#tag` filters intentionally match
+ * row-local tags rather than tags on the owning note.
+ */
+export function getTypeFacetQueryWithNavigationSelection(query: string, selection: SearchTruthSelection): string {
+    return selection.selectionType === ItemType.TAG ? query.trim() : includeNavigationSelectionInSearchQuery(query, selection);
+}
+
 /** Makes the query shown when Search opens fully describe the active navigation scope. */
 export function getSearchActivationQuery(query: string, selection: SearchTruthSelection): string {
     return includeNavigationSelectionInSearchQuery(query, selection);
@@ -556,12 +565,7 @@ export function useListPaneSearch({
             }
 
             updateSearchQuery(query => {
-                const queryWithVisibleSelection = includeNavigationSelectionInSearchQuery(query, {
-                    selectionType: selectionState.selectionType,
-                    selectedTag: selectionState.selectedTag,
-                    selectedProperty: selectionState.selectedProperty,
-                    selectedType: selectionState.selectedType
-                });
+                const queryWithVisibleSelection = getTypeFacetQueryWithNavigationSelection(query, selectionState);
                 const selectedType = selectionState.selectionType === ItemType.TYPE ? selectionState.selectedType : null;
                 return updateFilterQueryWithTypeSelection(queryWithVisibleSelection, typeId, selectedType).query;
             }, options);

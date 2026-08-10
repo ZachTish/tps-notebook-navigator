@@ -180,6 +180,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.15.1 — Tag-scoped Type filtering
+
+- Fixes Shift-clicking a built-in Type after selecting a tag. The selected tag now remains the owning-note scope while the Type becomes a search facet, so Type rows such as Checkboxes include untagged task lines inside tagged notes.
+- Explicit tag filters in a search continue to apply to individual line rows; only the active navigation tag keeps its normal note-level scoping behavior. Minimum supported Obsidian remains 1.11.0.
+- Focused navigation/search coverage and the full 236-file / 2,697-test suite passed, alongside TypeScript, ESLint, Prettier, Stylelint, locale, namespace, operational-identity, and artifact gates. The production-mode build deployed only to the isolated test-vault runtime, which Hot Reload reloaded. With `dailynote` selected, the test-vault query `type:structural:task` showed the task from `Inbox/Daily/2026-08-02.md` beneath Checkboxes. Production was not accessed.
+
 ### 5.15.0 — Notebook Navigator 3.3.3 sync
 
 - Integrates public upstream Notebook Navigator 3.3.3 (`7ae7db62`): per-location file-tag/property/task-progress/text-count appearance controls, configurable unfinished-task icons, calendar outside-month days, safer property creation, renamed-view/calendar fixes, and localized settings refinements.

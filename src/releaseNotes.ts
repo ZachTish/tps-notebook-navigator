@@ -107,6 +107,13 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.15.1',
+        date: '2026-08-10',
+        fixed: [
+            'Shift-clicking a built-in Type after selecting a tag now keeps that tag as the owning-note scope. Line-based results such as Checkboxes include tasks from tagged notes even when the task line has no tag of its own.'
+        ]
+    },
+    {
         version: '5.15.0',
         date: '2026-08-10',
         showOnUpdate: true,

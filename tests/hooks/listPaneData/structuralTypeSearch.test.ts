@@ -8,6 +8,7 @@ import {
     isMixedStructuralSearchActive,
     shouldUseGlobalTypeSearch
 } from '../../../src/hooks/listPaneData/structuralTypeSearch';
+import { getTypeFacetQueryWithNavigationSelection } from '../../../src/hooks/useListPaneSearch';
 import { filterListPaneFiles } from '../../../src/hooks/listPaneData/searchPipeline';
 import { buildTypeProviderRows } from '../../../src/services/rows/typeProviderRows';
 import type { IndexedDBStorage } from '../../../src/storage/IndexedDBStorage';
@@ -200,5 +201,87 @@ describe('structural Type search helpers', () => {
         expect(query).toBe(`type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES} #errands`);
         expect(sourceFiles).toEqual(selectedShoppingScope);
         expect(rows.map(row => row.sourcePath)).toEqual([shoppingOnly.path]);
+    });
+
+    it('keeps an untagged task in the selected tag scope when Shift-adding an exact-line Type', () => {
+        const app = new App();
+        const taggedNote = createTestTFile('Notes/Project.md');
+        const selectedTagScope = [taggedNote];
+        const query = updateFilterQueryWithType(
+            getTypeFacetQueryWithNavigationSelection('', {
+                selectionType: 'tag',
+                selectedTag: 'projects/active',
+                selectedProperty: null,
+                selectedType: null
+            }),
+            TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
+        ).query;
+        const tokens = parseFilterSearchTokens(query);
+        const sourceTokens = getStructuralLineTypeSourceSearchTokens(tokens);
+        const sourceFiles = filterListPaneFiles({
+            app,
+            baseFiles: selectedTagScope,
+            getDB: () => ({ getFile: () => ({ tags: ['projects/active'] }) }) as unknown as IndexedDBStorage,
+            getFileTimestamps: () => ({ created: 0, modified: 0 }),
+            omnisearchResult: null,
+            searchTokens: sourceTokens,
+            searchableNames: new Map(),
+            settings: { alphabeticalDateMode: 'modified' },
+            sortOption: 'title-asc',
+            trimmedQuery: query,
+            useOmnisearch: false
+        }).files;
+        const snapshot: TpsNavigatorTypesSnapshot = {
+            availability: 'ready',
+            lineAvailability: 'ready',
+            descriptors: [],
+            recordsByType: new Map([
+                [
+                    TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
+                    [
+                        {
+                            id: 'task-1',
+                            typeId: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
+                            label: 'Unlabeled task',
+                            sourcePath: taggedNote.path,
+                            entityType: 'block' as const,
+                            lineKind: 'task' as const,
+                            lineNumber: 1,
+                            locatorKey: 'task-1',
+                            referenceTarget: taggedNote.path,
+                            task: {
+                                lineNumber: 0,
+                                rawLine: '- [ ] Unlabeled task',
+                                title: 'Unlabeled task',
+                                checkbox: '[ ]',
+                                marker: ' ',
+                                status: 'todo',
+                                isComplete: false,
+                                tags: [],
+                                fields: {},
+                                canMutateCheckbox: true,
+                                hasContextMenu: true
+                            }
+                        }
+                    ]
+                ]
+            ]),
+            revision: 1
+        };
+        const rows = buildTypeProviderRows({
+            snapshot,
+            selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
+            searchQuery: query,
+            searchTokens: tokens,
+            allowedSourcePaths: new Set(sourceFiles.map(file => file.path)),
+            activate: async () => ({ ok: true }),
+            setTaskCheckbox: async () => ({ ok: true }),
+            addTaskContextMenuItems: () => false,
+            onActivationFailure: () => undefined
+        });
+
+        expect(query).toBe(`type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES}`);
+        expect(sourceFiles).toEqual(selectedTagScope);
+        expect(rows.map(row => row.sourcePath)).toEqual([taggedNote.path]);
     });
 });
