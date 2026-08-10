@@ -106,6 +106,16 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.14.6',
+        date: '2026-08-10',
+        changed: [
+            'Custom-path daily calendar notes now inherit the enabled Core Daily Notes template when no Notebook Navigator daily template override is selected; an explicit Notebook Navigator template still wins.'
+        ],
+        fixed: [
+            'Automatic daily-note creation now recovers the durably saved Daily Notes template during Core startup, renders target-date variables before file creation, and refuses a configured template that cannot be resolved instead of leaving a blank note.'
+        ]
+    },
+    {
         version: '5.14.5',
         date: '2026-08-10',
         fixed: [

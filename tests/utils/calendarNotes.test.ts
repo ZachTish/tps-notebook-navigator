@@ -17,9 +17,15 @@
  */
 
 import { App, Plugin, TFile } from 'obsidian';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TEMPLATER_PLUGIN_ID } from '../../src/constants/pluginIds';
-import { createCalendarMarkdownFile } from '../../src/utils/calendarNotes';
+import {
+    createCalendarMarkdownFile,
+    resolveCalendarTemplateSelection,
+    type CalendarTemplateSelection
+} from '../../src/utils/calendarNotes';
+import type { NotebookNavigatorSettings } from '../../src/settings/types';
+import { resetMomentApiCacheForTests, type MomentApi, type MomentInstance, type MomentLocaleData } from '../../src/utils/moment';
 import { createTestTFile } from './createTestTFile';
 
 interface TestVaultMethods {
@@ -67,7 +73,92 @@ function registerTemplater(app: App, createNoteFromTemplate: TestTemplaterCreate
     };
 }
 
+function createTemplateMoment(): MomentInstance {
+    const localeData: MomentLocaleData = {
+        firstDayOfWeek: () => 0,
+        weekdaysMin: () => [],
+        weekdaysShort: () => []
+    };
+    const value: MomentInstance = {
+        clone: () => createTemplateMoment(),
+        format: format => {
+            if (format === 'YYYY-MM-DD') return '2026-08-10';
+            if (format === 'YYYY/MM/DD') return '2026/08/10';
+            if (format === 'HH:mm') return '00:00';
+            return format ?? '';
+        },
+        isValid: () => true,
+        locale: () => value,
+        localeData: () => localeData,
+        startOf: () => value,
+        endOf: () => value,
+        add: () => value,
+        subtract: () => value,
+        diff: () => 0,
+        week: () => 33,
+        weekYear: () => 2026,
+        isoWeek: () => 33,
+        isoWeekYear: () => 2026,
+        month: () => 7,
+        year: () => 2026,
+        date: () => 10,
+        set: () => value,
+        get: () => 0,
+        toDate: () => new Date('2026-08-10T00:00:00Z')
+    };
+    return value;
+}
+
+function installTemplateMoment(): void {
+    const momentApi = (() => createTemplateMoment()) as MomentApi;
+    momentApi.locales = () => ['en'];
+    momentApi.locale = () => 'en';
+    momentApi.fn = {};
+    momentApi.utc = () => ({});
+    vi.stubGlobal('window', { moment: momentApi });
+    resetMomentApiCacheForTests();
+}
+
 describe('calendar note creation', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        resetMomentApiCacheForTests();
+    });
+
+    it('inherits the saved Core Daily Notes template for custom daily paths', async () => {
+        const app = new App();
+        Object.assign(app, {
+            internalPlugins: {
+                getPluginById: vi.fn(() => ({
+                    enabled: true,
+                    instance: { options: { folder: '', format: 'YYYY-MM-DD', template: '' } }
+                }))
+            }
+        });
+        Object.assign(app.vault.adapter, {
+            read: vi.fn(async () => JSON.stringify({ format: 'YYYY/YYYYMMDD', template: 'Templates/Daily' }))
+        });
+        Object.assign(app.vault, { configDir: ['.ob', 'sidian'].join('') });
+        const settings = { calendarCustomFileTemplate: null } as NotebookNavigatorSettings;
+
+        await expect(resolveCalendarTemplateSelection(app, 'day', settings)).resolves.toEqual({
+            path: 'Templates/Daily',
+            source: 'core-daily',
+            dateFormat: 'YYYY/YYYYMMDD'
+        });
+    });
+
+    it('keeps an explicit Notebook Navigator daily template ahead of Core Daily Notes', async () => {
+        const app = new App();
+        const settings = { calendarCustomFileTemplate: 'Templates/Custom Day' } as NotebookNavigatorSettings;
+
+        await expect(resolveCalendarTemplateSelection(app, 'day', settings)).resolves.toEqual({
+            path: 'Templates/Custom Day',
+            source: 'explicit',
+            dateFormat: null
+        });
+    });
+
     it('uses Templater directly when a configured template file is available', async () => {
         const app = new App();
         const templateFile = createTestTFile('Templates/Daily.md');
@@ -106,5 +197,91 @@ describe('calendar note creation', () => {
         expect(createNewMarkdownFile).toHaveBeenCalledWith(app.vault.getRoot(), '2026-06-06');
         expect(read).toHaveBeenCalledWith(templateFile);
         expect(modify).toHaveBeenCalledWith(createdFile, templateContent);
+    });
+
+    it('resolves an explicit extensionless template path before creating', async () => {
+        const app = new App();
+        const templateFile = createTestTFile('Templates/Daily.md');
+        const createdFile = createTestTFile('Daily/2026-06-06.md');
+        const templateContent = '# Daily template\n';
+        const createNewMarkdownFile = vi.fn(async () => createdFile);
+        const read = vi.fn(async () => templateContent);
+        const modify = vi.fn(async () => undefined);
+
+        getTestVault(app).registerFile(templateFile);
+        app.fileManager.createNewMarkdownFile = createNewMarkdownFile;
+        app.vault.read = read;
+        app.vault.modify = modify;
+
+        await expect(createCalendarMarkdownFile(app, '/', '2026-06-06.md', 'Templates/Daily')).resolves.toBe(createdFile);
+        expect(read).toHaveBeenCalledWith(templateFile);
+        expect(modify).toHaveBeenCalledWith(createdFile, templateContent);
+    });
+
+    it('renders inherited Daily Notes tokens before creating a custom-path note', async () => {
+        const app = new App();
+        const templateFile = createTestTFile('Templates/Daily.md');
+        const createdFile = createTestTFile('20260810.md');
+        const create = vi.fn(async () => createdFile);
+        const templateContent = [
+            'scheduled: "{{date}} 00:00:00"',
+            'title: "{{title}}"',
+            'formatted: "{{date:YYYY/MM/DD}}"',
+            '<% tp.file.creation_date() %>'
+        ].join('\n');
+        const selection: CalendarTemplateSelection = {
+            path: 'Templates/Daily',
+            source: 'core-daily',
+            dateFormat: 'YYYY/YYYYMMDD'
+        };
+        const targetDate = createTemplateMoment();
+        installTemplateMoment();
+        getTestVault(app).registerFile(templateFile);
+        Object.assign(app.vault, { read: vi.fn(async () => templateContent), create });
+
+        await expect(createCalendarMarkdownFile(app, '/', '20260810.md', selection, targetDate)).resolves.toBe(createdFile);
+        expect(create).toHaveBeenCalledWith(
+            '20260810.md',
+            ['scheduled: "2026-08-10 00:00:00"', 'title: "20260810"', 'formatted: "2026/08/10"', '<% tp.file.creation_date() %>'].join('\n')
+        );
+    });
+
+    it('does not render Daily Notes tokens in an explicit periodic template', async () => {
+        const app = new App();
+        const templateFile = createTestTFile('Templates/Weekly.md');
+        const createdFile = createTestTFile('2026-W33.md');
+        const templateContent = '# Week {{date}}\n';
+        const createNewMarkdownFile = vi.fn(async () => createdFile);
+        const modify = vi.fn(async () => undefined);
+        getTestVault(app).registerFile(templateFile);
+        app.fileManager.createNewMarkdownFile = createNewMarkdownFile;
+        Object.assign(app.vault, { read: vi.fn(async () => templateContent), modify });
+
+        await createCalendarMarkdownFile(
+            app,
+            '/',
+            '2026-W33.md',
+            { path: templateFile.path, source: 'explicit', dateFormat: null },
+            createTemplateMoment()
+        );
+
+        expect(modify).toHaveBeenCalledWith(createdFile, templateContent);
+    });
+
+    it('validates an inherited template before creating calendar folders', async () => {
+        const app = new App();
+        const createFolder = vi.fn();
+        Object.assign(app.vault, { createFolder });
+
+        await expect(
+            createCalendarMarkdownFile(
+                app,
+                'New/Nested',
+                '20260810.md',
+                { path: 'Templates/Missing', source: 'core-daily', dateFormat: 'YYYY-MM-DD' },
+                createTemplateMoment()
+            )
+        ).rejects.toThrow('Configured calendar template was not found');
+        expect(createFolder).not.toHaveBeenCalled();
     });
 });

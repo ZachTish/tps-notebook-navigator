@@ -28,7 +28,7 @@ import { createDailyNote, getDailyNoteFilename, getDailyNotePath, type DailyNote
 import { setAsyncOnClick } from '../../utils/contextMenu/menuAsyncHelpers';
 import { showNotice } from '../../utils/noticeUtils';
 import { openFileInContext } from '../../utils/openFileInContext';
-import { createCalendarMarkdownFile, getCalendarTemplatePath } from '../../utils/calendarNotes';
+import { createCalendarMarkdownFile, resolveCalendarCustomNotePathDate, resolveCalendarTemplateSelection } from '../../utils/calendarNotes';
 import type { MomentApi, MomentInstance } from '../../utils/moment';
 import { resolveUXIconForMenu } from '../../utils/uxIcons';
 import type { CalendarNoteContextMenuTarget, CalendarNoteTarget, CustomCalendarNoteKind } from './types';
@@ -146,6 +146,7 @@ export function useCalendarNoteActions({
                 showNotice(resolverContext.config.parsingErrorText);
                 return;
             }
+            const dateForPath = resolveCalendarCustomNotePathDate(kind, date, resolverContext.momentPattern, calendarLocale, weekLocale);
 
             clearHoverTooltip();
 
@@ -175,8 +176,14 @@ export function useCalendarNoteActions({
 
                 let created: TFile;
                 try {
-                    const templatePath = getCalendarTemplatePath(kind, settings);
-                    created = await createCalendarMarkdownFile(app, resolvedPath.folderPath, resolvedPath.fileName, templatePath);
+                    const templateSelection = await resolveCalendarTemplateSelection(app, kind, settings);
+                    created = await createCalendarMarkdownFile(
+                        app,
+                        resolvedPath.folderPath,
+                        resolvedPath.fileName,
+                        templateSelection,
+                        dateForPath
+                    );
                 } catch (error) {
                     console.error('Failed to create calendar note', error);
                     showNotice(strings.common.unknownError);

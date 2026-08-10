@@ -1585,11 +1585,11 @@ export const STRINGS_EN = {
             },
             calendarCustomFilePattern: {
                 name: 'Daily notes',
-                desc: 'Format path using Moment date format. Wrap subfolder names in brackets, e.g., [Work]/YYYY. Click template icon to set template. Set template folder location in File operations > Templates.',
+                desc: 'Format path using Moment date format. Wrap subfolder names in brackets, e.g., [Work]/YYYY. Click the template icon to override the Daily Notes core template. Set template folder location in File operations > Templates.',
                 momentDescPrefix: 'Format path using ',
                 momentLinkText: 'Moment date format',
                 momentDescSuffix:
-                    '. Wrap subfolder names in brackets, e.g., [Work]/YYYY. Click template icon to set template. Set template folder location in File operations > Templates.',
+                    '. Wrap subfolder names in brackets, e.g., [Work]/YYYY. Click the template icon to override the Daily Notes core template. Set template folder location in File operations > Templates.',
                 templaterSupportInstalled: '✅ Templater plugin is installed with full template support.',
                 templaterSupportMissing: '⚠️ Install Templater plugin for full template support.',
                 placeholder: 'YYYY/YYYYMMDD',

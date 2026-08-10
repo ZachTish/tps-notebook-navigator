@@ -1,6 +1,11 @@
 import { App, TFile } from 'obsidian';
 import { describe, expect, it, vi } from 'vitest';
-import { createDailyNote, type DailyNoteSettings } from '../../src/utils/dailyNotes';
+import {
+    createDailyNote,
+    getConfiguredDailyNoteSettings,
+    getConfiguredDailyNoteTemplatePath,
+    type DailyNoteSettings
+} from '../../src/utils/dailyNotes';
 import type { MomentInstance } from '../../src/utils/moment';
 
 const SETTINGS: DailyNoteSettings = {
@@ -16,6 +21,74 @@ function createDate(): MomentInstance {
 }
 
 describe('daily note template safety', () => {
+    it('recovers a saved template while Core Daily Notes still exposes startup defaults', async () => {
+        const app = new App();
+        Object.assign(app, {
+            internalPlugins: {
+                getPluginById: vi.fn(() => ({
+                    enabled: true,
+                    instance: { options: { folder: '', format: 'YYYY-MM-DD', template: '' } }
+                }))
+            }
+        });
+        Object.assign(app.vault.adapter, {
+            read: vi.fn(async () => JSON.stringify({ folder: 'Persisted/Daily', format: 'YYYY/YYYYMMDD', template: 'Templates/Daily' }))
+        });
+        Object.assign(app.vault, { configDir: ['.ob', 'sidian'].join('') });
+
+        await expect(getConfiguredDailyNoteTemplatePath(app)).resolves.toBe('Templates/Daily');
+        await expect(getConfiguredDailyNoteSettings(app)).resolves.toEqual({
+            folder: 'Persisted/Daily',
+            format: 'YYYY/YYYYMMDD',
+            template: 'Templates/Daily'
+        });
+    });
+
+    it('does not inherit stale Daily Notes settings when the Core plugin is disabled', async () => {
+        const app = new App();
+        Object.assign(app, {
+            internalPlugins: {
+                getPluginById: vi.fn(() => ({
+                    enabled: false,
+                    instance: { options: { template: '' } }
+                }))
+            }
+        });
+        const read = vi.fn(async () => JSON.stringify({ template: 'Templates/Stale' }));
+        Object.assign(app.vault.adapter, { read });
+
+        await expect(getConfiguredDailyNoteTemplatePath(app)).resolves.toBeNull();
+        expect(read).not.toHaveBeenCalled();
+    });
+
+    it('creates with the persisted folder that owns a recovered startup template', async () => {
+        const app = new App();
+        const template = new TFile('Templates/Daily.md');
+        const created = new TFile('Persisted/Daily/2026-08-03.md');
+        const create = vi.fn(async () => created);
+        Object.assign(app, {
+            internalPlugins: {
+                getPluginById: vi.fn(() => ({
+                    enabled: true,
+                    instance: { options: { folder: '', format: 'YYYY-MM-DD', template: '' } }
+                }))
+            }
+        });
+        Object.assign(app.vault, {
+            configDir: ['.ob', 'sidian'].join(''),
+            create,
+            createFolder: vi.fn(async () => undefined),
+            cachedRead: vi.fn(async () => '# Daily template\n')
+        });
+        Object.assign(app.vault.adapter, {
+            read: vi.fn(async () => JSON.stringify({ folder: 'Persisted/Daily', format: 'YYYY-MM-DD', template: 'Templates/Daily' }))
+        });
+        Object.assign(app.metadataCache, { getFirstLinkpathDest: vi.fn(() => template) });
+
+        await expect(createDailyNote(app, createDate(), { folder: '', format: 'YYYY-MM-DD', template: '' })).resolves.toBe(created);
+        expect(create).toHaveBeenCalledWith('Persisted/Daily/2026-08-03.md', '# Daily template\n');
+    });
+
     it('fails closed when a configured template cannot be resolved', async () => {
         const app = new App();
         const create = vi.fn();

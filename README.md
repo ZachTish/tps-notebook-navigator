@@ -128,6 +128,7 @@ The default settings surface remains the normal Notebook Navigator landing page.
 - **Task rows** — **Show GCM tasks beneath notes** is off by default. When enabled, the same page reveals **Include completed tasks** and **Tasks per note**; there is no nested editor or second configuration page.
 - **Types navigation** — **Show Types in navigation** is on by default and directly controls the flat file-format and Markdown-structure Types catalog. The navigation editor exposes its in-place order selector, counts, up/down buttons, and drag handles without adding a nested settings page.
 - **Type item creation** — **Create items in** defaults to **Today's daily note** and can instead target the active regular Markdown note or one configured existing Markdown note. The specific-note picker appears only while that target is selected. Daily-note creation follows Obsidian's current Daily notes folder, format, and template settings and fails before creating anything when a configured template cannot be resolved or read. Excalidraw Markdown is rejected by both filename and frontmatter.
+- **Calendar-created daily notes** — In Notebook Navigator calendar mode, an explicit daily template remains an override. With no override, day-note creation inherits the enabled Core Daily Notes template, applies Core date/title variables to the target date before the create event, and fails closed before creating folders or a blank note when that configured template is unavailable. Week, month, quarter, and year templates retain their existing explicit-only behavior.
 - **One-way setup** — **Import upstream Notebook Navigator settings** always asks for confirmation. It reads only `.obsidian/plugins/notebook-navigator/data.json`, copies recognized upstream settings into the TPS plugin, preserves TPS-only integration settings, and never writes to upstream state.
 
 The Types toggle, Type order mode and retained manual ids, both Type-creation values, all three task-row values, and any user-created per-Type
@@ -177,6 +178,13 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 5.14.6 — Daily Note template ownership
+
+- Custom-path day notes now inherit the enabled Core Daily Notes template when no Notebook Navigator daily-template override is selected. Explicit Notebook Navigator day and periodic templates remain authoritative and unchanged.
+- Core date/title variables are rendered for the target calendar date before the file-create event. Bare `{{date}}` retains Obsidian's `YYYY-MM-DD` default independently from the custom filename, `{{title}}` uses that filename, and Templater's normal create hook sees already-rendered Core variables.
+- Automatic creation recovers the saved folder, filename format, and template as one coherent snapshot while Core Daily Notes is still exposing startup defaults, ignores stale saved settings when the Core plugin is disabled, resolves extensionless paths, and validates the template before creating folders or files. Minimum supported Obsidian remains 1.11.0.
+- Validation passed 15 focused regressions, all 2,600 tests, TypeScript, lint/style, namespace/identity, artifact, and operational gates, followed by a separate production build. In reloaded Obsidian 1.13.6, the real daily-note command created a custom-path note with the configured template and target-date/title variables; the original configuration was restored, QA files were archived, runtime artifacts byte-matched source, and production remained untouched.
 
 ### 5.14.5 — Obsidian-authoritative viewport lifecycle
 

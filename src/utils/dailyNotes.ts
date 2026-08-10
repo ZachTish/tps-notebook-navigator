@@ -39,6 +39,11 @@ interface DailyNotesInternalPlugin {
     };
 }
 
+export interface ConfiguredDailyNoteTemplate {
+    path: string;
+    dateFormat: string;
+}
+
 interface FoldManager {
     load: (file: TFile) => unknown;
     save: (file: TFile, foldInfo: unknown) => void;
@@ -112,6 +117,57 @@ export function getDailyNoteSettings(app: App): DailyNoteSettings | null {
 
     const options = plugin.instance?.options;
     return sanitizeDailyNoteSettings(options);
+}
+
+async function readPersistedDailyNoteSettings(app: App): Promise<DailyNoteSettings | null> {
+    try {
+        const configDir = app.vault.configDir.trim();
+        if (!configDir) {
+            return null;
+        }
+        const adapter = app.vault.adapter as unknown as { read?(path: string): Promise<string> };
+        if (typeof adapter.read !== 'function') {
+            return null;
+        }
+        const raw = await adapter.read(normalizePath(`${configDir}/daily-notes.json`));
+        const parsed: unknown = JSON.parse(raw);
+        return isPlainObjectRecordValue(parsed) ? sanitizeDailyNoteSettings(parsed) : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Returns one coherent creation snapshot. When Core is still exposing a blank
+ * startup template but disk already has a configured template, the matching
+ * persisted folder and format travel with that template.
+ */
+export async function getConfiguredDailyNoteSettings(app: App): Promise<DailyNoteSettings | null> {
+    const plugin = getInternalPlugin<DailyNotesInternalPlugin>(app, DAILY_NOTES_PLUGIN_ID);
+    if (!plugin || plugin.enabled !== true) {
+        return null;
+    }
+
+    const runtime = sanitizeDailyNoteSettings(plugin.instance?.options);
+    if (runtime.template) {
+        return runtime;
+    }
+    const persisted = await readPersistedDailyNoteSettings(app);
+    return persisted?.template ? persisted : runtime;
+}
+
+/**
+ * Resolves the configured Core Daily Notes template even during the startup
+ * window where the internal plugin instance still exposes blank defaults.
+ * The persisted setting is authoritative whenever the runtime value is empty.
+ */
+export async function getConfiguredDailyNoteTemplate(app: App): Promise<ConfiguredDailyNoteTemplate | null> {
+    const settings = await getConfiguredDailyNoteSettings(app);
+    return settings?.template ? { path: settings.template, dateFormat: settings.format } : null;
+}
+
+export async function getConfiguredDailyNoteTemplatePath(app: App): Promise<string | null> {
+    return (await getConfiguredDailyNoteTemplate(app))?.path ?? null;
 }
 
 export function getDailyNoteFilename(date: MomentInstance, settings: DailyNoteSettings): string {
@@ -196,7 +252,7 @@ async function readTemplateInfo(app: App, templatePath: string): Promise<{ conte
     }
 }
 
-function renderDailyNoteTemplate(template: string, date: MomentInstance, noteTitle: string, format: string): string {
+export function renderDailyNoteTemplate(template: string, date: MomentInstance, noteTitle: string, format: string): string {
     if (!template) {
         return '';
     }
@@ -214,7 +270,7 @@ function renderDailyNoteTemplate(template: string, date: MomentInstance, noteTit
     // - Relative tokens: {{yesterday}}, {{tomorrow}}
     // - Calculated tokens: {{date +1d:YYYY-MM-DD}} / {{time -2h:HH:mm}}
     return template
-        .replace(/{{\s*date\s*}}/gi, noteTitle)
+        .replace(/{{\s*date\s*}}/gi, date.format(DEFAULT_DAILY_NOTE_FORMAT))
         .replace(/{{\s*time\s*}}/gi, time)
         .replace(/{{\s*title\s*}}/gi, noteTitle)
         .replace(
@@ -251,7 +307,8 @@ function renderDailyNoteTemplate(template: string, date: MomentInstance, noteTit
 }
 
 export async function createDailyNote(app: App, date: MomentInstance, settings: DailyNoteSettings): Promise<TFile | null> {
-    const path = getDailyNotePath(date, settings);
+    const configuredSettings = settings.template ? settings : ((await getConfiguredDailyNoteSettings(app)) ?? settings);
+    const path = getDailyNotePath(date, configuredSettings);
     const existing = app.vault.getAbstractFileByPath(path);
     if (existing instanceof TFile) {
         return existing;
@@ -260,16 +317,19 @@ export async function createDailyNote(app: App, date: MomentInstance, settings: 
     try {
         // A configured template is part of the creation contract. Resolve and read it before
         // creating folders or the note so a stale template path cannot silently produce a blank daily note.
-        const templateInfo = await readTemplateInfo(app, settings.template);
+        const templateInfo = await readTemplateInfo(app, configuredSettings.template);
         if (!templateInfo) {
             return null;
         }
         await ensureFolderExists(app, path);
 
         const { contents: templateContents, foldInfo } = templateInfo;
-        const noteTitle = formatDailyNoteTitle(date, settings.format);
+        const noteTitle = formatDailyNoteTitle(date, configuredSettings.format);
 
-        const createdFile = await app.vault.create(path, renderDailyNoteTemplate(templateContents, date, noteTitle, settings.format));
+        const createdFile = await app.vault.create(
+            path,
+            renderDailyNoteTemplate(templateContents, date, noteTitle, configuredSettings.format)
+        );
         if (foldInfo) {
             try {
                 const foldManager = getFoldManager(app);

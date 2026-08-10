@@ -33,6 +33,7 @@ import {
     splitCalendarCustomPattern
 } from './calendarCustomNotePatterns';
 import { createMarkdownFileFromTemplatePreferTemplater } from './fileCreationUtils';
+import { getConfiguredDailyNoteTemplate, renderDailyNoteTemplate } from './dailyNotes';
 import type { MomentApi, MomentInstance } from './moment';
 
 export type CalendarNoteKind = 'day' | 'week' | 'month' | 'quarter' | 'year';
@@ -97,6 +98,35 @@ export function getCalendarTemplatePath(kind: CalendarNoteKind, settings: Notebo
         case 'year':
             return settings.calendarCustomYearTemplate;
     }
+}
+
+/**
+ * An explicit Notebook Navigator template always wins. Daily calendar notes
+ * otherwise inherit the Core Daily Notes template so automatic custom-path
+ * creation cannot silently produce an empty note.
+ */
+export interface CalendarTemplateSelection {
+    path: string | null;
+    source: 'none' | 'explicit' | 'core-daily';
+    dateFormat: string | null;
+}
+
+export async function resolveCalendarTemplateSelection(
+    app: App,
+    kind: CalendarNoteKind,
+    settings: NotebookNavigatorSettings
+): Promise<CalendarTemplateSelection> {
+    const explicitTemplate = getCalendarTemplatePath(kind, settings);
+    if (explicitTemplate) {
+        return { path: explicitTemplate, source: 'explicit', dateFormat: null };
+    }
+    if (kind !== 'day') {
+        return { path: null, source: 'none', dateFormat: null };
+    }
+    const inherited = await getConfiguredDailyNoteTemplate(app);
+    return inherited
+        ? { path: inherited.path, source: 'core-daily', dateFormat: inherited.dateFormat }
+        : { path: null, source: 'none', dateFormat: null };
 }
 
 export function buildCustomCalendarMomentPattern(calendarCustomFilePattern: string, fallbackPattern?: string): string {
@@ -183,11 +213,30 @@ export async function createCalendarMarkdownFile(
     app: App,
     folderPath: string,
     fileName: string,
-    templatePath?: string | null
+    templateSelection?: CalendarTemplateSelection | string | null,
+    templateDate?: MomentInstance | null
 ): Promise<TFile> {
     const baseName = getCalendarNoteBaseName(fileName);
     if (!baseName) {
         throw new Error('Invalid calendar note filename');
+    }
+
+    const selection: CalendarTemplateSelection =
+        typeof templateSelection === 'string'
+            ? { path: templateSelection, source: 'explicit', dateFormat: null }
+            : (templateSelection ?? { path: null, source: 'none', dateFormat: null });
+    const templateFile = selection.path ? resolveCalendarTemplateFile(app, selection.path) : null;
+    if (selection.path && !templateFile) {
+        throw new Error(`Configured calendar template was not found: ${selection.path}`);
+    }
+
+    let inheritedDailyContent: string | null = null;
+    if (selection.source === 'core-daily') {
+        if (!templateFile || !templateDate || !selection.dateFormat) {
+            throw new Error('Inherited Daily Notes template is missing its date context');
+        }
+        const rawTemplate = await app.vault.read(templateFile);
+        inheritedDailyContent = renderDailyNoteTemplate(rawTemplate, templateDate, baseName, selection.dateFormat);
     }
 
     const folder = await ensureCalendarFolderExists(app, folderPath);
@@ -195,12 +244,33 @@ export async function createCalendarMarkdownFile(
         throw new Error('Calendar folder path is not a folder');
     }
 
+    if (inheritedDailyContent !== null) {
+        const targetPath = normalizePath(folder.path === '/' ? `${baseName}.md` : `${folder.path}/${baseName}.md`);
+        return app.vault.create(targetPath, inheritedDailyContent);
+    }
+
     return createMarkdownFileFromTemplatePreferTemplater({
         app,
         folder,
         baseName,
-        templatePath,
+        templatePath: templateFile?.path ?? null,
         templateErrorContext: 'calendar',
         templaterCreationErrorContext: 'calendar note'
     });
+}
+
+function resolveCalendarTemplateFile(app: App, rawPath: string): TFile | null {
+    const normalized = normalizePath(rawPath.trim().replace(/^\/+/, ''));
+    if (!normalized || normalized === '/') {
+        return null;
+    }
+    const candidates = normalized.toLocaleLowerCase().endsWith('.md') ? [normalized] : [normalized, `${normalized}.md`];
+    for (const candidate of candidates) {
+        const file = app.vault.getAbstractFileByPath(candidate);
+        if (file instanceof TFile && file.extension === 'md') {
+            return file;
+        }
+    }
+    const linked = app.metadataCache.getFirstLinkpathDest(normalized, '');
+    return linked instanceof TFile && linked.extension === 'md' ? linked : null;
 }

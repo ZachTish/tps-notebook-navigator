@@ -27,7 +27,7 @@ import {
     buildCustomCalendarMomentPattern,
     createCalendarMarkdownFile,
     getCalendarNoteConfig,
-    getCalendarTemplatePath,
+    resolveCalendarTemplateSelection,
     resolveCalendarCustomNotePathDate,
     type CalendarNoteKind
 } from '../../utils/calendarNotes';
@@ -378,8 +378,14 @@ export default class HomepageController {
         }
 
         try {
-            const templatePath = getCalendarTemplatePath(kind, this.plugin.settings);
-            return await createCalendarMarkdownFile(this.plugin.app, expected.folderPath, expected.fileName, templatePath);
+            const templateSelection = await resolveCalendarTemplateSelection(this.plugin.app, kind, this.plugin.settings);
+            return await createCalendarMarkdownFile(
+                this.plugin.app,
+                expected.folderPath,
+                expected.fileName,
+                templateSelection,
+                dateForPath
+            );
         } catch (error) {
             console.error('Failed to create homepage note', error);
             return null;
