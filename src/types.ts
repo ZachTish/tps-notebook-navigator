@@ -299,6 +299,7 @@ export interface LocalStorageKeys {
     frontmatterMetadataCacheSignatureKey: string;
     cacheRebuildNoticeKey: string;
     debugLoggingEnabledKey: string;
+    lastShownVersionKey: string;
     // PDF_CRASH_DIAGNOSTICS: vault-scoped key used by the PDF crash diagnostic flow.
     pdfProcessingDiagnosticKey: string;
     localStorageVersionKey: string;
@@ -368,6 +369,7 @@ export const STORAGE_KEYS: LocalStorageKeys = {
     frontmatterMetadataCacheSignatureKey: tpsStorageKey('frontmatter-metadata-cache-signature'),
     cacheRebuildNoticeKey: tpsStorageKey('cache-rebuild-notice'),
     debugLoggingEnabledKey: tpsStorageKey('debug-logging-enabled'),
+    lastShownVersionKey: tpsStorageKey('last-shown-version'),
     // PDF_CRASH_DIAGNOSTICS: persists the last PDF path being processed on mobile support builds.
     pdfProcessingDiagnosticKey: tpsStorageKey('pdf-processing-diagnostic'),
     localStorageVersionKey: tpsStorageKey('localstorage-version'),

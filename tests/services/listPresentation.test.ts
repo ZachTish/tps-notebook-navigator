@@ -13,6 +13,7 @@ import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 function settings() {
     const value = structuredClone(DEFAULT_SETTINGS);
     value.propertySortKey = 'Priority, Status, Rank';
+    value.propertyGroupKey = 'Priority, Status, Rank';
     value.manualSortPropertyKey = 'Rank';
     return value;
 }
@@ -157,6 +158,23 @@ describe('public list presentation plans', () => {
             })
         ).toBeNull();
         expect(current).toEqual(before);
+    });
+
+    it('uses the dedicated configured property lists for sort and grouping', () => {
+        const current = settings();
+        current.propertySortKey = 'Priority';
+        current.propertyGroupKey = 'Status';
+        const target = { type: ItemType.FOLDER, key: 'Projects' } as const;
+
+        const groupPlan = createNavigatorListPresentationPlan(current, target, { groupBy: 'property-follow:status' });
+        expect(groupPlan).not.toBeNull();
+        applyNavigatorListPresentationPlan(current, groupPlan!);
+        expect(current.folderAppearances.Projects?.groupBy).toBe('property-follow:Status');
+        expect(
+            createNavigatorListPresentationPlan(current, target, {
+                sort: { option: 'property-asc', propertyKey: 'Status' }
+            })
+        ).toBeNull();
     });
 
     it('restores the affected live scope when persistence rejects', async () => {

@@ -24,11 +24,12 @@
  *
  * 1. On plugin load, it compares the current version with the last shown version
  * 2. If version increased, it shows all release notes between versions
- * 3. If downgraded or same version, it shows the latest 5 releases
+ * 3. Same or downgraded versions never auto-display
  * 4. Individual releases can be marked with showOnUpdate: false to skip auto-display
  * 5. Users can always manually access release notes via plugin settings
  *
- * The lastShownVersion is stored in plugin settings to track what the user has seen.
+ * The lastShownVersion is stored in synced settings and device-local storage. The greater value is
+ * used so synced devices normally share one display while stale settings cannot repeat it locally.
  */
 
 import { compareVersions } from './utils/versionUtils';
@@ -105,6 +106,23 @@ export interface ReleaseNote {
  * 2. Categorize features into: new, improved, changed, or fixed arrays
  */
 const RELEASE_NOTES: ReleaseNote[] = [
+    {
+        version: '5.15.0',
+        date: '2026-08-10',
+        showOnUpdate: true,
+        new: [
+            'Synced the public Notebook Navigator 3.3.3 release, including per-location appearance controls for file tags, properties, task progress, and text counts.',
+            'Property sort and grouping defaults now support the upstream `follow` order alongside TPS line-property and day-grouping options.',
+            'Calendar display adds an option to show or hide days from adjacent months, and unfinished-task icons are configurable again.'
+        ],
+        improved: [
+            'Settings pages, localization, task display, and list-pane behavior now include the upstream 3.3.3 refinements while retaining TPS Types, provider, Global Context Menu, and one-way settings-import integrations.'
+        ],
+        fixed: [
+            'Appearance and Type settings preserve TPS line-property inheritance, multi-value grouping, and no-value placement while using the newer per-location appearance model.',
+            "Renamed tag views, calendar month labels, new-note property creation, and synced What's New markers receive the upstream fixes."
+        ]
+    },
     {
         version: '5.14.6',
         date: '2026-08-10',
@@ -551,18 +569,50 @@ const RELEASE_NOTES: ReleaseNote[] = [
         ]
     },
     {
-        version: '3.3.1',
-        date: '2026-08-03',
+        version: '3.3.3',
+        date: '2026-08-09',
         showOnUpdate: true,
+        bannerUrl: true,
         new: [
-            'New search syntax: quoted literal terms. A search term that opens with a double quote is matched literally against note names and aliases instead of being read as a filter. For example, `".F"` finds notes with `.F` in the name, while unquoted `.F` still filters on properties starting with `f`. Use `-".F"` to exclude matches. Previously, quotes around a term were ignored, so `"#work"` behaved like the tag filter `#work`.',
-            'New file context menu options in the `Copy` submenu: `Copy note link` copies a link to the file (`[[link]]`), `Copy note link as footnote` copies the link wrapped in an inline footnote (`^[[[link]]]`), and `Copy note embed` copies the link as an embed that displays the file content inline (`![[link]]`).'
-        ],
-        changed: [
-            'I finally took the time to clean up the Style Settings panel. Settings are now grouped by pane and element, and border settings sit next to the elements they style. The navigation pane sliders `Default folder/tag weight`, `Default file name weight`, `Custom color folder/tag weight`, `Custom color file name weight`, and `Folder note weight` are merged into ==Name weight== and ==Custom color name weight==, which apply to all names in the navigation pane. Saved values are not affected.'
+            "You can now **change the display of tags, properties, tasks, and word counts for each location!** Maybe you want word counts only for a specific folder, or you don't want to show tasks in another folder. This is now possible! Just click the new ==Appearance== menu in the list pane (see screenshot above).",
+            "When I added the new task display in 3.3.1 I removed the unfinished task icon. Unfortunately this meant no way of showing unfinished tasks in compact mode. So I put it back, and made it better. You can now choose if you want the unfinished task icon to appear in only compact or in both display modes. You'll find it at File display > Icon > ==Unfinished task icon==. Default set to compact mode.",
+            'New setting: Calendar > ==Show days from other months==. You can now leave the days before and after the current month empty, so only the days of the month are shown. Only applies when calendar is showing a full month. Enabled by default.'
         ],
         fixed: [
-            'When a note had a creation date in the future (for example from a frontmatter `created` property), the `Previous 7 days` group header appeared twice in the list pane, and stray headers then showed up in other folders until Obsidian was restarted. Notes dated in the future now group under a new `Future` group.'
+            'Fixed selecting the default sort direction or property group order resetting the selected sort field or grouping property (issue was introduced with the new group and sort settings in 3.3.1).',
+            "Fixed an issue where the `What's new` dialog repeatedly reappeared on some sync providers.",
+            'Fixed renamed notes disappearing from the list when viewing a tag until you switched to another tag and back.',
+            'Fixed the bottom of month labels such as `Aug` being cut off in the year calendar on Windows.',
+            'Fixed `New note` setting a property to `true` when you created the note from a property name, such as `Categories`, instead of from one of its values. The new property is now empty.'
+        ]
+    },
+    {
+        version: '3.3.2',
+        date: '2026-08-02',
+        showOnUpdate: false,
+        info: 'Quick fix for the new task display so it also works with pinned items.'
+    },
+    {
+        version: '3.3.1',
+        date: '2026-08-02',
+        showOnUpdate: true,
+        bannerUrl: true,
+        info: "Lots of nice new things in this release! First up is a new **task display** in the list pane (see screenshot above). As usual you can customize everything and disable it if you don't want it.\n\nFor you power users out there you can finally set **sort by property** and **group by property** as default across the entire vault.\n\nAnd I know many of you have wanted this for a while now - if you hide the root folder **you can now temporarily show the root folder with Show hidden items**.\n\nHave a great day and thank you for using Notebook Navigator!",
+        new: [
+            'Much better task display in the list pane! Notes containing tasks now show a task icon, progress bar, and completed count, such as `5/7`, on the same line as the date and parent folder! Everything is optional of course, but this is now enabled by default. You will find all related settings in File display > ==Show tasks==. If you want a green color for completed tasks you can change this with the Style Settings plugin.',
+            '==Default sorting and grouping== was rebuilt from the ground up, and you can now finally use frontmatter properties for default sorting and grouping. You will find all the new related settings in List pane > Sort & group. There are many small QoL improvements too, like changing from a date / descending sort order to file name now also changes sort order to ascending, which is what most users expect.',
+            'In search, you can now use ==double quotes== to match it literally against note names and aliases instead of being read as a filter: `"#work"` finds notes with `#work` in the name instead of filtering on the tag. Use `-"term"` to exclude matches.',
+            'You can quickly ==show the root folder if it is hidden==: the `Show hidden items` toolbar button now reveals the root folder dimmed at the top of the tree, and the `Search whole vault` command works while it is shown. You can also right click the root vault folder to quickly hide and show it with the new context menu options.',
+            'New copy options in the file menu: `Copy note link` (`[[link]]`), `Copy note link as footnote` (`^[[[link]]]`), and `Copy note embed` (`![[link]]`) - just makes working with note links easier.'
+        ],
+        changed: [
+            'I finally took the time to clean up the entire ==Style Settings== panel. Settings are now grouped by pane and element, and border settings sit next to the elements they style. Give it a go and let me know what you think!',
+            'The ==Recent files count== setting now goes up to **50 files**, up from 10.',
+            'The ==Unfinished task icon== setting was removed and replaced by the new task progress display.'
+        ],
+        fixed: [
+            'When a note had a creation date in the future (for example from a frontmatter `created` property), the `Previous 7 days` group header appeared twice in the list pane, and stray headers then showed up in other folders until Obsidian was restarted. Notes dated in the future now group under a new `Future` group.',
+            'Fixed note backgrounds in list pane with transparency keeping their dark-mode color after switching to light mode.'
         ]
     },
     {

@@ -2,7 +2,7 @@
 
 TPS Notebook Navigator is an experimental, co-installable fork of [Notebook Navigator](https://github.com/johansan/notebook-navigator). It keeps the upstream navigator available while providing a separate place for TPS integrations, provider-rendered rows, and deeper workflow control.
 
-The fork's first integration line is based on upstream commit `2b65be66` (Notebook Navigator 3.3.0 lineage plus upstream changes through that exact commit). The upstream project remains the source for the mature file-browser experience, documentation, translations, icon packs, and media assets. TPS-specific changes are maintained independently in this repository.
+The fork's first integration line is based on upstream commit `2b65be66` (Notebook Navigator 3.3.0 lineage plus upstream changes through that exact commit). TPS 5.15.0 additionally incorporates the public Notebook Navigator 3.3.3 release at upstream commit `7ae7db62`. The upstream project remains the source for the mature file-browser experience, documentation, translations, icon packs, and media assets. TPS-specific changes are maintained independently in this repository.
 
 ## Why this is a separate plugin
 
@@ -59,8 +59,9 @@ The selected type and Types-root expansion state use TPS-namespaced local storag
 
 External integrations can discover fixed built-in and registered-provider descriptors through the provider-neutral public
 `types` catalog, subscribe to its availability/revision changes, and navigate through `navigation.navigateToType(typeId)`.
-Public API 3.3.0 adds the stable Web links id plus additive note/line exact-value and calendar-day grouping encodings. API
-3.2.0 added bounded presentation controls for fixed source-backed Types and preserves each mixed search row's owning Type
+Public API 3.4.0 adds `property-follow` grouping forms for note, calendar-day, and line-property views so public list
+presentation updates can follow the active sort direction. API 3.3.0 adds the stable Web links id plus additive note/line
+exact-value and calendar-day grouping encodings. API 3.2.0 added bounded presentation controls for fixed source-backed Types and preserves each mixed search row's owning Type
 identity. API 3.1.0 added stable ids for Code blocks, Callouts, Blockquotes, and Tables. API 3.0.0 removed Kind descriptors from
 discovery and navigation while retaining deprecated helpers to construct and parse legacy Kind ids during migration; active
 validation and navigation reject them. The earlier API 2.7.0 also adds
@@ -178,6 +179,14 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 5.15.0 — Notebook Navigator 3.3.3 sync
+
+- Integrates public upstream Notebook Navigator 3.3.3 (`7ae7db62`): per-location file-tag/property/task-progress/text-count appearance controls, configurable unfinished-task icons, calendar outside-month days, safer property creation, renamed-view/calendar fixes, and localized settings refinements.
+- Adds upstream sort/group defaults and `follow` group order while preserving TPS note/line source selection, calendar-day grouping, multi-value grouping, no-value placement, structural Type appearances, Global Context Menu integration, and explicit one-way upstream-settings import.
+- Updates the namespaced What’s New high-water marker so synced settings do not repeatedly show old release notes, and advances the additive TPS public API to 3.4.0 for the four `property-follow` grouping encodings.
+- This is a backward-compatible minor release. Existing TPS settings and upstream co-installability remain intact; the unreleased upstream `3.3.4-1` branch is intentionally not included. Minimum supported Obsidian remains 1.11.0.
+- Validation passed TypeScript, ESLint, Prettier, Stylelint, locale, namespace, operational-identity, and artifact gates plus all 236 test files / 2,695 tests. The final production bundle deployed only to the reloaded Obsidian Plugin Test Vault runtime, byte-matched its source artifacts, and preserved runtime-owned `data.json`; production was not accessed.
 
 ### 5.14.6 — Daily Note template ownership
 
@@ -1019,7 +1028,7 @@ Set custom hotkeys for these commands in Obsidian's Hotkeys settings:
 - `Notebook Navigator: Add to shortcuts` Adds or removes the current file, folder, tag, or property from shortcuts
 - `Notebook Navigator: Open shortcut 1-9` Opens shortcut by its position in the shortcuts list
 - `Notebook Navigator: Search` Opens quick search field or focuses it if already open. Search persists between sessions. **Suggestion:** Bind to a shortcut key like `Cmd/Ctrl+Shift+S` for quick file filtering
-- `Notebook Navigator: Search whole vault` Selects the vault root folder and opens search with subfolders included (requires `Show root folder` enabled)
+- `Notebook Navigator: Search whole vault` Selects the vault root folder and opens search with subfolders included (available when either `Show root folder` or `Show hidden items` is enabled)
 
 **Selection**
 
@@ -1189,6 +1198,7 @@ Set custom hotkeys for these commands in Obsidian's Hotkeys settings:
 - **Property grouping** - Group notes by a frontmatter property value, matching group by in Obsidian Bases: notes sharing the same value collect under one header, notes without the property go into a trailing None group, and groups sort by value with natural ordering
 - **Frontmatter support** - Read note names and timestamps from frontmatter fields
 - **Note metadata** - Show modification date and tags in the file list
+- **Task status** - Show task progress in standard rows and optionally replace file icons for unfinished tasks in compact or all display modes
 - **Custom properties** - Display frontmatter properties or word count in file list with per-folder/tag overrides and custom colors
 - **Parent folder display** - Optional parent folder name and icon in file list
 - **Compact mode** - Compact display when preview, date, and images are disabled

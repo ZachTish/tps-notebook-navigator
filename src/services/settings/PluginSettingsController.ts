@@ -62,6 +62,7 @@ import {
     isHomepageSource,
     isMouseBackForwardAction,
     isManualSortNewNotePlacement,
+    isUnfinishedTaskIconMode,
     isPropertySortSecondaryOption,
     isNarrowSidebarTriggerMode,
     normalizeNarrowSidebarLayout,
@@ -100,11 +101,12 @@ import { normalizePropertyKeyNodeId, normalizePropertyNodeId } from '../../utils
 import { normalizeNavigationSeparatorKey } from '../../utils/navigationSeparators';
 import { normalizeUXIconMapRecord } from '../../utils/uxIcons';
 import { sanitizeKeyboardShortcuts } from '../../utils/keyboardShortcuts';
-import { isPropertySortOption, pruneUnavailablePropertySortOverrides } from '../../utils/sortUtils';
-import { pruneUnavailablePropertyGroupingOverrides } from '../../utils/listGrouping';
+import { pruneUnavailablePropertySortOverrides, reconcileDefaultFolderSort } from '../../utils/sortUtils';
+import { pruneUnavailablePropertyGroupingOverrides, reconcileDefaultNoteGrouping } from '../../utils/listGrouping';
 import { isRecord } from '../../utils/typeGuards';
 import { normalizeOptionalVaultFilePath } from '../../utils/pathUtils';
 import { isFileTypeIconPreset } from '../../utils/fileTypeIconPresets';
+import { compareVersions } from '../../utils/versionUtils';
 import {
     MAX_PANE_TRANSITION_DURATION_MS,
     MIN_PANE_TRANSITION_DURATION_MS,
@@ -114,11 +116,14 @@ import {
     type UXPreferences
 } from '../../types';
 import {
+    getStoredListPaneAppearanceFields,
     isLinePropertyInheritance,
     isMultiValueGrouping,
     isNoValueGroupPosition,
-    type FolderAppearance
-} from '../../hooks/useListPaneAppearance';
+    mergeListPaneAppearanceAndGrouping,
+    type FolderAppearance,
+    type ListPaneAppearance
+} from '../../settings/listPaneAppearance';
 import { isTpsNavigatorLineTypeId, isTpsNavigatorStructuralTypeId, isTpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { createSyncModeRegistry, type SyncModeRegistry } from './syncModeRegistry';
 import { getDefaultUXPreferences, isUXPreferencesRecord } from './uxPreferences';
@@ -154,6 +159,25 @@ export type StartupSettingsLoadResult = 'first-launch' | 'loaded' | 'missing' | 
 // Keep the startup grace period below Obsidian's slow-plugin warning while polling for a settings file from sync.
 const STARTUP_SETTINGS_RETRY_ATTEMPTS = 4;
 const STARTUP_SETTINGS_RETRY_DELAY_MS = 500;
+const NUMERIC_VERSION_MARKER_PATTERN = /^\d+(?:\.\d+)*$/;
+
+function normalizeVersionMarker(value: unknown): string {
+    if (typeof value !== 'string') {
+        return '';
+    }
+
+    const trimmed = value.trim();
+    if (!NUMERIC_VERSION_MARKER_PATTERN.test(trimmed)) {
+        return '';
+    }
+
+    const hasInvalidSegment = trimmed.split('.').some(segment => !Number.isSafeInteger(Number(segment)));
+    return hasInvalidSegment ? '' : trimmed;
+}
+
+function selectNewerVersion(first: string, second: string): string {
+    return compareVersions(first, second) >= 0 ? first : second;
+}
 
 function resolveTaskBackgroundColor(value: unknown, fallback: string): string {
     if (typeof value !== 'string') {
@@ -227,6 +251,65 @@ export class PluginSettingsController {
 
     public set settings(settings: NotebookNavigatorSettings) {
         this.currentSettings = settings;
+    }
+
+    /**
+     * Returns the greatest version observed in synced settings or on this device. The synced
+     * marker suppresses the dialog on other devices after synchronization, while the local marker
+     * prevents a stale whole-file settings write from making this device show the release again.
+     */
+    public getLastShownVersion(): string {
+        const resolution = this.resolveLastShownVersion(this.currentSettings.lastShownVersion);
+        this.currentSettings.lastShownVersion = resolution.version;
+        return resolution.version;
+    }
+
+    /**
+     * Advances both markers without allowing either to regress. The local marker is written first
+     * because it must still prevent a repeated dialog when the following data.json save fails or is
+     * later overwritten by a stale device.
+     *
+     * @returns `true` when the version advanced and synced settings need to be saved; otherwise
+     * existing local and synced state is retained without a settings write.
+     */
+    public advanceLastShownVersion(version: string): boolean {
+        const candidate = normalizeVersionMarker(version);
+        const currentVersion = this.getLastShownVersion();
+        if (!candidate || compareVersions(candidate, currentVersion) <= 0) {
+            return false;
+        }
+
+        localStorage.set(this.options.keys.lastShownVersionKey, candidate);
+        this.currentSettings.lastShownVersion = candidate;
+        return true;
+    }
+
+    /**
+     * Reconciles the two markers and promotes a newer synced value into local storage.
+     *
+     * @returns `version` as the marker to apply in memory. `needsSyncedRepair` is `true` when
+     * data.json contained an invalid or older value that must be replaced; otherwise the synced
+     * value already represents the effective marker and is left untouched.
+     */
+    private resolveLastShownVersion(syncedValue: unknown): { version: string; needsSyncedRepair: boolean } {
+        const syncedVersion = normalizeVersionMarker(syncedValue);
+        const localValue = localStorage.get<unknown>(this.options.keys.lastShownVersionKey);
+        const localVersion = normalizeVersionMarker(localValue);
+        const version = selectNewerVersion(syncedVersion, localVersion);
+
+        if (version && localValue !== version) {
+            localStorage.set(this.options.keys.lastShownVersionKey, version);
+        } else if (!version && localValue !== null && localValue !== undefined) {
+            // Invalid local markers must be removed because leaving one in place would make the
+            // next startup repeat the same failed reconciliation.
+            localStorage.remove(this.options.keys.lastShownVersionKey);
+        }
+
+        const syncedValueWasInvalid = syncedValue !== undefined && syncedValue !== syncedVersion;
+        return {
+            version,
+            needsSyncedRepair: syncedValueWasInvalid || compareVersions(version, syncedVersion) > 0
+        };
     }
 
     public getSyncMode(settingId: SyncModeSettingId): SettingSyncMode {
@@ -428,6 +511,9 @@ export class PluginSettingsController {
         const hadShowPinnedGroupHeaderInStoredData = Boolean(
             storedData && Object.prototype.hasOwnProperty.call(storedData, 'showPinnedGroupHeader')
         );
+        const hadLegacyUnfinishedTaskIconInStoredData = Boolean(
+            storedData && Object.prototype.hasOwnProperty.call(storedData, 'showFileIconUnfinishedTask')
+        );
         const storedInterfaceIcons = storedData?.['interfaceIcons'];
         const hadPinnedSectionIconInStoredData = Boolean(
             isRecord(storedInterfaceIcons) && Object.prototype.hasOwnProperty.call(storedInterfaceIcons, 'pinned-section')
@@ -442,10 +528,25 @@ export class PluginSettingsController {
             Object.prototype.hasOwnProperty.call(storedData, 'manualSortPropertyKey') &&
             typeof storedData['manualSortPropertyKey'] !== 'string'
         );
-        const hadUnavailableDefaultFolderSortInStoredData = Boolean(
+        const hadInvalidDefaultFolderSortInStoredData = Boolean(
             storedData &&
             Object.prototype.hasOwnProperty.call(storedData, 'defaultFolderSort') &&
-            (!isSortOption(storedData['defaultFolderSort']) || isPropertySortOption(storedData['defaultFolderSort']))
+            !isSortOption(storedData['defaultFolderSort'])
+        );
+        const hadInvalidDefaultFolderSortPropertyKeyInStoredData = Boolean(
+            storedData &&
+            Object.prototype.hasOwnProperty.call(storedData, 'defaultFolderSortPropertyKey') &&
+            typeof storedData['defaultFolderSortPropertyKey'] !== 'string'
+        );
+        const hadInvalidPropertyGroupKeyInStoredData = Boolean(
+            storedData &&
+            Object.prototype.hasOwnProperty.call(storedData, 'propertyGroupKey') &&
+            typeof storedData['propertyGroupKey'] !== 'string'
+        );
+        // Pre-split configurations stored one combined sort-and-grouping property list. Seeding the
+        // grouping list from it keeps existing grouping choices and overrides working after upgrade.
+        const hadMissingPropertyGroupKeyInStoredData = Boolean(
+            storedData && !Object.prototype.hasOwnProperty.call(storedData, 'propertyGroupKey')
         );
         const hadLegacyNoneGroupingInStoredData = containsLegacyNoneGroupingInStoredData(storedData);
         const hadLegacyOpenFolderNotesInNewTabInStoredData = Boolean(
@@ -460,6 +561,9 @@ export class PluginSettingsController {
             storedData &&
             Object.prototype.hasOwnProperty.call(storedData, 'cmdCtrlEnterOpenContext') &&
             !isEnterKeyAction(storedData['cmdCtrlEnterOpenContext'])
+        );
+        const hadMissingDarkTaskBackgroundColorInStoredData = Boolean(
+            storedData && !Object.prototype.hasOwnProperty.call(storedData, 'unfinishedTaskBackgroundColorDark')
         );
         const storedSettings = storedData as Partial<NotebookNavigatorSettings> | null;
         this.shouldPersistDesktopScale = Boolean(storedData && 'desktopScale' in storedData);
@@ -478,6 +582,10 @@ export class PluginSettingsController {
             });
             this.currentSettings.tpsLinePropertyInheritanceVersion = 1;
         }
+        const lastShownVersionResolution = isFirstLaunch
+            ? { version: normalizeVersionMarker(this.currentSettings.lastShownVersion), needsSyncedRepair: false }
+            : this.resolveLastShownVersion(this.currentSettings.lastShownVersion);
+        this.currentSettings.lastShownVersion = lastShownVersionResolution.version;
         const hadLegacySearchProviderInSettings = Boolean(storedData && 'searchProvider' in storedData);
         const hadLegacyLastAnnouncedReleaseInSettings = Boolean(storedData && 'lastAnnouncedRelease' in storedData);
         const storedSearchProvider = localStorage.get<unknown>(this.options.keys.searchProviderKey);
@@ -505,12 +613,26 @@ export class PluginSettingsController {
             this.currentSettings.propertySortKey = DEFAULT_SETTINGS.propertySortKey;
         }
 
+        if (typeof this.currentSettings.propertyGroupKey !== 'string') {
+            this.currentSettings.propertyGroupKey = DEFAULT_SETTINGS.propertyGroupKey;
+        }
+
+        // The seed must run before grouping overrides are pruned, otherwise every property
+        // grouping override would be removed against the empty post-upgrade grouping list.
+        if (hadMissingPropertyGroupKeyInStoredData) {
+            this.currentSettings.propertyGroupKey = this.currentSettings.propertySortKey;
+        }
+
         if (typeof this.currentSettings.manualSortPropertyKey !== 'string') {
             this.currentSettings.manualSortPropertyKey = DEFAULT_SETTINGS.manualSortPropertyKey;
         }
 
-        if (!isSortOption(this.currentSettings.defaultFolderSort) || isPropertySortOption(this.currentSettings.defaultFolderSort)) {
+        if (!isSortOption(this.currentSettings.defaultFolderSort)) {
             this.currentSettings.defaultFolderSort = DEFAULT_SETTINGS.defaultFolderSort;
+        }
+
+        if (typeof this.currentSettings.defaultFolderSortPropertyKey !== 'string') {
+            this.currentSettings.defaultFolderSortPropertyKey = DEFAULT_SETTINGS.defaultFolderSortPropertyKey;
         }
 
         if (typeof this.currentSettings.manualSortGroupHeaderProperty !== 'string') {
@@ -535,8 +657,13 @@ export class PluginSettingsController {
         });
 
         this.sanitizeSettingsRecords();
+        this.pruneInheritedAppearanceValues();
         const prunedUnavailablePropertySortOverrides = pruneUnavailablePropertySortOverrides(this.currentSettings);
         const prunedUnavailablePropertyGroupingOverrides = pruneUnavailablePropertyGroupingOverrides(this.currentSettings);
+        // Load and external sync reconcile the global defaults silently; only direct settings-tab
+        // edits announce a reset, so sync-driven cleanups never surface a notice.
+        const reconciledDefaultFolderSort = reconcileDefaultFolderSort(this.currentSettings);
+        const reconciledDefaultNoteGrouping = reconcileDefaultNoteGrouping(this.currentSettings);
 
         const migratedMomentFormats = migrateMomentDateFormats({
             settings: this.currentSettings,
@@ -716,6 +843,13 @@ export class PluginSettingsController {
         applyLegacyShortcutsMigration({ settings: this.currentSettings, legacyShortcuts });
         const migratedShortcutNegationSyntax = migrateSearchShortcutNegationSyntax({ settings: this.currentSettings });
         this.normalizeIconSettings();
+        // Stored data from before the dark task background setting existed lacks the key, and the
+        // defaults merge above already filled it with the default color. Seed it from the light color
+        // before normalization so upgraded vaults keep the same background in both themes; a malformed
+        // light value is cleaned up by normalizeTaskSettings afterwards.
+        if (hadMissingDarkTaskBackgroundColorInStoredData) {
+            this.currentSettings.unfinishedTaskBackgroundColorDark = this.currentSettings.unfinishedTaskBackgroundColor;
+        }
         this.normalizeTaskSettings();
         this.normalizeFileIconMapSettings();
         this.normalizeInterfaceIconsSettings();
@@ -738,21 +872,32 @@ export class PluginSettingsController {
             hadLegacyFolderColorTitleSettingInStoredData ||
             hadShowPinnedIconInStoredData ||
             hadShowPinnedGroupHeaderInStoredData ||
+            hadLegacyUnfinishedTaskIconInStoredData ||
             hadPinnedSectionIconInStoredData ||
             hadInvalidPropertySortKeyInStoredData ||
             hadInvalidManualSortPropertyKeyInStoredData ||
-            hadUnavailableDefaultFolderSortInStoredData ||
+            hadInvalidDefaultFolderSortInStoredData ||
+            hadInvalidDefaultFolderSortPropertyKeyInStoredData ||
+            hadInvalidPropertyGroupKeyInStoredData ||
+            hadMissingPropertyGroupKeyInStoredData ||
+            reconciledDefaultFolderSort.changed ||
+            reconciledDefaultNoteGrouping.changed ||
             hadLegacyNoneGroupingInStoredData ||
             hadLegacyOpenFolderNotesInNewTabInStoredData ||
             hadInvalidShiftEnterOpenContextInStoredData ||
             hadInvalidCmdCtrlEnterOpenContextInStoredData ||
+            hadMissingDarkTaskBackgroundColorInStoredData ||
             prunedUnavailablePropertySortOverrides ||
             prunedUnavailablePropertyGroupingOverrides ||
             uiScaleMigrated ||
             migratedMomentFormats ||
             migratedShortcutNegationSyntax;
 
-        return needsPersistedCleanup;
+        // A local marker newer than data.json repairs the shared high-water mark so other devices
+        // normally skip the dialog too. The local marker remains authoritative if sync regresses it again.
+        const needsLastShownVersionRepair = lastShownVersionResolution.needsSyncedRepair;
+
+        return needsPersistedCleanup || needsLastShownVersionRepair;
     }
 
     public normalizeTagSettings(): void {
@@ -891,6 +1036,7 @@ export class PluginSettingsController {
     }
 
     public async saveSettings(): Promise<void> {
+        this.pruneInheritedAppearanceValues();
         ensureVaultProfiles(this.currentSettings);
         this.refreshMatcherCachesIfNeeded();
         localStorage.set(this.options.keys.homepageKey, this.currentSettings.homepage);
@@ -898,6 +1044,9 @@ export class PluginSettingsController {
     }
 
     public getPersistableSettings(): NotebookNavigatorSettings {
+        // Every whole-file settings write carries at least this device's marker. Without this merge,
+        // an unrelated setting change could serialize an older in-memory value back into data.json.
+        this.currentSettings.lastShownVersion = this.getLastShownVersion();
         const rest = { ...this.currentSettings } as Record<string, unknown>;
         this.removeNonPersistableSettings(rest);
 
@@ -1277,14 +1426,21 @@ export class PluginSettingsController {
         const sanitizeAlphaSortOrderMap = (
             record?: Record<string, 'alpha-asc' | 'alpha-desc'>
         ): Record<string, 'alpha-asc' | 'alpha-desc'> => sanitizeRecord(record, isAlphaSortOrder);
-        const isAppearanceValue = (value: unknown): value is FolderAppearance => isPlainObjectRecordValue(value);
-        const sanitizeAppearanceMap = (record?: Record<string, FolderAppearance>): Record<string, FolderAppearance> => {
+        const isAppearanceValue = (value: unknown): value is ListPaneAppearance => isPlainObjectRecordValue(value);
+        const sanitizeAppearanceMap = (record?: Record<string, ListPaneAppearance>): Record<string, ListPaneAppearance> => {
             const sanitized = sanitizeRecord(record, isAppearanceValue);
-            Object.values(sanitized).forEach(appearance => {
+            Object.entries(sanitized).forEach(([key, appearance]) => {
                 delete (appearance as Record<string, unknown>)['notePropertyType'];
                 normalizeAppearanceGroupBy(appearance);
-                if (!isMultiValueGrouping(appearance.multiValueGrouping)) delete appearance.multiValueGrouping;
-                if (!isNoValueGroupPosition(appearance.noValueGroupPosition)) delete appearance.noValueGroupPosition;
+                const normalizedAppearance = mergeListPaneAppearanceAndGrouping(
+                    getStoredListPaneAppearanceFields(appearance),
+                    appearance.groupBy
+                );
+                if (normalizedAppearance) {
+                    sanitized[key] = normalizedAppearance;
+                } else {
+                    delete sanitized[key];
+                }
             });
             return sanitized;
         };
@@ -1302,32 +1458,45 @@ export class PluginSettingsController {
         const sanitizeTypeAppearanceMap = (
             record?: NotebookNavigatorSettings['typeAppearances']
         ): NonNullable<NotebookNavigatorSettings['typeAppearances']> => {
-            const sanitized = sanitizeAppearanceMap(record);
+            const sanitized = sanitizeRecord<Record<string, unknown>>(
+                record as Record<string, Record<string, unknown>> | undefined,
+                isPlainObjectRecordValue
+            ) as Record<string, FolderAppearance>;
             Object.keys(sanitized).forEach(key => {
                 if (!isTpsNavigatorStructuralTypeId(key)) {
                     delete sanitized[key];
                     return;
                 }
-                if (isTpsNavigatorLineTypeId(key)) {
-                    const groupBy = sanitized[key]?.groupBy;
-                    const linePropertyInheritance = sanitized[key]?.linePropertyInheritance;
-                    const multiValueGrouping = sanitized[key]?.multiValueGrouping;
-                    const noValueGroupPosition = sanitized[key]?.noValueGroupPosition;
-                    if (
-                        groupBy === undefined &&
-                        !isLinePropertyInheritance(linePropertyInheritance) &&
-                        !isMultiValueGrouping(multiValueGrouping) &&
-                        !isNoValueGroupPosition(noValueGroupPosition)
-                    ) {
-                        delete sanitized[key];
+
+                const appearance = sanitized[key];
+                delete (appearance as Record<string, unknown>)['notePropertyType'];
+                normalizeAppearanceGroupBy(appearance);
+                const normalizedAppearance = mergeListPaneAppearanceAndGrouping(
+                    getStoredListPaneAppearanceFields(appearance),
+                    appearance.groupBy
+                );
+                if (!isTpsNavigatorLineTypeId(key)) {
+                    if (normalizedAppearance) {
+                        sanitized[key] = normalizedAppearance;
                     } else {
-                        sanitized[key] = {
-                            ...(groupBy === undefined ? {} : { groupBy }),
-                            ...(isLinePropertyInheritance(linePropertyInheritance) ? { linePropertyInheritance } : {}),
-                            ...(isMultiValueGrouping(multiValueGrouping) ? { multiValueGrouping } : {}),
-                            ...(isNoValueGroupPosition(noValueGroupPosition) ? { noValueGroupPosition } : {})
-                        };
+                        delete sanitized[key];
                     }
+                    return;
+                }
+
+                const linePropertyInheritance = appearance.linePropertyInheritance;
+                const multiValueGrouping = appearance.multiValueGrouping;
+                const noValueGroupPosition = appearance.noValueGroupPosition;
+                const typeAppearance: FolderAppearance = {
+                    ...(normalizedAppearance ?? {}),
+                    ...(isLinePropertyInheritance(linePropertyInheritance) ? { linePropertyInheritance } : {}),
+                    ...(isMultiValueGrouping(multiValueGrouping) ? { multiValueGrouping } : {}),
+                    ...(isNoValueGroupPosition(noValueGroupPosition) ? { noValueGroupPosition } : {})
+                };
+                if (Object.keys(typeAppearance).length === 0) {
+                    delete sanitized[key];
+                } else {
+                    sanitized[key] = typeAppearance;
                 }
             });
             return sanitized;
@@ -1365,9 +1534,51 @@ export class PluginSettingsController {
         this.currentSettings.pinnedNotes = clonePinnedNotesRecord(this.currentSettings.pinnedNotes);
     }
 
+    private pruneInheritedAppearanceValues(): void {
+        // Choices equal to their global settings are inheritance. Remove matching stored values so
+        // default-marked entries do not remain overrides after a global setting changes.
+        const appearanceMaps = [
+            this.currentSettings.folderAppearances,
+            this.currentSettings.tagAppearances,
+            this.currentSettings.propertyAppearances
+        ];
+        appearanceMaps.forEach(appearances => {
+            Object.entries(appearances).forEach(([key, appearance]) => {
+                if (appearance.titleRows === this.currentSettings.fileNameRows) {
+                    delete appearance.titleRows;
+                }
+                if (appearance.previewRows === this.currentSettings.previewRows) {
+                    delete appearance.previewRows;
+                }
+                if (appearance.textCount === this.currentSettings.textCountDisplay) {
+                    delete appearance.textCount;
+                }
+                if (Object.keys(appearance).length === 0) {
+                    delete appearances[key];
+                }
+            });
+        });
+    }
+
     private normalizeTaskSettings(): void {
-        if (typeof this.currentSettings.showFileIconUnfinishedTask !== 'boolean') {
-            this.currentSettings.showFileIconUnfinishedTask = DEFAULT_SETTINGS.showFileIconUnfinishedTask;
+        if (!isUnfinishedTaskIconMode(this.currentSettings.unfinishedTaskIcon)) {
+            this.currentSettings.unfinishedTaskIcon = DEFAULT_SETTINGS.unfinishedTaskIcon;
+        }
+
+        if (typeof this.currentSettings.showFileTaskProgress !== 'boolean') {
+            this.currentSettings.showFileTaskProgress = DEFAULT_SETTINGS.showFileTaskProgress;
+        }
+
+        if (typeof this.currentSettings.showFileTaskProgressBar !== 'boolean') {
+            this.currentSettings.showFileTaskProgressBar = DEFAULT_SETTINGS.showFileTaskProgressBar;
+        }
+
+        if (typeof this.currentSettings.showFileTaskProgressCount !== 'boolean') {
+            this.currentSettings.showFileTaskProgressCount = DEFAULT_SETTINGS.showFileTaskProgressCount;
+        }
+
+        if (typeof this.currentSettings.hideFileTaskProgressWhenComplete !== 'boolean') {
+            this.currentSettings.hideFileTaskProgressWhenComplete = DEFAULT_SETTINGS.hideFileTaskProgressWhenComplete;
         }
 
         if (typeof this.currentSettings.showFileBackgroundUnfinishedTask !== 'boolean') {
@@ -1377,6 +1588,15 @@ export class PluginSettingsController {
         this.currentSettings.unfinishedTaskBackgroundColor = resolveTaskBackgroundColor(
             this.currentSettings.unfinishedTaskBackgroundColor,
             DEFAULT_SETTINGS.unfinishedTaskBackgroundColor
+        );
+
+        // A malformed or empty dark color falls back to the light color rather than the default
+        // so both themes stay consistent. Vaults from before the dark setting existed are handled
+        // in applySettingsRecord, which seeds the missing key from the light color before this runs,
+        // because the defaults merge has already replaced the missing value by this point.
+        this.currentSettings.unfinishedTaskBackgroundColorDark = resolveTaskBackgroundColor(
+            this.currentSettings.unfinishedTaskBackgroundColorDark,
+            this.currentSettings.unfinishedTaskBackgroundColor
         );
     }
 

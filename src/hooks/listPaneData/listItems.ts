@@ -33,7 +33,8 @@ import {
     isDateSortOption,
     isPropertySortOption
 } from '../../utils/sortUtils';
-import { getPropertyGroupingDirection, getPropertyGroupingGranularity, getPropertyGroupingKey } from '../../settings/types';
+import { getPropertyGroupingGranularity, getPropertyGroupingKey } from '../../settings/types';
+import { resolvePropertyGroupingDirection } from '../../utils/listGrouping';
 import { partitionPinnedFiles } from '../../utils/fileFinder';
 import {
     formatManualSortGroupHeaderLabel,
@@ -66,8 +67,8 @@ export interface ListPaneConfig {
     pinnedNotes: NotebookNavigatorSettings['pinnedNotes'];
     showCurrentFolderFilesAtBottom: boolean;
     showFolderGroupPaths: boolean;
+    /** Effective tag visibility for the active list selection. */
     showFileTags: boolean;
-    showTags: boolean;
 }
 
 interface BuildListItemsArgs {
@@ -217,7 +218,7 @@ function buildListItemsInternal(
             ? { restrictToFolderPath: selectedFolder.path }
             : undefined;
     const { pinnedFiles, unpinnedFiles } = partitionPinnedFiles(files, listConfig.pinnedNotes, contextFilter, pinnedDisplayScope);
-    const shouldDetectTags = includeFileItems && listConfig.showTags && listConfig.showFileTags;
+    const shouldDetectTags = includeFileItems && listConfig.showFileTags;
     const hiddenTagVisibility = shouldDetectTags ? createHiddenTagVisibility(hiddenTags, showHiddenItems) : null;
     const fileHasTags = shouldDetectTags
         ? (file: TFile) => {
@@ -538,7 +539,7 @@ function buildListItemsInternal(
         // the active sort order. The bucket key joins parts with a separator that cannot appear in
         // trimmed part values, so lists with different element boundaries such as ["a b", "c"] and
         // ["a", "b c"] stay in separate groups.
-        const propertyGroupingDirection = getPropertyGroupingDirection(groupingMode) ?? 'asc';
+        const propertyGroupingDirection = resolvePropertyGroupingDirection(groupingMode, sortOption);
         const propertyGroupingGranularity = getPropertyGroupingGranularity(groupingMode) ?? 'value';
         const propertyGroups = new Map<
             string,

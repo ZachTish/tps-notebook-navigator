@@ -47,7 +47,11 @@ import { getNavigationIndex } from '../utils/navigationIndex';
 import { getFolderNote, openFolderNoteFile } from '../utils/folderNotes';
 import { isEnterKey, resolveFolderNoteDefaultOpenContext, resolveKeyboardEnterAction } from '../utils/keyboardOpenContext';
 import { buildPropertyKeyNodeId } from '../utils/propertyTree';
-import { getNavigationExpansionTargetForItem, toggleNavigationExpansionTarget } from '../utils/navigationExpansion';
+import {
+    getNavigationExpansionTargetForItem,
+    isFolderEffectivelyExpanded,
+    toggleNavigationExpansionTarget
+} from '../utils/navigationExpansion';
 
 type VirtualTagCollectionItem = VirtualFolderItem & { tagCollectionId: string };
 type VirtualPropertyCollectionItem = VirtualFolderItem & { propertyCollectionId: string };
@@ -244,8 +248,11 @@ export function useNavigationPaneKeyboard({
                 // Auto-expand if enabled and folder has children
                 if (settings.autoExpandNavItems && folder.children.some(child => child instanceof TFolder)) {
                     // Only expand if not already expanded
-                    if (!expansionState.expandedFolders.has(folder.path)) {
-                        const expansionTarget = getNavigationExpansionTargetForItem(item, { showHiddenItems });
+                    if (!isFolderEffectivelyExpanded(folder.path, expansionState.expandedFolders, settings.showRootFolder)) {
+                        const expansionTarget = getNavigationExpansionTargetForItem(item, {
+                            showHiddenItems,
+                            showRootFolder: settings.showRootFolder
+                        });
                         if (expansionTarget) {
                             toggleNavigationExpansionTarget(expansionTarget, expansionState, expansionDispatch, 'expand', {
                                 collapseOtherBranches: settings.collapseOtherBranchesOnExpand
@@ -262,7 +269,10 @@ export function useNavigationPaneKeyboard({
                 if (settings.autoExpandNavItems && tagNode.children.size > 0) {
                     // Only expand if not already expanded
                     if (!expansionState.expandedTags.has(tagNode.path)) {
-                        const expansionTarget = getNavigationExpansionTargetForItem(item, { showHiddenItems });
+                        const expansionTarget = getNavigationExpansionTargetForItem(item, {
+                            showHiddenItems,
+                            showRootFolder: settings.showRootFolder
+                        });
                         if (expansionTarget) {
                             toggleNavigationExpansionTarget(expansionTarget, expansionState, expansionDispatch, 'expand', {
                                 collapseOtherBranches: settings.collapseOtherBranchesOnExpand
@@ -279,7 +289,10 @@ export function useNavigationPaneKeyboard({
 
                 if (settings.autoExpandNavItems && propertyNode.children.size > 0) {
                     if (!expansionState.expandedProperties.has(propertyNode.id)) {
-                        const expansionTarget = getNavigationExpansionTargetForItem(item, { showHiddenItems });
+                        const expansionTarget = getNavigationExpansionTargetForItem(item, {
+                            showHiddenItems,
+                            showRootFolder: settings.showRootFolder
+                        });
                         if (expansionTarget) {
                             toggleNavigationExpansionTarget(expansionTarget, expansionState, expansionDispatch, 'expand', {
                                 collapseOtherBranches: settings.collapseOtherBranchesOnExpand
@@ -446,7 +459,10 @@ export function useNavigationPaneKeyboard({
                         return;
                     }
 
-                    const expansionTarget = getNavigationExpansionTargetForItem(item, { showHiddenItems });
+                    const expansionTarget = getNavigationExpansionTargetForItem(item, {
+                        showHiddenItems,
+                        showRootFolder: settings.showRootFolder
+                    });
                     const expandedInThisAction = expansionTarget
                         ? toggleNavigationExpansionTarget(expansionTarget, expansionState, expansionDispatch, 'expand', {
                               collapseOtherBranches: settings.collapseOtherBranchesOnExpand
@@ -476,7 +492,10 @@ export function useNavigationPaneKeyboard({
                         return;
                     }
 
-                    const expansionTarget = getNavigationExpansionTargetForItem(item, { showHiddenItems });
+                    const expansionTarget = getNavigationExpansionTargetForItem(item, {
+                        showHiddenItems,
+                        showRootFolder: settings.showRootFolder
+                    });
                     const collapseItem = () =>
                         expansionTarget
                             ? toggleNavigationExpansionTarget(expansionTarget, expansionState, expansionDispatch, 'collapse')

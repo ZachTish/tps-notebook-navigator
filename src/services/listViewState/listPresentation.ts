@@ -7,9 +7,9 @@ import type { NavigatorListPresentationUpdate } from '../../api/types';
 import type { FolderAppearance } from '../../hooks/useListPaneAppearance';
 import {
     createPropertyGroupingOption,
-    getPropertyGroupingDirection,
     getPropertyGroupingGranularity,
     getPropertyGroupingKey,
+    getPropertyGroupingOrder,
     getPropertyGroupingSource,
     normalizeListNoteGroupingOption,
     normalizeListSortOverride,
@@ -159,12 +159,13 @@ function setAppearanceRecord(
     }
 }
 
-function getConfiguredPropertyKey(settings: NotebookNavigatorSettings, requestedKey: string): string | null {
+function getConfiguredPropertyKey(settings: NotebookNavigatorSettings, requestedKey: string, purpose: 'sort' | 'group'): string | null {
     const normalizedRequested = casefold(requestedKey.trim());
     if (!normalizedRequested) {
         return null;
     }
-    const configured = parsePropertySortKeys(settings.propertySortKey).find(key => casefold(key) === normalizedRequested);
+    const configuredKeys = purpose === 'group' ? settings.propertyGroupKey : settings.propertySortKey;
+    const configured = parsePropertySortKeys(configuredKeys).find(key => casefold(key) === normalizedRequested);
     if (!configured || isManualSortPropertyKey(settings, configured)) {
         return null;
     }
@@ -182,7 +183,7 @@ function normalizeRequestedSort(
         return null;
     }
     if (update.option === 'property-asc' || update.option === 'property-desc') {
-        const propertyKey = getConfiguredPropertyKey(settings, update.propertyKey ?? '');
+        const propertyKey = getConfiguredPropertyKey(settings, update.propertyKey ?? '', 'sort');
         return propertyKey ? createListSortOverride(update.option, propertyKey) : null;
     }
     return update.option;
@@ -207,11 +208,11 @@ function normalizeRequestedGrouping(
     if (propertyKey === null) {
         return normalized;
     }
-    const configuredKey = getConfiguredPropertyKey(settings, propertyKey);
+    const configuredKey = getConfiguredPropertyKey(settings, propertyKey, 'group');
     if (!configuredKey) {
         return null;
     }
-    const direction = getPropertyGroupingDirection(normalized) ?? 'asc';
+    const order = getPropertyGroupingOrder(normalized) ?? 'asc';
     const granularity = getPropertyGroupingGranularity(normalized) ?? 'value';
     const source = getPropertyGroupingSource(normalized) ?? 'note';
     if (source === 'line' && target.type === ItemType.TYPE) {
@@ -221,7 +222,7 @@ function normalizeRequestedGrouping(
             return null;
         }
     }
-    return createPropertyGroupingOption(configuredKey, direction, granularity, source);
+    return createPropertyGroupingOption(configuredKey, order, granularity, source);
 }
 
 function getCurrentSortOverride(

@@ -332,6 +332,7 @@ export function getTagPillDisplayName(tag: string, showFileTagAncestors: boolean
 
 export interface FileItemLayoutState {
     isCompactMode: boolean;
+    isPinned: boolean;
     shouldShowMultilinePreview: boolean;
     shouldReplaceEmptyPreviewWithPills: boolean;
     shouldShowDateForItem: boolean;
@@ -344,6 +345,7 @@ export interface FileRowHeightInputs {
     showFeatureImageArea: boolean;
     showExtensionBadgeThumbnail: boolean;
     showParentFolderLine: boolean;
+    showTaskProgressLine: boolean;
     visiblePillRowCount: number;
 }
 
@@ -386,6 +388,7 @@ export function getFileItemLayoutState({
 
     return {
         isCompactMode,
+        isPinned,
         shouldShowMultilinePreview,
         shouldReplaceEmptyPreviewWithPills,
         shouldShowDateForItem,
@@ -401,6 +404,7 @@ export function calculateNormalListFileRowHeightEstimate({
     showFeatureImageArea,
     showExtensionBadgeThumbnail,
     showParentFolderLine,
+    showTaskProgressLine,
     visiblePillRowCount
 }: {
     heights: ListPaneMeasurements;
@@ -410,6 +414,7 @@ export function calculateNormalListFileRowHeightEstimate({
     showFeatureImageArea: boolean;
     showExtensionBadgeThumbnail: boolean;
     showParentFolderLine: boolean;
+    showTaskProgressLine: boolean;
     visiblePillRowCount: number;
 }): number {
     const titleContentHeight = heights.titleLineHeight * titleRows;
@@ -417,7 +422,8 @@ export function calculateNormalListFileRowHeightEstimate({
     const hasPillRows = pillRowCount > 0;
     const hasPreviewSlot = layoutState.shouldShowMultilinePreview;
     const previewSlotHeight = hasPreviewSlot ? heights.multilineTextLineHeight * previewRows : 0;
-    const metadataLineHeight = layoutState.shouldShowDateForItem || showParentFolderLine ? heights.singleTextLineHeight : 0;
+    const metadataLineHeight =
+        layoutState.shouldShowDateForItem || showParentFolderLine || showTaskProgressLine ? heights.singleTextLineHeight : 0;
     const singleTextLineCount = metadataLineHeight > 0 ? 1 : 0;
     const contentLineCount = singleTextLineCount + pillRowCount;
     const hasImageTextArea = showFeatureImageArea && !showExtensionBadgeThumbnail;
@@ -440,9 +446,19 @@ export function calculateNormalListFileRowHeightEstimate({
         return heights.basePadding + applyFeatureImageFloor(titleContentHeight + contentLineHeight);
     }
 
-    const reservedPreviewSlotHeight = Math.max(previewSlotHeight, replacementPreviewSlotHeight);
+    // Pinned rows place task progress and the one-line preview beside each other, so both
+    // occupy one secondary line. Adding their heights would make the virtual row taller
+    // than the rendered two-line layout and leave empty space below the item.
+    const sharesPinnedSecondaryLine = layoutState.isPinned && showTaskProgressLine && hasPreviewSlot;
+    const reservedPreviewSlotHeight = sharesPinnedSecondaryLine
+        ? Math.max(previewSlotHeight, metadataLineHeight)
+        : Math.max(previewSlotHeight, replacementPreviewSlotHeight);
     const reserveImageMetadataLine = hasImageTextArea && !layoutState.isPinnedImageRow;
-    const reservedMetadataLineHeight = reserveImageMetadataLine ? heights.singleTextLineHeight : metadataLineHeight;
+    const reservedMetadataLineHeight = sharesPinnedSecondaryLine
+        ? 0
+        : reserveImageMetadataLine
+          ? heights.singleTextLineHeight
+          : metadataLineHeight;
     const reservedEmptyMetadataLineHeight = reserveImageMetadataLine && metadataLineHeight === 0 ? reservedMetadataLineHeight : 0;
     const richContentHeight = titleContentHeight + reservedPreviewSlotHeight + reservedMetadataLineHeight;
     const pillRowsHeight = heights.tagRowHeight * pillRowCount;
@@ -479,8 +495,39 @@ export function estimateFileRowHeight(inputs: FileRowHeightInputs, config: FileR
         showFeatureImageArea: inputs.showFeatureImageArea,
         showExtensionBadgeThumbnail: inputs.showExtensionBadgeThumbnail,
         showParentFolderLine: inputs.showParentFolderLine,
+        showTaskProgressLine: inputs.showTaskProgressLine,
         visiblePillRowCount
     });
+}
+
+/**
+ * Shared visibility rule for task progress in standard metadata lines and pinned
+ * secondary lines. FileItem rendering and the list pane height estimator must agree
+ * or virtualized rows get wrong height estimates.
+ */
+export function shouldShowFileItemTaskProgress({
+    showTaskProgress,
+    hideWhenComplete,
+    taskTotal,
+    taskUnfinished
+}: {
+    showTaskProgress: boolean;
+    hideWhenComplete: boolean;
+    taskTotal: number | null | undefined;
+    taskUnfinished: number | null | undefined;
+}): boolean {
+    if (!showTaskProgress || typeof taskTotal !== 'number' || taskTotal <= 0) {
+        return false;
+    }
+
+    // Unfinished count 0 means every task is completed. Counters persist as a pair
+    // (normalizeTaskCounters), so a positive total always comes with a numeric unfinished
+    // count; a null unfinished count cannot reach this branch from stored records.
+    if (hideWhenComplete && taskUnfinished === 0) {
+        return false;
+    }
+
+    return true;
 }
 
 export function shouldShowFileItemParentFolderLine({

@@ -3,7 +3,6 @@
 import type { TFile } from 'obsidian';
 import type { ListNoteGroupingOption } from '../../settings/types';
 import {
-    getPropertyGroupingDirection,
     getPropertyGroupingGranularity,
     getPropertyGroupingKey,
     getPropertyGroupingSource,
@@ -27,6 +26,7 @@ import {
     naturalCompare,
     type EffectiveListSort
 } from '../../utils/sortUtils';
+import { resolvePropertyGroupingDirection } from '../../utils/listGrouping';
 
 export interface StructuralTypeRowPresentationArgs {
     /** Built-in rows for one selected structural Type. External Type collections are not part of this contract. */
@@ -230,6 +230,7 @@ function compareRows(
 function orderPropertyGroups(
     entries: readonly DecoratedStructuralTypeRow[],
     groupBy: ListNoteGroupingOption,
+    sort: EffectiveListSort,
     noValueLabel: string,
     inheritance: LinePropertyInheritance,
     multiValueGrouping: MultiValueGrouping,
@@ -278,7 +279,7 @@ function orderPropertyGroups(
         });
     });
 
-    const descending = getPropertyGroupingDirection(groupBy) === 'desc';
+    const descending = resolvePropertyGroupingDirection(groupBy, sort.option) === 'desc';
     const direction = descending ? -1 : 1;
     const groupIdPrefix = source === 'line' ? `line-property-${granularity}` : `property-${granularity}`;
     const groups: StructuralTypeRowGroup[] = Array.from(grouped.entries())
@@ -424,6 +425,7 @@ export function buildStandaloneStructuralTypePresentation(args: StructuralTypeRo
     const propertyGroups = orderPropertyGroups(
         entries,
         args.groupBy,
+        args.sort,
         args.noValueLabel,
         inheritance,
         args.multiValueGrouping ?? 'separate',

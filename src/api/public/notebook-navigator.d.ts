@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 3.3.0
+ * Version: 3.4.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -288,12 +288,16 @@ export type NavigatorListGrouping =
     | 'folder'
     | `property:${string}`
     | `property-desc:${string}`
+    | `property-follow:${string}`
     | `property-day:${string}`
     | `property-day-desc:${string}`
+    | `property-day-follow:${string}`
     | `line-property:${string}`
     | `line-property-desc:${string}`
+    | `line-property-follow:${string}`
     | `line-property-day:${string}`
-    | `line-property-day-desc:${string}`;
+    | `line-property-day-desc:${string}`
+    | `line-property-day-follow:${string}`;
 export type NavigatorListDisplayMode = 'standard' | 'compact';
 export interface NavigatorListSearchUpdate {
     readonly active?: boolean;
@@ -635,7 +639,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 3.3.0
+ * @version 3.4.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */

@@ -48,6 +48,8 @@ import {
     getFolderAncestorPaths,
     getPropertyAncestorNodeIds,
     getTagAncestorPaths,
+    isFolderEffectivelyExpanded,
+    isFolderExpansionLocked,
     toggleNavigationExpansionTarget
 } from '../../utils/navigationExpansion';
 import { useStableHandlerFacade } from '../useStableHandlerFacade';
@@ -144,6 +146,10 @@ export function useNavigationPaneTreeInteractions({
 
     const handleFolderToggle = useCallback(
         (path: string) => {
+            if (isFolderExpansionLocked(path, settings.showRootFolder)) {
+                return;
+            }
+
             if (settings.collapseOtherBranchesOnExpand) {
                 const folder = app.vault.getFolderByPath(path);
                 if (folder) {
@@ -152,7 +158,7 @@ export function useNavigationPaneTreeInteractions({
                             type: 'folder',
                             id: path,
                             hasChildren: folder.children.some(child => child instanceof TFolder),
-                            ancestorIds: getFolderAncestorPaths(folder)
+                            ancestorIds: getFolderAncestorPaths(folder, { includeRootFolder: settings.showRootFolder })
                         },
                         expansionState,
                         expansionDispatch,
@@ -165,7 +171,7 @@ export function useNavigationPaneTreeInteractions({
 
             expansionDispatch({ type: 'TOGGLE_FOLDER_EXPANDED', folderPath: path });
         },
-        [app.vault, expansionDispatch, expansionState, settings.collapseOtherBranchesOnExpand]
+        [app.vault, expansionDispatch, expansionState, settings.collapseOtherBranchesOnExpand, settings.showRootFolder]
     );
 
     const handleFolderClick = useCallback(
@@ -175,7 +181,7 @@ export function useNavigationPaneTreeInteractions({
             }
 
             const hasChildFolders = folder.children.some(child => child instanceof TFolder);
-            const isExpanded = expansionState.expandedFolders.has(folder.path);
+            const isExpanded = isFolderEffectivelyExpanded(folder.path, expansionState.expandedFolders, settings.showRootFolder);
             const isSelectedFolder =
                 selectionState.selectionType === ItemType.FOLDER && selectionState.selectedFolder?.path === folder.path;
             const shouldCollapseOnSelect =
@@ -237,7 +243,8 @@ export function useNavigationPaneTreeInteractions({
 
             // Folder-note name clicks stop before the row click handler, so automatic expansion must run in this branch.
             const hasChildFolders = folder.children.some(child => child instanceof TFolder);
-            if (settings.autoExpandNavItems && hasChildFolders && !expansionState.expandedFolders.has(folder.path)) {
+            const isExpanded = isFolderEffectivelyExpanded(folder.path, expansionState.expandedFolders, settings.showRootFolder);
+            if (settings.autoExpandNavItems && hasChildFolders && !isExpanded) {
                 handleFolderToggle(folder.path);
             }
 
@@ -666,6 +673,12 @@ export function useNavigationPaneTreeInteractions({
 
     const handleFolderToggleAllSiblings = useCallback(
         (folder: TFolder) => {
+            // Recursive toggle includes the row itself, so a root that is locked open cannot
+            // perform either half of the operation without leaving the tree in a mixed state.
+            if (isFolderExpansionLocked(folder.path, settings.showRootFolder)) {
+                return;
+            }
+
             const isCurrentlyExpanded = expansionState.expandedFolders.has(folder.path);
             handleFolderToggle(folder.path);
             const descendantPaths = getAllDescendantFolders(folder);
@@ -673,7 +686,7 @@ export function useNavigationPaneTreeInteractions({
                 expansionDispatch({ type: 'TOGGLE_DESCENDANT_FOLDERS', descendantPaths, expand: !isCurrentlyExpanded });
             }
         },
-        [expansionDispatch, expansionState.expandedFolders, getAllDescendantFolders, handleFolderToggle]
+        [expansionDispatch, expansionState.expandedFolders, getAllDescendantFolders, handleFolderToggle, settings.showRootFolder]
     );
 
     const handleTagToggleAllSiblings = useCallback(

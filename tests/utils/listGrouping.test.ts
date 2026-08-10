@@ -24,6 +24,7 @@ import {
     getPropertyGroupingDirection,
     getPropertyGroupingGranularity,
     getPropertyGroupingKey,
+    getPropertyGroupingOrder,
     getPropertyGroupingSource,
     normalizeListNoteGroupingBaseOption,
     normalizeListNoteGroupingOption,
@@ -38,8 +39,13 @@ import {
     areListGroupingOptionsSameKind,
     hasEffectiveCustomListGrouping,
     pruneUnavailablePropertyGroupingOverrides,
+    reconcileDefaultNoteGrouping,
     resolveEffectiveListGroupingForSort,
     resolveListGrouping,
+    resolveListGroupingOverrideForDefault,
+    resolvePropertyGroupingDirection,
+    updateDefaultNoteGroupingKey,
+    updatePropertyGroupKeySetting,
     updatePropertyGroupingOverrideKeys
 } from '../../src/utils/listGrouping';
 
@@ -215,7 +221,7 @@ describe('resolveEffectiveListGroupingForSort', () => {
     });
 
     it('keeps property grouping under every sort and selection type', () => {
-        const groupBy = createPropertyGroupingOption('status');
+        const groupBy = createPropertyGroupingOption('status', 'asc');
         (['modified-desc', 'title-asc', 'property-asc'] as const).forEach(sortOption => {
             expect(
                 resolveEffectiveListGroupingForSort({
@@ -237,7 +243,7 @@ describe('resolveEffectiveListGroupingForSort', () => {
     it('locks manual sort to custom groups even with property grouping', () => {
         expect(
             resolveEffectiveListGroupingForSort({
-                groupBy: createPropertyGroupingOption('status'),
+                groupBy: createPropertyGroupingOption('status', 'asc'),
                 sortOption: 'property-asc',
                 selectionType: ItemType.FOLDER,
                 isManualSortActive: true
@@ -251,48 +257,79 @@ describe('property grouping option encoding', () => {
         expect(getPropertyGroupingKey('property:status')).toBe('status');
         expect(getPropertyGroupingKey('property: status ')).toBe('status');
         expect(getPropertyGroupingKey('property-desc:status')).toBe('status');
+        expect(getPropertyGroupingKey('property-follow:status')).toBe('status');
         expect(getPropertyGroupingKey('property-day:scheduled')).toBe('scheduled');
         expect(getPropertyGroupingKey('property-day-desc:scheduled')).toBe('scheduled');
+        expect(getPropertyGroupingKey('property-day-follow:scheduled')).toBe('scheduled');
         expect(getPropertyGroupingKey('line-property:scheduled')).toBe('scheduled');
         expect(getPropertyGroupingKey('line-property-day-desc:scheduled')).toBe('scheduled');
+        expect(getPropertyGroupingKey('line-property-day-follow:scheduled')).toBe('scheduled');
         expect(getPropertyGroupingKey('property:')).toBeNull();
         expect(getPropertyGroupingKey('folder')).toBeNull();
     });
 
-    it('extracts the group order direction from the prefix', () => {
+    it('preserves order, granularity, and source across every property grouping prefix', () => {
+        expect(getPropertyGroupingOrder('property:status')).toBe('asc');
+        expect(getPropertyGroupingOrder('property-desc:status')).toBe('desc');
+        expect(getPropertyGroupingOrder('property-follow:status')).toBe('follow');
+        expect(getPropertyGroupingOrder('property-day:scheduled')).toBe('asc');
+        expect(getPropertyGroupingOrder('property-day-desc:scheduled')).toBe('desc');
+        expect(getPropertyGroupingOrder('property-day-follow:scheduled')).toBe('follow');
+        expect(getPropertyGroupingOrder('line-property:status')).toBe('asc');
+        expect(getPropertyGroupingOrder('line-property-desc:status')).toBe('desc');
+        expect(getPropertyGroupingOrder('line-property-follow:status')).toBe('follow');
+        expect(getPropertyGroupingOrder('line-property-day:scheduled')).toBe('asc');
+        expect(getPropertyGroupingOrder('line-property-day-desc:scheduled')).toBe('desc');
+        expect(getPropertyGroupingOrder('line-property-day-follow:scheduled')).toBe('follow');
+        expect(getPropertyGroupingOrder('folder')).toBeNull();
+
         expect(getPropertyGroupingDirection('property:status')).toBe('asc');
         expect(getPropertyGroupingDirection('property-desc:status')).toBe('desc');
         expect(getPropertyGroupingDirection('property-day:scheduled')).toBe('asc');
         expect(getPropertyGroupingDirection('property-day-desc:scheduled')).toBe('desc');
         expect(getPropertyGroupingDirection('line-property:scheduled')).toBe('asc');
         expect(getPropertyGroupingDirection('line-property-day-desc:scheduled')).toBe('desc');
+        expect(getPropertyGroupingDirection('property-follow:status')).toBeNull();
+        expect(getPropertyGroupingDirection('line-property-day-follow:scheduled')).toBeNull();
         expect(getPropertyGroupingDirection('folder')).toBeNull();
+
         expect(getPropertyGroupingGranularity('property:status')).toBe('value');
         expect(getPropertyGroupingGranularity('property-day:scheduled')).toBe('day');
         expect(getPropertyGroupingGranularity('line-property:scheduled')).toBe('value');
         expect(getPropertyGroupingGranularity('line-property-day:scheduled')).toBe('day');
+        expect(getPropertyGroupingGranularity('property-day-follow:scheduled')).toBe('day');
+        expect(getPropertyGroupingGranularity('line-property-follow:status')).toBe('value');
         expect(getPropertyGroupingGranularity('folder')).toBeNull();
+
         expect(getPropertyGroupingSource('property:status')).toBe('note');
         expect(getPropertyGroupingSource('property-day:scheduled')).toBe('note');
+        expect(getPropertyGroupingSource('property-follow:status')).toBe('note');
         expect(getPropertyGroupingSource('line-property:status')).toBe('line');
         expect(getPropertyGroupingSource('line-property-day:scheduled')).toBe('line');
+        expect(getPropertyGroupingSource('line-property-day-follow:scheduled')).toBe('line');
         expect(getPropertyGroupingSource('folder')).toBeNull();
+
         expect(createPropertyGroupingOption('status', 'desc')).toBe('property-desc:status');
         expect(createPropertyGroupingOption('status')).toBe('property:status');
+        expect(createPropertyGroupingOption('status', 'follow')).toBe('property-follow:status');
         expect(createPropertyGroupingOption('scheduled', 'asc', 'day')).toBe('property-day:scheduled');
         expect(createPropertyGroupingOption('scheduled', 'desc', 'day')).toBe('property-day-desc:scheduled');
+        expect(createPropertyGroupingOption('scheduled', 'follow', 'day')).toBe('property-day-follow:scheduled');
         expect(createPropertyGroupingOption('status', 'asc', 'value', 'line')).toBe('line-property:status');
         expect(createPropertyGroupingOption('scheduled', 'desc', 'day', 'line')).toBe('line-property-day-desc:scheduled');
+        expect(createPropertyGroupingOption('scheduled', 'follow', 'day', 'line')).toBe('line-property-day-follow:scheduled');
     });
 
     it('keeps keys containing separator characters intact under both prefixes', () => {
         expect(getPropertyGroupingKey('property:-desc:odd')).toBe('-desc:odd');
-        expect(getPropertyGroupingDirection('property:-desc:odd')).toBe('asc');
+        expect(getPropertyGroupingOrder('property:-desc:odd')).toBe('asc');
     });
 
-    it('switches property sources without changing the key, direction, or day granularity', () => {
+    it('switches property sources without changing the key, order, or day granularity', () => {
         expect(replacePropertyGroupingSource('property-day-desc:Scheduled', 'line')).toBe('line-property-day-desc:Scheduled');
+        expect(replacePropertyGroupingSource('property-day-follow:Scheduled', 'line')).toBe('line-property-day-follow:Scheduled');
         expect(replacePropertyGroupingSource('line-property:Parents', 'note')).toBe('property:Parents');
+        expect(replacePropertyGroupingSource('line-property-follow:Parents', 'note')).toBe('property-follow:Parents');
         expect(replacePropertyGroupingSource('date', 'line')).toBeNull();
     });
 
@@ -307,10 +344,13 @@ describe('property grouping option encoding', () => {
     it('normalizes property grouping options to trimmed canonical form', () => {
         expect(normalizeListNoteGroupingOption('property: status ')).toBe('property:status');
         expect(normalizeListNoteGroupingOption('property-desc: status ')).toBe('property-desc:status');
+        expect(normalizeListNoteGroupingOption('property-follow: status ')).toBe('property-follow:status');
         expect(normalizeListNoteGroupingOption('property-day: scheduled ')).toBe('property-day:scheduled');
         expect(normalizeListNoteGroupingOption('property-day-desc: scheduled ')).toBe('property-day-desc:scheduled');
+        expect(normalizeListNoteGroupingOption('property-day-follow: scheduled ')).toBe('property-day-follow:scheduled');
         expect(normalizeListNoteGroupingOption('line-property: status ')).toBe('line-property:status');
         expect(normalizeListNoteGroupingOption('line-property-day-desc: scheduled ')).toBe('line-property-day-desc:scheduled');
+        expect(normalizeListNoteGroupingOption('line-property-day-follow: scheduled ')).toBe('line-property-day-follow:scheduled');
         expect(normalizeListNoteGroupingOption('property:')).toBeNull();
         expect(normalizeListNoteGroupingOption('property-desc:')).toBeNull();
         expect(normalizeListNoteGroupingOption('none')).toBe('custom');
@@ -320,15 +360,28 @@ describe('property grouping option encoding', () => {
     it('rejects property encodings for the vault-wide default grouping', () => {
         expect(normalizeListNoteGroupingBaseOption('property:status')).toBeNull();
         expect(normalizeListNoteGroupingBaseOption('property-desc:status')).toBeNull();
+        expect(normalizeListNoteGroupingBaseOption('property-follow:status')).toBeNull();
         expect(normalizeListNoteGroupingBaseOption('line-property:status')).toBeNull();
         expect(normalizeListNoteGroupingBaseOption('none')).toBe('custom');
         expect(normalizeListNoteGroupingBaseOption('folder')).toBe('folder');
         expect(normalizeListNoteGroupingBaseOption('date')).toBe('date');
     });
 
+    it('accepts complete property encodings for persisted defaults and appearances', () => {
+        expect(normalizeListNoteGroupingOption('property:status')).toBe('property:status');
+        expect(normalizeListNoteGroupingOption('property-desc:status')).toBe('property-desc:status');
+        expect(normalizeListNoteGroupingOption('property-follow:status')).toBe('property-follow:status');
+        expect(normalizeListNoteGroupingOption('property-day-follow:scheduled')).toBe('property-day-follow:scheduled');
+        expect(normalizeListNoteGroupingOption('line-property-day-follow:scheduled')).toBe('line-property-day-follow:scheduled');
+        expect(normalizeListNoteGroupingOption('none')).toBe('custom');
+        expect(normalizeListNoteGroupingOption('folder')).toBe('folder');
+        expect(normalizeListNoteGroupingOption('date')).toBe('date');
+    });
+
     it('compares property grouping options case-insensitively including direction', () => {
         expect(areListGroupingOptionsEqual('property:Status', 'property:status')).toBe(true);
         expect(areListGroupingOptionsEqual('property:status', 'property-desc:status')).toBe(false);
+        expect(areListGroupingOptionsEqual('property:status', 'property-follow:status')).toBe(false);
         expect(areListGroupingOptionsEqual('property:status', 'property:genre')).toBe(false);
         expect(areListGroupingOptionsEqual('property:scheduled', 'property-day:scheduled')).toBe(false);
         expect(areListGroupingOptionsEqual('property:status', 'line-property:status')).toBe(false);
@@ -338,20 +391,35 @@ describe('property grouping option encoding', () => {
 
     it('matches grouping options of the same kind regardless of direction', () => {
         expect(areListGroupingOptionsSameKind('property:status', 'property-desc:Status')).toBe(true);
+        expect(areListGroupingOptionsSameKind('property:status', 'property-follow:Status')).toBe(true);
         expect(areListGroupingOptionsSameKind('property:status', 'property:genre')).toBe(false);
         expect(areListGroupingOptionsSameKind('property:scheduled', 'property-day:scheduled')).toBe(false);
         expect(areListGroupingOptionsSameKind('property:status', 'line-property:status')).toBe(false);
         expect(areListGroupingOptionsSameKind('property-day:scheduled', 'property-day-desc:Scheduled')).toBe(true);
+        expect(areListGroupingOptionsSameKind('property-day:scheduled', 'property-day-follow:Scheduled')).toBe(true);
         expect(areListGroupingOptionsSameKind('line-property-day:scheduled', 'line-property-day-desc:Scheduled')).toBe(true);
+        expect(areListGroupingOptionsSameKind('line-property-day:scheduled', 'line-property-day-follow:Scheduled')).toBe(true);
         expect(areListGroupingOptionsSameKind('date', 'date')).toBe(true);
         expect(areListGroupingOptionsSameKind('property:status', 'custom')).toBe(false);
+    });
+
+    it('retains a grouping override when only one component matches the default', () => {
+        expect(resolveListGroupingOverrideForDefault('property:genre', 'property:status')).toBe('property:genre');
+        expect(resolveListGroupingOverrideForDefault('property-desc:status', 'property:status')).toBe('property-desc:status');
+        expect(resolveListGroupingOverrideForDefault('property-follow:status', 'property:status')).toBe('property-follow:status');
+    });
+
+    it('removes a grouping override when the complete selection matches the default', () => {
+        expect(resolveListGroupingOverrideForDefault('property:Status', 'property:status')).toBeUndefined();
+        expect(resolveListGroupingOverrideForDefault('property-follow:Status', 'property-follow:status')).toBeUndefined();
+        expect(resolveListGroupingOverrideForDefault('date', 'date')).toBeUndefined();
     });
 });
 
 describe('pruneUnavailablePropertyGroupingOverrides', () => {
     it('removes overrides for unregistered keys and keeps the rest', () => {
         const settings = structuredClone(DEFAULT_SETTINGS);
-        settings.propertySortKey = 'status, genre';
+        settings.propertyGroupKey = 'status, genre';
         settings.folderAppearances.Projects = { groupBy: 'property:status' };
         settings.folderAppearances.Archive = { groupBy: 'property:removed' };
         settings.folderAppearances.Mixed = { groupBy: 'property:removed', mode: 'compact' };
@@ -367,8 +435,8 @@ describe('pruneUnavailablePropertyGroupingOverrides', () => {
 
     it('removes overrides referencing the manual sort key', () => {
         const settings = structuredClone(DEFAULT_SETTINGS);
-        settings.propertySortKey = `status, ${settings.manualSortPropertyKey}`;
-        settings.folderAppearances.Projects = { groupBy: createPropertyGroupingOption(settings.manualSortPropertyKey) };
+        settings.propertyGroupKey = `status, ${settings.manualSortPropertyKey}`;
+        settings.folderAppearances.Projects = { groupBy: createPropertyGroupingOption(settings.manualSortPropertyKey, 'asc') };
 
         expect(pruneUnavailablePropertyGroupingOverrides(settings)).toBe(true);
         expect(settings.folderAppearances.Projects).toBeUndefined();
@@ -376,7 +444,7 @@ describe('pruneUnavailablePropertyGroupingOverrides', () => {
 
     it('reports no change when every override is available', () => {
         const settings = structuredClone(DEFAULT_SETTINGS);
-        settings.propertySortKey = 'status';
+        settings.propertyGroupKey = 'status';
         settings.folderAppearances.Projects = { groupBy: 'property:Status' };
 
         expect(pruneUnavailablePropertyGroupingOverrides(settings)).toBe(false);
@@ -524,5 +592,110 @@ describe('hasEffectiveCustomListGrouping', () => {
             [TPS_NAVIGATOR_TYPE_IDS.BASES]: 'title-asc'
         };
         expect(hasEffectiveCustomListGrouping(sortSettings)).toBe(true);
+    });
+});
+
+describe('reconcileDefaultNoteGrouping', () => {
+    it('keeps property groupings whose key is configured, matching case-insensitively', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.propertyGroupKey = 'Status, genre';
+        settings.noteGrouping = 'property:status';
+
+        expect(reconcileDefaultNoteGrouping(settings)).toEqual({ changed: false, reset: false });
+        expect(settings.noteGrouping).toBe('property:status');
+    });
+
+    it('resets property groupings whose key is not configured', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.propertyGroupKey = 'genre';
+        settings.noteGrouping = 'property-desc:status';
+
+        expect(reconcileDefaultNoteGrouping(settings)).toEqual({ changed: true, reset: true });
+        expect(settings.noteGrouping).toBe(DEFAULT_SETTINGS.noteGrouping);
+    });
+
+    it('resets property groupings referencing the manual sort key', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.propertyGroupKey = settings.manualSortPropertyKey;
+        settings.noteGrouping = createPropertyGroupingOption(settings.manualSortPropertyKey, 'asc');
+
+        expect(reconcileDefaultNoteGrouping(settings)).toEqual({ changed: true, reset: true });
+        expect(settings.noteGrouping).toBe(DEFAULT_SETTINGS.noteGrouping);
+    });
+
+    it('leaves base grouping modes untouched', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.noteGrouping = 'folder';
+
+        expect(reconcileDefaultNoteGrouping(settings)).toEqual({ changed: false, reset: false });
+        expect(settings.noteGrouping).toBe('folder');
+    });
+});
+
+describe('updateDefaultNoteGroupingKey', () => {
+    it('rewrites the default grouping key on rename and keeps the direction', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.noteGrouping = 'property-desc:status';
+
+        expect(updateDefaultNoteGroupingKey(settings, 'status', 'Stage')).toBe(true);
+        expect(settings.noteGrouping).toBe('property-desc:Stage');
+    });
+
+    it('resets the default grouping when the key is deleted', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.noteGrouping = 'property:status';
+
+        expect(updateDefaultNoteGroupingKey(settings, 'status', null)).toBe(true);
+        expect(settings.noteGrouping).toBe(DEFAULT_SETTINGS.noteGrouping);
+    });
+
+    it('ignores renames of other keys and base grouping modes', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.noteGrouping = 'property:status';
+
+        expect(updateDefaultNoteGroupingKey(settings, 'genre', 'Stage')).toBe(false);
+        expect(settings.noteGrouping).toBe('property:status');
+
+        settings.noteGrouping = 'date';
+        expect(updateDefaultNoteGroupingKey(settings, 'status', 'Stage')).toBe(false);
+        expect(settings.noteGrouping).toBe('date');
+    });
+});
+
+describe('resolvePropertyGroupingDirection', () => {
+    it('borrows the sort direction for follow-sort group orders', () => {
+        expect(resolvePropertyGroupingDirection('property-follow:status', 'modified-desc')).toBe('desc');
+        expect(resolvePropertyGroupingDirection('property-follow:status', 'title-asc')).toBe('asc');
+        expect(resolvePropertyGroupingDirection('property-follow:status', 'property-desc')).toBe('desc');
+        expect(resolvePropertyGroupingDirection('line-property-day-follow:scheduled', 'title-asc')).toBe('asc');
+    });
+
+    it('returns fixed group orders unchanged regardless of the sort direction', () => {
+        expect(resolvePropertyGroupingDirection('property:status', 'modified-desc')).toBe('asc');
+        expect(resolvePropertyGroupingDirection('property-desc:status', 'title-asc')).toBe('desc');
+    });
+});
+
+describe('updatePropertyGroupKeySetting', () => {
+    it('rewrites the configured grouping list on rename and removes the key on delete', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.propertyGroupKey = 'status, genre';
+
+        expect(updatePropertyGroupKeySetting(settings, 'status', 'Stage')).toBe(true);
+        expect(settings.propertyGroupKey).toBe('Stage, genre');
+
+        expect(updatePropertyGroupKeySetting(settings, 'genre', null)).toBe(true);
+        expect(settings.propertyGroupKey).toBe('Stage');
+    });
+
+    it('reports no change for unknown keys and empty lists', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.propertyGroupKey = 'status';
+
+        expect(updatePropertyGroupKeySetting(settings, 'genre', 'Stage')).toBe(false);
+        expect(settings.propertyGroupKey).toBe('status');
+
+        settings.propertyGroupKey = '';
+        expect(updatePropertyGroupKeySetting(settings, 'status', 'Stage')).toBe(false);
     });
 });

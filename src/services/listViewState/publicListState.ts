@@ -132,12 +132,16 @@ export function validateListPresentationUpdate(value: unknown): PublicListInputR
                 typeof groupBy === 'string' &&
                 (/^property:[^\s].*$/.test(groupBy) ||
                     /^property-desc:[^\s].*$/.test(groupBy) ||
+                    /^property-follow:[^\s].*$/.test(groupBy) ||
                     /^property-day:[^\s].*$/.test(groupBy) ||
                     /^property-day-desc:[^\s].*$/.test(groupBy) ||
+                    /^property-day-follow:[^\s].*$/.test(groupBy) ||
                     /^line-property:[^\s].*$/.test(groupBy) ||
                     /^line-property-desc:[^\s].*$/.test(groupBy) ||
+                    /^line-property-follow:[^\s].*$/.test(groupBy) ||
                     /^line-property-day:[^\s].*$/.test(groupBy) ||
-                    /^line-property-day-desc:[^\s].*$/.test(groupBy))
+                    /^line-property-day-desc:[^\s].*$/.test(groupBy) ||
+                    /^line-property-day-follow:[^\s].*$/.test(groupBy))
             )
         ) {
             return { ok: false };

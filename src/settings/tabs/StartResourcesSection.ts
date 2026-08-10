@@ -39,7 +39,9 @@ export function renderStartResourcesSection(context: SettingsTabContext): void {
             return;
         }
         const hasVersion = Boolean(version);
-        updateStatusEl.setText(hasVersion ? strings.settings.items.updateCheckOnStart.status.replace('{version}', version ?? '') : '');
+        updateStatusEl.setText(
+            hasVersion ? strings.settings.items.checkForNewVersionOnStart.status.replace('{version}', version ?? '') : ''
+        );
         setElementVisible(updateStatusEl, hasVersion);
     };
 
@@ -64,8 +66,7 @@ export function renderStartResourcesSection(context: SettingsTabContext): void {
                         new WhatsNewModal(context.app, latestNotes, () => {
                             window.setTimeout(() => {
                                 runAsyncAction(async () => {
-                                    plugin.settings.lastShownVersion = pluginVersion;
-                                    await plugin.saveSettingsAndUpdate();
+                                    await plugin.advanceLastShownVersion(pluginVersion);
                                 });
                             }, 1000);
                         }).open();
@@ -147,7 +148,7 @@ export function createStartResourcesSettingDefinitions(context: SettingsTabConte
                         }
                         const hasVersion = Boolean(version);
                         updateStatusEl.setText(
-                            hasVersion ? strings.settings.items.updateCheckOnStart.status.replace('{version}', version ?? '') : ''
+                            hasVersion ? strings.settings.items.checkForNewVersionOnStart.status.replace('{version}', version ?? '') : ''
                         );
                         setElementVisible(updateStatusEl, hasVersion);
                     };
@@ -164,8 +165,7 @@ export function createStartResourcesSettingDefinitions(context: SettingsTabConte
                                     new WhatsNewModal(context.app, latestNotes, () => {
                                         window.setTimeout(() => {
                                             runAsyncAction(async () => {
-                                                plugin.settings.lastShownVersion = pluginVersion;
-                                                await plugin.saveSettingsAndUpdate();
+                                                await plugin.advanceLastShownVersion(pluginVersion);
                                             });
                                         }, 1000);
                                     }).open();

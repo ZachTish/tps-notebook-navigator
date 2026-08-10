@@ -29,6 +29,9 @@ const NON_TRANSFERABLE_SETTING_KEYS = new Set([
     'recentColors',
     'lastReleaseCheckAt',
     'latestKnownRelease',
+    // Importing another device's release marker could mark unseen notes as shown or regress the
+    // shared high-water mark before the local floor repairs it.
+    'lastShownVersion',
     'searchProvider',
     'showCalendar',
     'calendarCustomPromptForTitle',
@@ -259,11 +262,16 @@ export function createModifiedSettingsTransfer(settings: NotebookNavigatorSettin
     const currentSnapshot = createTransferableSettingsSnapshot(settings);
     const defaultSnapshot = createTransferableSettingsSnapshot(DEFAULT_SETTINGS);
     const diff = createSettingsDiff(defaultSnapshot, currentSnapshot);
+    const transferSettings = isRecord(diff) ? diff : {};
+    // propertyGroupKey is exported even when it matches the default: its absence marks an export
+    // created before the sorting/grouping property split, so import can seed the grouping list
+    // from the exported sorting list without misreading an intentionally empty grouping list.
+    transferSettings['propertyGroupKey'] = currentSnapshot['propertyGroupKey'];
 
     return {
         plugin: SETTINGS_TRANSFER_PLUGIN_ID,
         pluginVersion,
-        settings: isRecord(diff) ? diff : {}
+        settings: transferSettings
     };
 }
 
@@ -302,6 +310,13 @@ export function applyModifiedSettingsTransfer(currentSettings: NotebookNavigator
     const mergedSnapshot = mergeSettingsDiff(defaultSnapshot, transferSettings);
     if (!isRecord(mergedSnapshot)) {
         throw new Error('Settings import must be a JSON object.');
+    }
+
+    // Exports created before the sorting/grouping property split carry no propertyGroupKey while
+    // post-split exports always include it. Seeding the grouping list from the restored sorting
+    // list keeps pre-split grouping defaults and overrides working, mirroring the load migration.
+    if (!hasOwnKey(transferSettings, 'propertyGroupKey')) {
+        mergedSnapshot['propertyGroupKey'] = mergedSnapshot['propertySortKey'];
     }
 
     const nextSettingsRecord = createImportBaseSettings(currentSettings);

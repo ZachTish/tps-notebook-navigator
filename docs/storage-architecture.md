@@ -1,4 +1,4 @@
-# Notebook Navigator Storage Architecture
+# TPS Notebook Navigator Storage Architecture
 
 Updated: July 9, 2026
 
@@ -24,7 +24,7 @@ Updated: July 9, 2026
 
 ## Overview
 
-Notebook Navigator stores user configuration in `data.json` and uses rebuildable caches for file-derived data.
+TPS Notebook Navigator stores user configuration in `data.json` and uses rebuildable caches for file-derived data.
 
 - **Settings** (`data.json`): user configuration, vault profiles, appearance overrides, pinned notes, folder/tag/property metadata maps, and fallback file icon/color maps.
 - **Vault-scoped local storage**: device-local UI state, recent notes/icons, and version/migration markers.
@@ -171,6 +171,7 @@ and cache version/migration markers.
 - Cache version markers: `STORAGE_KEYS.databaseSchemaVersionKey`, `STORAGE_KEYS.databaseContentVersionKey`.
 - Frontmatter metadata cache signature: `STORAGE_KEYS.frontmatterMetadataCacheSignatureKey` (signature of the frontmatter metadata settings that produced the cached `metadata` fields; see `src/utils/frontmatterMetadataCache.ts`).
 - Cache rebuild notice marker: `STORAGE_KEYS.cacheRebuildNoticeKey`.
+- Device-local What's new floor: `STORAGE_KEYS.lastShownVersionKey`.
 - Device-local diagnostics and one-off action preferences.
 - Local storage schema marker: `STORAGE_KEYS.localStorageVersionKey` (`LOCALSTORAGE_VERSION` in `src/utils/localStorage.ts`).
 
@@ -193,6 +194,7 @@ export const STORAGE_KEYS: LocalStorageKeys = {
   selectedFileKey: 'tps-notebook-navigator-selected-file',
   selectedFilesKey: 'tps-notebook-navigator-selected-files',
   selectedTagKey: 'tps-notebook-navigator-selected-tag',
+  selectedTypeKey: 'tps-notebook-navigator-selected-type',
   navigationPaneWidthKey: 'tps-notebook-navigator-navigation-pane-width',
   navigationPaneHeightKey: 'tps-notebook-navigator-navigation-pane-height',
   dualPaneOrientationKey: 'tps-notebook-navigator-dual-pane-orientation',
@@ -213,6 +215,7 @@ export const STORAGE_KEYS: LocalStorageKeys = {
   frontmatterMetadataCacheSignatureKey: 'tps-notebook-navigator-frontmatter-metadata-cache-signature',
   cacheRebuildNoticeKey: 'tps-notebook-navigator-cache-rebuild-notice',
   debugLoggingEnabledKey: 'tps-notebook-navigator-debug-logging-enabled',
+  lastShownVersionKey: 'tps-notebook-navigator-last-shown-version',
   pdfProcessingDiagnosticKey: 'tps-notebook-navigator-pdf-processing-diagnostic',
   localStorageVersionKey: 'tps-notebook-navigator-localstorage-version',
   vaultProfileKey: 'tps-notebook-navigator-vault-profile',
@@ -286,7 +289,7 @@ React render paths.
 - File icon/color/background settings maps used as fallback and migration sources when frontmatter metadata writes are unavailable.
 - Pinned notes (`pinnedNotes`) keyed by file path with separate `folder` / `tag` / `property` contexts.
 - External icon provider enablement (`externalIconProviders`) and keyboard shortcut configuration (`keyboardShortcuts`).
-- Runtime metadata maps and ordering: navigation separators, root folder/tag/property order, custom vault name, custom colors, and release tracking.
+- Runtime metadata maps and ordering: navigation separators, root folder/tag/property order, custom vault name, custom colors, release tracking, and the synced What's new high-water mark.
 
 #### Sync modes and local mirrors
 

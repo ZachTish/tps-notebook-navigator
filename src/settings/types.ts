@@ -17,7 +17,6 @@
  */
 
 import type { FileVisibility } from '../utils/fileTypeUtils';
-import type { FolderAppearance, TagAppearance } from '../hooks/useListPaneAppearance';
 import type { BackgroundMode, DualPaneOrientation, PinnedNotes } from '../types';
 import type { FolderNoteCreationPreference } from '../types/folderNote';
 import type { KeyboardShortcutConfig } from '../utils/keyboardShortcuts';
@@ -133,8 +132,8 @@ export type SortOption =
     | 'property-asc'
     | 'property-desc';
 
-/** Ordered list of sort options for validation and UI choices */
-export const SORT_OPTIONS: SortOption[] = [
+/** Ordered list of sort options for validation */
+const SORT_OPTIONS: SortOption[] = [
     'modified-desc',
     'modified-asc',
     'created-desc',
@@ -437,10 +436,17 @@ export function isListDisplayMode(value: unknown): value is ListDisplayMode {
     return value === 'standard' || value === 'compact';
 }
 
+/** List modes where unfinished tasks replace the file icon. */
+export type UnfinishedTaskIconMode = 'none' | 'compact' | 'all';
+
+export function isUnfinishedTaskIconMode(value: unknown): value is UnfinishedTaskIconMode {
+    return value === 'none' || value === 'compact' || value === 'all';
+}
+
 /** Built-in grouping modes for list pane notes */
 export type ListNoteGroupingBaseOption = 'custom' | 'date' | 'folder';
 
-/** Direction applied to property grouping group order */
+/** Resolved direction applied when arranging property groups */
 export type PropertyGroupingDirection = 'asc' | 'desc';
 
 /** Whether property grouping preserves the complete value or buckets date/time values by local calendar day. */
@@ -450,33 +456,76 @@ export type PropertyGroupingGranularity = 'value' | 'day';
 export type PropertyGroupingSource = 'note' | 'line';
 
 /**
+ * Stored group order of a property grouping. `follow` borrows the direction from the effective
+ * sort order at render time; `asc` and `desc` are fixed value orders.
+ */
+export type PropertyGroupingOrder = PropertyGroupingDirection | 'follow';
+
+/**
  * Grouping options for list pane notes.
- * Property grouping is stored as `property:<frontmatter key>` (ascending group order) or
- * `property-desc:<frontmatter key>` (descending group order). Calendar-day grouping uses
- * the backward-compatible `property-day:` and `property-day-desc:` prefixes. These historical
- * forms always read owning-note frontmatter. Source-backed Type views can explicitly read only
- * row-local fields through equivalent `line-property...` prefixes. Appearance records therefore
- * keep one scalar `groupBy` value across settings sync, and keys may contain `:`.
+ * Property grouping is stored as `property:<frontmatter key>` (ascending group order),
+ * `property-desc:<frontmatter key>` (descending group order), or `property-follow:<frontmatter key>`
+ * (group order follows the sort direction). Calendar-day and source-backed Type variants retain
+ * the same order in their own prefixes, so persisted TPS Type appearances stay explicit and
+ * co-installable while inherited navigation surfaces receive upstream's follow-sort behavior.
  */
 export type ListNoteGroupingOption =
     | ListNoteGroupingBaseOption
     | `property:${string}`
     | `property-desc:${string}`
+    | `property-follow:${string}`
     | `property-day:${string}`
     | `property-day-desc:${string}`
+    | `property-day-follow:${string}`
     | `line-property:${string}`
     | `line-property-desc:${string}`
+    | `line-property-follow:${string}`
     | `line-property-day:${string}`
-    | `line-property-day-desc:${string}`;
+    | `line-property-day-desc:${string}`
+    | `line-property-day-follow:${string}`;
+
+export interface ListPaneAppearance {
+    mode?: ListDisplayMode;
+    titleRows?: number;
+    /** Zero hides preview text for this selection; undefined inherits the global row count. */
+    previewRows?: number;
+    groupBy?: ListNoteGroupingOption;
+    showTags?: boolean;
+    showProperties?: boolean;
+    showTaskProgress?: boolean;
+    /** Undefined inherits the global count type; `none` explicitly hides counts for this selection. */
+    textCount?: TextCountDisplay;
+    /** Whether a multi-valued property creates one group per value or one combined group. */
+    multiValueGrouping?: MultiValueGrouping;
+    /** Placement of rows that do not match the active property grouping. */
+    noValueGroupPosition?: NoValueGroupPosition;
+}
+
+/** TPS-only per-Type appearance fields for exact source-backed collections. */
+export interface TpsTypeAppearance extends ListPaneAppearance {
+    /** Property resolution for exact structural-line Type sorting and grouping. */
+    linePropertyInheritance?: LinePropertyInheritance;
+}
+
+/** Determines how a structural line item's properties are inherited from its owning note. */
+export type LinePropertyInheritance = 'none' | 'note-first' | 'line-first' | 'combine';
+
+export type MultiValueGrouping = 'separate' | 'combine';
+
+export type NoValueGroupPosition = 'top' | 'bottom';
 
 const PROPERTY_GROUPING_PREFIX = 'property:';
 const PROPERTY_GROUPING_DESC_PREFIX = 'property-desc:';
+const PROPERTY_GROUPING_FOLLOW_PREFIX = 'property-follow:';
 const PROPERTY_DAY_GROUPING_PREFIX = 'property-day:';
 const PROPERTY_DAY_GROUPING_DESC_PREFIX = 'property-day-desc:';
+const PROPERTY_DAY_GROUPING_FOLLOW_PREFIX = 'property-day-follow:';
 const LINE_PROPERTY_GROUPING_PREFIX = 'line-property:';
 const LINE_PROPERTY_GROUPING_DESC_PREFIX = 'line-property-desc:';
+const LINE_PROPERTY_GROUPING_FOLLOW_PREFIX = 'line-property-follow:';
 const LINE_PROPERTY_DAY_GROUPING_PREFIX = 'line-property-day:';
 const LINE_PROPERTY_DAY_GROUPING_DESC_PREFIX = 'line-property-day-desc:';
+const LINE_PROPERTY_DAY_GROUPING_FOLLOW_PREFIX = 'line-property-day-follow:';
 
 function isListNoteGroupingBaseOption(value: unknown): value is ListNoteGroupingBaseOption {
     return value === 'custom' || value === 'date' || value === 'folder';
@@ -484,7 +533,7 @@ function isListNoteGroupingBaseOption(value: unknown): value is ListNoteGrouping
 
 function parsePropertyGroupingOption(value: unknown): {
     propertyKey: string;
-    direction: PropertyGroupingDirection;
+    order: PropertyGroupingOrder;
     granularity: PropertyGroupingGranularity;
     source: PropertyGroupingSource;
 } | null {
@@ -495,12 +544,16 @@ function parsePropertyGroupingOption(value: unknown): {
     // Test the most specific prefixes first so every stored scalar has one unambiguous interpretation.
     const matched = (
         [
+            [LINE_PROPERTY_DAY_GROUPING_FOLLOW_PREFIX, 'follow', 'day', 'line'],
             [LINE_PROPERTY_DAY_GROUPING_DESC_PREFIX, 'desc', 'day', 'line'],
             [LINE_PROPERTY_DAY_GROUPING_PREFIX, 'asc', 'day', 'line'],
+            [LINE_PROPERTY_GROUPING_FOLLOW_PREFIX, 'follow', 'value', 'line'],
             [LINE_PROPERTY_GROUPING_DESC_PREFIX, 'desc', 'value', 'line'],
             [LINE_PROPERTY_GROUPING_PREFIX, 'asc', 'value', 'line'],
+            [PROPERTY_DAY_GROUPING_FOLLOW_PREFIX, 'follow', 'day', 'note'],
             [PROPERTY_DAY_GROUPING_DESC_PREFIX, 'desc', 'day', 'note'],
             [PROPERTY_DAY_GROUPING_PREFIX, 'asc', 'day', 'note'],
+            [PROPERTY_GROUPING_FOLLOW_PREFIX, 'follow', 'value', 'note'],
             [PROPERTY_GROUPING_DESC_PREFIX, 'desc', 'value', 'note'],
             [PROPERTY_GROUPING_PREFIX, 'asc', 'value', 'note']
         ] as const
@@ -509,9 +562,9 @@ function parsePropertyGroupingOption(value: unknown): {
         return null;
     }
 
-    const [prefix, direction, granularity, source] = matched;
+    const [prefix, order, granularity, source] = matched;
     const propertyKey = value.slice(prefix.length).trim();
-    return propertyKey.length > 0 ? { propertyKey, direction, granularity, source } : null;
+    return propertyKey.length > 0 ? { propertyKey, order, granularity, source } : null;
 }
 
 /** Returns the frontmatter key encoded in a property grouping option, or null for base grouping modes. */
@@ -519,9 +572,15 @@ export function getPropertyGroupingKey(value: unknown): string | null {
     return parsePropertyGroupingOption(value)?.propertyKey ?? null;
 }
 
-/** Returns the group order direction of a property grouping option, or null for base grouping modes. */
+/** Returns the stored group order of a property grouping option, or null for base grouping modes. */
+export function getPropertyGroupingOrder(value: unknown): PropertyGroupingOrder | null {
+    return parsePropertyGroupingOption(value)?.order ?? null;
+}
+
+/** Returns the fixed direction, or null when the grouping follows the active sort direction. */
 export function getPropertyGroupingDirection(value: unknown): PropertyGroupingDirection | null {
-    return parsePropertyGroupingOption(value)?.direction ?? null;
+    const order = getPropertyGroupingOrder(value);
+    return order === 'asc' || order === 'desc' ? order : null;
 }
 
 /** Returns the value granularity encoded in a property grouping option, or null for base grouping modes. */
@@ -536,33 +595,41 @@ export function getPropertyGroupingSource(value: unknown): PropertyGroupingSourc
 
 export function createPropertyGroupingOption(
     propertyKey: string,
-    direction: PropertyGroupingDirection = 'asc',
+    order: PropertyGroupingOrder = 'asc',
     granularity: PropertyGroupingGranularity = 'value',
     source: PropertyGroupingSource = 'note'
 ): ListNoteGroupingOption {
     const prefix =
         source === 'line'
             ? granularity === 'day'
-                ? direction === 'desc'
-                    ? LINE_PROPERTY_DAY_GROUPING_DESC_PREFIX
-                    : LINE_PROPERTY_DAY_GROUPING_PREFIX
-                : direction === 'desc'
-                  ? LINE_PROPERTY_GROUPING_DESC_PREFIX
-                  : LINE_PROPERTY_GROUPING_PREFIX
+                ? order === 'follow'
+                    ? LINE_PROPERTY_DAY_GROUPING_FOLLOW_PREFIX
+                    : order === 'desc'
+                      ? LINE_PROPERTY_DAY_GROUPING_DESC_PREFIX
+                      : LINE_PROPERTY_DAY_GROUPING_PREFIX
+                : order === 'follow'
+                  ? LINE_PROPERTY_GROUPING_FOLLOW_PREFIX
+                  : order === 'desc'
+                    ? LINE_PROPERTY_GROUPING_DESC_PREFIX
+                    : LINE_PROPERTY_GROUPING_PREFIX
             : granularity === 'day'
-              ? direction === 'desc'
-                  ? PROPERTY_DAY_GROUPING_DESC_PREFIX
-                  : PROPERTY_DAY_GROUPING_PREFIX
-              : direction === 'desc'
-                ? PROPERTY_GROUPING_DESC_PREFIX
-                : PROPERTY_GROUPING_PREFIX;
+              ? order === 'follow'
+                  ? PROPERTY_DAY_GROUPING_FOLLOW_PREFIX
+                  : order === 'desc'
+                    ? PROPERTY_DAY_GROUPING_DESC_PREFIX
+                    : PROPERTY_DAY_GROUPING_PREFIX
+              : order === 'follow'
+                ? PROPERTY_GROUPING_FOLLOW_PREFIX
+                : order === 'desc'
+                  ? PROPERTY_GROUPING_DESC_PREFIX
+                  : PROPERTY_GROUPING_PREFIX;
     return `${prefix}${propertyKey.trim()}`;
 }
 
 /** Switches only the metadata source while preserving key, direction, and exact/day granularity. */
 export function replacePropertyGroupingSource(value: unknown, source: PropertyGroupingSource): ListNoteGroupingOption | null {
     const parsed = parsePropertyGroupingOption(value);
-    return parsed ? createPropertyGroupingOption(parsed.propertyKey, parsed.direction, parsed.granularity, source) : null;
+    return parsed ? createPropertyGroupingOption(parsed.propertyKey, parsed.order, parsed.granularity, source) : null;
 }
 
 /**
@@ -580,11 +647,6 @@ export function normalizePropertyGroupingSourceForMenu(
     return replacePropertyGroupingSource(value, 'note') ?? value;
 }
 
-/**
- * Validates the vault-wide default grouping, which never supports property grouping.
- * Property grouping is a per-view override, so the global default rejects property
- * encodings that appearance overrides accept.
- */
 export function normalizeListNoteGroupingBaseOption(value: unknown): ListNoteGroupingBaseOption | null {
     if (value === 'none') {
         return 'custom';
@@ -601,7 +663,7 @@ export function normalizeListNoteGroupingOption(value: unknown): ListNoteGroupin
 
     // Re-encode property groupings so stored values always carry a trimmed key.
     const parsed = parsePropertyGroupingOption(value);
-    return parsed ? createPropertyGroupingOption(parsed.propertyKey, parsed.direction, parsed.granularity, parsed.source) : null;
+    return parsed ? createPropertyGroupingOption(parsed.propertyKey, parsed.order, parsed.granularity, parsed.source) : null;
 }
 
 export interface AppearanceGroupingValue {
@@ -849,7 +911,20 @@ export interface NotebookNavigatorSettings {
     defaultListMode: ListDisplayMode;
     includeDescendantNotes: boolean;
     defaultFolderSort: SortOption;
+    /**
+     * Frontmatter key used when defaultFolderSort is a property sort. Stored separately because
+     * defaultFolderSort stays a scalar string for native settings controls and settings transfer.
+     * Empty for built-in sorts. Must match an entry in propertySortKey; reconciliation resets both
+     * fields to defaults when the key is removed from the configured list.
+     */
+    defaultFolderSortPropertyKey: string;
+    /** Comma-separated frontmatter keys offered as sort choices (settings dropdown and sort menu). */
     propertySortKey: string;
+    /**
+     * Comma-separated frontmatter keys offered as grouping choices. Seeded from propertySortKey
+     * when absent from stored data so pre-split configurations keep both behaviors.
+     */
+    propertyGroupKey: string;
     propertySortSecondary: PropertySortSecondaryOption;
     manualSortPropertyKey: string;
     manualSortGroupHeaderProperty: string;
@@ -857,8 +932,10 @@ export interface NotebookNavigatorSettings {
     confirmBeforeManualSort: boolean;
     revealFileOnListChanges: boolean;
     listPaneTitle: ListPaneTitleOption;
-    // The vault-wide default supports only the base modes; property grouping is a per-view override.
-    noteGrouping: ListNoteGroupingBaseOption;
+    // Supports base modes and property grouping encoded as `property:<key>`, `property-desc:<key>`,
+    // or `property-follow:<key>`. Property keys must match an entry in propertyGroupKey;
+    // reconciliation resets to the default grouping when the key is removed from the configured list.
+    noteGrouping: ListNoteGroupingOption;
     showSelectedNavigationPills: boolean;
     stickyGroupHeaders: boolean;
     showFolderGroupPaths: boolean;
@@ -886,10 +963,15 @@ export interface NotebookNavigatorSettings {
     frontmatterDateFormat: string;
 
     // Notes tab
-    showFileIconUnfinishedTask: boolean;
+    showFileTaskProgress: boolean;
+    showFileTaskProgressBar: boolean;
+    showFileTaskProgressCount: boolean;
+    hideFileTaskProgressWhenComplete: boolean;
     showFileBackgroundUnfinishedTask: boolean;
     unfinishedTaskBackgroundColor: string;
+    unfinishedTaskBackgroundColorDark: string;
     showFileIcons: boolean;
+    unfinishedTaskIcon: UnfinishedTaskIconMode;
     useFolderIconForFiles: boolean;
     showFilenameMatchIcons: boolean;
     fileNameIconMap: Record<string, string>;
@@ -953,6 +1035,7 @@ export interface NotebookNavigatorSettings {
     calendarMonthHighlights: Record<string, string>;
     calendarShowWeekNumber: boolean;
     calendarShowQuarter: boolean;
+    calendarShowOutsideMonthDays: boolean;
     calendarShowYearCalendar: boolean;
     calendarLeftPlacement: CalendarLeftPlacement;
     calendarWeeksToShow: CalendarWeeksToShow;
@@ -986,21 +1069,21 @@ export interface NotebookNavigatorSettings {
     folderBackgroundColors: Record<string, string>;
     folderSortOverrides: Record<string, ListSortOverrideValue>;
     folderTreeSortOverrides: Record<string, AlphaSortOrder>;
-    folderAppearances: Record<string, FolderAppearance>;
+    folderAppearances: Record<string, ListPaneAppearance>;
     tagIcons: Record<string, string>;
     tagColors: Record<string, string>;
     tagBackgroundColors: Record<string, string>;
     tagSortOverrides: Record<string, ListSortOverrideValue>;
     tagTreeSortOverrides: Record<string, AlphaSortOrder>;
-    tagAppearances: Record<string, TagAppearance>;
+    tagAppearances: Record<string, ListPaneAppearance>;
     propertyIcons: Record<string, string>;
     propertyColors: Record<string, string>;
     propertyBackgroundColors: Record<string, string>;
     propertySortOverrides: Record<string, ListSortOverrideValue>;
     propertyTreeSortOverrides: Record<string, AlphaSortOrder>;
-    propertyAppearances: Record<string, FolderAppearance>;
+    propertyAppearances: Record<string, ListPaneAppearance>;
     typeSortOverrides?: Partial<Record<TpsNavigatorStructuralTypeId, ListSortOverrideValue>>;
-    typeAppearances?: Partial<Record<TpsNavigatorStructuralTypeId, FolderAppearance>>;
+    typeAppearances?: Partial<Record<TpsNavigatorStructuralTypeId, TpsTypeAppearance>>;
     /** TPS migration marker for the task-local property inheritance default. */
     tpsLinePropertyInheritanceVersion?: number;
     virtualFolderColors: Record<string, string>;

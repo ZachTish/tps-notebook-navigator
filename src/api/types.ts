@@ -320,12 +320,16 @@ export type NavigatorListGrouping =
     | 'folder'
     | `property:${string}`
     | `property-desc:${string}`
+    | `property-follow:${string}`
     | `property-day:${string}`
     | `property-day-desc:${string}`
+    | `property-day-follow:${string}`
     | `line-property:${string}`
     | `line-property-desc:${string}`
+    | `line-property-follow:${string}`
     | `line-property-day:${string}`
-    | `line-property-day-desc:${string}`;
+    | `line-property-day-desc:${string}`
+    | `line-property-day-follow:${string}`;
 export type NavigatorListDisplayMode = 'standard' | 'compact';
 
 /** Guarded update for the search owned by the primary mounted TPS Navigator view. */

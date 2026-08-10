@@ -176,6 +176,10 @@ describe('public list state', () => {
             ok: true,
             value: { groupBy: 'property-day-desc:scheduled' }
         });
+        expect(validateListPresentationUpdate({ groupBy: 'property-follow:status' })).toMatchObject({
+            ok: true,
+            value: { groupBy: 'property-follow:status' }
+        });
         expect(validateListPresentationUpdate({ groupBy: 'line-property:status' })).toMatchObject({
             ok: true,
             value: { groupBy: 'line-property:status' }
@@ -183,6 +187,10 @@ describe('public list state', () => {
         expect(validateListPresentationUpdate({ groupBy: 'line-property-day-desc:scheduled' })).toMatchObject({
             ok: true,
             value: { groupBy: 'line-property-day-desc:scheduled' }
+        });
+        expect(validateListPresentationUpdate({ groupBy: 'line-property-day-follow:scheduled' })).toMatchObject({
+            ok: true,
+            value: { groupBy: 'line-property-day-follow:scheduled' }
         });
         expect(validateListPresentationUpdate({ groupBy: 'property-day:' })).toEqual({ ok: false });
         expect(validateListPresentationUpdate({ groupBy: 'line-property-day:' })).toEqual({ ok: false });

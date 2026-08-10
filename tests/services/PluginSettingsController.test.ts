@@ -37,7 +37,7 @@ const { mockLocalStorageStore, localStorageInit, localStorageGet, localStorageSe
 vi.mock('../../src/utils/localStorage', () => {
     return {
         LEGACY_STORAGE_KEYS: ['notebook-navigator-file-cache'],
-        LOCALSTORAGE_VERSION: 2,
+        LOCALSTORAGE_VERSION: 3,
         localStorage: {
             init: localStorageInit,
             get: localStorageGet,
@@ -154,7 +154,7 @@ describe('PluginSettingsController Type presentation persistence', () => {
         expect(controller.settings.tpsLinePropertyInheritanceVersion).toBe(1);
     });
 
-    it('round-trips structural Type sort/group settings while discarding unsupported line appearance fields', async () => {
+    it('round-trips structural Type sort/group settings while retaining supported shared appearance fields', async () => {
         let storedData: Record<string, unknown> = {
             propertySortKey: 'priority, status, scheduled',
             typeSortOverrides: {
@@ -162,13 +162,14 @@ describe('PluginSettingsController Type presentation persistence', () => {
                 [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: 'title-asc'
             },
             typeAppearances: {
-                [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property:status' },
+                [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property-follow:status' },
                 [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: {
                     mode: 'compact',
                     titleRows: 4,
                     previewRows: 3,
-                    groupBy: 'line-property-day-desc:scheduled',
+                    groupBy: 'line-property-day-follow:scheduled',
                     linePropertyInheritance: 'combine',
+                    multiValueGrouping: 'separate',
                     noValueGroupPosition: 'top'
                 },
                 [TPS_NAVIGATOR_TYPE_IDS.CALLOUTS]: { groupBy: 'custom' },
@@ -193,10 +194,13 @@ describe('PluginSettingsController Type presentation persistence', () => {
             [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: 'title-asc'
         });
         expect(first.settings.typeAppearances).toEqual({
-            [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property:status' },
+            [TPS_NAVIGATOR_TYPE_IDS.NOTES]: { mode: 'compact', groupBy: 'property-follow:status' },
             [TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]: {
-                groupBy: 'line-property-day-desc:scheduled',
+                mode: 'compact',
+                previewRows: 3,
+                groupBy: 'line-property-day-follow:scheduled',
                 linePropertyInheritance: 'combine',
+                multiValueGrouping: 'separate',
                 noValueGroupPosition: 'top'
             },
             [TPS_NAVIGATOR_TYPE_IDS.CALLOUTS]: { groupBy: 'custom' },
@@ -288,6 +292,26 @@ describe('PluginSettingsController.loadSettings', () => {
         const savedSettings = saveData.mock.calls[0][0] as Record<string, unknown>;
         expect(savedSettings.folderNoteOpenLocation).toBe('new-tab');
         expect(savedSettings.openFolderNotesInNewTab).toBeUndefined();
+    });
+
+    it('migrates the legacy unfinished task icon toggle to both list modes', async () => {
+        const saveData = vi.fn().mockResolvedValue(undefined);
+        const controller = new PluginSettingsController({
+            keys: STORAGE_KEYS,
+            loadData: vi.fn(async () => ({
+                showFileIconUnfinishedTask: true
+            })),
+            saveData,
+            mirrorUXPreferences: vi.fn()
+        });
+
+        await controller.loadSettings();
+
+        expect(controller.settings.unfinishedTaskIcon).toBe('all');
+        expect(saveData).toHaveBeenCalledTimes(1);
+        const savedSettings = saveData.mock.calls[0][0] as Record<string, unknown>;
+        expect(savedSettings.unfinishedTaskIcon).toBe('all');
+        expect(savedSettings.showFileIconUnfinishedTask).toBeUndefined();
     });
 
     it('persists cleanup when legacy folder color title setting is migrated', async () => {
@@ -397,6 +421,93 @@ describe('PluginSettingsController.loadSettings', () => {
         expect((savedSettings.tagAppearances as Record<string, Record<string, unknown>>)['work']?.groupBy).toBe('custom');
         expect((savedSettings.propertyAppearances as Record<string, Record<string, unknown>>)[statusNodeId]?.groupBy).toBe('custom');
     });
+
+    it('sanitizes stored selection appearance intent while keeping explicit enable and hide toggles', async () => {
+        const controller = new PluginSettingsController({
+            keys: STORAGE_KEYS,
+            loadData: vi.fn(async () => ({
+                folderAppearances: {
+                    Valid: {
+                        mode: 'standard',
+                        titleRows: 2,
+                        previewRows: 4,
+                        showTags: true,
+                        showProperties: false,
+                        textCount: 'characters',
+                        multiValueGrouping: 'combine',
+                        noValueGroupPosition: 'top',
+                        showFilePreview: false,
+                        textCountDisplay: 'characters',
+                        groupBy: 'folder',
+                        unknown: 'discard me'
+                    },
+                    Invalid: {
+                        mode: 'dense',
+                        titleRows: 9,
+                        previewRows: -1,
+                        showTags: 'yes',
+                        textCount: 'on'
+                    }
+                }
+            })),
+            saveData: vi.fn().mockResolvedValue(undefined),
+            mirrorUXPreferences: vi.fn()
+        });
+
+        await controller.loadSettings();
+
+        expect(controller.settings.folderAppearances).toEqual({
+            Valid: {
+                mode: 'standard',
+                titleRows: 2,
+                previewRows: 4,
+                showTags: true,
+                showProperties: false,
+                textCount: 'characters',
+                multiValueGrouping: 'combine',
+                noValueGroupPosition: 'top',
+                groupBy: 'folder'
+            }
+        });
+    });
+
+    it('stores appearance values matching global settings as inheritance', async () => {
+        const saveData = vi.fn().mockResolvedValue(undefined);
+        const controller = new PluginSettingsController({
+            keys: STORAGE_KEYS,
+            loadData: vi.fn(async () => ({
+                textCountDisplay: 'none',
+                folderAppearances: {
+                    Inbox: { mode: 'compact', titleRows: 1, previewRows: 2, textCount: 'none' },
+                    Writing: { titleRows: 3, previewRows: 0, textCount: 'words' }
+                }
+            })),
+            saveData,
+            mirrorUXPreferences: vi.fn()
+        });
+
+        await controller.loadSettings();
+
+        expect(controller.settings.folderAppearances).toEqual({
+            Inbox: { mode: 'compact' },
+            Writing: { titleRows: 3, previewRows: 0, textCount: 'words' }
+        });
+
+        saveData.mockClear();
+        controller.settings.fileNameRows = 3;
+        controller.settings.textCountDisplay = 'words';
+        await controller.saveSettings();
+
+        expect(controller.settings.folderAppearances).toEqual({
+            Inbox: { mode: 'compact' },
+            Writing: { previewRows: 0 }
+        });
+        const savedSettings = saveData.mock.calls[0][0] as Record<string, unknown>;
+        expect(savedSettings['folderAppearances']).toEqual({
+            Inbox: { mode: 'compact' },
+            Writing: { previewRows: 0 }
+        });
+    });
 });
 
 describe('PluginSettingsController.loadSettings result classification', () => {
@@ -477,6 +588,67 @@ describe('PluginSettingsController.loadSettings result classification', () => {
         expect(controller.settings.recentNotesCount).toBe(23);
     });
 
+    it('keeps a synced marker locally and repairs a later synced regression', async () => {
+        let stored: unknown = { lastShownVersion: '3.3.2' };
+        const { controller, saveData } = createController(async () => stored);
+
+        await expect(controller.loadSettings()).resolves.toBe('loaded');
+
+        expect(controller.settings.lastShownVersion).toBe('3.3.2');
+        expect(mockLocalStorageStore.get(STORAGE_KEYS.lastShownVersionKey)).toBe('3.3.2');
+
+        saveData.mockClear();
+        stored = { lastShownVersion: '3.3.1' };
+        await expect(controller.loadSettings()).resolves.toBe('loaded');
+
+        expect(controller.settings.lastShownVersion).toBe('3.3.2');
+        expect(saveData).toHaveBeenCalledTimes(1);
+        const persisted = saveData.mock.calls[0][0] as Record<string, unknown>;
+        expect(persisted.lastShownVersion).toBe('3.3.2');
+    });
+
+    it('uses the device-local marker as the floor after a restart with regressed synced settings', async () => {
+        mockLocalStorageStore.set(STORAGE_KEYS.lastShownVersionKey, '3.3.2');
+        const { controller, saveData } = createController(async () => ({ lastShownVersion: '3.3.1' }));
+
+        await expect(controller.loadSettings()).resolves.toBe('loaded');
+
+        expect(controller.settings.lastShownVersion).toBe('3.3.2');
+        const persisted = saveData.mock.calls[saveData.mock.calls.length - 1][0] as Record<string, unknown>;
+        expect(persisted.lastShownVersion).toBe('3.3.2');
+    });
+
+    it('cleans up a malformed synced marker instead of promoting it locally', async () => {
+        const { controller, saveData } = createController(async () => ({ lastShownVersion: '999.invalid' }));
+
+        await expect(controller.loadSettings()).resolves.toBe('loaded');
+
+        expect(controller.settings.lastShownVersion).toBe('');
+        expect(mockLocalStorageStore.has(STORAGE_KEYS.lastShownVersionKey)).toBe(false);
+        const persisted = saveData.mock.calls[saveData.mock.calls.length - 1][0] as Record<string, unknown>;
+        expect(persisted.lastShownVersion).toBe('');
+    });
+
+    it('replaces a malformed local marker with a valid synced marker', async () => {
+        mockLocalStorageStore.set(STORAGE_KEYS.lastShownVersionKey, '999.invalid');
+        const { controller } = createController(async () => ({ lastShownVersion: '3.3.2' }));
+
+        await expect(controller.loadSettings()).resolves.toBe('loaded');
+
+        expect(controller.settings.lastShownVersion).toBe('3.3.2');
+        expect(mockLocalStorageStore.get(STORAGE_KEYS.lastShownVersionKey)).toBe('3.3.2');
+    });
+
+    it('removes a malformed local marker when no valid synced marker exists', async () => {
+        mockLocalStorageStore.set(STORAGE_KEYS.lastShownVersionKey, '999.invalid');
+        const { controller } = createController(async () => ({ lastShownVersion: '' }));
+
+        await expect(controller.loadSettings()).resolves.toBe('loaded');
+
+        expect(controller.settings.lastShownVersion).toBe('');
+        expect(mockLocalStorageStore.has(STORAGE_KEYS.lastShownVersionKey)).toBe(false);
+    });
+
     it('preserves first-launch settings when a later load returns missing data', async () => {
         const { controller, saveData } = createController(async () => null);
 
@@ -517,7 +689,13 @@ describe('PluginSettingsController.loadSettingsAtStartup', () => {
         let attempts = 0;
         const { controller, saveData, loadDataMock } = createController(async () => {
             attempts += 1;
-            return attempts < 3 ? null : { recentNotesCount: 17 };
+            return attempts < 3
+                ? null
+                : {
+                      recentNotesCount: 17,
+                      unfinishedTaskBackgroundColorDark: DEFAULT_SETTINGS.unfinishedTaskBackgroundColorDark,
+                      propertyGroupKey: ''
+                  };
         });
 
         await expect(controller.loadSettingsAtStartup({ maxAttempts: 4, retryDelayMs: 0 })).resolves.toBe('loaded');
@@ -569,7 +747,14 @@ describe('PluginSettingsController.loadSettingsAtStartup', () => {
     });
 
     it('loads a valid record after an unavailable attempt', async () => {
-        const results: unknown[] = [undefined, { recentNotesCount: 23 }];
+        const results: unknown[] = [
+            undefined,
+            {
+                recentNotesCount: 23,
+                unfinishedTaskBackgroundColorDark: DEFAULT_SETTINGS.unfinishedTaskBackgroundColorDark,
+                propertyGroupKey: ''
+            }
+        ];
         const { controller, saveData, loadDataMock } = createController(async () => results.shift());
 
         await expect(controller.loadSettingsAtStartup({ maxAttempts: 3, retryDelayMs: 0 })).resolves.toBe('loaded');
@@ -577,6 +762,18 @@ describe('PluginSettingsController.loadSettingsAtStartup', () => {
         expect(loadDataMock).toHaveBeenCalledTimes(2);
         expect(controller.settings.recentNotesCount).toBe(23);
         expect(saveData).not.toHaveBeenCalled();
+    });
+
+    it('seeds the grouping property list from the sorting list for pre-split settings files', async () => {
+        const { controller, saveData } = createController(async () => ({
+            propertySortKey: 'status, priority',
+            unfinishedTaskBackgroundColorDark: DEFAULT_SETTINGS.unfinishedTaskBackgroundColorDark
+        }));
+
+        await expect(controller.loadSettingsAtStartup({ maxAttempts: 1, retryDelayMs: 0 })).resolves.toBe('loaded');
+
+        expect(controller.settings.propertyGroupKey).toBe('status, priority');
+        expect(saveData).toHaveBeenCalled();
     });
 
     it('cancels startup loading without applying defaults or waiting for another attempt', async () => {
@@ -704,6 +901,26 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsPerNote);
     });
 
+    it('seeds the dark task background color from the light color when the stored key is missing', () => {
+        const { controller } = createController();
+
+        const needsCleanup = controller.applySettingsRecord({ unfinishedTaskBackgroundColor: '#336699' }, { isFirstLaunch: false });
+
+        expect(controller.settings.unfinishedTaskBackgroundColorDark).toBe('#336699');
+        expect(needsCleanup).toBe(true);
+    });
+
+    it('keeps a stored dark task background color independent of the light color', () => {
+        const { controller } = createController();
+
+        controller.applySettingsRecord(
+            { unfinishedTaskBackgroundColor: '#336699', unfinishedTaskBackgroundColorDark: '#112233' },
+            { isFirstLaunch: false }
+        );
+
+        expect(controller.settings.unfinishedTaskBackgroundColorDark).toBe('#112233');
+    });
+
     it('applies an empty record as defaults for reset', () => {
         const { controller, saveData } = createController();
         const settings = structuredClone(DEFAULT_SETTINGS);
@@ -814,6 +1031,45 @@ describe('PluginSettingsController.applySettingsRecord', () => {
 });
 
 describe('PluginSettingsController.saveSettings', () => {
+    it('merges the device-local marker into every whole-file settings save', async () => {
+        const saveData = vi.fn().mockResolvedValue(undefined);
+        const controller = new PluginSettingsController({
+            keys: STORAGE_KEYS,
+            loadData: vi.fn().mockResolvedValue(null),
+            saveData,
+            mirrorUXPreferences: vi.fn()
+        });
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.lastShownVersion = '3.3.1';
+        controller.settings = settings;
+        mockLocalStorageStore.set(STORAGE_KEYS.lastShownVersionKey, '3.3.2');
+
+        await controller.saveSettings();
+
+        expect(controller.settings.lastShownVersion).toBe('3.3.2');
+        const persisted = saveData.mock.calls[0][0] as Record<string, unknown>;
+        expect(persisted.lastShownVersion).toBe('3.3.2');
+    });
+
+    it('advances the local and synced markers without allowing a regression', () => {
+        const controller = new PluginSettingsController({
+            keys: STORAGE_KEYS,
+            loadData: vi.fn().mockResolvedValue(null),
+            saveData: vi.fn().mockResolvedValue(undefined),
+            mirrorUXPreferences: vi.fn()
+        });
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.lastShownVersion = '3.3.1';
+        controller.settings = settings;
+
+        expect(controller.advanceLastShownVersion('3.3.2')).toBe(true);
+        expect(mockLocalStorageStore.get(STORAGE_KEYS.lastShownVersionKey)).toBe('3.3.2');
+        expect(controller.settings.lastShownVersion).toBe('3.3.2');
+        expect(controller.advanceLastShownVersion('3.3.1')).toBe(false);
+        expect(mockLocalStorageStore.get(STORAGE_KEYS.lastShownVersionKey)).toBe('3.3.2');
+        expect(controller.settings.lastShownVersion).toBe('3.3.2');
+    });
+
     it('updates local homepage storage when homepage is local', async () => {
         let storedData: Record<string, unknown> | null = null;
 

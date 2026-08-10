@@ -138,6 +138,8 @@ interface UseListPaneDataParams {
     groupBy: ListNoteGroupingOption;
     multiValueGrouping: import('./useListPaneAppearance').MultiValueGrouping;
     noValueGroupPosition: import('./useListPaneAppearance').NoValueGroupPosition;
+    /** Effective tag visibility for the current list selection */
+    showFileTags: boolean;
     /** Whether the pinned section is expanded in the current context */
     pinnedGroupExpanded: boolean;
     /** Collapsed list group keys for the current vault */
@@ -204,6 +206,7 @@ export function useListPaneData({
     groupBy,
     multiValueGrouping,
     noValueGroupPosition,
+    showFileTags,
     pinnedGroupExpanded,
     collapsedListGroups,
     searchProvider,
@@ -362,8 +365,7 @@ export function useListPaneData({
             pinnedNotes: settings.pinnedNotes,
             filterPinnedByFolder: settings.filterPinnedByFolder,
             pinnedGroupExpanded,
-            showTags: settings.showTags,
-            showFileTags: settings.showFileTags,
+            showFileTags,
             showFolderGroupPaths: settings.showFolderGroupPaths,
             showCurrentFolderFilesAtBottom: settings.showCurrentFolderFilesAtBottom,
             groupBy,
@@ -381,8 +383,7 @@ export function useListPaneData({
             settings.pinnedNotes,
             settings.showCurrentFolderFilesAtBottom,
             settings.showFolderGroupPaths,
-            settings.showFileTags,
-            settings.showTags
+            showFileTags
         ]
     );
 
@@ -442,6 +443,7 @@ export function useListPaneData({
         settings.filterPinnedByFolder,
         settings.pinnedNotes,
         settings.defaultFolderSort,
+        settings.defaultFolderSortPropertyKey,
         settings.propertySortKey,
         settings.manualSortPropertyKey,
         settings.propertySortSecondary,
@@ -1091,6 +1093,7 @@ export function useListPaneData({
         manualSortGroupHeaderPropertyKey,
         onRefresh: () => setUpdateKey(current => current + 1),
         propertyTreeService,
+        tagTreeService,
         selectedFolder,
         selectedProperty,
         selectedTag,

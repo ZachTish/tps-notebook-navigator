@@ -19,7 +19,7 @@
 // Imports
 import type { NotebookNavigatorSettings } from '../types';
 import type { LocalStorageKeys } from '../../types';
-import type { FolderAppearance } from '../../hooks/useListPaneAppearance';
+import type { ListPaneAppearance } from '../listPaneAppearance';
 import { DEFAULT_SETTINGS } from '../defaultSettings';
 import { localStorage } from '../../utils/localStorage';
 import { cloneShortcuts, createPropertyKeysFromPropertyFields, DEFAULT_VAULT_PROFILE_ID } from '../../utils/vaultProfiles';
@@ -34,7 +34,7 @@ import {
     isTextCountPlacement,
     normalizeNarrowSidebarLayout,
     normalizeAppearanceGroupBy,
-    normalizeListNoteGroupingBaseOption
+    normalizeListNoteGroupingOption
 } from '../types';
 import { normalizeCalendarCustomRootFolder } from '../../utils/calendarCustomNotePatterns';
 import { normalizeFolderNoteNamePattern } from '../../utils/folderNoteName';
@@ -119,6 +119,13 @@ export function migrateLegacySyncedSettings(params: {
     delete mutableSettings.showPinnedIcon;
     delete mutableSettings.showPinnedGroupHeader;
 
+    const legacyShowFileIconUnfinishedTask = mutableSettings.showFileIconUnfinishedTask;
+    if (typeof storedData?.['unfinishedTaskIcon'] === 'undefined' && typeof legacyShowFileIconUnfinishedTask === 'boolean') {
+        // The legacy toggle affected standard and compact rows, so enabled values map to both modes.
+        settings.unfinishedTaskIcon = legacyShowFileIconUnfinishedTask ? 'all' : 'none';
+    }
+    delete mutableSettings.showFileIconUnfinishedTask;
+
     const storedNoteGrouping = storedData ? storedData['noteGrouping'] : undefined;
 
     // Migrates legacy showIcons boolean to separate icon settings for sections, folders, and tags
@@ -184,10 +191,11 @@ export function migrateLegacySyncedSettings(params: {
     delete mutableSettings['mobileHomepage'];
     delete mutableSettings['useMobileHomepage'];
 
-    // The global default rejects property encodings; only appearance overrides accept them.
-    settings.noteGrouping = normalizeListNoteGroupingBaseOption(settings.noteGrouping) ?? defaultSettings.noteGrouping;
+    // The global default accepts the same property encodings as appearance overrides; whether the
+    // encoded key is still configured is reconciled by the settings controller after migration.
+    settings.noteGrouping = normalizeListNoteGroupingOption(settings.noteGrouping) ?? defaultSettings.noteGrouping;
 
-    const normalizeAppearanceGrouping = (collection: Record<string, FolderAppearance> | undefined): void => {
+    const normalizeAppearanceGrouping = (collection: Record<string, ListPaneAppearance> | undefined): void => {
         if (!collection) {
             return;
         }
@@ -396,13 +404,13 @@ export function migrateLegacySyncedSettings(params: {
         settings.propertySortOrder = defaultSettings.propertySortOrder;
     }
 
-    type LegacyAppearance = FolderAppearance & {
+    type LegacyAppearance = ListPaneAppearance & {
         showDate?: boolean;
         showPreview?: boolean;
         showImage?: boolean;
     };
 
-    const migrateLegacyAppearanceMode = (appearance: LegacyAppearance | undefined): FolderAppearance | undefined => {
+    const migrateLegacyAppearanceMode = (appearance: LegacyAppearance | undefined): ListPaneAppearance | undefined => {
         if (!appearance) {
             return appearance;
         }
@@ -414,7 +422,7 @@ export function migrateLegacySyncedSettings(params: {
             appearance.showImage === false;
 
         if (isLegacyCompact) {
-            const migrated: FolderAppearance = { ...appearance, mode: 'compact' };
+            const migrated: ListPaneAppearance = { ...appearance, mode: 'compact' };
             delete (migrated as LegacyAppearance).showDate;
             delete (migrated as LegacyAppearance).showPreview;
             delete (migrated as LegacyAppearance).showImage;
@@ -424,7 +432,7 @@ export function migrateLegacySyncedSettings(params: {
         return appearance;
     };
 
-    const migrateLegacyAppearances = (collection: Record<string, FolderAppearance> | undefined) => {
+    const migrateLegacyAppearances = (collection: Record<string, ListPaneAppearance> | undefined) => {
         if (!collection) {
             return;
         }

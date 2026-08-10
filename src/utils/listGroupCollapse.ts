@@ -95,8 +95,8 @@ export function buildListGroupCollapseKeyPrefix({
         scope = `folder:${encodeKeyPart(selectedFolderPath ?? '/')}`;
     }
 
-    // Property grouping keys drop only the direction so collapse state survives flipping group order while
-    // exact-value and calendar-day buckets retain independent state.
+    // Property grouping keys normalize their order while retaining source and granularity, so collapse
+    // state survives fixed/follow order changes without merging note, line, or calendar-day buckets.
     const propertyGroupingKey = getPropertyGroupingKey(groupingMode);
     const scopeGroupingMode =
         propertyGroupingKey !== null

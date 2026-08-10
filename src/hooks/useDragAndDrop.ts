@@ -47,7 +47,12 @@ import {
     getFilesForNavigationSelection,
     resolveFileOperationCurrentFiles
 } from '../utils/selectionUtils';
-import { expandNavigationTreeItems, getFolderAncestorPaths, getTagAncestorPaths } from '../utils/navigationExpansion';
+import {
+    expandNavigationTreeItems,
+    getFolderAncestorPaths,
+    getTagAncestorPaths,
+    isFolderEffectivelyExpanded
+} from '../utils/navigationExpansion';
 import { getIconService } from '../services/icons';
 
 /**
@@ -726,7 +731,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
             scheduleAutoExpand({
                 type: 'folder',
                 path: targetPath,
-                isAlreadyExpanded: () => expandedFoldersRef.current.has(targetPath),
+                isAlreadyExpanded: () => isFolderEffectivelyExpanded(targetPath, expandedFoldersRef.current, settings.showRootFolder),
                 resolveNode: () => {
                     const folder = app.vault.getFolderByPath(targetPath);
                     if (!folder) {
@@ -739,7 +744,9 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
                 },
                 expand: () => {
                     const folder = settings.collapseOtherBranchesOnExpand ? app.vault.getFolderByPath(targetPath) : null;
-                    const folderPaths = folder ? [...getFolderAncestorPaths(folder), targetPath] : [targetPath];
+                    const folderPaths = folder
+                        ? [...getFolderAncestorPaths(folder, { includeRootFolder: settings.showRootFolder }), targetPath]
+                        : [targetPath];
                     expandNavigationTreeItems({
                         type: 'folder',
                         ids: folderPaths,
@@ -749,7 +756,7 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
                 }
             });
         },
-        [app, expansionDispatch, scheduleAutoExpand, settings.collapseOtherBranchesOnExpand]
+        [app, expansionDispatch, scheduleAutoExpand, settings.collapseOtherBranchesOnExpand, settings.showRootFolder]
     );
 
     /**

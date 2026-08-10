@@ -57,7 +57,8 @@ Complete TypeScript type definitions for the Notebook Navigator API.
     `setPresentation(...)` act on that same view, never open one, and return `false` for stale, unsupported, or invalid
     requests. Presentation updates are atomic. Fixed file-backed Types support the ordinary file controls; fixed
     source-backed Types support their bounded sort/group subset and reject display mode, manual sort, and folder grouping.
-    Their historical `property...` grouping forms read owning-note frontmatter; the additive `line-property...` exact/day
+    Their `property-follow...` forms follow the active sort direction, including exact/day and line-property variants.
+    Historical `property...` grouping forms read owning-note frontmatter; the additive `line-property...` exact/day
     forms read only inline row fields and never fall back to the note. Line-only grouping is accepted on folders, tags,
     properties, file-backed Types, and GCM line Types so it can drive mixed structural searches. Standalone
     Navigator-owned range Types and external provider Types reject it.
@@ -94,7 +95,7 @@ target shapes and fail-closed behavior are documented in the [Menus API](../../.
 
 ## Version
 
-Current API Version: **3.3.0**
+Current API Version: **3.4.0**
 
 ## Documentation
 

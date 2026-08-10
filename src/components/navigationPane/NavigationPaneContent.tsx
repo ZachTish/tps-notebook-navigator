@@ -68,10 +68,13 @@ import {
     normalizeNavigationPath
 } from '../../utils/navigationIndex';
 import { collectAllTagPaths } from '../../utils/tagTree';
-import { getNavigationExpansionTargetForItem, toggleNavigationExpansionTarget } from '../../utils/navigationExpansion';
+import {
+    getNavigationExpansionTargetForItem,
+    isFolderEffectivelyExpanded,
+    toggleNavigationExpansionTarget
+} from '../../utils/navigationExpansion';
 import type { TagTreeNode } from '../../types/storage';
 import { normalizeNavigationSectionOrderInput } from '../../utils/navigationSections';
-import { compositeWithBase } from '../../utils/colorUtils';
 import { usesMobileChrome } from '../../utils/paneLayout';
 import { getActiveVaultProfile } from '../../utils/vaultProfiles';
 import { PropertyKeyVisibilityModal } from '../../modals/PropertyKeyVisibilityModal';
@@ -667,52 +670,13 @@ export const NavigationPane = React.memo(
         const navigationScrollMargin = navigationBannerHeight;
         const hasNavigationBannerConfigured = Boolean(navigationBannerPath);
 
-        const { color: navSurfaceColor, version: navSurfaceVersion } = useSurfaceColorVariables(navigationPaneRef, {
+        const activeNavRainbow = props.navRainbowState.navRainbow;
+        const { getSolidBackground } = useSurfaceColorVariables(navigationPaneRef, {
             app,
             rootContainerRef,
-            variables: NAVIGATION_PANE_SURFACE_COLOR_MAPPINGS
+            variables: NAVIGATION_PANE_SURFACE_COLOR_MAPPINGS,
+            solidBackgroundRevision: activeNavRainbow
         });
-        const activeNavRainbow = props.navRainbowState.navRainbow;
-        const solidBackgroundCacheRef = useRef<Map<string, string | undefined>>(new Map());
-        // Cache inputs are compared during render so the commit that changes the surface recomposites row backgrounds
-        const solidBackgroundCacheInputsRef = useRef<{
-            rainbow: typeof activeNavRainbow;
-            color: typeof navSurfaceColor;
-            version: number;
-        } | null>(null);
-        const solidBackgroundCacheInputs = solidBackgroundCacheInputsRef.current;
-        if (
-            !solidBackgroundCacheInputs ||
-            solidBackgroundCacheInputs.rainbow !== activeNavRainbow ||
-            solidBackgroundCacheInputs.color !== navSurfaceColor ||
-            solidBackgroundCacheInputs.version !== navSurfaceVersion
-        ) {
-            solidBackgroundCacheRef.current.clear();
-            solidBackgroundCacheInputsRef.current = { rainbow: activeNavRainbow, color: navSurfaceColor, version: navSurfaceVersion };
-        }
-
-        const getSolidBackground = useCallback(
-            (color?: string | null) => {
-                // Identity tracks navSurfaceVersion so memoized rows re-render when surface variables change
-                void navSurfaceVersion;
-                if (!color) {
-                    return undefined;
-                }
-                const trimmed = color.trim();
-                if (!trimmed) {
-                    return undefined;
-                }
-                const cache = solidBackgroundCacheRef.current;
-                if (cache.has(trimmed)) {
-                    return cache.get(trimmed);
-                }
-                const pane = navigationPaneRef.current;
-                const solidColor = compositeWithBase(navSurfaceColor, trimmed, { container: pane ?? null });
-                cache.set(trimmed, solidColor);
-                return solidColor;
-            },
-            [navSurfaceColor, navSurfaceVersion]
-        );
 
         const {
             reorderableRootFolders,
@@ -1054,13 +1018,20 @@ export const NavigationPane = React.memo(
                 return false;
             }
 
-            const target = getNavigationExpansionTargetForItem(item, { showHiddenItems });
+            const target = getNavigationExpansionTargetForItem(item, { showHiddenItems, showRootFolder: settings.showRootFolder });
             return target
                 ? toggleNavigationExpansionTarget(target, expansionState, expansionDispatch, 'toggle', {
                       collapseOtherBranches: settings.collapseOtherBranchesOnExpand
                   })
                 : false;
-        }, [expansionDispatch, expansionState, getSelectedRenderedItem, settings.collapseOtherBranchesOnExpand, showHiddenItems]);
+        }, [
+            expansionDispatch,
+            expansionState,
+            getSelectedRenderedItem,
+            settings.collapseOtherBranchesOnExpand,
+            settings.showRootFolder,
+            showHiddenItems
+        ]);
 
         useImperativeHandle(
             ref,
@@ -1222,7 +1193,7 @@ export const NavigationPane = React.memo(
                 let isDragSource = false;
                 switch (item.type) {
                     case NavigationPaneItemType.FOLDER:
-                        isExpanded = expansionState.expandedFolders.has(item.data.path);
+                        isExpanded = isFolderEffectivelyExpanded(item.data.path, expansionState.expandedFolders, settings.showRootFolder);
                         break;
                     case NavigationPaneItemType.VIRTUAL_FOLDER: {
                         const virtualFolderId = item.data.id;
@@ -1270,6 +1241,7 @@ export const NavigationPane = React.memo(
                 inlineRenameTarget,
                 keyboardFocusedVirtualFolderId,
                 selectionState,
+                settings.showRootFolder,
                 shortcuts.shortcutsExpanded,
                 shortcuts.recentNotesExpanded,
                 shortcuts.shouldUseShortcutDnd,

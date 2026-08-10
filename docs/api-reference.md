@@ -1,10 +1,10 @@
 # TPS Notebook Navigator API Reference
 
-Updated: August 3, 2026
+Updated: August 10, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 3.3.0
+**Current API Version:** 3.4.0
 
 ## Table of Contents
 
@@ -554,10 +554,11 @@ timestamp, or a configured non-manual property. GCM task, bullet, and heading ro
 including `scheduled` and canonical task `status`, and fall back to owning-note frontmatter only when the line field is absent. Missing
 values stay last in both sort directions, and missing-value groups stay last. Date grouping is available only with a date
 sort. Historical `property:<key>` / `property-desc:<key>` grouping remains note-frontmatter-only; its
-`property-day:<key>` / `property-day-desc:<key>` forms bucket that note value by local calendar day. Source-backed views can
+`property-day:<key>` / `property-day-desc:<key>` forms bucket that note value by local calendar day. Each property, day,
+and line variant also accepts a `-follow` form that orders groups with the active sort direction. Source-backed views can
 instead select line-only grouping for GCM Checkboxes, Bullets, and Headings—or their sections in an active mixed search—with
 `line-property:<key>` / `line-property-desc:<key>` or calendar-day `line-property-day:<key>` /
-`line-property-day-desc:<key>`. Line-only grouping never falls back to the owning note, so an absent or blank inline field
+`line-property-day-desc:<key>`; append `-follow` to either prefix when group order should follow the active sort. Line-only grouping never falls back to the owning note, so an absent or blank inline field
 lands in No value; Navigator-owned ranges have no inline-property contract and also remain in No value. Native file rows
 always group from frontmatter. `custom` is the ungrouped source-row presentation because custom header
 ownership is file-based. Manual sort, folder/manual grouping, and display-mode/appearance editing remain unsupported.
@@ -789,8 +790,9 @@ result contract.
 `setPresentation(update)` validates every supplied field before one settings transaction. It works for folder, tag,
 property, and every fixed built-in Type scope. Fixed source-backed Types accept title, filename, configured created/modified,
 and configured non-manual property sort plus compatible date/property/ungrouped (`custom`) grouping. Property grouping may
-request owning-note values with `property:` / `property-desc:` and `property-day:` / `property-day-desc:`. Line-only
-`line-property:` / `line-property-desc:` and `line-property-day:` / `line-property-day-desc:` forms are accepted on folder,
+request owning-note values with `property:` / `property-desc:` and `property-day:` / `property-day-desc:`; each also has a
+`-follow` form that tracks sort direction. Line-only `line-property:` / `line-property-desc:` and `line-property-day:` /
+`line-property-day-desc:` forms likewise accept `-follow` and are accepted on folder,
 tag, property, file-backed Type, and GCM line-Type targets so the same saved presentation can govern their active mixed
 structural searches. Standalone Navigator-owned range Types reject line-only grouping because they have no inline-property
 contract. The property key must still be configured. Fixed source-backed Types reject display mode, manual sort, and
@@ -1186,6 +1188,12 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 3.4.0 (2026-08-10)
+
+- Added `property-follow`, `property-day-follow`, `line-property-follow`, and `line-property-day-follow` grouping encodings
+  to the public List API, mirroring the upstream 3.3.3 group-order behavior
+- Preserved all 3.x Type, provider, menu, navigation, and snapshot contracts
 
 ### Version 3.3.0 (2026-08-03)
 

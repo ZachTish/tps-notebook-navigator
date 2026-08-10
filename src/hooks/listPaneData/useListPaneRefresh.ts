@@ -28,7 +28,8 @@ import { shouldExcludeFileWithMatcher } from '../../utils/fileFilters';
 import { shouldRefreshOnFileModifyForSort, shouldRefreshOnMetadataChangeForSort } from '../../utils/sortUtils';
 import type { FileContentChange, IndexedDBStorage } from '../../storage/IndexedDBStorage';
 import type { IPropertyTreeProvider } from '../../interfaces/IPropertyTreeProvider';
-import { ItemType } from '../../types';
+import type { ITagTreeProvider } from '../../interfaces/ITagTreeProvider';
+import { ItemType, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
 import type { PropertySelectionNodeId } from '../../utils/propertyTree';
 import { createFrontmatterPropertyExclusionMatcher } from '../../utils/fileFilters';
 import { getCachedManualSortGroupHeader } from '../../utils/manualSort';
@@ -56,6 +57,7 @@ interface UseListPaneRefreshArgs {
     manualSortGroupHeaderPropertyKey: string | null;
     onRefresh: () => void;
     propertyTreeService: IPropertyTreeProvider | null;
+    tagTreeService: ITagTreeProvider | null;
     selectedFolder: TFolder | null;
     selectedProperty: PropertySelectionNodeId | null;
     selectedTag: string | null;
@@ -260,6 +262,7 @@ export function useListPaneRefresh({
     manualSortGroupHeaderPropertyKey,
     onRefresh,
     propertyTreeService,
+    tagTreeService,
     selectedFolder,
     selectedProperty,
     selectedTag,
@@ -369,9 +372,24 @@ export function useListPaneRefresh({
         }
         flushPendingWhenIdle();
 
+        // Property and concrete tag lists collect candidate paths from their derived trees. A vault
+        // rename can refresh the list before the corresponding tree replaces the old path, so the
+        // tree update must trigger a second refresh or the renamed note can remain absent.
         let unsubscribePropertyTree: (() => void) | null = null;
         if (selectionType === ItemType.PROPERTY && selectedProperty && propertyTreeService) {
             unsubscribePropertyTree = propertyTreeService.addTreeUpdateListener(() => {
+                queueRefresh();
+            });
+        }
+        let unsubscribeTagTree: (() => void) | null = null;
+        if (
+            selectionType === ItemType.TAG &&
+            selectedTag &&
+            selectedTag !== TAGGED_TAG_ID &&
+            selectedTag !== UNTAGGED_TAG_ID &&
+            tagTreeService
+        ) {
+            unsubscribeTagTree = tagTreeService.addTreeUpdateListener(() => {
                 queueRefresh();
             });
         }
@@ -650,6 +668,7 @@ export function useListPaneRefresh({
             dbUnsubscribe();
             unsubscribeOperationQueue?.();
             unsubscribePropertyTree?.();
+            unsubscribeTagTree?.();
             scheduleRefresh.cancel();
         };
     }, [
@@ -673,6 +692,7 @@ export function useListPaneRefresh({
         isStructuralTypeSelection,
         manualSortGroupHeaderPropertyKey,
         propertyTreeService,
+        tagTreeService,
         selectedFolder,
         selectedProperty,
         selectedTag,

@@ -92,10 +92,7 @@ const STRUCTURAL_CONTROL_RESET: React.CSSProperties = Object.freeze({
 });
 
 /** Publishes a task as Markdown text and keeps it out of Navigator's file drag pipeline. */
-export function startProviderRowTextDrag(
-    event: Pick<React.DragEvent, 'dataTransfer' | 'stopPropagation'>,
-    dragText: string
-): void {
+export function startProviderRowTextDrag(event: Pick<React.DragEvent, 'dataTransfer' | 'stopPropagation'>, dragText: string): void {
     event.stopPropagation();
     event.dataTransfer.effectAllowed = 'copy';
     event.dataTransfer.setData('text/plain', dragText);

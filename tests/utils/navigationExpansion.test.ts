@@ -17,12 +17,38 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
+import { TFolder } from 'obsidian';
 import type { ExpansionAction } from '../../src/context/ExpansionContext';
 import { NavigationPaneItemType, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
 import type { VirtualFolderItem } from '../../src/types/virtualization';
-import { getNavigationExpansionTargetForItem, toggleNavigationExpansionTarget } from '../../src/utils/navigationExpansion';
+import {
+    getFolderAncestorPaths,
+    getNavigationExpansionTargetForItem,
+    isFolderEffectivelyExpanded,
+    isFolderExpansionLocked,
+    toggleNavigationExpansionTarget
+} from '../../src/utils/navigationExpansion';
 
 describe('navigationExpansion', () => {
+    it('locks a hidden root open without relying on persisted expansion', () => {
+        expect(isFolderExpansionLocked('/', false)).toBe(true);
+        expect(isFolderEffectivelyExpanded('/', new Set(), false)).toBe(true);
+        expect(isFolderExpansionLocked('/', true)).toBe(false);
+        expect(isFolderEffectivelyExpanded('/', new Set(), true)).toBe(false);
+        expect(isFolderEffectivelyExpanded('/', new Set(['/']), true)).toBe(true);
+    });
+
+    it('omits the locked root from persisted ancestor expansion paths', () => {
+        const rootFolder = new TFolder('/');
+        const parentFolder = new TFolder('Projects');
+        const childFolder = new TFolder('Projects/Active');
+        Object.assign(parentFolder, { parent: rootFolder });
+        Object.assign(childFolder, { parent: parentFolder });
+
+        expect(getFolderAncestorPaths(childFolder)).toEqual(['/', 'Projects']);
+        expect(getFolderAncestorPaths(childFolder, { includeRootFolder: false })).toEqual(['Projects']);
+    });
+
     it('replaces unrelated tag branches when branch collapse is enabled', () => {
         const dispatch = vi.fn<(action: ExpansionAction) => void>();
 
@@ -85,7 +111,7 @@ describe('navigationExpansion', () => {
             hasChildren: true
         };
 
-        expect(getNavigationExpansionTargetForItem(item, { showHiddenItems: false })).toEqual({
+        expect(getNavigationExpansionTargetForItem(item, { showHiddenItems: false, showRootFolder: true })).toEqual({
             type: 'virtual-folder',
             id: TYPES_ROOT_VIRTUAL_FOLDER_ID,
             hasChildren: true

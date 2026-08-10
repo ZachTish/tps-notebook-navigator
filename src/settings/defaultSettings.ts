@@ -21,7 +21,7 @@ import { getDefaultKeyboardShortcuts } from '../utils/keyboardShortcuts';
 import { FILE_VISIBILITY } from '../utils/fileTypeUtils';
 import { LISTPANE_MEASUREMENTS, NAVPANE_MEASUREMENTS, type PinnedNotes } from '../types';
 import { DEFAULT_UI_SCALE } from '../utils/uiScale';
-import type { FolderAppearance, TagAppearance } from '../hooks/useListPaneAppearance';
+import type { ListPaneAppearance } from './listPaneAppearance';
 import {
     NARROW_SIDEBAR_CUSTOM_WIDTH_DEFAULT,
     SYNC_MODE_SETTING_IDS,
@@ -60,8 +60,8 @@ export const NAV_RAINBOW_DEFAULTS: NavRainbowSettings = {
         enabled: false,
         firstColor: NAV_RAINBOW_FIRST_COLOR_DEFAULT,
         lastColor: NAV_RAINBOW_LAST_COLOR_DEFAULT,
-        darkFirstColor: NAV_RAINBOW_FIRST_COLOR_DEFAULT,
-        darkLastColor: NAV_RAINBOW_LAST_COLOR_DEFAULT,
+        darkFirstColor: NAV_RAINBOW_DARK_FIRST_COLOR_DEFAULT,
+        darkLastColor: NAV_RAINBOW_DARK_LAST_COLOR_DEFAULT,
         transitionStyle: 'rgb'
     },
 
@@ -69,8 +69,8 @@ export const NAV_RAINBOW_DEFAULTS: NavRainbowSettings = {
         enabled: false,
         firstColor: NAV_RAINBOW_FIRST_COLOR_DEFAULT,
         lastColor: NAV_RAINBOW_LAST_COLOR_DEFAULT,
-        darkFirstColor: NAV_RAINBOW_FIRST_COLOR_DEFAULT,
-        darkLastColor: NAV_RAINBOW_LAST_COLOR_DEFAULT,
+        darkFirstColor: NAV_RAINBOW_DARK_FIRST_COLOR_DEFAULT,
+        darkLastColor: NAV_RAINBOW_DARK_LAST_COLOR_DEFAULT,
         transitionStyle: 'rgb'
     },
 
@@ -312,7 +312,9 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     defaultListMode: 'standard',
     includeDescendantNotes: false,
     defaultFolderSort: 'modified-desc',
+    defaultFolderSortPropertyKey: '',
     propertySortKey: '',
+    propertyGroupKey: '',
     propertySortSecondary: 'title',
     manualSortPropertyKey: 'sort_index',
     manualSortGroupHeaderProperty: 'group_header',
@@ -348,10 +350,15 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     frontmatterDateFormat: '',
 
     // Notes tab
-    showFileIconUnfinishedTask: false,
+    showFileTaskProgress: true,
+    showFileTaskProgressBar: true,
+    showFileTaskProgressCount: true,
+    hideFileTaskProgressWhenComplete: false,
     showFileBackgroundUnfinishedTask: false,
     unfinishedTaskBackgroundColor: UNFINISHED_TASK_BACKGROUND_COLOR_DEFAULT,
+    unfinishedTaskBackgroundColorDark: UNFINISHED_TASK_BACKGROUND_COLOR_DEFAULT,
     showFileIcons: true,
+    unfinishedTaskIcon: 'compact',
     useFolderIconForFiles: false,
     showFilenameMatchIcons: false,
     fileNameIconMap: sanitizeRecord<string>(undefined),
@@ -416,6 +423,7 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     calendarMonthHighlights: sanitizeRecord<string>(undefined),
     calendarShowWeekNumber: false,
     calendarShowQuarter: false,
+    calendarShowOutsideMonthDays: true,
     calendarShowYearCalendar: true,
     calendarLeftPlacement: 'navigation',
     calendarWeeksToShow: 1,
@@ -449,19 +457,19 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     folderBackgroundColors: sanitizeRecord<string>(undefined),
     folderSortOverrides: sanitizeRecord<NotebookNavigatorSettings['folderSortOverrides'][string]>(undefined),
     folderTreeSortOverrides: sanitizeRecord<NotebookNavigatorSettings['folderTreeSortOverrides'][string]>(undefined),
-    folderAppearances: sanitizeRecord<FolderAppearance>(undefined),
+    folderAppearances: sanitizeRecord<ListPaneAppearance>(undefined),
     tagIcons: sanitizeRecord<string>(undefined),
     tagColors: sanitizeRecord<string>(undefined),
     tagBackgroundColors: sanitizeRecord<string>(undefined),
     tagSortOverrides: sanitizeRecord<NotebookNavigatorSettings['tagSortOverrides'][string]>(undefined),
     tagTreeSortOverrides: sanitizeRecord<NotebookNavigatorSettings['tagTreeSortOverrides'][string]>(undefined),
-    tagAppearances: sanitizeRecord<TagAppearance>(undefined),
+    tagAppearances: sanitizeRecord<ListPaneAppearance>(undefined),
     propertyIcons: sanitizeRecord<string>(undefined),
     propertyColors: sanitizeRecord<string>(undefined),
     propertyBackgroundColors: sanitizeRecord<string>(undefined),
     propertySortOverrides: sanitizeRecord<NotebookNavigatorSettings['propertySortOverrides'][string]>(undefined),
     propertyTreeSortOverrides: sanitizeRecord<NotebookNavigatorSettings['propertyTreeSortOverrides'][string]>(undefined),
-    propertyAppearances: sanitizeRecord<FolderAppearance>(undefined),
+    propertyAppearances: sanitizeRecord<ListPaneAppearance>(undefined),
     typeSortOverrides: {},
     typeAppearances: {},
     tpsLinePropertyInheritanceVersion: 1,
