@@ -58,7 +58,8 @@ import {
     TPS_NOTEBOOK_NAVIGATOR_MOBILE_CLASS,
     TPS_NOTEBOOK_NAVIGATOR_REACT_ID_PREFIX,
     TPS_NOTEBOOK_NAVIGATOR_ROOT_CLASS,
-    TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT
+    TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT,
+    TPS_NOTEBOOK_NAVIGATOR_VIEWPORT_EVENT
 } from '../constants/tpsIdentity';
 
 export const IOS_FLOATING_TOOLBARS_CLASS = TPS_NOTEBOOK_NAVIGATOR_IOS_FLOATING_TOOLBARS_CLASS;
@@ -604,6 +605,10 @@ export class NotebookNavigatorView extends ItemView {
      * - Desktop pane resizing
      * - Window size changes
      *
+     * Every platform forwards this authoritative ItemView lifecycle signal to the list
+     * virtualizer. ResizeObserver delivery alone is not reliable when Chromium restores a
+     * background leaf or Obsidian finishes a workspace layout transition.
+     *
      * Mobile visibility detection:
      * On mobile, when the plugin drawer is hidden (display: none), dimensions are 0x0.
      * When the drawer becomes visible again, dimensions become > 0.
@@ -620,9 +625,15 @@ export class NotebookNavigatorView extends ItemView {
      *    because the file selection changed while the component was hidden/display:none)
      */
     onResize() {
+        const rect = this.containerEl.getBoundingClientRect();
+        window.dispatchEvent(
+            new CustomEvent(TPS_NOTEBOOK_NAVIGATOR_VIEWPORT_EVENT, {
+                detail: { container: this.containerEl }
+            })
+        );
+
         if (!Platform.isMobile) return;
 
-        const rect = this.containerEl.getBoundingClientRect();
         const isVisible = rect.width > 0 && rect.height > 0;
 
         if (!isVisible) {

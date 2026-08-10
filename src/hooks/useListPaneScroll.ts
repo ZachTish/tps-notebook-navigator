@@ -89,7 +89,7 @@ import { getDrawingFeatureImageSource, resolveDrawingFeatureImageFileForProvider
 import { useThemeMode } from './useThemeMode';
 import type { ThemeMode } from '../utils/themeMode';
 import { getListSortOverrideForSelection, resolveListSort } from '../utils/sortUtils';
-import { TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT } from '../constants/tpsIdentity';
+import { TPS_NOTEBOOK_NAVIGATOR_VIEWPORT_EVENT, TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT } from '../constants/tpsIdentity';
 
 /**
  * Parameters for the useListPaneScroll hook
@@ -461,11 +461,12 @@ export function observeListPaneViewportRect(
     let eventFrameId: number | null = null;
     let stabilizationFrameId: number | null = null;
     let remainingStabilizationFrames = Math.max(0, Math.floor(stabilizationFrames));
+    let forceNextRect = false;
 
-    const emitCurrentRect = () => {
+    const emitCurrentRect = (force = false) => {
         const width = Math.round(element.clientWidth);
         const height = Math.round(element.clientHeight);
-        if (width === lastWidth && height === lastHeight) {
+        if (!force && width === lastWidth && height === lastHeight) {
             return;
         }
 
@@ -474,15 +475,31 @@ export function observeListPaneViewportRect(
         onRect({ width, height });
     };
 
-    const scheduleRectRead = () => {
+    const scheduleRectRead = (force = false) => {
+        forceNextRect = forceNextRect || force;
         if (eventFrameId !== null) {
             return;
         }
         eventFrameId = targetWindow.requestAnimationFrame(() => {
             eventFrameId = null;
-            emitCurrentRect();
+            const shouldForce = forceNextRect;
+            forceNextRect = false;
+            emitCurrentRect(shouldForce);
         });
     };
+
+    const handleAuthoritativeViewportChange = (event: Event) => {
+        const container = (event as CustomEvent<{ container?: HTMLElement }>).detail?.container;
+        if (!container || typeof container.contains !== 'function' || !container.contains(element)) {
+            return;
+        }
+
+        // Obsidian's ItemView.onResize is the authoritative lifecycle signal. Force the callback
+        // even when the rounded DOM size matches our last sample: TanStack's cached scrollRect can
+        // still be stale after a hidden/background leaf becomes active.
+        scheduleRectRead(true);
+    };
+    const handleWindowResize = () => scheduleRectRead();
 
     const sampleDuringInitialization = () => {
         stabilizationFrameId = null;
@@ -498,7 +515,7 @@ export function observeListPaneViewportRect(
         stabilizationFrameId = targetWindow.requestAnimationFrame(sampleDuringInitialization);
     }
 
-    const resizeObserver = targetWindow.ResizeObserver ? new targetWindow.ResizeObserver(scheduleRectRead) : null;
+    const resizeObserver = targetWindow.ResizeObserver ? new targetWindow.ResizeObserver(() => scheduleRectRead()) : null;
     if (resizeObserver) {
         let observedElement: HTMLElement | null = element;
         let observedAncestorCount = 0;
@@ -512,11 +529,13 @@ export function observeListPaneViewportRect(
         }
     }
 
-    targetWindow.addEventListener('resize', scheduleRectRead);
+    targetWindow.addEventListener('resize', handleWindowResize);
+    targetWindow.addEventListener(TPS_NOTEBOOK_NAVIGATOR_VIEWPORT_EVENT, handleAuthoritativeViewportChange);
 
     return () => {
         resizeObserver?.disconnect();
-        targetWindow.removeEventListener('resize', scheduleRectRead);
+        targetWindow.removeEventListener('resize', handleWindowResize);
+        targetWindow.removeEventListener(TPS_NOTEBOOK_NAVIGATOR_VIEWPORT_EVENT, handleAuthoritativeViewportChange);
         if (eventFrameId !== null) {
             targetWindow.cancelAnimationFrame(eventFrameId);
         }

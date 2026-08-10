@@ -178,6 +178,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.14.5 — Obsidian-authoritative viewport lifecycle
+
+- Fixes the late desktop path that 5.14.4 did not cover: Obsidian reliably called the view's `onResize()` after leaf activation, tab restoration, pane resizing, and window layout changes, but TPS Notebook Navigator returned immediately on desktop and never forwarded that lifecycle signal to the list virtualizer.
+- Adds a TPS-namespaced viewport event scoped to the exact view instance. The list observer force-reports its current rectangle on that authoritative signal even when rounded dimensions match its last DOM sample, recovering TanStack Virtual when its internal cached rectangle—not the element's CSS height—is stale.
+- Preserves the established pane flex layout, item measurements, scroll position, Compact behavior, mobile visibility handling, and persisted settings. Focused coverage reproduces a leaf growing after the bounded startup sampler has already expired, and the test-vault UI was exercised by shrinking the live leaf, waiting beyond that window, then expanding it again. Minimum supported Obsidian version remains 1.11.0.
+
 ### 5.14.4 — authoritative virtual viewport sizing
 
 - Fixes the persistent desktop blank strip at its virtualizer boundary: the scroll element could finish growing while TanStack Virtual retained its shorter bootstrap viewport rectangle and therefore stopped mounting rows before the visible bottom.

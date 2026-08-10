@@ -21,6 +21,7 @@ export const TPS_NOTEBOOK_NAVIGATOR_ANDROID_CLASS = 'tps-notebook-navigator-andr
 export const TPS_NOTEBOOK_NAVIGATOR_IOS_CLASS = 'tps-notebook-navigator-ios';
 export const TPS_NOTEBOOK_NAVIGATOR_IOS_FLOATING_TOOLBARS_CLASS = 'tps-notebook-navigator-ios-floating-toolbars';
 export const TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT = 'tps-notebook-navigator-visible';
+export const TPS_NOTEBOOK_NAVIGATOR_VIEWPORT_EVENT = 'tps-notebook-navigator-viewport-change';
 export const TPS_NOTEBOOK_NAVIGATOR_API_REQUEST_EVENT = 'tps:notebook-navigator-api-request';
 export const TPS_NOTEBOOK_NAVIGATOR_API_CHANGED_EVENT = 'tps:notebook-navigator-api-changed';
 export const TPS_NOTEBOOK_NAVIGATOR_TAG_DRAG_MIME = 'application/x-tps-notebook-navigator-tag';

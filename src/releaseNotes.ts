@@ -106,6 +106,13 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.14.5',
+        date: '2026-08-10',
+        fixed: [
+            'Desktop list panes now forward Obsidian’s authoritative view-resize lifecycle into TanStack Virtual, so a background, restored, or late-growing leaf cannot keep an obsolete mounted-row boundary and leave the visible bottom blank.'
+        ]
+    },
+    {
         version: '5.14.4',
         date: '2026-08-09',
         changed: [

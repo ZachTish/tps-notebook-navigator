@@ -33,6 +33,7 @@ import {
     type ListFileRowSizingConfig
 } from '../../src/hooks/useListPaneScroll';
 import { createTestTFile } from '../utils/createTestTFile';
+import { TPS_NOTEBOOK_NAVIGATOR_VIEWPORT_EVENT } from '../../src/constants/tpsIdentity';
 
 function createContentChange(patch: Partial<FileContentChange>): FileContentChange {
     return {
@@ -448,8 +449,13 @@ describe('observeListPaneViewportRect', () => {
         let nextFrameId = 1;
         const frames = new Map<number, FrameRequestCallback>();
         const resizeListeners = new Set<EventListenerOrEventListenerObject>();
+        const viewportListeners = new Set<EventListenerOrEventListenerObject>();
         const observedElements: Element[] = [];
         const disconnect = vi.fn();
+        const removeEventListener = vi.fn((type: string, listener: EventListenerOrEventListenerObject) => {
+            if (type === 'resize') resizeListeners.delete(listener);
+            if (type === TPS_NOTEBOOK_NAVIGATOR_VIEWPORT_EVENT) viewportListeners.delete(listener);
+        });
 
         class ResizeObserverStub {
             observe(element: Element) {
@@ -472,10 +478,9 @@ describe('observeListPaneViewportRect', () => {
             cancelAnimationFrame: vi.fn((id: number) => frames.delete(id)),
             addEventListener: vi.fn((type: string, listener: EventListenerOrEventListenerObject) => {
                 if (type === 'resize') resizeListeners.add(listener);
+                if (type === TPS_NOTEBOOK_NAVIGATOR_VIEWPORT_EVENT) viewportListeners.add(listener);
             }),
-            removeEventListener: vi.fn((type: string, listener: EventListenerOrEventListenerObject) => {
-                if (type === 'resize') resizeListeners.delete(listener);
-            })
+            removeEventListener
         } as unknown as Window;
         const classList = { contains: vi.fn(() => false) };
         const parent = { classList, parentElement: null } as unknown as HTMLElement;
@@ -495,9 +500,17 @@ describe('observeListPaneViewportRect', () => {
             targetWindow,
             observedElements,
             disconnect,
+            removeEventListener,
             setSize(nextWidth: number, nextHeight: number) {
                 width = nextWidth;
                 height = nextHeight;
+            },
+            dispatchViewportChange() {
+                const event = { detail: { container: { contains: (candidate: Element) => candidate === element } } } as CustomEvent;
+                viewportListeners.forEach(listener => {
+                    if (typeof listener === 'function') listener(event);
+                    else listener.handleEvent(event);
+                });
             },
             runNextFrame() {
                 const next = frames.entries().next();
@@ -534,7 +547,33 @@ describe('observeListPaneViewportRect', () => {
 
         expect(harness.disconnect).toHaveBeenCalledTimes(1);
         expect(harness.remainingFrames()).toBe(0);
-        expect(harness.targetWindow.removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
+        expect(harness.removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
+        expect(harness.removeEventListener).toHaveBeenCalledWith(TPS_NOTEBOOK_NAVIGATOR_VIEWPORT_EVENT, expect.any(Function));
+    });
+
+    it('recovers a stale virtualizer rectangle from Obsidian desktop resize after startup sampling ends', () => {
+        const harness = createViewportObserverHarness(320, 400);
+        const onRect = vi.fn();
+        const dispose = observeListPaneViewportRect(harness.element, harness.targetWindow, onRect, 1);
+
+        while (harness.runNextFrame()) {
+            // Exhaust the bounded initialization sampler before reproducing the later leaf activation.
+        }
+
+        harness.setSize(320, 680);
+        harness.dispatchViewportChange();
+        expect(harness.runNextFrame()).toBe(true);
+        expect(onRect).toHaveBeenLastCalledWith({ width: 320, height: 680 });
+
+        // The authoritative signal must still refresh TanStack when DOM dimensions compare equal,
+        // because its cached scrollRect can be the stale part of the system.
+        const callsBeforeForcedRefresh = onRect.mock.calls.length;
+        harness.dispatchViewportChange();
+        expect(harness.runNextFrame()).toBe(true);
+        expect(onRect).toHaveBeenCalledTimes(callsBeforeForcedRefresh + 1);
+        expect(onRect).toHaveBeenLastCalledWith({ width: 320, height: 680 });
+
+        dispose();
     });
 });
 
