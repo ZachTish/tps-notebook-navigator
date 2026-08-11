@@ -224,6 +224,41 @@ describe('filterListPaneFiles alias metadata', () => {
 });
 
 describe('filterListPaneFiles property metadata', () => {
+    it('keeps explicit empty-value filters distinct from property presence', () => {
+        const app = new App();
+        const emptyFile = createTestTFile('Notes/Empty.md');
+        const valuedFile = createTestTFile('Notes/Valued.md');
+        const db = {
+            getFile: (path: string) => ({
+                properties:
+                    path === emptyFile.path
+                        ? [{ fieldKey: 'Status', value: '' }]
+                        : [{ fieldKey: 'Status', value: 'Working', valueKind: 'string' }]
+            })
+        } as unknown as IndexedDBStorage;
+        const searchableNames = new Map([
+            [emptyFile.path, buildSearchableNameData('Empty', {})],
+            [valuedFile.path, buildSearchableNameData('Valued', {})]
+        ]);
+        const runSearch = (query: string) =>
+            filterListPaneFiles({
+                app,
+                baseFiles: [emptyFile, valuedFile],
+                getDB: () => db,
+                getFileTimestamps: () => ({ created: 0, modified: 0 }),
+                omnisearchResult: null,
+                searchTokens: parseFilterSearchTokens(query),
+                searchableNames,
+                settings: { alphabeticalDateMode: 'modified' },
+                sortOption: 'alphabetical-asc',
+                trimmedQuery: query,
+                useOmnisearch: false
+            });
+
+        expect(runSearch('.status').files).toEqual([emptyFile, valuedFile]);
+        expect(runSearch('.status=').files).toEqual([emptyFile]);
+    });
+
     it('returns the matching clause for a key-only prefix match', () => {
         const app = new App();
         const file = createTestTFile('Notes/Project Alpha.md');

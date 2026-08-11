@@ -107,6 +107,13 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.15.2',
+        date: '2026-08-11',
+        fixed: [
+            'A property key row now consistently represents notes where that field exists without a value. Valued notes remain in their child value rows, and dropping notes onto the key writes an empty YAML field instead of a boolean.'
+        ]
+    },
+    {
         version: '5.15.1',
         date: '2026-08-10',
         fixed: [

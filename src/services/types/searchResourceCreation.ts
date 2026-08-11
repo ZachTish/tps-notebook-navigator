@@ -31,7 +31,7 @@ function resolveTaskFields(
     const fields: Record<string, string> = Object.create(null) as Record<string, string>;
     let status: string | undefined;
     for (const token of propertyTokens) {
-        if (token.value === null || UNSUPPORTED_PROPERTY_KEYS.has(token.key)) {
+        if (token.value === null || token.value.length === 0 || UNSUPPORTED_PROPERTY_KEYS.has(token.key)) {
             return { ok: false, reason: 'New item unavailable: this search contains a property that cannot be assigned safely.' };
         }
         if (token.key === 'status') {

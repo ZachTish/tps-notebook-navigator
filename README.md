@@ -29,7 +29,7 @@ The integration surface is intentionally modular. The navigator owns presentatio
 
 The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.15.0 remains the completion-capability baseline; 1.18.0 is the tested baseline for this release's generic task, bullet, and heading line-property grouping. Task checkboxes complete or reopen the exact task through GCM's configured status/checkbox rules, selecting the title re-resolves and opens its source line, and right-click, mobile long-press, or **More actions** opens the same guarded GCM task menu available in Types. Desktop task rows can be dragged into an editor as their complete Markdown task line; the isolated text payload never enters Navigator's file/folder/tag mutation pipeline. Custom checkbox markers remain visible instead of being flattened to a binary checkmark. Generic row providers can also add their own synchronous context-menu actions without granting the navigator access to provider internals. Older structurally compatible APIs without a safe task mutation, menu, or raw-line-property path degrade only that capability. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
 
-The visible vault root is the mixed all-resources scope. Selecting it always traverses the complete visible vault, even when the ordinary descendant preference is off, while continuing to respect the active profile's file-visibility, hidden-content, and excluded-descendant rules. It renders every visible file plus the canonical Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and Web links collections under labeled sections. Canonical Checkboxes replace the optional attached GCM task feed when available so tasks are not duplicated; the attached feed remains a compatibility fallback. The descendant toolbar control remains visibly active and non-toggleable at the root; ordinary folders, tags, and properties keep the user's descendant preference. File-backed resources and provider rows share the same selected appearance, so **Compact** condenses attached task/provider rows as well as native file rows.
+The visible vault root is the mixed all-resources scope. Selecting it always traverses the complete visible vault, even when the ordinary descendant preference is off, while continuing to respect the active profile's file-visibility, hidden-content, and excluded-descendant rules. It renders every visible file plus the canonical Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and Web links collections under labeled sections. Canonical Checkboxes replace the optional attached GCM task feed when available so tasks are not duplicated; the attached feed remains a compatibility fallback. The descendant toolbar control remains visibly active and non-toggleable at the root; ordinary folders, tags, and property value rows keep the user's descendant preference. A property key row is always the explicit no-value bucket: it selects and counts only notes where the field exists without a value. File-backed resources and provider rows share the same selected appearance, so **Compact** condenses attached task/provider rows as well as native file rows.
 
 ### Types navigation
 
@@ -179,6 +179,14 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 5.15.2 — Empty-value property roots
+
+- Makes every property key row represent only notes where the field exists without a value, independently from the descendant toolbar setting. Notes with values remain selectable through their child value rows.
+- Aligns property-key list results, counts, shortcut counts, frequency sorting, and active-note reveal with the same no-value meaning.
+- Modifier-clicking a property key adds the exact empty-value filter `.key=`; the existing `.key` syntax remains the broader property-presence search.
+- Dragging one or more Markdown notes onto a property key writes a bare YAML field such as `description:`. An existing scalar such as `description: true` is replaced with the empty field rather than preserved as a value. Minimum supported Obsidian remains 1.11.0.
+- Validation details and final artifact hashes are recorded in `release-notes/5.15.2.md`.
 
 ### 5.15.1 — Tag-scoped Type filtering
 
@@ -886,7 +894,9 @@ Filters files by display name, alias, tags, properties, dates, folders, extensio
 **Properties**
 
 - `.key` - Include notes with a property key that starts with `key`
+- `.key=` - Include notes where the exact property key exists without a value; property-key navigation uses this form when added to a multi-select search
 - `.key=value` - Include notes where the property value contains `value`
+- `-.key=` - Exclude notes where the exact property key exists without a value
 - `."Reading Status"` - Property key with whitespace (double-quoted)
 - `."Reading Status"="In Progress"` - Keys and values with whitespace must be double-quoted
 - `-.key` - Exclude notes with a property key that starts with `key`
@@ -1178,7 +1188,7 @@ Set custom hotkeys for these commands in Obsidian's Hotkeys settings:
 - **Calendar** - Daily notes calendar with day selection, feature image previews, and vertical split support
 - **Folder tree** - Expand/collapse navigation with manual root folder ordering
 - **Tag tree** - Hierarchical tags with configurable root tag ordering
-- **Property browser** - Browse file properties organized by key and value with file counts, custom colors, icons, and drag and drop
+- **Property browser** - Browse file properties organized by key and value with file counts, custom colors, icons, and drag and drop. A key row is the no-value bucket; dropping Markdown notes onto it writes a bare YAML field, while child value rows assign their exact value.
 - **Types browser** - Browse native file formats plus checkboxes, bullets, headings, code blocks, callouts, blockquotes, and tables in one flat section
 - **Auto-reveal active file** - Folder expansion and scroll-to-selection
 - **Keyboard and commands** - Configurable hotkeys, selection history back/forward commands, next/previous file commands, open shortcut 1–9 commands

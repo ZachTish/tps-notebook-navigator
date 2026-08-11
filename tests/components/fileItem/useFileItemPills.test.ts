@@ -20,7 +20,11 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '../../../src/settings/defaultSettings';
-import { useFileItemPills, type UseFileItemPillsParams } from '../../../src/components/fileItem/useFileItemPills';
+import {
+    resolvePropertyPillSearchValuePath,
+    useFileItemPills,
+    type UseFileItemPillsParams
+} from '../../../src/components/fileItem/useFileItemPills';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../../src/utils/propertyTree';
 import { createHiddenTagVisibility, type HiddenTagVisibility } from '../../../src/utils/tagPrefixMatcher';
 import { formatTextCount } from '../../../src/utils/wordCountUtils';
@@ -186,6 +190,11 @@ describe('useFileItemPills', () => {
         mockMetadataService.getTagIcon.mockImplementation(() => undefined);
         mockMetadataService.getPropertyColorData.mockImplementation(() => ({}));
         mockMetadataService.getPropertyIcon.mockImplementation(() => undefined);
+    });
+
+    it('uses exact-empty search semantics for bare property pills', () => {
+        expect(resolvePropertyPillSearchValuePath(true, null, '')).toBe('');
+        expect(resolvePropertyPillSearchValuePath(false, 'done', 'done')).toBe('done');
     });
 
     it('renders custom-colored tags before uncolored tags when custom-color priority is enabled', () => {

@@ -20,8 +20,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App, TFile, TFolder } from 'obsidian';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import type { NotebookNavigatorSettings, VaultProfile } from '../../src/settings/types';
-import type { VisibilityPreferences } from '../../src/types';
+import { PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, type VisibilityPreferences } from '../../src/types';
 import type { ITagTreeProvider } from '../../src/interfaces/ITagTreeProvider';
+import type { IPropertyTreeProvider } from '../../src/interfaces/IPropertyTreeProvider';
 import type { TagTreeNode } from '../../src/types/storage';
 import type { FileData, PropertyItem } from '../../src/storage/IndexedDBStorage';
 import { FILE_VISIBILITY } from '../../src/utils/fileTypeUtils';
@@ -422,6 +423,66 @@ describe('fileFinder getFilesForProperty', () => {
         fileDataByPath.clear();
     });
 
+    it('keeps a property key row scoped to empty values when descendants are enabled', () => {
+        const keyOnlyFile = createTestTFile('notes/key-only.md');
+        setFileProperties(keyOnlyFile, [{ fieldKey: 'status', value: '' }]);
+
+        const stringValueFile = createTestTFile('notes/string-value.md');
+        setFileProperties(stringValueFile, [{ fieldKey: 'status', value: 'working', valueKind: 'string' }]);
+
+        const booleanValueFile = createTestTFile('notes/boolean-value.md');
+        setFileProperties(booleanValueFile, [{ fieldKey: 'status', value: 'true', valueKind: 'boolean' }]);
+
+        const settings = createSettings();
+        setActivePropertyFields(settings, 'status');
+
+        const app = createAppWithFiles([keyOnlyFile, stringValueFile, booleanValueFile]);
+        const files = getFilesForProperty(
+            buildPropertyKeyNodeId('status'),
+            settings,
+            { includeDescendantNotes: true, showHiddenItems: false },
+            app,
+            null,
+            { orderResults: false }
+        );
+
+        expect(files.map(file => file.path)).toEqual([keyOnlyFile.path]);
+    });
+
+    it.each([false, true])('asks the property provider for direct key paths when descendants are %s', includeDescendantNotes => {
+        const keyOnlyFile = createTestTFile('notes/key-only.md');
+        setFileProperties(keyOnlyFile, [{ fieldKey: 'status', value: '' }]);
+
+        const valueFile = createTestTFile('notes/value.md');
+        setFileProperties(valueFile, [{ fieldKey: 'status', value: 'working', valueKind: 'string' }]);
+
+        const collectFilePaths = vi.fn(() => new Set([keyOnlyFile.path]));
+        const propertyTreeService: IPropertyTreeProvider = {
+            addTreeUpdateListener: () => () => {},
+            hasNodes: () => true,
+            findNode: () => null,
+            getKeyNode: () => null,
+            resolveSelectionNodeId: nodeId => nodeId,
+            collectDescendantNodeIds: () => new Set(),
+            collectFilePaths,
+            collectFilesForKeys: () => new Set()
+        };
+        const settings = createSettings();
+        setActivePropertyFields(settings, 'status');
+
+        const files = getFilesForProperty(
+            buildPropertyKeyNodeId('status'),
+            settings,
+            { includeDescendantNotes, showHiddenItems: false },
+            createAppWithFiles([keyOnlyFile, valueFile]),
+            propertyTreeService,
+            { orderResults: false }
+        );
+
+        expect(collectFilePaths).toHaveBeenCalledWith(buildPropertyKeyNodeId('status'), false);
+        expect(files.map(file => file.path)).toEqual([keyOnlyFile.path]);
+    });
+
     it('keeps property pins visible in property views when folder pin scoping is enabled', () => {
         const keyOnlyFile = createTestTFile('notes/key-only.md');
         keyOnlyFile.stat.mtime = 20;
@@ -442,7 +503,7 @@ describe('fileFinder getFilesForProperty', () => {
 
         const app = createAppWithFiles([keyOnlyFile, valueFile]);
         const files = getFilesForProperty(
-            buildPropertyKeyNodeId('status'),
+            PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
             settings,
             { includeDescendantNotes: true, showHiddenItems: false },
             app,
@@ -472,7 +533,7 @@ describe('fileFinder getFilesForProperty', () => {
 
         const app = createAppWithFiles([keyOnlyFile, valueFile]);
         const files = getFilesForProperty(
-            buildPropertyKeyNodeId('status'),
+            PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
             settings,
             { includeDescendantNotes: true, showHiddenItems: false },
             app,

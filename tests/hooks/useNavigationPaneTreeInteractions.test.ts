@@ -127,6 +127,73 @@ function addChildFolder(app: App, folder: TFolder, path: string): TFolder {
 }
 
 describe('useNavigationPaneTreeInteractions', () => {
+    it('turns a Shift-clicked property key into an explicit empty-value search facet', () => {
+        const previousIsMobile = Platform.isMobile;
+        const previousIsTablet = Platform.isTablet;
+        Platform.isMobile = false;
+        Platform.isTablet = false;
+
+        const onModifySearchWithProperty = vi.fn();
+        const preventDefault = vi.fn();
+        const stopPropagation = vi.fn();
+        const propertyNode = createPropertyKeyNode('status', 'Status', ['notes/empty.md']);
+        let captured: NavigationPaneTreeInteractionsResult | null = null;
+
+        function Harness() {
+            captured = useNavigationPaneTreeInteractions({
+                app: new App(),
+                commandQueue: null,
+                settings: DEFAULT_SETTINGS,
+                uiState: { singlePane: false },
+                expansionState: {
+                    expandedFolders: new Set(),
+                    expandedTags: new Set(),
+                    expandedProperties: new Set(),
+                    expandedVirtualFolders: new Set()
+                },
+                expansionDispatch: vi.fn(),
+                selectionState: createSelectionState(),
+                selectionDispatch: vi.fn(),
+                uiDispatch: vi.fn(),
+                propertyTreeService: null,
+                tagTree: new Map(),
+                propertyTree: new Map([[propertyNode.key, propertyNode]]),
+                tagsVirtualFolderHasChildren: false,
+                setShortcutsExpanded: vi.fn(),
+                setRecentNotesExpanded: vi.fn(),
+                clearActiveShortcut: vi.fn(),
+                openFolderNoteInRightSidebar: vi.fn(),
+                onModifySearchWithTag: vi.fn(),
+                onModifySearchWithProperty
+            });
+            return null;
+        }
+
+        try {
+            renderToStaticMarkup(React.createElement(Harness));
+
+            if (!captured) {
+                throw new Error('Expected hook result');
+            }
+            const result = captured as NavigationPaneTreeInteractionsResult;
+            result.handlePropertyClick(propertyNode, {
+                altKey: false,
+                ctrlKey: false,
+                metaKey: false,
+                shiftKey: true,
+                preventDefault,
+                stopPropagation
+            } as unknown as React.MouseEvent);
+
+            expect(onModifySearchWithProperty).toHaveBeenCalledWith('status', '', 'AND');
+            expect(preventDefault).toHaveBeenCalledTimes(1);
+            expect(stopPropagation).toHaveBeenCalledTimes(1);
+        } finally {
+            Platform.isMobile = previousIsMobile;
+            Platform.isTablet = previousIsTablet;
+        }
+    });
+
     it('turns a Shift-clicked structural Type into a search facet without changing navigation selection', () => {
         const previousIsMobile = Platform.isMobile;
         const previousIsTablet = Platform.isTablet;

@@ -106,6 +106,42 @@ export interface RevealPropertyOptions {
     source?: SelectionRevealSource;
 }
 
+interface PropertyRevealExpansion {
+    targetProperty: PropertySelectionNodeId;
+    expandPropertiesRoot: boolean;
+    propertyKeyNodeIdToExpand: PropertySelectionNodeId | null;
+}
+
+/**
+ * Resolves the visible property target and any tree expansion needed to reveal it.
+ * A property key row is the no-value bucket, so it cannot stand in for a collapsed
+ * value row even when descendant inclusion is enabled.
+ */
+export function resolvePropertyRevealExpansion(
+    resolvedProperty: PropertySelectionNodeId,
+    includeDescendantNotes: boolean,
+    propertiesRootCollapsed: boolean,
+    expandedProperties: ReadonlySet<string>
+): PropertyRevealExpansion {
+    if (includeDescendantNotes && propertiesRootCollapsed) {
+        return {
+            targetProperty: PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
+            expandPropertiesRoot: false,
+            propertyKeyNodeIdToExpand: null
+        };
+    }
+
+    const rawKeyNodeId = resolvedProperty !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID ? getPropertyKeyNodeIdFromNodeId(resolvedProperty) : null;
+    const keyNodeId = rawKeyNodeId && isPropertyTreeNodeId(rawKeyNodeId) ? rawKeyNodeId : null;
+    const keyCollapsed = Boolean(keyNodeId && keyNodeId !== resolvedProperty && !expandedProperties.has(keyNodeId));
+
+    return {
+        targetProperty: resolvedProperty,
+        expandPropertiesRoot: !includeDescendantNotes && propertiesRootCollapsed,
+        propertyKeyNodeIdToExpand: keyCollapsed ? keyNodeId : null
+    };
+}
+
 /**
  * Custom hook that handles revealing items (files, folders, tags) in the Navigator, including:
  * - Manual reveal (via commands, context menus, or direct navigation)
@@ -595,35 +631,22 @@ export function useNavigatorReveal({ app, navigationPaneRef, focusNavigationPane
                         settings.showAllPropertiesFolder &&
                         !expansionState.expandedVirtualFolders.has(PROPERTIES_ROOT_VIRTUAL_FOLDER_ID);
 
-                    if (includeDescendantNotes && isPropertiesRootCollapsed) {
-                        targetProperty = PROPERTIES_ROOT_VIRTUAL_FOLDER_ID;
-                    } else {
-                        const propertyNodeId = resolvedProperty;
-                        const rawKeyNodeId =
-                            propertyNodeId !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID ? getPropertyKeyNodeIdFromNodeId(propertyNodeId) : null;
-                        const keyNodeId = rawKeyNodeId && isPropertyTreeNodeId(rawKeyNodeId) ? rawKeyNodeId : null;
-                        const keyCollapsed = Boolean(
-                            keyNodeId && keyNodeId !== propertyNodeId && !expansionState.expandedProperties.has(keyNodeId)
-                        );
+                    const revealExpansion = resolvePropertyRevealExpansion(
+                        resolvedProperty,
+                        includeDescendantNotes,
+                        isPropertiesRootCollapsed,
+                        expansionState.expandedProperties
+                    );
+                    targetProperty = revealExpansion.targetProperty;
 
-                        if (includeDescendantNotes && keyCollapsed) {
-                            targetProperty = keyNodeId;
-                        } else {
-                            if (
-                                !includeDescendantNotes &&
-                                settings.showProperties &&
-                                settings.showAllPropertiesFolder &&
-                                !expansionState.expandedVirtualFolders.has(PROPERTIES_ROOT_VIRTUAL_FOLDER_ID)
-                            ) {
-                                const nextExpandedVirtualFolders = new Set(expansionState.expandedVirtualFolders);
-                                nextExpandedVirtualFolders.add(PROPERTIES_ROOT_VIRTUAL_FOLDER_ID);
-                                expansionDispatch({ type: 'SET_EXPANDED_VIRTUAL_FOLDERS', folders: nextExpandedVirtualFolders });
-                            }
+                    if (revealExpansion.expandPropertiesRoot) {
+                        const nextExpandedVirtualFolders = new Set(expansionState.expandedVirtualFolders);
+                        nextExpandedVirtualFolders.add(PROPERTIES_ROOT_VIRTUAL_FOLDER_ID);
+                        expansionDispatch({ type: 'SET_EXPANDED_VIRTUAL_FOLDERS', folders: nextExpandedVirtualFolders });
+                    }
 
-                            if (!includeDescendantNotes && keyCollapsed && keyNodeId) {
-                                expandPropertyNodeIds([keyNodeId]);
-                            }
-                        }
+                    if (revealExpansion.propertyKeyNodeIdToExpand) {
+                        expandPropertyNodeIds([revealExpansion.propertyKeyNodeIdToExpand]);
                     }
                 }
             }

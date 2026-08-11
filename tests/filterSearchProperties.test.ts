@@ -73,12 +73,23 @@ describe('filterSearch property parsing', () => {
         expect(tokens.expression.length).toBeGreaterThan(0);
     });
 
-    it('treats empty property values as key-only tokens', () => {
+    it('keeps explicit empty property values distinct from key-presence tokens', () => {
         const includeTokens = parseFilterSearchTokens('.hidefeature=');
-        expect(includeTokens.propertyTokens).toEqual([{ key: 'hidefeature', value: null }]);
+        expect(includeTokens.propertyTokens).toEqual([{ key: 'hidefeature', value: '' }]);
 
         const excludeTokens = parseFilterSearchTokens('-.hidefeature=');
-        expect(excludeTokens.excludePropertyTokens).toEqual([{ key: 'hidefeature', value: null }]);
+        expect(excludeTokens.excludePropertyTokens).toEqual([{ key: 'hidefeature', value: '' }]);
+    });
+
+    it('keeps presence and exact-empty operands distinct in either expression order', () => {
+        expect(parseFilterSearchTokens('.status AND .status=').propertyTokens).toEqual([
+            { key: 'status', value: null },
+            { key: 'status', value: '' }
+        ]);
+        expect(parseFilterSearchTokens('.status= AND .status').propertyTokens).toEqual([
+            { key: 'status', value: '' },
+            { key: 'status', value: null }
+        ]);
     });
 });
 
@@ -169,17 +180,24 @@ describe('filterSearch property evaluation', () => {
         ).toBe(true);
     });
 
-    it('matches empty property value filters as key-only filters', () => {
+    it('matches explicit empty property filters without matching valued properties', () => {
         const includeTokens = parseFilterSearchTokens('.hidefeature=');
         const excludeTokens = parseFilterSearchTokens('-.hidefeature=');
-        const properties = new Map<string, string[]>([['hidefeature', ['true']]]);
+        const emptyProperties = new Map<string, string[]>([['hidefeature', []]]);
+        const valuedProperties = new Map<string, string[]>([['hidefeature', ['true']]]);
 
-        expect(fileMatchesFilterTokens('note', [], includeTokens, { hasUnfinishedTasks: false, propertyValuesByKey: properties })).toBe(
-            true
-        );
-        expect(fileMatchesFilterTokens('note', [], excludeTokens, { hasUnfinishedTasks: false, propertyValuesByKey: properties })).toBe(
-            false
-        );
+        expect(
+            fileMatchesFilterTokens('note', [], includeTokens, { hasUnfinishedTasks: false, propertyValuesByKey: emptyProperties })
+        ).toBe(true);
+        expect(
+            fileMatchesFilterTokens('note', [], includeTokens, { hasUnfinishedTasks: false, propertyValuesByKey: valuedProperties })
+        ).toBe(false);
+        expect(
+            fileMatchesFilterTokens('note', [], excludeTokens, { hasUnfinishedTasks: false, propertyValuesByKey: emptyProperties })
+        ).toBe(false);
+        expect(
+            fileMatchesFilterTokens('note', [], excludeTokens, { hasUnfinishedTasks: false, propertyValuesByKey: valuedProperties })
+        ).toBe(true);
     });
 
     it('evaluates OR expressions between property tokens', () => {
@@ -228,6 +246,30 @@ describe('updateFilterQueryWithProperty', () => {
         expect(removed.query).toBe('');
         expect(removed.action).toBe('removed');
         expect(removed.changed).toBe(true);
+    });
+
+    it('adds and removes explicit empty-value property tokens', () => {
+        const added = updateFilterQueryWithProperty('', 'status', '', 'AND');
+        expect(added.query).toBe('.status=');
+        expect(added.action).toBe('added');
+        expect(added.changed).toBe(true);
+        expect(parseFilterSearchTokens(added.query).propertyTokens).toEqual([{ key: 'status', value: '' }]);
+
+        const removed = updateFilterQueryWithProperty(added.query, 'status', '', 'AND');
+        expect(removed.query).toBe('');
+        expect(removed.action).toBe('removed');
+        expect(removed.changed).toBe(true);
+    });
+
+    it('does not conflate key-presence and explicit empty-value tokens', () => {
+        const addedEmpty = updateFilterQueryWithProperty('.status', 'status', '', 'AND');
+        expect(addedEmpty.query).toBe('.status AND .status=');
+
+        const removedEmpty = updateFilterQueryWithProperty(addedEmpty.query, 'status', '', 'AND');
+        expect(removedEmpty.query).toBe('.status');
+
+        const removedPresence = updateFilterQueryWithProperty(addedEmpty.query, 'status', null, 'AND');
+        expect(removedPresence.query).toBe('.status=');
     });
 
     it('removes property tokens using folded key/value matching', () => {

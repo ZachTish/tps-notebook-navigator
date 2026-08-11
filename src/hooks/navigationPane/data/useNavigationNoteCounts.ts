@@ -183,14 +183,7 @@ export function useNavigationNoteCounts(params: UseNavigationNoteCountsParams): 
         visiblePropertyNodes.forEach(node => {
             if (node.kind === 'key') {
                 const current = getDirectPropertyKeyNoteCount(node);
-                if (!includeDescendantNotes) {
-                    counts.set(node.id, { current, descendants: 0, total: current });
-                    return;
-                }
-
-                const total = node.notesWithValue.size;
-                const descendants = Math.max(total - current, 0);
-                counts.set(node.id, { current, descendants, total });
+                counts.set(node.id, { current, descendants: 0, total: current });
                 return;
             }
 

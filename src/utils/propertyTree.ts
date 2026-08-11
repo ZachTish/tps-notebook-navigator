@@ -317,7 +317,7 @@ export function determinePropertyToReveal(
             const candidateForKey = candidatesByKey.get(parsed.key);
             if (candidateForKey) {
                 if (!parsed.valuePath) {
-                    if (includeDescendantNotes || candidateForKey.hasKeyOnlyValue) {
+                    if (candidateForKey.hasKeyOnlyValue) {
                         return candidateForKey.keyNodeId;
                     }
 

@@ -634,7 +634,7 @@ export function useNavigationPaneTreeInteractions({
                     event.preventDefault();
                     event.stopPropagation();
                 }
-                const valuePath = propertyNode.kind === 'value' && propertyNode.valuePath ? propertyNode.valuePath : null;
+                const valuePath = propertyNode.kind === 'value' && propertyNode.valuePath ? propertyNode.valuePath : '';
                 onModifySearchWithProperty(propertyNode.key, valuePath, operator);
                 return;
             }

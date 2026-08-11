@@ -26,7 +26,7 @@ import {
     resolveSearchShortcutStartFolderPath
 } from '../../src/hooks/useListPaneSearch';
 import { ItemType, UNTAGGED_TAG_ID } from '../../src/types';
-import { buildPropertyValueNodeId } from '../../src/utils/propertyTree';
+import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { updateFilterQueryWithTag, updateFilterQueryWithType } from '../../src/utils/filterSearch';
 import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
@@ -81,6 +81,19 @@ describe('search-bar navigation source of truth', () => {
                 selectedType: null
             })
         ).toBe(query);
+    });
+
+    it('materializes a selected property key as an explicit empty-value filter', () => {
+        const selection = {
+            selectionType: ItemType.PROPERTY,
+            selectedTag: null,
+            selectedProperty: buildPropertyKeyNodeId('status'),
+            selectedType: null
+        } as const;
+
+        expect(includeNavigationSelectionInSearchQuery('', selection)).toBe('.status=');
+        expect(includeNavigationSelectionInSearchQuery('.status=', selection)).toBe('.status=');
+        expect(getSearchActivationQuery('', selection)).toBe('.status=');
     });
 
     it('represents the selected Untagged collection explicitly and idempotently', () => {

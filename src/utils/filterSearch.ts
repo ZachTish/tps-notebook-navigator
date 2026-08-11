@@ -194,7 +194,7 @@ const parsePropertyFilterToken = (token: string): PropertySearchToken | null => 
 
     const normalizedValue = normalizePropertyFilterValue(rawValue);
     if (!normalizedValue) {
-        return { key: normalizedKey, value: null };
+        return { key: normalizedKey, value: '' };
     }
 
     return {
@@ -920,6 +920,7 @@ const parseFilterModeTokens = (
  * - #tag - Include notes with tags containing "tag"
  * - # - Include only notes that have at least one tag
  * - .key - Include notes with property key
+ * - .key= - Include notes with an exact property key and no value
  * - .key=value - Include notes where the property value contains "value"
  * - @today - Include notes matching the default date field on the current day
  * - @YYYY-MM-DD / @YYYYMMDD - Include notes matching the default date field on a specific day
@@ -942,6 +943,7 @@ const parseFilterModeTokens = (
  * - -#tag - Exclude notes with tags containing "tag"
  * - -# - Exclude all tagged notes (show only untagged)
  * - -.key - Exclude notes with property key
+ * - -.key= - Exclude notes with an exact property key and no value
  * - -.key=value - Exclude notes where the property value contains "value"
  * - -@... - Exclude notes matching a date token or range
  * - -has:task - Exclude notes with unfinished tasks
@@ -1041,7 +1043,9 @@ const isSearchNavOperandToken = (
 };
 
 const buildSearchNavPropertyNodeId = (token: PropertySearchToken): string => {
-    return token.value === null ? buildPropertyKeyNodeId(token.key) : buildPropertyValueNodeId(token.key, token.value);
+    return token.value === null || token.value.length === 0
+        ? buildPropertyKeyNodeId(token.key)
+        : buildPropertyValueNodeId(token.key, token.value);
 };
 
 /**
@@ -1452,13 +1456,6 @@ export function updateFilterQueryWithProperty(
     let normalizedValue: string | null = null;
     if (typeof value === 'string') {
         const normalizedCandidate = normalizePropertyFilterValue(value);
-        if (!normalizedCandidate) {
-            return {
-                query: trimmed,
-                action: 'removed',
-                changed: false
-            };
-        }
         normalizedValue = normalizedCandidate;
     }
 
@@ -1467,7 +1464,7 @@ export function updateFilterQueryWithProperty(
     const tokens = trimmed.length > 0 ? tokenizeFilterSearchQuery(trimmed) : [];
     const tagOnlyQuery = isTagOnlyMutationQuery(trimmed);
     const foldedTargetKey = foldSearchText(propertyToken.key);
-    const foldedTargetValue = foldSearchText(propertyToken.value ?? '');
+    const foldedTargetValue = propertyToken.value === null ? null : foldSearchText(propertyToken.value);
 
     const removalIndex = tokens.findIndex(token => {
         // Literal terms never match: a quoted `".status"` is name text, so toggling the `status`
@@ -1480,7 +1477,7 @@ export function updateFilterQueryWithProperty(
             return false;
         }
         const parsedKey = foldSearchText(parsed.key);
-        const parsedValue = foldSearchText(parsed.value ?? '');
+        const parsedValue = parsed.value === null ? null : foldSearchText(parsed.value);
         return parsedKey === foldedTargetKey && parsedValue === foldedTargetValue;
     });
 

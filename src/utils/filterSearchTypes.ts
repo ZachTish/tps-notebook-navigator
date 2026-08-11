@@ -40,6 +40,7 @@ export interface FolderFilterToken {
 
 export interface PropertySearchToken {
     key: string;
+    /** null matches key presence; an empty string matches an explicitly empty value. */
     value: string | null;
 }
 

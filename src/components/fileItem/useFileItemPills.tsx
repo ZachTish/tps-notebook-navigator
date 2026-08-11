@@ -125,6 +125,14 @@ function buildPropertySearchValueIdentity(fieldKey: string, valueKind: PropertyI
     return `${casefold(fieldKey.trim())}\u0000${valueKind ?? ''}\u0000${rawValue}`;
 }
 
+export function resolvePropertyPillSearchValuePath(
+    isKeyOnlyValue: boolean,
+    parsedValuePath: string | null | undefined,
+    normalizedValuePath: string
+): string {
+    return isKeyOnlyValue ? '' : (parsedValuePath ?? normalizedValuePath);
+}
+
 function sortTagsByNavigationOrder(
     tags: string[],
     orderModel: FileItemPillOrderModel,
@@ -745,7 +753,11 @@ export function useFileItemPills({
                 ? (getPropertyKeyNodeIdFromNodeId(propertyNodeId) ?? resolveNormalizedPropertyKeyNodeId(trimmedFieldKey))
                 : resolveNormalizedPropertyKeyNodeId(trimmedFieldKey);
             const propertySearchKey = parsedPropertyNode?.key || trimmedFieldKey;
-            const propertySearchValuePath = isKeyOnlyValue ? null : (parsedPropertyNode?.valuePath ?? normalizedValuePath);
+            const propertySearchValuePath = resolvePropertyPillSearchValuePath(
+                isKeyOnlyValue,
+                parsedPropertyNode?.valuePath,
+                normalizedValuePath
+            );
             const normalizedPropertySearchKey = casefold(propertySearchKey);
             const canNavigateToProperty =
                 propertyNodeId !== undefined &&

@@ -737,4 +737,21 @@ describe('property reveal selection', () => {
 
         expect(resolved).toBe(buildPropertyValueNodeId('finished', normalizePropertyTreeValuePath('false')));
     });
+
+    it('reveals a value node instead of a property key root when descendants are enabled', () => {
+        const settings = {
+            ...DEFAULT_SETTINGS,
+            showProperties: true
+        };
+        setActivePropertyFields(settings, 'status');
+
+        const resolved = determinePropertyToReveal(
+            [{ fieldKey: 'status', value: 'working', valueKind: 'string' }],
+            buildPropertyKeyNodeId('status'),
+            settings,
+            true
+        );
+
+        expect(resolved).toBe(buildPropertyValueNodeId('status', normalizePropertyTreeValuePath('working')));
+    });
 });

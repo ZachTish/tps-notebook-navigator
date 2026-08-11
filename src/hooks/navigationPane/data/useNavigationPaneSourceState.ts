@@ -211,9 +211,9 @@ export function useNavigationPaneSourceState({
         return createPropertyComparator({
             order: settings.propertySortOrder,
             compareAlphabetically: comparePropertyKeyNodesAlphabetically,
-            getFrequency: node => (includeDescendantNotes ? node.notesWithValue.size : getDirectPropertyKeyNoteCount(node))
+            getFrequency: node => getDirectPropertyKeyNoteCount(node)
         });
-    }, [includeDescendantNotes, settings.propertySortOrder]);
+    }, [settings.propertySortOrder]);
 
     const { rootPropertyOrderMap, missingRootPropertyKeys } = useRootPropertyOrder({
         settings,

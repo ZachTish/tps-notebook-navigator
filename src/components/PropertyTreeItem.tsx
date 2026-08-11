@@ -27,6 +27,7 @@ import type { PropertyTreeNode } from '../types/storage';
 import { buildNoteCountDisplay, buildSortableNoteCountDisplay } from '../utils/noteCountFormatting';
 import { buildSearchMatchContentClass } from '../utils/searchHighlight';
 import type { InclusionOperator } from '../utils/filterSearch';
+import { getDirectPropertyKeyNoteCount } from '../utils/propertyTree';
 import { resolveUXIcon } from '../utils/uxIcons';
 import { IndentGuideColumns } from './IndentGuideColumns';
 import { ObsidianIcon } from './ObsidianIcon';
@@ -85,13 +86,12 @@ export const PropertyTreeItem = React.memo(
         const iconVersion = useIconServiceVersion();
         const itemRef = useRef<HTMLDivElement | null>(null);
 
-        const resolvedCounts = useMemo<NoteCountInfo>(() => {
-            if (countInfo) {
-                return countInfo;
-            }
-            const current = propertyNode.notesWithValue.size;
-            return { current, descendants: 0, total: current };
-        }, [countInfo, propertyNode.notesWithValue.size]);
+        const fallbackCount = propertyNode.kind === 'key' ? getDirectPropertyKeyNoteCount(propertyNode) : propertyNode.notesWithValue.size;
+        const resolvedCounts: NoteCountInfo = countInfo ?? {
+            current: fallbackCount,
+            descendants: 0,
+            total: fallbackCount
+        };
 
         const propertyTreeSortOverrides = settings.propertyTreeSortOverrides;
         const hasChildSortOrderOverride =

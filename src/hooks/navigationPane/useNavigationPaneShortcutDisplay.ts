@@ -208,13 +208,7 @@ export function useNavigationPaneShortcutDisplay({
 
             if (resolvedNode.kind === 'key') {
                 const current = getDirectPropertyKeyNoteCount(resolvedNode);
-                if (!includeDescendantNotes) {
-                    return { current, descendants: 0, total: current };
-                }
-
-                const total = resolvedNode.notesWithValue.size;
-                const descendants = Math.max(total - current, 0);
-                return { current, descendants, total };
+                return { current, descendants: 0, total: current };
             }
 
             const current = resolvedNode.notesWithValue.size;

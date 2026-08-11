@@ -92,6 +92,9 @@ export const propertyTokenMatches = (propertiesByKey: Map<string, string[]>, tok
         return false;
     }
     const propertyValue = token.value;
+    if (propertyValue.length === 0) {
+        return values.length === 0;
+    }
     return values.some(value => value.includes(propertyValue));
 };
 
@@ -220,7 +223,9 @@ const buildTagExpression = (classifiedTokens: readonly TagModeToken[]): TagExpre
             if (!pushOperand({ kind: 'property', value: token.value })) {
                 return null;
             }
-            const propertyKey = token.value.value ? `${token.value.key}=${token.value.value}` : token.value.key;
+            // Presence (`.key`) and exact-empty (`.key=`) are distinct operands. Keep the
+            // nullable value in the identity so neither form can deduplicate the other.
+            const propertyKey = JSON.stringify([token.value.key, token.value.value]);
             if (!positiveProperties.has(propertyKey)) {
                 positiveProperties.set(propertyKey, token.value);
             }

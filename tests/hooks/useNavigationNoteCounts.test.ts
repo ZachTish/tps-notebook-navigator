@@ -60,6 +60,60 @@ function createPropertyValueNode(key: string, valuePath: string, name: string, n
 }
 
 describe('useNavigationNoteCounts', () => {
+    it('counts only empty-valued notes on a property key row when descendants are enabled', () => {
+        const valueNode = createPropertyValueNode('status', 'working', 'Working', ['notes/value.md']);
+        const keyNode = createPropertyKeyNode('status', 'Status', ['notes/empty.md', 'notes/value.md'], [valueNode]);
+
+        const app = new App();
+        let captured: NavigationNoteCounts | null = null;
+
+        function Harness() {
+            captured = useNavigationNoteCounts({
+                app,
+                isVisible: true,
+                settings: {
+                    ...DEFAULT_SETTINGS,
+                    showNoteCount: true
+                },
+                propertiesSectionActive: true,
+                itemsWithMetadata: [
+                    {
+                        type: NavigationPaneItemType.PROPERTY_KEY,
+                        data: keyNode,
+                        level: 0,
+                        key: keyNode.id
+                    }
+                ],
+                includeDescendantNotes: true,
+                visibleTaggedCount: 0,
+                untaggedCount: 0,
+                renderPropertyTree: new Map([[keyNode.key, keyNode]]),
+                propertyCollectionCount: undefined,
+                effectiveFrontmatterExclusions: [],
+                hiddenFolders: [],
+                descendantExcludedFolders: [],
+                hiddenFileTags: [],
+                showHiddenItems: false,
+                folderCountFileNameMatcher: null,
+                fileVisibility: DEFAULT_SETTINGS.vaultProfiles[0].fileVisibility,
+                folderChangeVersion: 0,
+                vaultChangeVersion: 0,
+                metadataVisibilityVersion: 0,
+                tagDataVersion: 0
+            });
+            return null;
+        }
+
+        renderToStaticMarkup(React.createElement(Harness));
+
+        expect(captured).not.toBeNull();
+        if (!captured) {
+            throw new Error('Expected hook result');
+        }
+
+        expect((captured as NavigationNoteCounts).propertyCounts.get(keyNode.id)).toEqual({ current: 1, descendants: 0, total: 1 });
+    });
+
     it('uses the rendered property tree when computing scoped property totals', () => {
         const globalValueNode = createPropertyValueNode('status', 'open', 'Open', ['notes/a.md', 'notes/b.md']);
         const globalKeyNode = createPropertyKeyNode('status', 'Status', ['notes/a.md', 'notes/b.md'], [globalValueNode]);

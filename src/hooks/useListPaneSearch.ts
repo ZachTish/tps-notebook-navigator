@@ -92,8 +92,9 @@ export function includeNavigationSelectionInSearchQuery(query: string, selection
     if (selection.selectionType === ItemType.PROPERTY && selection.selectedProperty !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID) {
         const property = selection.selectedProperty ? parsePropertyNodeId(selection.selectedProperty) : null;
         if (!property) return query.trim();
-        const alreadyIncluded = tokens.propertyTokens.some(token => token.key === property.key && token.value === property.valuePath);
-        return alreadyIncluded ? query.trim() : updateFilterQueryWithProperty(query, property.key, property.valuePath, 'AND').query;
+        const searchValue = property.valuePath ?? '';
+        const alreadyIncluded = tokens.propertyTokens.some(token => token.key === property.key && token.value === searchValue);
+        return alreadyIncluded ? query.trim() : updateFilterQueryWithProperty(query, property.key, searchValue, 'AND').query;
     }
     if (selection.selectionType === ItemType.TYPE && selection.selectedType) {
         return tokens.typeTokens.includes(selection.selectedType)

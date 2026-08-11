@@ -147,6 +147,35 @@ describe('FileSystemOperations property assignment', () => {
         expect(target.frontmatter).toEqual({ Categories: null });
     });
 
+    it('replaces a true property value with an empty value when applying its key root', async () => {
+        const app = new App();
+        const target = createFile('Target.md', { Categories: true });
+        const propertyTreeService = new PropertyTreeService();
+        propertyTreeService.updatePropertyTree(
+            buildPropertyTreeFromDatabase(
+                createMockDb([
+                    {
+                        path: 'Source.md',
+                        properties: [{ fieldKey: 'Categories', value: 'Reference', valueKind: 'string' }]
+                    }
+                ])
+            )
+        );
+
+        app.fileManager.processFrontMatter = vi.fn((file: TFile, callback: (frontmatter: Record<string, unknown>) => void) => {
+            callback((file as TFile & { frontmatter: Record<string, unknown> }).frontmatter);
+            return Promise.resolve();
+        });
+
+        const operations = createOperations(app, propertyTreeService);
+
+        await expect(operations.applyPropertyNodeToFiles(buildPropertyKeyNodeId('categories'), [target])).resolves.toEqual({
+            updated: 1,
+            skipped: 0
+        });
+        expect(target.frontmatter).toEqual({ Categories: null });
+    });
+
     it('creates a note with an empty value when invoked from a property key node', async () => {
         const app = new App();
         const createdFile = createFile('Untitled.md', {});

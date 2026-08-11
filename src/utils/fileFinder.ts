@@ -56,7 +56,6 @@ import { getParentFolderPath } from './pathUtils';
 import {
     buildPropertyKeyNodeId,
     buildPropertyValueNodeId,
-    isPropertyKeyOnlyValuePath,
     matchesPropertyValuePath,
     type PropertySelectionNodeId,
     normalizePropertyTreeValuePath,
@@ -671,7 +670,10 @@ export function getFilesForProperty(
         }
 
         if (normalizedValue === null) {
-            return propertyTreeService.collectFilePaths(buildPropertyKeyNodeId(selectedPropertyKey), visibility.includeDescendantNotes);
+            // A property-key row is the explicit no-value bucket. Value-bearing notes
+            // remain selectable through their child value rows, regardless of the
+            // global descendant preference used by folders and tags.
+            return propertyTreeService.collectFilePaths(buildPropertyKeyNodeId(selectedPropertyKey), false);
         }
 
         const valueNodeId = buildPropertyValueNodeId(selectedPropertyKey, normalizedValue);
@@ -722,21 +724,17 @@ export function getFilesForProperty(
                 return properties.some(entry => configuredPropertyKeys.has(casefold(entry.fieldKey)));
             }
 
-            let hasMatchingKey = false;
             let hasDirectMatchingKey = false;
             for (const entry of properties) {
                 if (casefold(entry.fieldKey) !== selectedPropertyKey) {
                     continue;
                 }
 
-                hasMatchingKey = true;
                 if (normalizedValue === null) {
                     const normalizedEntryValue = normalizePropertyTreeValuePath(entry.value);
-                    if (isPropertyKeyOnlyValuePath(normalizedEntryValue, entry.valueKind)) {
+                    if (normalizedEntryValue.length === 0) {
                         hasDirectMatchingKey = true;
-                        if (!visibility.includeDescendantNotes) {
-                            return true;
-                        }
+                        return true;
                     }
                     continue;
                 }
@@ -752,7 +750,7 @@ export function getFilesForProperty(
             }
 
             if (normalizedValue === null) {
-                return visibility.includeDescendantNotes ? hasMatchingKey : hasDirectMatchingKey;
+                return hasDirectMatchingKey;
             }
 
             return false;

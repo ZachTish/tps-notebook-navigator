@@ -46,6 +46,7 @@ describe('search-backed resource creation', () => {
         '#hca type:structural:task type:structural:heading',
         '#hca',
         '.priority type:structural:task',
+        '.priority= type:structural:task',
         '#hca type:structural:bullet',
         '#hca type:file:canvas'
     ])('rejects a search whose new item cannot be guaranteed to match: %s', query => {
