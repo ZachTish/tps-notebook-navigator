@@ -179,17 +179,14 @@ export function hasStructuralTypeTagSearchContentChange(params: {
     return params.changes.some(change => change.changes.tags !== undefined && params.basePathSet.has(change.path));
 }
 
-/** A modified-date filter depends on file mtime even when the selected Type uses a title/property sort. */
+/** A date filter can depend on file mtime even when the active list uses a title/property sort. */
 export function shouldRefreshOnFileModifyForList(params: {
     hasDateSearchFilters: boolean;
     isStructuralTypeSelection: boolean;
     propertySortSecondary: PropertySortSecondaryOption;
     sortOption: SortOption;
 }): boolean {
-    return (
-        shouldRefreshOnFileModifyForSort(params.sortOption, params.propertySortSecondary) ||
-        (params.isStructuralTypeSelection && params.hasDateSearchFilters)
-    );
+    return shouldRefreshOnFileModifyForSort(params.sortOption, params.propertySortSecondary) || params.hasDateSearchFilters;
 }
 
 /**

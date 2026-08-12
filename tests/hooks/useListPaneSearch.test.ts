@@ -20,15 +20,18 @@ import { describe, expect, it } from 'vitest';
 import { App, TFolder } from 'obsidian';
 import { ShortcutStartType } from '../../src/types/shortcuts';
 import {
+    canSaveSearchShortcutQuery,
     getSearchActivationQuery,
     getTypeFacetQueryWithNavigationSelection,
     includeNavigationSelectionInSearchQuery,
-    resolveSearchShortcutStartFolderPath
+    resolveSearchShortcutStartFolderPath,
+    resolveSearchShortcutStartTarget
 } from '../../src/hooks/useListPaneSearch';
-import { ItemType, UNTAGGED_TAG_ID } from '../../src/types';
+import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../src/types';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { updateFilterQueryWithTag, updateFilterQueryWithType } from '../../src/utils/filterSearch';
 import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
+import type { PropertyTreeNode, TagTreeNode } from '../../src/types/storage';
 
 interface TestVaultRegistration {
     registerFolder(folder: TFolder): void;
@@ -52,6 +55,58 @@ describe('resolveSearchShortcutStartFolderPath', () => {
     });
 });
 
+describe('resolveSearchShortcutStartTarget', () => {
+    const tagNode = { path: 'projects/active' } as TagTreeNode;
+    const propertyNode = { id: buildPropertyValueNodeId('status', 'active') } as PropertyTreeNode;
+    const lookup = {
+        tagTreeService: {
+            findTagNode: (tagPath: string) => (tagPath === tagNode.path ? tagNode : null)
+        },
+        propertyTreeService: {
+            findNode: (nodeId: string) => (nodeId === propertyNode.id ? propertyNode : null)
+        }
+    };
+
+    it('resolves exact folder, tag, property, and virtual collection start targets', () => {
+        const app = new App();
+        getTestVault(app).registerFolder(new TFolder('Projects/Active'));
+
+        expect(resolveSearchShortcutStartTarget(app, { type: ShortcutStartType.FOLDER, path: 'projects/active' }, lookup)).toEqual({
+            type: ShortcutStartType.FOLDER,
+            path: 'Projects/Active'
+        });
+        expect(resolveSearchShortcutStartTarget(app, { type: ShortcutStartType.TAG, tagPath: '#Projects/Active' }, lookup)).toEqual({
+            type: ShortcutStartType.TAG,
+            tagPath: 'projects/active'
+        });
+        expect(resolveSearchShortcutStartTarget(app, { type: ShortcutStartType.PROPERTY, nodeId: 'key:STATUS=ACTIVE' }, lookup)).toEqual({
+            type: ShortcutStartType.PROPERTY,
+            nodeId: propertyNode.id
+        });
+        expect(resolveSearchShortcutStartTarget(app, { type: ShortcutStartType.TAG, tagPath: TAGGED_TAG_ID }, lookup)).toEqual({
+            type: ShortcutStartType.TAG,
+            tagPath: TAGGED_TAG_ID
+        });
+        expect(
+            resolveSearchShortcutStartTarget(app, { type: ShortcutStartType.PROPERTY, nodeId: PROPERTIES_ROOT_VIRTUAL_FOLDER_ID }, lookup)
+        ).toEqual({ type: ShortcutStartType.PROPERTY, nodeId: PROPERTIES_ROOT_VIRTUAL_FOLDER_ID });
+    });
+
+    it('rejects missing folder, tag, and exact property value targets', () => {
+        const app = new App();
+
+        expect(resolveSearchShortcutStartTarget(app, { type: ShortcutStartType.FOLDER, path: 'missing' }, lookup)).toBeNull();
+        expect(resolveSearchShortcutStartTarget(app, { type: ShortcutStartType.TAG, tagPath: 'missing' }, lookup)).toBeNull();
+        expect(
+            resolveSearchShortcutStartTarget(
+                app,
+                { type: ShortcutStartType.PROPERTY, nodeId: buildPropertyValueNodeId('status', 'missing') },
+                lookup
+            )
+        ).toBeNull();
+    });
+});
+
 describe('search-bar navigation source of truth', () => {
     it('shows the selected Checkboxes Type as soon as Search opens', () => {
         expect(
@@ -62,6 +117,18 @@ describe('search-bar navigation source of truth', () => {
                 selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
             })
         ).toBe('type:structural:task');
+    });
+
+    it('does not materialize a stale Type selection while Types navigation is paused', () => {
+        const selection = {
+            selectionType: ItemType.TYPE,
+            selectedTag: null,
+            selectedProperty: null,
+            selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
+        } as const;
+
+        expect(getSearchActivationQuery('', selection, false)).toBe('');
+        expect(includeNavigationSelectionInSearchQuery('meeting', selection, false)).toBe('meeting');
     });
 
     it('includes the selected property value before a Type facet is added', () => {
@@ -130,5 +197,26 @@ describe('search-bar navigation source of truth', () => {
         });
 
         expect(updateFilterQueryWithTag(selectedTypeQuery, 'hca', 'AND').query).toBe('type:structural:task #hca');
+    });
+});
+
+describe('search shortcut query validation', () => {
+    it('blocks invalid Filter Search queries but leaves Omnisearch syntax opaque', () => {
+        expect(canSaveSearchShortcutQuery('folder:', 'internal')).toBe(false);
+        expect(canSaveSearchShortcutQuery('#alpha OR meeting', 'internal')).toBe(false);
+        expect(canSaveSearchShortcutQuery('#work OR ext:md', 'internal')).toBe(false);
+        expect(canSaveSearchShortcutQuery('#alpha OR #beta', 'internal')).toBe(true);
+        expect(canSaveSearchShortcutQuery('OR', 'internal')).toBe(true);
+        expect(canSaveSearchShortcutQuery('alpha OR beta', 'internal')).toBe(true);
+        expect(canSaveSearchShortcutQuery('research and development', 'internal')).toBe(true);
+        expect(canSaveSearchShortcutQuery('folder:', 'omnisearch')).toBe(true);
+    });
+
+    it('blocks Type facets while Types collections are turned off', () => {
+        expect(
+            canSaveSearchShortcutQuery(`type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES}`, 'internal', {
+                typesNavigationEnabled: false
+            })
+        ).toBe(false);
     });
 });

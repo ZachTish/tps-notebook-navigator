@@ -65,10 +65,12 @@ interface ActiveProvider {
     rowGeneration: number;
     readonly rowAbortControllers: Set<AbortController>;
     abortController: AbortController | null;
+    abortCatalogQuery: (() => void) | null;
     cleanup: (() => void) | null;
 }
 
 const ROW_QUERY_CANCELLED = Symbol('navigator-type-row-query-cancelled');
+const CATALOG_QUERY_CANCELLED = Symbol('navigator-type-catalog-query-cancelled');
 
 const EMPTY_SNAPSHOT: NavigatorTypeProviderRegistrySnapshot = Object.freeze({
     descriptors: Object.freeze([]),
@@ -196,6 +198,7 @@ export class NavigatorTypeProviderRegistry {
     private snapshot = EMPTY_SNAPSHOT;
     private revision = 0;
     private providerInstanceSequence = 0;
+    private enabled = true;
     private disposed = false;
 
     constructor(private readonly app: App) {}
@@ -224,13 +227,16 @@ export class NavigatorTypeProviderRegistry {
             rowGeneration: 0,
             rowAbortControllers: new Set(),
             abortController: null,
+            abortCatalogQuery: null,
             cleanup: null
         };
         this.providers.set(providerId, activeProvider);
         this.removedProviderIds.delete(providerId);
-        this.startSubscription(activeProvider);
-        this.publish();
-        this.refreshProvider(activeProvider);
+        if (this.enabled) {
+            this.publish();
+            this.startSubscription(activeProvider);
+            this.refreshProvider(activeProvider);
+        }
 
         let handleActive = true;
         return Object.freeze({
@@ -256,9 +262,11 @@ export class NavigatorTypeProviderRegistry {
                 if (!handleActive || this.disposed || this.providers.get(providerId) !== activeProvider) {
                     return;
                 }
-                this.startSubscription(activeProvider);
-                this.publish();
-                this.refreshProvider(activeProvider);
+                if (this.enabled) {
+                    this.publish();
+                    this.startSubscription(activeProvider);
+                    this.refreshProvider(activeProvider);
+                }
             },
             unregister: () => {
                 if (!handleActive) {
@@ -271,13 +279,38 @@ export class NavigatorTypeProviderRegistry {
                 this.stopProvider(activeProvider);
                 this.providers.delete(providerId);
                 this.removedProviderIds.add(providerId);
-                this.publish();
+                if (this.enabled) {
+                    this.publish();
+                }
             }
         });
     }
 
     getSnapshot(): NavigatorTypeProviderRegistrySnapshot {
         return this.snapshot;
+    }
+
+    /** Pauses provider callbacks and catalogs while preserving registrations and options. */
+    setEnabled(enabled: boolean): void {
+        if (this.disposed || this.enabled === enabled) {
+            return;
+        }
+        this.enabled = enabled;
+        if (!enabled) {
+            for (const activeProvider of this.providers.values()) {
+                this.stopProvider(activeProvider);
+            }
+            this.publish();
+            return;
+        }
+
+        // Publish the clean enabled baseline before providers resume. Catalogs remain absent
+        // until each fresh query establishes current authority.
+        this.publish();
+        for (const activeProvider of this.providers.values()) {
+            this.startSubscription(activeProvider);
+            this.refreshProvider(activeProvider);
+        }
     }
 
     subscribe(listener: () => void): () => void {
@@ -289,6 +322,9 @@ export class NavigatorTypeProviderRegistry {
     }
 
     getOwner(typeId: TpsNavigatorTypeId): NavigatorTypeProviderOwner | null {
+        if (!this.enabled || this.disposed) {
+            return null;
+        }
         for (const activeProvider of this.providers.values()) {
             const descriptor = activeProvider.descriptors.find(candidate => candidate.id === typeId);
             if (!descriptor?.providerCollectionId) {
@@ -308,6 +344,9 @@ export class NavigatorTypeProviderRegistry {
 
     /** Query and validate rows for the provider that establishes this Type scope. */
     async queryRows(typeId: TpsNavigatorTypeId, query: NavigatorTypeProviderRowsQuery): Promise<NavigatorProvidedRow[]> {
+        if (!this.enabled || this.disposed) {
+            return [];
+        }
         const owner = this.getOwner(typeId);
         if (!owner || query.signal.aborted) {
             return [];
@@ -365,6 +404,7 @@ export class NavigatorTypeProviderRegistry {
                 value === ROW_QUERY_CANCELLED ||
                 query.signal.aborted ||
                 this.disposed ||
+                !this.enabled ||
                 this.providers.get(owner.providerId) !== activeProvider ||
                 activeProvider.rowGeneration !== rowGeneration ||
                 !activeProvider.descriptors.some(descriptor => descriptor.id === typeId)
@@ -410,6 +450,9 @@ export class NavigatorTypeProviderRegistry {
     }
 
     private startSubscription(activeProvider: ActiveProvider): void {
+        if (!this.enabled || this.disposed) {
+            return;
+        }
         const { provider, providerId } = activeProvider;
         if (!provider.subscribe) {
             return;
@@ -421,6 +464,7 @@ export class NavigatorTypeProviderRegistry {
             const cleanup = provider.subscribe(context, activeProvider.options, () => {
                 if (
                     this.disposed ||
+                    !this.enabled ||
                     subscriptionGeneration !== activeProvider.subscriptionGeneration ||
                     this.providers.get(providerId) !== activeProvider
                 ) {
@@ -440,26 +484,48 @@ export class NavigatorTypeProviderRegistry {
     }
 
     private refreshProvider(activeProvider: ActiveProvider): void {
+        if (!this.enabled || this.disposed) {
+            return;
+        }
         const { provider, providerId } = activeProvider;
         activeProvider.generation += 1;
         const generation = activeProvider.generation;
+        activeProvider.abortCatalogQuery?.();
+        activeProvider.abortCatalogQuery = null;
         activeProvider.abortController?.abort();
         const abortController = new AbortController();
         activeProvider.abortController = abortController;
         const context: NavigatorTypeProviderQueryContext = Object.freeze({ app: this.app, signal: abortController.signal });
         let timeoutId: ReturnType<typeof setTimeout> | null = null;
+        let timedOut = false;
         const timeout = new Promise<never>((_resolve, reject) => {
             timeoutId = window.setTimeout(() => {
+                timedOut = true;
                 abortController.abort();
                 reject(new Error('Type provider catalog query timed out.'));
             }, NAVIGATOR_TYPE_PROVIDER_QUERY_TIMEOUT_MS);
         });
+        let resolveLifecycleAbort: ((value: typeof CATALOG_QUERY_CANCELLED) => void) | null = null;
+        const lifecycleAbort = new Promise<typeof CATALOG_QUERY_CANCELLED>(resolve => {
+            resolveLifecycleAbort = resolve;
+        });
+        const abortCatalogQuery = () => {
+            if (!timedOut) {
+                resolveLifecycleAbort?.(CATALOG_QUERY_CANCELLED);
+            }
+            abortController.abort();
+        };
+        activeProvider.abortCatalogQuery = abortCatalogQuery;
 
-        void Promise.race([Promise.resolve().then(() => provider.getCollections(context, activeProvider.options)), timeout])
+        void Promise.race([Promise.resolve().then(() => provider.getCollections(context, activeProvider.options)), timeout, lifecycleAbort])
             .then(value => {
+                if (value === CATALOG_QUERY_CANCELLED) {
+                    return;
+                }
                 const normalized = normalizeCollections(providerId, value);
                 if (
                     this.disposed ||
+                    !this.enabled ||
                     abortController.signal.aborted ||
                     generation !== activeProvider.generation ||
                     this.providers.get(providerId) !== activeProvider
@@ -475,16 +541,19 @@ export class NavigatorTypeProviderRegistry {
                 activeProvider.collections = normalized.collections;
                 activeProvider.descriptors = normalized.descriptors;
                 activeProvider.authoritative = true;
-                activeProvider.abortController = null;
                 if (catalogChanged || authorityChanged) {
                     this.publish();
                 }
             })
             .catch(error => {
-                if (this.disposed || generation !== activeProvider.generation || this.providers.get(providerId) !== activeProvider) {
+                if (
+                    this.disposed ||
+                    !this.enabled ||
+                    generation !== activeProvider.generation ||
+                    this.providers.get(providerId) !== activeProvider
+                ) {
                     return;
                 }
-                activeProvider.abortController = null;
                 console.warn('[TPS Notebook Navigator] Type provider catalog query failed', {
                     providerId,
                     error: error instanceof Error ? error.message : String(error)
@@ -494,6 +563,13 @@ export class NavigatorTypeProviderRegistry {
                 if (timeoutId !== null) {
                     window.clearTimeout(timeoutId);
                 }
+                resolveLifecycleAbort = null;
+                if (activeProvider.abortController === abortController) {
+                    activeProvider.abortController = null;
+                }
+                if (activeProvider.abortCatalogQuery === abortCatalogQuery) {
+                    activeProvider.abortCatalogQuery = null;
+                }
             });
     }
 
@@ -501,6 +577,8 @@ export class NavigatorTypeProviderRegistry {
         activeProvider.generation += 1;
         activeProvider.subscriptionGeneration += 1;
         this.cancelProviderRows(activeProvider);
+        activeProvider.abortCatalogQuery?.();
+        activeProvider.abortCatalogQuery = null;
         activeProvider.abortController?.abort();
         activeProvider.abortController = null;
         const cleanup = activeProvider.cleanup;
@@ -508,6 +586,8 @@ export class NavigatorTypeProviderRegistry {
         safeCleanup(activeProvider.providerId, cleanup);
         activeProvider.collections = Object.freeze([]);
         activeProvider.descriptors = Object.freeze([]);
+        activeProvider.authoritative = false;
+        activeProvider.rowRevision += 1;
     }
 
     private cancelProviderRows(activeProvider: ActiveProvider): void {
@@ -522,14 +602,16 @@ export class NavigatorTypeProviderRegistry {
         const descriptors: TpsNavigatorTypeDescriptor[] = [];
         const authoritativeSourceKeys = new Set<string>();
         let hasReadyProvider = false;
-        for (const [providerId, activeProvider] of this.providers) {
-            descriptors.push(...activeProvider.descriptors);
-            if (activeProvider.authoritative) {
-                hasReadyProvider = true;
-                authoritativeSourceKeys.add(getTpsNavigatorProviderSourceKey(providerId));
+        if (this.enabled) {
+            for (const [providerId, activeProvider] of this.providers) {
+                descriptors.push(...activeProvider.descriptors);
+                if (activeProvider.authoritative) {
+                    hasReadyProvider = true;
+                    authoritativeSourceKeys.add(getTpsNavigatorProviderSourceKey(providerId));
+                }
             }
+            this.removedProviderIds.forEach(providerId => authoritativeSourceKeys.add(getTpsNavigatorProviderSourceKey(providerId)));
         }
-        this.removedProviderIds.forEach(providerId => authoritativeSourceKeys.add(getTpsNavigatorProviderSourceKey(providerId)));
         this.revision += 1;
         this.snapshot = Object.freeze({
             descriptors: Object.freeze(descriptors),

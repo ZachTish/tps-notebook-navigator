@@ -20,9 +20,11 @@ import {
     renderTpsResourceCreationTargetSetting,
     renderTpsTypesNavigationEnabledSetting,
     setTpsResourceCreationSpecificFileVisibility,
+    setTpsTypeCreationSettingVisibility,
     setTpsTaskRowSettingVisibility
 } from '../../src/settings/tabs/TpsIntegrationTab';
 import type { SettingsTabContext } from '../../src/settings/tabs/SettingsTabContext';
+import { getMarkdownPipelineContentTypes, hasMarkdownTaskConsumer } from '../../src/utils/markdownPipelineContentTypes';
 
 function createContext(): SettingsTabContext {
     return {
@@ -40,23 +42,28 @@ describe('TPS integration settings', () => {
         const definitions = createTpsIntegrationSettingDefinitions(context) as Array<Record<string, unknown>>;
 
         expect(definitions).toHaveLength(4);
-        expect(definitions.map(group => group.heading)).toEqual(['Types navigation', 'Type item creation', 'Task rows', 'One-way setup']);
+        expect(definitions.map(group => group.heading)).toEqual([
+            'Types collections (paused)',
+            'Type item creation',
+            'Task rows',
+            'One-way setup'
+        ]);
 
         const typeItems = definitions[0].items as Array<Record<string, unknown>>;
-        expect(typeItems.map(item => item.name)).toEqual(['Show Types in navigation']);
-        expect(typeItems[0].desc).toContain('code blocks');
-        expect(typeItems[0].desc).toContain('callouts');
-        expect(typeItems[0].desc).toContain('blockquotes');
-        expect(typeItems[0].desc).toContain('tables');
-        expect(typeItems[0].desc).toContain('web links');
+        expect(typeItems.map(item => item.name)).toEqual(['Enable Types collections (experimental)']);
+        expect(typeItems[0].desc).toContain('stops exact-line, Markdown-structure, and Web-link Types indexing');
+        expect(typeItems[0].desc).toContain('Note task-progress bars and counts remain available');
         expect(typeItems[0].aliases).toEqual(expect.arrayContaining(['code blocks', 'callouts', 'blockquotes', 'tables', 'web links']));
 
         const resourceCreationItems = definitions[1].items as Array<Record<string, unknown>>;
+        expect((definitions[1].visible as () => boolean)()).toBe(false);
         expect(resourceCreationItems.map(item => item.name)).toEqual(['Create items in', 'Specific note']);
         expect(resourceCreationItems[0].visible).toBeUndefined();
         expect((resourceCreationItems[1].visible as () => boolean)()).toBe(false);
         context.plugin.settings.tpsResourceCreationTarget = 'specific-note';
         expect((resourceCreationItems[1].visible as () => boolean)()).toBe(true);
+        context.plugin.settings.tpsTypesNavigationEnabled = true;
+        expect((definitions[1].visible as () => boolean)()).toBe(true);
 
         const taskItems = definitions[2].items as Array<Record<string, unknown>>;
         expect(taskItems.map(item => item.name)).toEqual(['Show GCM tasks beneath notes', 'Include completed tasks', 'Tasks per note']);
@@ -69,13 +76,16 @@ describe('TPS integration settings', () => {
         expect((taskItems[2].visible as () => boolean)()).toBe(true);
     });
 
-    it('defaults Types navigation on and optional task rows off', () => {
-        expect(DEFAULT_SETTINGS.tpsTypesNavigationEnabled).toBe(true);
+    it('defaults Types navigation and optional task rows off without disabling note task progress', () => {
+        expect(DEFAULT_SETTINGS.tpsTypesNavigationEnabled).toBe(false);
+        expect(DEFAULT_SETTINGS.tpsTypesPauseMigrationVersion).toBe(1);
         expect(DEFAULT_SETTINGS.tpsResourceCreationTarget).toBe('daily-note');
         expect(DEFAULT_SETTINGS.tpsResourceCreationSpecificFile).toBeNull();
         expect(DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled).toBe(false);
         expect(DEFAULT_SETTINGS.tpsGcmTaskRowsIncludeCompleted).toBe(false);
         expect(DEFAULT_SETTINGS.tpsGcmTaskRowsPerNote).toBe(5);
+        expect(hasMarkdownTaskConsumer(DEFAULT_SETTINGS)).toBe(true);
+        expect(getMarkdownPipelineContentTypes(DEFAULT_SETTINGS)).toContain('tasks');
     });
 
     it('persists the creation target and refreshes conditional settings visibility', async () => {
@@ -116,8 +126,10 @@ describe('TPS integration settings', () => {
 
     it('persists changes to the Types navigation toggle', async () => {
         const saveSettingsAndUpdate = vi.fn().mockResolvedValue(undefined);
+        const refreshSettingsDomState = vi.fn();
         const context = createContext();
         context.plugin.saveSettingsAndUpdate = saveSettingsAndUpdate;
+        context.refreshSettingsDomState = refreshSettingsDomState;
         let handleChange: ((value: boolean) => Promise<void>) | undefined;
         const toggle = {
             setValue: vi.fn().mockReturnThis(),
@@ -137,10 +149,11 @@ describe('TPS integration settings', () => {
 
         renderTpsTypesNavigationEnabledSetting(setting as never, context);
 
-        expect(toggle.setValue).toHaveBeenCalledWith(true);
-        await handleChange?.(false);
-        expect(context.plugin.settings.tpsTypesNavigationEnabled).toBe(false);
+        expect(toggle.setValue).toHaveBeenCalledWith(false);
+        await handleChange?.(true);
+        expect(context.plugin.settings.tpsTypesNavigationEnabled).toBe(true);
         expect(saveSettingsAndUpdate).toHaveBeenCalledOnce();
+        expect(refreshSettingsDomState).toHaveBeenCalledOnce();
     });
 
     it('uses the namespaced visibility class for dependent rows in the pre-1.13 renderer', () => {
@@ -171,6 +184,11 @@ describe('TPS integration settings', () => {
         setTpsResourceCreationSpecificFileVisibility(elements[0], false);
         expect(classNames[0]?.has('tps-nn-setting-hidden')).toBe(true);
         setTpsResourceCreationSpecificFileVisibility(elements[0], true);
+        expect(classNames[0]?.has('tps-nn-setting-hidden')).toBe(false);
+
+        setTpsTypeCreationSettingVisibility(elements[0], false);
+        expect(classNames[0]?.has('tps-nn-setting-hidden')).toBe(true);
+        setTpsTypeCreationSettingVisibility(elements[0], true);
         expect(classNames[0]?.has('tps-nn-setting-hidden')).toBe(false);
     });
 });

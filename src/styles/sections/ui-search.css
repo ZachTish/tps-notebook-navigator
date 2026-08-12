@@ -24,6 +24,13 @@
     height: 36px;
 }
 
+/* Invalid guidance is part of the mobile header flow rather than clipped below its fixed row. */
+.notebook-navigator-mobile .nn-search-bar-container.nn-search-bar-visible.nn-search-bar-invalid,
+.notebook-navigator-mobile .nn-search-bar-invalid .nn-search-input-wrapper,
+.notebook-navigator-mobile .nn-search-bar-invalid .nn-search-input-container {
+    height: auto;
+}
+
 /* Mobile search input field */
 .notebook-navigator-mobile input.nn-search-input {
     height: 36px;

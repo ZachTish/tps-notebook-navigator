@@ -433,6 +433,8 @@ export const parseTagModeTokens = (
     const allRequireTags = hasInclusions ? !evaluateTagRequirementExpression(expression, []) : false;
 
     return {
+        invalidReason: null,
+        invalidToken: null,
         mode: 'tag',
         expression,
         hasInclusions,

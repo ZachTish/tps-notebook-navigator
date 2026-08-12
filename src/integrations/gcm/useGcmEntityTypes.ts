@@ -6,7 +6,7 @@
  * and a bounded local Markdown-body index for external web links.
  */
 
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { normalizePath, TFile, type App, type CachedMetadata, type EventRef } from 'obsidian';
 import {
     TPS_NAVIGATOR_FILE_TYPES,
@@ -161,6 +161,8 @@ export class GcmEntityTypesStore {
     private refreshMarkdownPending = false;
     private handledInitialMetadataResolution = false;
     private reloadInFlight: { generation: number; task: Promise<void> } | null = null;
+    private reloadAbortController: AbortController | null = null;
+    private enabled = true;
 
     constructor(private readonly app: App) {
         this.adapter = new GcmEntityTypeIndexAdapter(app);
@@ -170,18 +172,38 @@ export class GcmEntityTypesStore {
 
     readonly subscribe = (listener: SnapshotListener): (() => void) => {
         this.listeners.add(listener);
-        if (this.listeners.size === 1) {
+        if (this.enabled && this.listeners.size === 1) {
             this.start();
         }
         return () => {
             this.listeners.delete(listener);
-            if (this.listeners.size === 0) {
+            if (this.enabled && this.listeners.size === 0) {
                 this.stop();
             }
         };
     };
 
     readonly getSnapshot = (): TpsNavigatorTypesSnapshot => this.snapshot;
+
+    /** Pauses or resumes all built-in Type indexing without discarding the feature implementation. */
+    setEnabled(enabled: boolean): void {
+        if (this.enabled === enabled) {
+            return;
+        }
+        this.enabled = enabled;
+        if (!enabled) {
+            this.stop({ clear: true });
+            return;
+        }
+
+        this.fileSnapshot = LOADING_FILE_SNAPSHOT;
+        this.lineSnapshot = LOADING_LINE_SNAPSHOT;
+        this.markdownSnapshot = LOADING_MARKDOWN_SNAPSHOT;
+        this.publish(composeBuiltinSnapshot(this.fileSnapshot, this.lineSnapshot, this.markdownSnapshot, ++this.publishedRevision));
+        if (this.listeners.size > 0) {
+            this.start();
+        }
+    }
 
     activate(record: TpsNavigatorTypeRecord): Promise<GcmEntityActivationResult | MarkdownStructureActivationResult> {
         return isTpsNavigatorMarkdownTypeId(record?.typeId) ? this.markdownIndex.activate(record) : this.adapter.activate(record);
@@ -201,6 +223,9 @@ export class GcmEntityTypesStore {
     }
 
     private start(): void {
+        if (!this.enabled) {
+            return;
+        }
         this.stopRevision = this.adapter.subscribe(() => {
             this.requestReload();
         });
@@ -327,8 +352,10 @@ export class GcmEntityTypesStore {
         this.requestReload({ supersede: true, refreshFiles: true, refreshMarkdown: true });
     }
 
-    private stop(): void {
+    private stop(options: { clear?: boolean } = {}): void {
         this.loadGeneration += 1;
+        this.reloadAbortController?.abort();
+        this.reloadAbortController = null;
         this.reloadPending = false;
         this.refreshFilesPending = false;
         this.refreshLinesPending = false;
@@ -344,6 +371,14 @@ export class GcmEntityTypesStore {
         this.stopVaultEvents = null;
         this.stopMetadataEvents = null;
         this.adapter.dispose();
+        if (options.clear) {
+            this.markdownIndex.clear();
+            this.fileSnapshot = DISABLED_SNAPSHOT;
+            this.lineSnapshot = DISABLED_SNAPSHOT;
+            this.markdownSnapshot = DISABLED_SNAPSHOT;
+            this.publish(DISABLED_SNAPSHOT);
+            return;
+        }
         this.lineSnapshot = LOADING_LINE_SNAPSHOT;
         this.markdownSnapshot = LOADING_MARKDOWN_SNAPSHOT;
         this.snapshot = composeBuiltinSnapshot(this.fileSnapshot, this.lineSnapshot, this.markdownSnapshot, ++this.publishedRevision);
@@ -352,18 +387,29 @@ export class GcmEntityTypesStore {
     private requestReload(
         options: { supersede?: boolean; refreshFiles?: boolean; refreshLines?: boolean; refreshMarkdown?: boolean } = {}
     ): void {
+        if (!this.enabled || this.listeners.size === 0) {
+            return;
+        }
         this.reloadPending = true;
         this.refreshFilesPending ||= options.refreshFiles === true;
         this.refreshLinesPending ||= options.refreshLines !== false;
         this.refreshMarkdownPending ||= options.refreshMarkdown === true;
-        if (this.reloadInFlight && !options.supersede) {
-            return;
+        if (this.reloadInFlight) {
+            if (!options.supersede) {
+                return;
+            }
+            this.reloadAbortController?.abort();
         }
         this.startPendingReload();
     }
 
     private startPendingReload(): void {
+        if (!this.enabled || this.listeners.size === 0) {
+            return;
+        }
         const generation = ++this.loadGeneration;
+        const abortController = new AbortController();
+        this.reloadAbortController = abortController;
         this.reloadPending = false;
         const refreshFiles = this.refreshFilesPending;
         const refreshLines = this.refreshLinesPending;
@@ -371,7 +417,7 @@ export class GcmEntityTypesStore {
         this.refreshFilesPending = false;
         this.refreshLinesPending = false;
         this.refreshMarkdownPending = false;
-        const task = this.loadAndPublish(generation, refreshFiles, refreshLines, refreshMarkdown);
+        const task = this.loadAndPublish(generation, refreshFiles, refreshLines, refreshMarkdown, abortController.signal);
         const activeLoad = { generation, task };
         this.reloadInFlight = activeLoad;
         const finish = () => {
@@ -379,7 +425,10 @@ export class GcmEntityTypesStore {
                 return;
             }
             this.reloadInFlight = null;
-            if (this.reloadPending && this.listeners.size > 0) {
+            if (this.reloadAbortController === abortController) {
+                this.reloadAbortController = null;
+            }
+            if (this.reloadPending && this.enabled && this.listeners.size > 0) {
                 this.startPendingReload();
             }
         };
@@ -393,10 +442,11 @@ export class GcmEntityTypesStore {
         generation: number,
         refreshFiles: boolean,
         refreshLines: boolean,
-        refreshMarkdown: boolean
+        refreshMarkdown: boolean,
+        signal: AbortSignal
     ): Promise<void> {
         const fileSnapshot = refreshFiles ? this.buildFileSnapshotSafely() : this.fileSnapshot;
-        if (refreshFiles && generation === this.loadGeneration && this.listeners.size > 0) {
+        if (refreshFiles && !signal.aborted && this.enabled && generation === this.loadGeneration && this.listeners.size > 0) {
             this.fileSnapshot = fileSnapshot;
             // File-backed Types are read-free and should become usable before
             // optional GCM I/O or bounded Markdown-body scans complete.
@@ -405,10 +455,10 @@ export class GcmEntityTypesStore {
 
         const pendingUpdates: Promise<void>[] = [];
         if (refreshMarkdown) {
-            const markdownTask = this.buildMarkdownSnapshotSafely();
+            const markdownTask = this.buildMarkdownSnapshotSafely(signal);
             pendingUpdates.push(
                 markdownTask.then(markdownSnapshot => {
-                    if (generation !== this.loadGeneration || this.listeners.size === 0) {
+                    if (signal.aborted || !this.enabled || generation !== this.loadGeneration || this.listeners.size === 0) {
                         return;
                     }
                     this.markdownSnapshot = markdownSnapshot;
@@ -418,10 +468,10 @@ export class GcmEntityTypesStore {
         }
 
         if (refreshLines) {
-            const lineTask = this.buildLineSnapshotSafely();
+            const lineTask = this.buildLineSnapshotSafely(signal);
             pendingUpdates.push(
                 lineTask.then(lineSnapshot => {
-                    if (generation !== this.loadGeneration || this.listeners.size === 0) {
+                    if (signal.aborted || !this.enabled || generation !== this.loadGeneration || this.listeners.size === 0) {
                         return;
                     }
                     this.lineSnapshot = lineSnapshot;
@@ -453,10 +503,13 @@ export class GcmEntityTypesStore {
         }
     }
 
-    private async buildMarkdownSnapshotSafely(): Promise<TpsNavigatorTypesSnapshot> {
+    private async buildMarkdownSnapshotSafely(signal: AbortSignal): Promise<TpsNavigatorTypesSnapshot> {
         try {
-            return await this.markdownIndex.rebuild();
+            return await this.markdownIndex.rebuild(signal);
         } catch (error) {
+            if (signal.aborted) {
+                return DISABLED_SNAPSHOT;
+            }
             console.warn('[TPS Notebook Navigator] Markdown structure Types refresh failed', { error });
             if (this.markdownSnapshot.availability !== 'loading') {
                 return this.markdownSnapshot;
@@ -471,10 +524,13 @@ export class GcmEntityTypesStore {
         }
     }
 
-    private async buildLineSnapshotSafely(): Promise<TpsNavigatorTypesSnapshot> {
+    private async buildLineSnapshotSafely(signal: AbortSignal): Promise<TpsNavigatorTypesSnapshot> {
         try {
-            return await this.adapter.loadSnapshot();
+            return await this.adapter.loadSnapshot(signal);
         } catch (error) {
+            if (signal.aborted) {
+                return DISABLED_SNAPSHOT;
+            }
             console.warn('[TPS Notebook Navigator] Exact-line Types refresh failed', { error });
             return {
                 availability: 'error',
@@ -544,6 +600,9 @@ export interface UseGcmEntityTypesResult {
 
 export function useGcmEntityTypes(app: App, enabled: boolean): UseGcmEntityTypesResult {
     const store = useMemo(() => getNavigatorTypesStore(app), [app]);
+    useEffect(() => {
+        store.setEnabled(enabled);
+    }, [enabled, store]);
     const subscribe = useCallback(
         (listener: SnapshotListener) => (enabled ? store.subscribe(listener) : () => undefined),
         [enabled, store]

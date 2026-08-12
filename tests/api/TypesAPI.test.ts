@@ -64,6 +64,7 @@ class FakeStore implements NavigatorTypesStore {
     private readonly listeners = new Set<() => void>();
     readonly subscribeCalls = vi.fn();
     readonly unsubscribeCalls = vi.fn();
+    readonly setEnabled = vi.fn<(enabled: boolean) => void>();
 
     constructor(private current: TpsNavigatorTypesSnapshot) {}
 
@@ -303,10 +304,12 @@ describe('TypesAPI', () => {
             message: 'Types navigation is disabled.'
         });
         expect(store.subscribeCalls).not.toHaveBeenCalled();
+        expect(store.setEnabled).toHaveBeenLastCalledWith(false);
         await expect(api.whenReady()).resolves.toMatchObject({ availability: 'disabled' });
 
         store.publish(snapshot('loading'));
         api.updateEnabled(true);
+        expect(store.setEnabled).toHaveBeenLastCalledWith(true);
         expect(store.subscribeCalls).toHaveBeenCalledOnce();
         expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ availability: 'loading' }));
 
@@ -314,6 +317,7 @@ describe('TypesAPI', () => {
         expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ availability: 'ready', revision: 3 }));
 
         api.updateEnabled(false);
+        expect(store.setEnabled).toHaveBeenLastCalledWith(false);
         expect(store.unsubscribeCalls).toHaveBeenCalledOnce();
         expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ availability: 'disabled' }));
 

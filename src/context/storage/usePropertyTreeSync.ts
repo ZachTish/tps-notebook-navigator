@@ -45,10 +45,30 @@ import { casefold } from '../../utils/recordUtils';
 import type { PropertyTreeNode } from '../../types/storage';
 import { clonePropertyKeys, getActivePropertyFields, getActivePropertyKeySet, getActiveVaultProfile } from '../../utils/vaultProfiles';
 import { getNavigatorTypesStore } from '../../integrations/gcm/useGcmEntityTypes';
+import type { TpsNavigatorTypesSnapshot } from '../../types/navigatorTypes';
 
 type SchedulePropertyTreeRebuildOptions = {
     flush?: boolean;
 };
+
+const EMPTY_TYPES_SNAPSHOT: TpsNavigatorTypesSnapshot = Object.freeze({
+    availability: 'unavailable',
+    descriptors: Object.freeze([]),
+    recordsByType: new Map(),
+    revision: 0,
+    message: 'Types navigation is disabled.'
+});
+
+/** Returns line-property carriers only while Types is explicitly enabled. */
+export function collectTypeLinePropertyRecords(snapshot: TpsNavigatorTypesSnapshot, enabled: boolean) {
+    if (!enabled) {
+        return [];
+    }
+    return Array.from(snapshot.recordsByType.values())
+        .flat()
+        .filter(record => record.entityType === 'block' && (record.properties || record.task?.status))
+        .map(record => ({ sourcePath: record.sourcePath, properties: record.properties, taskStatus: record.task?.status }));
+}
 
 function shouldEnablePropertyTree(settings: NotebookNavigatorSettings): boolean {
     return isPropertyFeatureEnabled(settings);
@@ -140,12 +160,18 @@ export function usePropertyTreeSync(params: {
     const propertyTreeRebuildReadyGateRef = useRef(false);
     const activePropertyFields = getActivePropertyFields(settings);
     const navigatorTypesStore = useMemo(() => getNavigatorTypesStore(app), [app]);
+    const shouldSubscribeToLineProperties = isPropertyTreeEnabled && settings.tpsTypesNavigationEnabled;
     const subscribeToLineProperties = useCallback(
-        (listener: () => void) => (isPropertyTreeEnabled ? navigatorTypesStore.subscribe(listener) : () => undefined),
-        [isPropertyTreeEnabled, navigatorTypesStore]
+        (listener: () => void) => (shouldSubscribeToLineProperties ? navigatorTypesStore.subscribe(listener) : () => undefined),
+        [navigatorTypesStore, shouldSubscribeToLineProperties]
     );
-    const getTypesSnapshot = useCallback(() => navigatorTypesStore.getSnapshot(), [navigatorTypesStore]);
+    const getTypesSnapshot = useCallback(
+        () => (shouldSubscribeToLineProperties ? navigatorTypesStore.getSnapshot() : EMPTY_TYPES_SNAPSHOT),
+        [navigatorTypesStore, shouldSubscribeToLineProperties]
+    );
     const typesSnapshot = useSyncExternalStore(subscribeToLineProperties, getTypesSnapshot, getTypesSnapshot);
+    const typesSnapshotRef = useRef(typesSnapshot);
+    typesSnapshotRef.current = typesSnapshot;
 
     useEffect(() => {
         hiddenFoldersRef.current = hiddenFolders;
@@ -192,10 +218,7 @@ export function usePropertyTreeSync(params: {
                     includedPropertyKeys
                 }
             );
-            const lineRecords = Array.from(typesSnapshot.recordsByType.values())
-                .flat()
-                .filter(record => record.entityType === 'block' && (record.properties || record.task?.status))
-                .map(record => ({ sourcePath: record.sourcePath, properties: record.properties, taskStatus: record.task?.status }));
+            const lineRecords = collectTypeLinePropertyRecords(typesSnapshotRef.current, liveSettings.tpsTypesNavigationEnabled === true);
             mergeLinePropertiesIntoPropertyTree(propertyTree, lineRecords, {
                 includedPaths: visibleMarkdownPathSet,
                 includedPropertyKeys
@@ -206,14 +229,26 @@ export function usePropertyTreeSync(params: {
             propertyTreeService?.updatePropertyTree(propertyTree);
             return propertyTree;
         },
-        [clearPropertyTree, getVisibleMarkdownFiles, latestSettingsRef, propertyTreeService, setFileData, showHiddenItems, typesSnapshot]
+        [clearPropertyTree, getVisibleMarkdownFiles, latestSettingsRef, propertyTreeService, setFileData, showHiddenItems]
     );
 
-    // Exposes the latest rebuild implementation to the shared scheduler. rebuildPropertyTree clears the
-    // tree itself when the feature is disabled.
-    propertyTreeRebuildFnRef.current = getVisibleFiles => {
-        rebuildPropertyTree(getVisibleFiles);
-    };
+    const rebuildPropertyTreeFromScheduler = useCallback<TreeRebuildFn>(
+        getVisibleFiles => {
+            rebuildPropertyTree(getVisibleFiles);
+        },
+        [rebuildPropertyTree]
+    );
+
+    // Own the scheduler ref for exactly this mounted hook. Clearing only our delegate prevents an
+    // unmounted storage runtime from retaining the app/settings tree through the shared scheduler.
+    useEffect(() => {
+        propertyTreeRebuildFnRef.current = rebuildPropertyTreeFromScheduler;
+        return () => {
+            if (propertyTreeRebuildFnRef.current === rebuildPropertyTreeFromScheduler) {
+                propertyTreeRebuildFnRef.current = null;
+            }
+        };
+    }, [propertyTreeRebuildFnRef, rebuildPropertyTreeFromScheduler]);
 
     const schedulePropertyTreeRebuild = useCallback(
         (options?: SchedulePropertyTreeRebuildOptions) => {
@@ -265,6 +300,7 @@ export function usePropertyTreeSync(params: {
         profileId,
         activePropertyFields,
         settings.showProperties,
+        settings.tpsTypesNavigationEnabled,
         typesSnapshot.revision
     ]);
 

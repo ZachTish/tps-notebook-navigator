@@ -48,6 +48,7 @@ const INVALID_VALUE: unique symbol = Symbol('invalid-upstream-setting-value');
 const UNSAFE_RECORD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const TPS_ONLY_SETTING_KEYS = new Set([
     'lastShownVersion',
+    'tpsTypesPauseMigrationVersion',
     'tpsTypesNavigationEnabled',
     'typeNavigationSortOrder',
     'rootTypeOrder',

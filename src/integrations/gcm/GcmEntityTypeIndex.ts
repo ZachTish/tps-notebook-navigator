@@ -656,7 +656,7 @@ export class GcmEntityTypeIndexAdapter {
         }
     }
 
-    async loadSnapshot(): Promise<GcmEntityTypeIndexSnapshot> {
+    async loadSnapshot(signal?: AbortSignal): Promise<GcmEntityTypeIndexSnapshot> {
         if (!this.api) {
             return unavailableSnapshot(
                 this.connectionIssue ?? {
@@ -668,8 +668,17 @@ export class GcmEntityTypeIndexAdapter {
         const api = this.api;
         try {
             await api.ensureReady();
+            if (signal?.aborted || this.api !== api) {
+                return unavailableSnapshot({ code: 'gcm-unavailable', message: 'The Types refresh was cancelled.' });
+            }
             const records = asRecordArray(await api.queryAsync({ entityTypes: 'block', lineKinds: ['task', 'bullet', 'heading'] }));
-            const tasksByLocator = await this.hydrateTasks(records);
+            if (signal?.aborted || this.api !== api) {
+                return unavailableSnapshot({ code: 'gcm-unavailable', message: 'The Types refresh was cancelled.' });
+            }
+            const tasksByLocator = await this.hydrateTasks(records, signal);
+            if (signal?.aborted || this.api !== api) {
+                return unavailableSnapshot({ code: 'gcm-unavailable', message: 'The Types refresh was cancelled.' });
+            }
             return buildSnapshot(records, safeRevision(api), tasksByLocator, this.getTaskCapabilities());
         } catch (error) {
             return unavailableSnapshot(issueFromError(error));
@@ -937,12 +946,15 @@ export class GcmEntityTypeIndexAdapter {
         };
     }
 
-    private async hydrateTasks(records: readonly GcmEntityIndexRecordLike[]): Promise<ReadonlyMap<string, GcmTaskRecordLike>> {
+    private async hydrateTasks(
+        records: readonly GcmEntityIndexRecordLike[],
+        signal?: AbortSignal
+    ): Promise<ReadonlyMap<string, GcmTaskRecordLike>> {
         const taskApi = this.taskApi;
         const taskEntities = records.filter(
             record => record.entityType === 'block' && record.lineKind === 'task' && Number.isSafeInteger(record.lineNumber)
         );
-        if (!taskApi || taskEntities.length === 0) {
+        if (!taskApi || taskEntities.length === 0 || signal?.aborted) {
             return EMPTY_TASKS_BY_LOCATOR;
         }
 
@@ -951,6 +963,9 @@ export class GcmEntityTypeIndexAdapter {
         const requests: TaskHydrationRequest[] = [];
         const requestEpoch = this.taskHydrationEpoch;
         for (const path of paths) {
+            if (signal?.aborted) {
+                return EMPTY_TASKS_BY_LOCATOR;
+            }
             const fingerprint = this.getTaskSourceFingerprint(path);
             const cached = fingerprint ? this.readCachedTaskPath(path, fingerprint) : null;
             if (cached) {
@@ -967,7 +982,7 @@ export class GcmEntityTypeIndexAdapter {
         for (let offset = 0; offset < requests.length; offset += GCM_TYPE_TASK_QUERY_PATHS_PER_BATCH) {
             batches.push(requests.slice(offset, offset + GCM_TYPE_TASK_QUERY_PATHS_PER_BATCH));
         }
-        for (let offset = 0; offset < batches.length; offset += GCM_TYPE_TASK_QUERY_CONCURRENCY) {
+        for (let offset = 0; offset < batches.length && !signal?.aborted; offset += GCM_TYPE_TASK_QUERY_CONCURRENCY) {
             const concurrentBatches = batches.slice(offset, offset + GCM_TYPE_TASK_QUERY_CONCURRENCY);
             const settled = await Promise.allSettled(
                 concurrentBatches.map(async batch => {
@@ -982,6 +997,9 @@ export class GcmEntityTypeIndexAdapter {
                     return { batch, tasks };
                 })
             );
+            if (signal?.aborted || this.taskApi !== taskApi || this.taskHydrationEpoch !== requestEpoch) {
+                return EMPTY_TASKS_BY_LOCATOR;
+            }
             settled.forEach((result, resultIndex) => {
                 if (result.status === 'rejected') {
                     const failedBatch = concurrentBatches[resultIndex];

@@ -284,7 +284,7 @@ export class MarkdownStructureTypesIndex {
     }
 
     /** Full bounded rebuild used at startup and the first metadata resolved barrier. */
-    async rebuild(): Promise<TpsNavigatorTypesSnapshot> {
+    async rebuild(signal?: AbortSignal): Promise<TpsNavigatorTypesSnapshot> {
         const generation = ++this.rebuildGeneration;
         const rebuildStartVersion = this.pathVersion;
         const nextRecordsByPath = new Map<string, readonly TpsNavigatorTypeRecord[]>();
@@ -293,7 +293,7 @@ export class MarkdownStructureTypesIndex {
         let failedReadCount = 0;
         let cursor = 0;
         const worker = async (): Promise<void> => {
-            while (cursor < files.length) {
+            while (!signal?.aborted && cursor < files.length) {
                 const file = files[cursor++];
                 if (!file) {
                     continue;
@@ -328,6 +328,9 @@ export class MarkdownStructureTypesIndex {
                     } catch {
                         failedReadCount += 1;
                     }
+                    if (signal?.aborted) {
+                        return;
+                    }
                 }
                 const currentRecords = getMarkdownStructureRecordsForFile(file, cache, content);
                 if (content === undefined && !bodyTooLarge) {
@@ -343,7 +346,7 @@ export class MarkdownStructureTypesIndex {
             }
         };
         await Promise.all(Array.from({ length: Math.min(WEB_LINK_READ_CONCURRENCY, Math.max(1, files.length)) }, worker));
-        if (generation !== this.rebuildGeneration) {
+        if (signal?.aborted || generation !== this.rebuildGeneration) {
             return this.snapshot;
         }
 
@@ -374,6 +377,16 @@ export class MarkdownStructureTypesIndex {
         nextRecordsByPath.forEach((records, path) => this.recordsByPath.set(path, records));
         this.webLinkBodyStamps.clear();
         nextWebLinkBodyStamps.forEach((stamp, path) => this.webLinkBodyStamps.set(path, stamp));
+        return this.publish();
+    }
+
+    /** Cancels a pending rebuild and releases every path/body cache retained by Types. */
+    clear(): TpsNavigatorTypesSnapshot {
+        this.rebuildGeneration += 1;
+        this.recordsByPath.clear();
+        this.webLinkBodyStamps.clear();
+        this.pathVersions.clear();
+        this.pathVersion = 0;
         return this.publish();
     }
 

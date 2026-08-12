@@ -17,19 +17,26 @@
  */
 
 import React from 'react';
-import { App } from 'obsidian';
+import { App, TFolder } from 'obsidian';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
     uiDispatch: vi.fn(),
     setSearchActive: vi.fn(),
+    showNotice: vi.fn(),
     searchProvider: ((): 'internal' | 'omnisearch' => 'internal')(),
     services: {
         app: null as App | null,
         isMobile: false,
         plugin: {
             setSearchProvider: vi.fn()
+        },
+        propertyTreeService: {
+            findNode: vi.fn()
+        },
+        tagTreeService: {
+            findTagNode: vi.fn()
         }
     }
 }));
@@ -51,7 +58,8 @@ vi.mock('../../src/context/SettingsContext', () => ({
     useSettingsState: () => ({
         paneTransitionDuration: 0,
         searchProvider: mocks.searchProvider,
-        skipAutoScroll: false
+        skipAutoScroll: false,
+        tpsTypesNavigationEnabled: true
     })
 }));
 
@@ -72,16 +80,66 @@ vi.mock('../../src/context/UXPreferencesContext', () => ({
     useUXPreferenceActions: () => ({ setSearchActive: mocks.setSearchActive })
 }));
 
+vi.mock('../../src/utils/noticeUtils', () => ({
+    showNotice: mocks.showNotice
+}));
+
 import { useListPaneSearch, type UseListPaneSearchResult } from '../../src/hooks/useListPaneSearch';
+import { TAGGED_TAG_ID } from '../../src/types';
+import { ShortcutStartType, ShortcutType, type SearchShortcut, type ShortcutStartTarget } from '../../src/types/shortcuts';
 import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
+import { buildPropertyKeyNodeId } from '../../src/utils/propertyTree';
+import type { PropertyTreeNode, TagTreeNode } from '../../src/types/storage';
+
+function renderSearchHarness() {
+    let captured: UseListPaneSearchResult | null = null;
+    const callbacks = {
+        onNavigateToFolder: vi.fn(() => true),
+        onRevealTag: vi.fn(() => true),
+        onRevealProperty: vi.fn(() => true)
+    };
+
+    function Harness() {
+        captured = useListPaneSearch({
+            rootContainerRef: { current: null },
+            ...callbacks,
+            ensureSelectionForCurrentFilterRef: { current: null }
+        });
+        return null;
+    }
+
+    renderToStaticMarkup(React.createElement(Harness));
+    if (!captured) {
+        throw new Error('Expected hook result');
+    }
+
+    return { result: captured as UseListPaneSearchResult, ...callbacks };
+}
 
 describe('useListPaneSearch activation', () => {
     beforeEach(() => {
         mocks.uiDispatch.mockClear();
         mocks.setSearchActive.mockClear();
+        mocks.showNotice.mockClear();
         mocks.services.plugin.setSearchProvider.mockClear();
+        mocks.services.propertyTreeService.findNode.mockReset();
+        mocks.services.tagTreeService.findTagNode.mockReset();
         mocks.searchProvider = 'internal';
         mocks.services.app = new App();
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        vi.stubGlobal(
+            'requestAnimationFrame',
+            vi.fn((callback: FrameRequestCallback) => {
+                callback(0);
+                return 1;
+            })
+        );
+        vi.stubGlobal('HTMLElement', class {});
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     it('preserves pane activation when a navigation-side search modification does not focus search', () => {
@@ -90,8 +148,8 @@ describe('useListPaneSearch activation', () => {
         function Harness() {
             captured = useListPaneSearch({
                 rootContainerRef: { current: null },
-                onNavigateToFolder: vi.fn(),
-                onRevealTag: vi.fn(),
+                onNavigateToFolder: vi.fn(() => true),
+                onRevealTag: vi.fn(() => true),
                 onRevealProperty: vi.fn(() => true),
                 ensureSelectionForCurrentFilterRef: { current: null }
             });
@@ -119,8 +177,8 @@ describe('useListPaneSearch activation', () => {
         function Harness() {
             captured = useListPaneSearch({
                 rootContainerRef: { current: null },
-                onNavigateToFolder: vi.fn(),
-                onRevealTag: vi.fn(),
+                onNavigateToFolder: vi.fn(() => true),
+                onRevealTag: vi.fn(() => true),
                 onRevealProperty: vi.fn(() => true),
                 ensureSelectionForCurrentFilterRef: { current: null }
             });
@@ -140,5 +198,125 @@ describe('useListPaneSearch activation', () => {
         expect(mocks.services.plugin.setSearchProvider).toHaveBeenCalledWith('internal');
         expect(mocks.setSearchActive).toHaveBeenCalledWith(true);
         expect(mocks.uiDispatch).not.toHaveBeenCalled();
+    });
+
+    const missingStartTargets: Array<{ label: string; startTarget: ShortcutStartTarget }> = [
+        {
+            label: 'folder',
+            startTarget: { type: ShortcutStartType.FOLDER, path: 'missing/folder' }
+        },
+        {
+            label: 'tag',
+            startTarget: { type: ShortcutStartType.TAG, tagPath: 'missing/tag' }
+        },
+        {
+            label: 'property',
+            startTarget: { type: ShortcutStartType.PROPERTY, nodeId: buildPropertyKeyNodeId('missing') }
+        }
+    ];
+
+    it.each(missingStartTargets)('fails closed when a saved search has a missing $label start target', async ({ startTarget }) => {
+        const { result, onNavigateToFolder, onRevealTag, onRevealProperty } = renderSearchHarness();
+        const shortcut: SearchShortcut = {
+            type: ShortcutType.SEARCH,
+            name: 'Scoped search',
+            query: 'meeting',
+            provider: 'omnisearch',
+            startTarget
+        };
+
+        await result.executeSearchShortcut({ searchShortcut: shortcut });
+
+        expect(onNavigateToFolder).not.toHaveBeenCalled();
+        expect(onRevealTag).not.toHaveBeenCalled();
+        expect(onRevealProperty).not.toHaveBeenCalled();
+        expect(mocks.services.plugin.setSearchProvider).not.toHaveBeenCalled();
+        expect(mocks.setSearchActive).not.toHaveBeenCalled();
+        expect(mocks.uiDispatch).not.toHaveBeenCalled();
+        expect(requestAnimationFrame).not.toHaveBeenCalled();
+        expect(mocks.showNotice).toHaveBeenCalledOnce();
+    });
+
+    it('does not apply the saved search when a preflighted target disappears during navigation', async () => {
+        const { result, onRevealTag } = renderSearchHarness();
+        onRevealTag.mockReturnValue(false);
+
+        await result.executeSearchShortcut({
+            searchShortcut: {
+                type: ShortcutType.SEARCH,
+                name: 'Scoped search',
+                query: 'meeting',
+                provider: 'omnisearch',
+                startTarget: { type: ShortcutStartType.TAG, tagPath: TAGGED_TAG_ID }
+            }
+        });
+
+        expect(onRevealTag).toHaveBeenCalledOnce();
+        expect(mocks.services.plugin.setSearchProvider).not.toHaveBeenCalled();
+        expect(mocks.setSearchActive).not.toHaveBeenCalled();
+        expect(mocks.uiDispatch).not.toHaveBeenCalled();
+        expect(requestAnimationFrame).not.toHaveBeenCalled();
+        expect(mocks.showNotice).toHaveBeenCalledOnce();
+    });
+
+    it('executes valid folder, tag, and property start targets before applying the saved search', async () => {
+        const app = mocks.services.app;
+        if (!app) {
+            throw new Error('Expected test app');
+        }
+        (app.vault as unknown as { registerFolder: (folder: TFolder) => void }).registerFolder(new TFolder('Projects'));
+
+        const tagNode = { path: 'projects' } as TagTreeNode;
+        const propertyNode = { id: buildPropertyKeyNodeId('status') } as PropertyTreeNode;
+        mocks.services.tagTreeService.findTagNode.mockImplementation((tagPath: string) => (tagPath === tagNode.path ? tagNode : null));
+        mocks.services.propertyTreeService.findNode.mockImplementation((nodeId: string) =>
+            nodeId === propertyNode.id ? propertyNode : null
+        );
+
+        const cases: Array<{
+            startTarget: ShortcutStartTarget;
+            expectedCallback: 'onNavigateToFolder' | 'onRevealTag' | 'onRevealProperty';
+            expectedTarget: string;
+        }> = [
+            {
+                startTarget: { type: ShortcutStartType.FOLDER, path: 'projects' },
+                expectedCallback: 'onNavigateToFolder',
+                expectedTarget: 'Projects'
+            },
+            {
+                startTarget: { type: ShortcutStartType.TAG, tagPath: '#Projects' },
+                expectedCallback: 'onRevealTag',
+                expectedTarget: 'projects'
+            },
+            {
+                startTarget: { type: ShortcutStartType.PROPERTY, nodeId: 'key:STATUS' },
+                expectedCallback: 'onRevealProperty',
+                expectedTarget: propertyNode.id
+            }
+        ];
+
+        for (const testCase of cases) {
+            mocks.services.plugin.setSearchProvider.mockClear();
+            mocks.setSearchActive.mockClear();
+            mocks.uiDispatch.mockClear();
+            mocks.showNotice.mockClear();
+
+            const harness = renderSearchHarness();
+            await harness.result.executeSearchShortcut({
+                searchShortcut: {
+                    type: ShortcutType.SEARCH,
+                    name: 'Scoped search',
+                    query: 'meeting',
+                    provider: 'omnisearch',
+                    startTarget: testCase.startTarget
+                }
+            });
+
+            expect(harness[testCase.expectedCallback]).toHaveBeenCalledWith(testCase.expectedTarget, expect.any(Object));
+            expect(mocks.services.plugin.setSearchProvider).toHaveBeenCalledWith('omnisearch');
+            expect(mocks.setSearchActive).toHaveBeenCalledWith(true);
+            expect(mocks.uiDispatch).toHaveBeenCalledWith({ type: 'ACTIVATE_PANE', target: 'files' });
+            expect(mocks.showNotice).not.toHaveBeenCalled();
+        }
     });
 });

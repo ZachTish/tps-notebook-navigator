@@ -300,6 +300,34 @@ describe('Markdown structure Types', () => {
         expect(snapshot.recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.TABLES)).toHaveLength(1);
     });
 
+    it('clears cached rows and prevents an outstanding rebuild from repopulating them', async () => {
+        const file = new TFile('Notes/Pause.md');
+        const caches = new Map<string, CachedMetadata | null>([[file.path, {}]]);
+        let resolvePausedRead!: (content: string) => void;
+        const pausedRead = new Promise<string>(resolve => {
+            resolvePausedRead = resolve;
+        });
+        const context = createApp([file], caches);
+        context.cachedRead.mockImplementationOnce(() => pausedRead).mockResolvedValueOnce('https://fresh.example/after-reenable');
+        const index = new MarkdownStructureTypesIndex(context.app);
+        const controller = new AbortController();
+
+        const pending = index.rebuild(controller.signal);
+        await vi.waitFor(() => expect(context.cachedRead).toHaveBeenCalledOnce());
+        controller.abort();
+        const cleared = index.clear();
+        resolvePausedRead('https://stale.example/before-disable');
+
+        expect(await pending).toBe(cleared);
+        expect(index.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS)).toHaveLength(0);
+
+        const rebuilt = await index.rebuild();
+        expect(context.cachedRead).toHaveBeenCalledTimes(2);
+        expect(rebuilt.recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS)?.map(record => record.searchText)).toEqual([
+            'https://fresh.example'
+        ]);
+    });
+
     it('preserves the newer changed-event body when an older full rebuild read finishes later', async () => {
         const file = new TFile('Notes/Race.md');
         const caches = new Map<string, CachedMetadata | null>([[file.path, {}]]);

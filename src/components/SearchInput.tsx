@@ -16,12 +16,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 import { ServiceIcon } from './ServiceIcon';
 import { useUIDispatch } from '../context/UIStateContext';
 import { useSettingsState } from '../context/SettingsContext';
 import { useServices } from '../context/ServicesContext';
 import { strings } from '../i18n';
+import { resolveFilterSearchConnectorHelpSection } from '../i18n/filterSearchHelp';
 import { matchesShortcut, KeyboardShortcutAction } from '../utils/keyboardShortcuts';
 import { supportsKeyboardInteractions } from '../utils/paneLayout';
 import { runAsyncAction, type MaybePromise } from '../utils/async';
@@ -31,6 +32,7 @@ import type { SearchProvider } from '../types/search';
 import { resolveUXIcon } from '../utils/uxIcons';
 import { InfoModal, type InfoModalSection } from '../modals/InfoModal';
 import { focusElementPreventScroll } from '../utils/domUtils';
+import type { FilterSearchInvalidReason } from '../utils/filterSearch';
 
 interface SearchInputProps {
     searchQuery: string;
@@ -48,6 +50,22 @@ interface SearchInputProps {
     isShortcutSaved?: boolean;
     isShortcutDisabled?: boolean;
     searchProvider?: SearchProvider;
+    invalidReason?: FilterSearchInvalidReason | null;
+}
+
+export function getInvalidFilterSearchMessage(reason: FilterSearchInvalidReason | null | undefined): string | null {
+    switch (reason) {
+        case 'types-disabled':
+            return 'Type filters are unavailable while Types collections are turned off.';
+        case 'mixed-logical-operator':
+            return 'AND and OR can only combine tags and properties. Quote the word to search note names.';
+        case 'invalid-logical-expression':
+            return 'Complete the AND/OR expression with a tag or property on each side.';
+        case 'malformed-filter':
+            return 'This filter is incomplete or invalid. Fix it or quote it to search note names literally.';
+        default:
+            return null;
+    }
 }
 
 export function SearchInput({
@@ -64,11 +82,13 @@ export function SearchInput({
     onRemoveShortcut,
     isShortcutSaved,
     isShortcutDisabled,
-    searchProvider
+    searchProvider,
+    invalidReason
 }: SearchInputProps) {
     const inputRef = useRef<HTMLInputElement | null>(null);
     const tagSuggestRef = useRef<SearchTagInputSuggest | null>(null);
     const dateSuggestRef = useRef<SearchDateInputSuggest | null>(null);
+    const invalidMessageId = useId();
     const { isMobile, omnisearchService, app, tagTreeService, plugin } = useServices();
     const settings = useSettingsState();
     const uiDispatch = useUIDispatch();
@@ -93,9 +113,10 @@ export function SearchInput({
           ? strings.searchInput.placeholderVault
           : strings.searchInput.placeholder;
     const hasQuery = searchQuery.trim().length > 0;
+    const invalidMessage = isOmnisearchActive ? null : getInvalidFilterSearchMessage(invalidReason);
     const showShortcutButton = hasQuery && Boolean(onSaveShortcut || (isShortcutSaved && onRemoveShortcut));
     const shortcutButtonDisabled = isShortcutDisabled || (!isShortcutSaved && !onSaveShortcut) || (isShortcutSaved && !onRemoveShortcut);
-    const searchContainerClassName = `nn-search-input-container${showShortcutButton ? ' nn-search-input-container--has-shortcut' : ''}`;
+    const searchContainerClassName = `nn-search-input-container${showShortcutButton ? ' nn-search-input-container--has-shortcut' : ''}${invalidMessage ? ' nn-search-input-container--invalid' : ''}`;
 
     const notifyEmptySearchExit = useCallback(() => {
         if (!hasQuery) {
@@ -323,14 +344,21 @@ export function SearchInput({
         }
 
         const { fileNames, tags, properties, tasks, connectors, dates } = helpStrings.sections;
-        const sections: InfoModalSection[] = [fileNames, properties, tags, dates, tasks, connectors];
+        const filterItems = settings.tpsTypesNavigationEnabled
+            ? tasks.items
+            : tasks.items.filter(
+                  item => !item.includes('`type:') && !item.includes('Type in navigation') && !item.includes('built-in Type')
+              );
+        const filterSection: InfoModalSection = filterItems === tasks.items ? tasks : { ...tasks, items: filterItems };
+        const connectorSection = resolveFilterSearchConnectorHelpSection(connectors, settings.tpsTypesNavigationEnabled);
+        const sections: InfoModalSection[] = [fileNames, properties, tags, dates, filterSection, connectorSection];
         new InfoModal(app, {
             title: strings.searchInput.searchHelpTitle,
             intro: isOmnisearchAvailable ? helpStrings.intro : `${helpStrings.intro} ${helpStrings.introInstallOmnisearch}`,
             emphasizedIntro: providerBanner,
             sections
         }).open();
-    }, [app, isOmnisearchActive, isOmnisearchAvailable]);
+    }, [app, isOmnisearchActive, isOmnisearchAvailable, settings.tpsTypesNavigationEnabled]);
 
     return (
         <div className="nn-search-input-wrapper">
@@ -370,11 +398,18 @@ export function SearchInput({
                     spellCheck={false}
                     enterKeyHint="search"
                     value={searchQuery}
+                    aria-invalid={invalidMessage ? true : undefined}
+                    aria-describedby={invalidMessage ? invalidMessageId : undefined}
                     onChange={e => onSearchQueryChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     onClick={handleSearchClick}
                     onBlur={notifyEmptySearchExit}
                 />
+                {invalidMessage ? (
+                    <div id={invalidMessageId} className="nn-search-query-error" role="alert">
+                        {invalidMessage}
+                    </div>
+                ) : null}
                 {!hasQuery && settings.showInfoButtons && (
                     <div
                         className="nn-search-help-button"

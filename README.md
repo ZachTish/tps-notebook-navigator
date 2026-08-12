@@ -27,13 +27,13 @@ The release assets are `main.js`, `manifest.json`, and `styles.css`. The minimum
 
 The integration surface is intentionally modular. The navigator owns presentation and row composition; a provider owns its data and actions. Provider failures are isolated and never block the normal file list.
 
-The initial TPS Global Context Menu provider can show task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.15.0 remains the completion-capability baseline; 1.18.0 is the tested baseline for this release's generic task, bullet, and heading line-property grouping. Task checkboxes complete or reopen the exact task through GCM's configured status/checkbox rules, selecting the title re-resolves and opens its source line, and right-click, mobile long-press, or **More actions** opens the same guarded GCM task menu available in Types. Desktop task rows can be dragged into an editor as their complete Markdown task line; the isolated text payload never enters Navigator's file/folder/tag mutation pipeline. Custom checkbox markers remain visible instead of being flattened to a binary checkmark. Generic row providers can also add their own synchronous context-menu actions without granting the navigator access to provider internals. Older structurally compatible APIs without a safe task mutation, menu, or raw-line-property path degrade only that capability. If GCM is disabled, missing, or incompatible, the provider contributes no rows.
+The initial TPS Global Context Menu provider can optionally show individual task rows belonging to the exact files already present in the list. It does not scan unrelated folders or invent task files, and it is separate from the standard per-note task-progress bar and count. Completed-task visibility and the per-note row limit are explicit settings. TPS Global Context Menu 1.15.0 remains the completion-capability baseline; 1.18.0 is the tested baseline for this release's generic task, bullet, and heading line-property grouping. Task checkboxes complete or reopen the exact task through GCM's configured status/checkbox rules, selecting the title re-resolves and opens its source line, and right-click, mobile long-press, or **More actions** opens the same guarded GCM task menu available in Types. Desktop task rows can be dragged into an editor as their complete Markdown task line; the isolated text payload never enters Navigator's file/folder/tag mutation pipeline. Custom checkbox markers remain visible instead of being flattened to a binary checkmark. Generic row providers can also add their own synchronous context-menu actions without granting the navigator access to provider internals. Older structurally compatible APIs without a safe task mutation, menu, or raw-line-property path degrade only that capability. If GCM is disabled, missing, incompatible, or its individual-row setting is off, the provider contributes no rows.
 
-The visible vault root is the mixed all-resources scope. Selecting it always traverses the complete visible vault, even when the ordinary descendant preference is off, while continuing to respect the active profile's file-visibility, hidden-content, and excluded-descendant rules. It renders every visible file plus the canonical Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and Web links collections under labeled sections. Canonical Checkboxes replace the optional attached GCM task feed when available so tasks are not duplicated; the attached feed remains a compatibility fallback. The descendant toolbar control remains visibly active and non-toggleable at the root; ordinary folders, tags, and property value rows keep the user's descendant preference. A property key row is always the explicit no-value bucket: it selects and counts only notes where the field exists without a value. File-backed resources and provider rows share the same selected appearance, so **Compact** condenses attached task/provider rows as well as native file rows.
+The visible vault root always traverses the complete visible vault, even when the ordinary descendant preference is off, while continuing to respect the active profile's file-visibility, hidden-content, and excluded-descendant rules. With experimental Types collections enabled, it becomes a mixed all-resources scope and adds canonical Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and Web links beneath the visible files. With Types off—the default in 5.16.0—it remains note/file-focused and does not build those source indexes. Canonical Checkboxes replace the optional attached GCM task feed when available so tasks are not duplicated; the attached feed remains a compatibility fallback. The descendant toolbar control remains visibly active and non-toggleable at the root; ordinary folders, tags, and property value rows keep the user's descendant preference. A property key row is always the explicit no-value bucket: it selects and counts only notes where the field exists without a value. File-backed resources and provider rows share the same selected appearance, so **Compact** condenses attached task/provider rows as well as native file rows.
 
 ### Types navigation
 
-The first-class **Types** section is enabled by default and has one flat built-in catalog of file formats and Markdown structures. Frontmatter values such as `kind` belong in **Properties** or a relational entity index; they are not file types and do not appear beneath **Types**.
+The first-class **Types** implementation is retained but its product development is paused. It is off by default and can be explicitly enabled through **TPS integration → Types collections (paused) → Enable Types collections (experimental)**. No Types code, public API, saved ordering, appearance, or creation preference has been removed. When enabled, it has the same flat built-in catalog of file formats and Markdown structures described below. Frontmatter values such as `kind` belong in **Properties** or a relational entity index; they are not file types and do not appear beneath **Types**.
 
 - File-backed collections are **Notes**, **Bases**, **Canvas**, **Drawings**, **PDFs**, **Images**, **Audio**, and **Video**. Each supported vault file belongs to exactly one collection. Excalidraw files—including `.excalidraw.md` and Markdown files carrying Excalidraw frontmatter—belong to **Drawings**, not **Notes**.
 - File-backed collections run through the ordinary Navigator file pipeline. Their results use the same `TFile` rows, appearance mode, icons, properties, previews, sort, grouping, search, selection, menus, drag behavior, and opening behavior as the normal file view.
@@ -55,7 +55,15 @@ The first-class **Types** section is enabled by default and has one flat built-i
 - Exact-line, cached-range, and provider-owned rows have one transient row cursor and remain deliberately excluded from `TFile` multi-select, pinning, rename, persistence, and Navigator's file mutation drag pipeline. Hydrated task rows alone expose a desktop text drag containing the complete Markdown task line for insertion into an editor. File-backed Type results retain normal file interactions because they are real `TFile` rows. Dragging other cached source ranges is intentionally deferred until it can preserve source syntax and locators safely.
 - Missing, disabled, incompatible, or incomplete GCM indexing affects only Checkboxes, Bullets, and Headings and produces a visible status row there. File-backed and cached-range collections remain available. TPS Global Context Menu 1.18.0 is the tested Entity Index v3/raw-line-property baseline; its canonical task-completion path remains backward-compatible with the 1.15.0 capability.
 
-The selected type and Types-root expansion state use TPS-namespaced local storage, participate in back/forward history and keyboard navigation, and do not alter upstream Notebook Navigator state. A stale saved `kind:*` selection is rejected immediately and safely falls back; no note or settings migration is required.
+Turning Types collections off cancels pending catalog and hydration work, removes Types selection/search/navigation surfaces,
+clears exact-line and Navigator-owned Markdown-structure/Web-link snapshots, and stops their GCM subscriptions. Properties
+continues to use note frontmatter only; line-level Type properties are not merged into that tree. When neither Types nor an
+attached row provider is active, row-provider scoping uses an inert empty scope instead of walking every visible note. These
+limits keep the default navigator proportional to notes/files even when note bodies contain very large numbers of tasks.
+Standard note task-progress bars and counts remain available because they store only per-note totals, not one Navigator row
+per task.
+
+The selected type and Types-root expansion state use TPS-namespaced local storage, participate in back/forward history and keyboard navigation, and do not alter upstream Notebook Navigator state. A stale saved `kind:*` selection is rejected immediately and safely falls back. Version 5.16.0 performs only the bounded pause migration described below; it never changes note content.
 
 External integrations can discover fixed built-in and registered-provider descriptors through the provider-neutral public
 `types` catalog, subscribe to its availability/revision changes, and navigate through `navigation.navigateToType(typeId)`.
@@ -126,15 +134,17 @@ provider example.
 
 The default settings surface remains the normal Notebook Navigator landing page. **TPS integration** is a top-level destination under **Configuration**, one click from that landing page.
 
-- **Task rows** — **Show GCM tasks beneath notes** is off by default. When enabled, the same page reveals **Include completed tasks** and **Tasks per note**; there is no nested editor or second configuration page.
-- **Types navigation** — **Show Types in navigation** is on by default and directly controls the flat file-format and Markdown-structure Types catalog. The navigation editor exposes its in-place order selector, counts, up/down buttons, and drag handles without adding a nested settings page.
-- **Type item creation** — **Create items in** defaults to **Today's daily note** and can instead target the active regular Markdown note or one configured existing Markdown note. The specific-note picker appears only while that target is selected. Daily-note creation follows Obsidian's current Daily notes folder, format, and template settings and fails before creating anything when a configured template cannot be resolved or read. Excalidraw Markdown is rejected by both filename and frontmatter.
+- **Task rows** — **Show GCM tasks beneath notes** is off by default. When enabled, the same page reveals **Include completed tasks** and **Tasks per note**; there is no nested editor or second configuration page. These individual rows are independent from note task-progress bars and counts.
+- **Types collections (paused)** — **Enable Types collections (experimental)** is off by default and controls the retained flat file-format and Markdown-structure catalog. Enabling it restores the existing Types navigation, search facets, API, ordering, and indexes; disabling it stops that work. Types feature development is paused.
+- **Type item creation** — This group is hidden while Types collections are off, without deleting its saved values. When Types are enabled, **Create items in** defaults to **Today's daily note** and can instead target the active regular Markdown note or one configured existing Markdown note. The specific-note picker appears only while that target is selected. Daily-note creation follows Obsidian's current Daily notes folder, format, and template settings and fails before creating anything when a configured template cannot be resolved or read. Excalidraw Markdown is rejected by both filename and frontmatter.
 - **Calendar-created daily notes** — In Notebook Navigator calendar mode, an explicit daily template remains an override. With no override, day-note creation inherits the enabled Core Daily Notes template, applies Core date/title variables to the target date before the create event, and fails closed before creating folders or a blank note when that configured template is unavailable. Week, month, quarter, and year templates retain their existing explicit-only behavior.
 - **One-way setup** — **Import upstream Notebook Navigator settings** always asks for confirmation. It reads only `.obsidian/plugins/notebook-navigator/data.json`, copies recognized upstream settings into the TPS plugin, preserves TPS-only integration settings, and never writes to upstream state.
 
-The Types toggle, Type order mode and retained manual ids, both Type-creation values, all three task-row values, and any user-created per-Type
-presentation overrides persist in the TPS plugin's own `data.json`. A one-way upstream import preserves these TPS-only Type
-ordering values. The importer, active route, disclosures, focus, and scroll position do not create extra persisted schema.
+The Types toggle, pause-migration marker, Type order mode and retained manual ids, both Type-creation values, all three task-row values, and any user-created per-Type
+presentation overrides persist in the TPS plugin's own `data.json`. The first upgrade to 5.16.0 turns off Types collections
+and individual GCM task rows once, while retaining every Type preference and leaving task-progress display settings alone.
+The migration marker prevents a later explicit opt-in from being undone on reload or sync. A one-way upstream import preserves
+these TPS-only Type values. The importer, active route, disclosures, focus, and scroll position do not create extra persisted schema.
 On mobile, settings use Obsidian's native stacked rows and the in-navigation Type order editor stacks its selector while
 retaining touch-sized controls; the specific-note picker and optional task controls disappear when irrelevant so they do not
 consume the viewport.
@@ -143,6 +153,7 @@ consume the viewport.
 
 - Provider rows are transient UI records, never fake `TFile` objects. They have one independent row cursor but do not participate in `TFile` selection, multi-select, drag, rename, persistence, or file indexes. File-backed Type collections instead use real native `TFile` rows.
 - Providers are queried only for exact paths already present in the current list. Independent providers stream in as they settle, in configured order, without exceeding one global 1,000-row ceiling. During a same-scope refresh, each provider's prior rows remain visible until that provider itself settles, including empty or failed results. Large GCM lists load progressively in bounded 64-note passes, retain completed pass state for the active scope, and cache tasks per path with independent per-note limits and GCM/vault lifecycle invalidation.
+- When the enabled provider-id list is empty, the provider layer returns a stable empty scope and skips the otherwise linear visible-note path walk.
 - A provider exception is isolated and logged without replacing or blocking the file list.
 - A mutable GCM checkbox updates optimistically, rolls back with a visible warning on failure, and refreshes from GCM's file event. Working, holding, and other custom markers render verbatim with an accessible state label. Older compatible GCM APIs retain a labeled display-only checkbox.
 - Attached GCM task rows and Type-backed task rows expose the same current GCM task actions. Menu construction and source activation re-resolve the live optional API and fail closed with a visible warning when the task or capability is stale.
@@ -167,6 +178,14 @@ consume the viewport.
 - TPS settings import is a copy, not synchronization. Later upstream setting changes are not mirrored unless the import is explicitly run again.
 - Built-in exact-line and cached-range Type rows are a separate virtualized source rather than attached provider contributions, so they are not truncated by the attached-provider 1,000-row ceiling. External Type-provider rows retain the public provider safety ceiling. Plain-text search matches structural row labels and source paths—not block contents; Web-link rows additionally match only their sanitized URL origin. Tag, property, date, folder, and extension facets constrain the owning note. External owners receive the same query before their row ceiling. File-backed Types use the ordinary file search pipeline, while file-only advanced search operators and Omnisearch ranking do not apply to structural/provider-owned collections. The vault-path allowlist is built only for a selected Type scope or a nonempty internal search, then the mixed search reuses the already-built GCM, Obsidian metadata, and bounded Web-link indexes without starting new body reads for each query.
 
+### Task-progress reliability
+
+Task progress remains a note-level display feature when Types collections and individual GCM rows are off. The Markdown
+pipeline uses Obsidian metadata when it can and reads a note only when exact counts still require the body. If a task-bearing
+note exceeds the mobile/desktop read limit, Navigator retains its last-known counts or leaves a first-time count unknown; it
+does not publish a synthetic `0 / 0`. A transient read or parse failure likewise preserves the prior value, leaves the item
+eligible for retry, and publishes the recovered exact count after a successful retry.
+
 ## Keeping up with Notebook Navigator
 
 Fork-specific integrations live in separate modules and host-global identity is centralized in `src/constants/tpsIdentity.ts`. Inherited source keeps upstream `nn-` CSS/DOM tokens so routine upstream edits merge normally; the test and production build pipelines apply the TPS namespace only at compilation and generated-style boundaries. The same build boundary isolates bundled dnd-kit described-by and live-region IDs, preventing accessibility DOM collisions when upstream and TPS views are open together. The merge-friendly source check rejects accidentally committed runtime prefixes, while the final artifact gate proves that upstream tokens cannot ship. Run `npm run upstream:audit -- <ref>` for a read-only changed-file/conflict worklist, then follow [the upstream sync guide](docs/upstream-sync.md) when merging a later Notebook Navigator tag. A public standalone checkout builds in an explicit build-only mode; the contained test-vault workspace still requires and runs its adjacent atomic runtime deployment hook.
@@ -179,6 +198,15 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 5.16.0 — Note-focused pause and reliable filtering
+
+- Retains the complete Types implementation and public API behind **Enable Types collections (experimental)**, while pausing Types development and making the collection off by default. A one-time upgrade disables Types and individual GCM task rows, preserves every Type preference, and lets a later explicit opt-in persist normally.
+- Cancels and clears exact-line, Markdown-structure, Web-link, and GCM hydration work while Types are off. Properties remains note-frontmatter-only, and the row-provider layer skips its full visible-note scope walk when no provider is enabled. Standard per-note task-progress bars and counts stay available.
+- Keeps task-progress counts unknown or last-known for oversized notes and transient read failures, then retries instead of displaying a misleading zero.
+- Makes Filter Search fail closed with a visible alert for incomplete filters, unsupported mixed `AND`/`OR`, and Type facets while Types are off. Calendar date selection preserves other facets; relative dates refresh across local midnight/resume; modified files refresh active date queries.
+- Validates every saved search's folder, tag, or property start location before changing navigation, provider, or query state. Invalid Filter Searches cannot be saved as new shortcuts.
+- This is a backward-compatible minor release because it adds an experimental containment setting and one-time default migration while preserving all APIs, settings, and note data. Minimum supported Obsidian remains 1.11.0. Validation details and final artifact hashes are recorded in `release-notes/5.16.0.md`.
 
 ### 5.15.2 — Empty-value property roots
 
@@ -906,6 +934,8 @@ Filters files by display name, alias, tags, properties, dates, folders, extensio
 
 **Types**
 
+- Type facets are available only while **Enable Types collections (experimental)** is on. With Types off, a `type:` or
+  `-type:` facet is invalid and shows an explanation instead of silently becoming filename text.
 - `type:structural:task` - Include Checkboxes; every fixed Type uses its stable catalog id
 - `-type:structural:task` - Exclude Checkboxes
 - Multiple positive Type facets form one union, so `type:structural:task type:structural:heading` includes either Type
@@ -936,6 +966,10 @@ owning-note and exact GCM line properties; ordinary note/file results continue t
 - `-ext:pdf` - Exclude notes with extension `pdf`
 - Combine with tags, names, and dates (e.g., `folder:/work/meetings ext:md @thisweek`)
 
+Incomplete or unsupported filter-shaped terms such as `folder:`, `ext:`, an unknown `has:` value, or an invalid date fail
+closed: the list is empty, the search input is marked invalid, and a visible message explains how to fix or quote the term.
+An invalid Filter Search cannot be saved as a shortcut.
+
 **Dates**
 
 - `@today` - Match notes from today using the default date field
@@ -951,13 +985,22 @@ owning-note and exact GCM line properties; ordinary note/file results continue t
 - `-@...` - Exclude a date match
 
 The default date field follows the current sort order. When sorting by name, the date field is configured in Settings → Notes → Date → When sorting by name.
+Calendar date selection replaces the first positive date clause, or appends one when none exists, while preserving text,
+tag, property, folder, extension, task-state, negative-date, and Type facets. Relative ranges such as `@today` are recalculated
+after the local day changes—including when the app resumes—and any modified file refreshes an active date query regardless
+of its current sort mode.
 
 **AND/OR behavior**
 
-`AND` and `OR` operators work in tag/property-only queries (queries that contain only `#tag`, `-#tag`, `#`, `-#`, `.key`, `-.key`, `.key=value`, or `-.key=value` filters). If the query also includes names, dates, task filters, folder filters, or extension filters, `AND` and `OR` are matched as file name words instead.
+`AND` and `OR` operators work in complete tag/property-only expressions (queries that contain only `#tag`, `-#tag`, `#`, `-#`, `.key`, `-.key`, `.key=value`, or `-.key=value` filters). In an otherwise name-only search, those words remain ordinary filename or alias terms, so names such as `research and development` keep working. If an unquoted operator mixes a structured criterion with names, dates, task filters, folder filters, extension filters, or an incomplete expression, the query fails closed with a visible message. Quote `"AND"` or `"OR"` when the literal word belongs beside structured criteria.
 
 - Operator query: `#work OR .status=started`
-- Mixed query: `#work OR ext:md` (`OR` is matched in file names)
+- Invalid mixed query: `#work OR ext:md`
+- Literal filename query: `#work "OR" ext:md`
+
+Saved searches validate their exact folder, tag, or property start location before changing the current navigation,
+provider, or query. If that location was renamed or deleted, Navigator keeps the current state unchanged and shows a warning
+instead of silently running the shortcut in a broader or unrelated scope.
 
 ### 7.2 Omnisearch
 
@@ -1189,7 +1232,7 @@ Set custom hotkeys for these commands in Obsidian's Hotkeys settings:
 - **Folder tree** - Expand/collapse navigation with manual root folder ordering
 - **Tag tree** - Hierarchical tags with configurable root tag ordering
 - **Property browser** - Browse file properties organized by key and value with file counts, custom colors, icons, and drag and drop. A key row is the no-value bucket; dropping Markdown notes onto it writes a bare YAML field, while child value rows assign their exact value.
-- **Types browser** - Browse native file formats plus checkboxes, bullets, headings, code blocks, callouts, blockquotes, and tables in one flat section
+- **Types browser (paused)** - The retained experimental toggle can browse native file formats plus checkboxes, bullets, headings, code blocks, callouts, blockquotes, tables, and Web links in one flat section; it is off by default
 - **Auto-reveal active file** - Folder expansion and scroll-to-selection
 - **Keyboard and commands** - Configurable hotkeys, selection history back/forward commands, next/previous file commands, open shortcut 1–9 commands
 
@@ -1214,7 +1257,7 @@ Set custom hotkeys for these commands in Obsidian's Hotkeys settings:
 - **Property grouping** - Group notes by a frontmatter property value, matching group by in Obsidian Bases: notes sharing the same value collect under one header, notes without the property go into a trailing None group, and groups sort by value with natural ordering
 - **Frontmatter support** - Read note names and timestamps from frontmatter fields
 - **Note metadata** - Show modification date and tags in the file list
-- **Task status** - Show task progress in standard rows and optionally replace file icons for unfinished tasks in compact or all display modes
+- **Task status** - Show resilient per-note task progress in standard rows and optionally replace file icons for unfinished tasks in compact or all display modes; this remains available when Types and individual GCM task rows are off
 - **Custom properties** - Display frontmatter properties or word count in file list with per-folder/tag overrides and custom colors
 - **Parent folder display** - Optional parent folder name and icon in file list
 - **Compact mode** - Compact display when preview, date, and images are disabled
@@ -1222,7 +1265,7 @@ Set custom hotkeys for these commands in Obsidian's Hotkeys settings:
 
 ### 10.5 Productivity
 
-- **Search** - Filter by file name, aliases, tags, properties, dates, folders, extensions, and tasks with AND/OR/exclusions
+- **Search** - Filter by file name, aliases, tags, properties, dates, folders, extensions, and tasks with fail-closed syntax validation, AND/OR, and exclusions
 - **Omnisearch integration** - Full-text search via [Omnisearch](https://github.com/scambier/obsidian-omnisearch)
 - **Drag and drop** - File moves, tagging, shortcut assignment, tag tree reparenting, spring-loaded folders
 - **Context menus** - Create notes/folders/canvases/bases/drawings and run file/tag actions

@@ -26,6 +26,7 @@ import {
     findFilterSearchNameMatch,
     getFileFilterSearchMatch,
     updateFilterQueryWithTag,
+    updateFilterQueryWithDateToken,
     updateFilterQueryWithProperty,
     updateFilterQueryWithType,
     updateFilterQueryWithTypeSelection
@@ -121,14 +122,13 @@ describe('parseFilterSearchTokens', () => {
         expect(tokens.includeUntagged).toBe(false);
     });
 
-    it('keeps explicit AND as literal token outside tag mode', () => {
+    it('fails closed when explicit AND is mixed with name and tag criteria', () => {
         const tokens = parseFilterSearchTokens('#yta and plat');
         expect(tokens.mode).toBe('filter');
-        expect(tokens.requiresTags).toBe(true);
-        expect(tokens.allRequireTags).toBe(true);
-        expect(tokens.includedTagTokens).toEqual(['yta']);
-        expect(sortTokens(tokens.nameTokens)).toEqual(['and', 'plat']);
-        expect(tokens.includeUntagged).toBe(false);
+        expect(tokens.invalidReason).toBe('mixed-logical-operator');
+        expect(tokens.nameTokens).toEqual([]);
+        expect(tokens.includedTagTokens).toEqual([]);
+        expect(fileMatchesFilterTokens('and', ['yta'], tokens)).toBe(false);
     });
 
     it('collects tag tokens when OR connectors appear between tokens', () => {
@@ -144,39 +144,32 @@ describe('parseFilterSearchTokens', () => {
         expect(tokens.includeUntagged).toBe(false);
     });
 
-    it('treats standalone OR as a literal token', () => {
+    it('treats standalone OR as literal name text', () => {
         const tokens = parseFilterSearchTokens('OR');
         expect(tokens.mode).toBe('filter');
-        expect(tokens.hasInclusions).toBe(true);
-        expect(tokens.requiresTags).toBe(false);
-        expect(tokens.includedTagTokens).toEqual([]);
+        expect(tokens.invalidReason).toBeNull();
         expect(tokens.nameTokens).toEqual(['or']);
-        expect(tokens.includeUntagged).toBe(false);
+        expect(fileMatchesFilterTokens('project or roadmap', [], tokens)).toBe(true);
+        expect(fileMatchesFilterTokens('roadmap', [], tokens)).toBe(false);
     });
 
-    it('keeps connector words when they are the only tokens', () => {
+    it('treats standalone AND as literal name text', () => {
         const tokens = parseFilterSearchTokens('AND');
         expect(tokens.mode).toBe('filter');
-        expect(tokens.hasInclusions).toBe(true);
-        expect(tokens.requiresTags).toBe(false);
-        expect(tokens.includedTagTokens).toEqual([]);
+        expect(tokens.invalidReason).toBeNull();
         expect(tokens.nameTokens).toEqual(['and']);
-        expect(tokens.includeUntagged).toBe(false);
+        expect(fileMatchesFilterTokens('research and development', [], tokens)).toBe(true);
     });
 
-    it('treats trailing connector as literal with name tokens', () => {
+    it('keeps trailing connectors literal in name-only queries', () => {
         const tokens = parseFilterSearchTokens('openai and');
-        expect(tokens.mode).toBe('filter');
-        expect(tokens.requiresTags).toBe(false);
-        expect(tokens.tagTokens).toEqual([]);
+        expect(tokens.invalidReason).toBeNull();
         expect(sortTokens(tokens.nameTokens)).toEqual(['and', 'openai']);
     });
 
-    it('treats leading connector as literal with name tokens', () => {
+    it('keeps leading connectors literal in name-only queries', () => {
         const tokens = parseFilterSearchTokens('or openai');
-        expect(tokens.mode).toBe('filter');
-        expect(tokens.requiresTags).toBe(false);
-        expect(tokens.tagTokens).toEqual([]);
+        expect(tokens.invalidReason).toBeNull();
         expect(sortTokens(tokens.nameTokens)).toEqual(['openai', 'or']);
     });
 
@@ -190,14 +183,10 @@ describe('parseFilterSearchTokens', () => {
         expect(tokens.includeUntagged).toBe(false);
     });
 
-    it('falls back to filter mode when a non-tag operand exists beside tags', () => {
+    it('fails closed when an OR expression mixes a name with a tag', () => {
         const tokens = parseFilterSearchTokens('plan OR #alpha');
-        expect(tokens.mode).toBe('filter');
-        expect(tokens.requiresTags).toBe(true);
-        expect(tokens.allRequireTags).toBe(true);
-        expect(sortTokens(tokens.includedTagTokens)).toEqual(['alpha']);
-        expect(sortTokens(tokens.nameTokens)).toEqual(['or', 'plan']);
-        expect(tokens.includeUntagged).toBe(false);
+        expect(tokens.invalidReason).toBe('mixed-logical-operator');
+        expect(fileMatchesFilterTokens('plan or', ['alpha'], tokens)).toBe(false);
     });
 
     it('applies tag mode precedence when only tags and connectors are present', () => {
@@ -299,6 +288,22 @@ describe('parseFilterSearchTokens', () => {
         expect(range.field).toBe('default');
         expect(range.startMs).toBe(new Date(2026, 1, 4).getTime());
         expect(range.endMs).toBe(new Date(2026, 1, 5).getTime());
+    });
+
+    it('resolves relative dates from the supplied local-day reference', () => {
+        const first = parseFilterSearchTokens('@today', { referenceDate: new Date(2026, 7, 12, 18) });
+        const next = parseFilterSearchTokens('@today', { referenceDate: new Date(2026, 7, 13, 8) });
+
+        expect(first.dateRanges[0]).toEqual({
+            field: 'default',
+            startMs: new Date(2026, 7, 12).getTime(),
+            endMs: new Date(2026, 7, 13).getTime()
+        });
+        expect(next.dateRanges[0]).toEqual({
+            field: 'default',
+            startMs: new Date(2026, 7, 13).getTime(),
+            endMs: new Date(2026, 7, 14).getTime()
+        });
     });
 
     it('parses year date tokens with @ prefix', () => {
@@ -493,19 +498,20 @@ describe('parseFilterSearchTokens', () => {
         expect(tokens.folderTokens).toEqual([{ mode: 'exact', value: '' }]);
     });
 
-    it('ignores segment folder filters containing slashes', () => {
+    it('fails closed for segment folder filters containing slashes', () => {
         const tokens = parseFilterSearchTokens('folder:team/meetings');
-        expect(tokens.mode).toBe('filter');
-        expect(tokens.hasInclusions).toBe(false);
-        expect(tokens.folderTokens).toEqual([]);
+        expect(tokens.invalidReason).toBe('malformed-filter');
     });
 
-    it('treats connectors as literal text when folder filters are mixed with tags', () => {
+    it('fails closed when OR is mixed with a folder filter', () => {
         const tokens = parseFilterSearchTokens('#alpha OR folder:meetings');
-        expect(tokens.mode).toBe('filter');
-        expect(tokens.nameTokens).toEqual(['or']);
-        expect(tokens.includedTagTokens).toEqual(['alpha']);
-        expect(tokens.folderTokens).toEqual([{ mode: 'segment', value: 'meetings' }]);
+        expect(tokens.invalidReason).toBe('mixed-logical-operator');
+    });
+
+    it('fails closed when a tag/property connector is mixed with an extension filter', () => {
+        const tokens = parseFilterSearchTokens('#work OR ext:md');
+        expect(tokens.invalidReason).toBe('mixed-logical-operator');
+        expect(fileMatchesFilterTokens('work or notes', ['work'], tokens)).toBe(false);
     });
 
     it('parses extension filter tokens', () => {
@@ -530,12 +536,9 @@ describe('parseFilterSearchTokens', () => {
         expect(tokens.excludeExtensionTokens).toEqual(['pdf']);
     });
 
-    it('ignores partial extension filter tokens', () => {
+    it('fails closed for partial extension filter tokens', () => {
         const tokens = parseFilterSearchTokens('ext:');
-        expect(tokens.mode).toBe('filter');
-        expect(tokens.hasInclusions).toBe(false);
-        expect(tokens.extensionTokens).toEqual([]);
-        expect(tokens.excludeExtensionTokens).toEqual([]);
+        expect(tokens.invalidReason).toBe('malformed-filter');
     });
 
     it('parses negated unfinished task filter tokens', () => {
@@ -555,28 +558,19 @@ describe('parseFilterSearchTokens', () => {
         expect(tokens.excludeUnfinishedTasks).toBe(false);
     });
 
-    it('treats connectors as literal text when task filters are mixed with tags', () => {
+    it('fails closed when OR is mixed with task filters', () => {
         const tokens = parseFilterSearchTokens('#alpha OR #beta has:task');
-        expect(tokens.mode).toBe('filter');
-        expect(tokens.nameTokens).toEqual(['or']);
-        expect(sortTokens(tokens.includedTagTokens)).toEqual(['alpha', 'beta']);
-        expect(tokens.requireUnfinishedTasks).toBe(true);
+        expect(tokens.invalidReason).toBe('mixed-logical-operator');
     });
 
-    it('treats AND as literal text when task filters are mixed with tags', () => {
+    it('fails closed when AND is mixed with task filters', () => {
         const tokens = parseFilterSearchTokens('#alpha AND has:task');
-        expect(tokens.mode).toBe('filter');
-        expect(tokens.nameTokens).toEqual(['and']);
-        expect(tokens.includedTagTokens).toEqual(['alpha']);
-        expect(tokens.requireUnfinishedTasks).toBe(true);
+        expect(tokens.invalidReason).toBe('mixed-logical-operator');
     });
 
-    it('treats connectors as literal text when date filters are mixed with tags', () => {
+    it('fails closed when OR is mixed with a date filter', () => {
         const tokens = parseFilterSearchTokens('#alpha OR #beta @2026-02-04');
-        expect(tokens.mode).toBe('filter');
-        expect(tokens.nameTokens).toEqual(['or']);
-        expect(sortTokens(tokens.includedTagTokens)).toEqual(['alpha', 'beta']);
-        expect(tokens.dateRanges).toHaveLength(1);
+        expect(tokens.invalidReason).toBe('mixed-logical-operator');
     });
 
     it('treats non-date @ tokens as literal name tokens', () => {
@@ -586,20 +580,17 @@ describe('parseFilterSearchTokens', () => {
         expect(tokens.dateRanges).toEqual([]);
     });
 
-    it('ignores partial @ tokens that look like date filters', () => {
+    it('fails closed for partial @ tokens that look like date filters', () => {
         const tokens = parseFilterSearchTokens('@to');
-        expect(tokens.mode).toBe('filter');
-        expect(tokens.hasInclusions).toBe(false);
-        expect(tokens.nameTokens).toEqual([]);
-        expect(tokens.dateRanges).toEqual([]);
+        expect(tokens.invalidReason).toBe('malformed-filter');
+        expect(filterSearchHasActiveCriteria(tokens)).toBe(true);
+        expect(fileMatchesFilterTokens('anything', [], tokens)).toBe(false);
     });
 
-    it('ignores partial folder filter tokens', () => {
+    it('fails closed for partial folder filter tokens', () => {
         const tokens = parseFilterSearchTokens('folder:');
-        expect(tokens.mode).toBe('filter');
-        expect(tokens.hasInclusions).toBe(false);
-        expect(tokens.folderTokens).toEqual([]);
-        expect(tokens.excludeFolderTokens).toEqual([]);
+        expect(tokens.invalidReason).toBe('malformed-filter');
+        expect(fileMatchesFilterTokens('folder', [], tokens)).toBe(false);
     });
 });
 
@@ -635,6 +626,28 @@ describe('buildSearchNavFilterState', () => {
     });
 });
 
+describe('updateFilterQueryWithDateToken', () => {
+    it('replaces only the positive date clause and preserves every other criterion', () => {
+        expect(updateFilterQueryWithDateToken('meeting #work .status=active folder:/projects ext:md @today -@2025', '@2026-08-12')).toEqual(
+            {
+                query: 'meeting #work .status=active folder:/projects ext:md @2026-08-12 -@2025',
+                changed: true
+            }
+        );
+    });
+
+    it('appends a date clause when none exists and preserves quoted literal date text', () => {
+        expect(updateFilterQueryWithDateToken('"@today" #work', '@thisweek').query).toBe('"@today" #work @thisweek');
+    });
+
+    it('rejects malformed replacement tokens without changing the query', () => {
+        expect(updateFilterQueryWithDateToken('meeting @today', '@not-a-date')).toEqual({
+            query: 'meeting @today',
+            changed: false
+        });
+    });
+});
+
 describe('Type search facets', () => {
     it('parses canonical built-in Types and ORs multiple positive Types within the dimension', () => {
         const tokens = parseFilterSearchTokens(
@@ -655,9 +668,10 @@ describe('Type search facets', () => {
         expect(providerType).not.toBeNull();
         const tokens = parseFilterSearchTokens(`type:${providerType} -type:${providerType}`);
 
+        expect(tokens.invalidReason).toBe('malformed-filter');
         expect(tokens.typeTokens).toEqual([]);
         expect(tokens.excludeTypeTokens).toEqual([]);
-        expect(filterSearchHasActiveCriteria(tokens)).toBe(false);
+        expect(filterSearchHasActiveCriteria(tokens)).toBe(true);
         expect(updateFilterQueryWithType('#alpha', providerType!)).toEqual({
             query: '#alpha',
             action: 'removed',
@@ -675,15 +689,30 @@ describe('Type search facets', () => {
         expect(filterSearchMatchesTypeFacet(TPS_NAVIGATOR_TYPE_IDS.BULLETS, tokens)).toBe(false);
     });
 
-    it('ignores incomplete or noncanonical Type filters while preserving quoted literals', () => {
+    it('fails closed for incomplete or noncanonical Type filters while preserving quoted literals', () => {
         const invalid = parseFilterSearchTokens('type:checkboxes type:');
-        expect(invalid.hasInclusions).toBe(false);
+        expect(invalid.invalidReason).toBe('malformed-filter');
         expect(invalid.typeTokens).toEqual([]);
         expect(invalid.nameTokens).toEqual([]);
 
         const literal = parseFilterSearchTokens('"type:structural:task"');
         expect(literal.typeTokens).toEqual([]);
         expect(literal.nameTokens).toEqual(['type:structural:task']);
+    });
+
+    it('fails closed with a diagnostic when Type syntax is used while Types navigation is paused', () => {
+        const query = `type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES} -type:${TPS_NAVIGATOR_TYPE_IDS.HEADINGS}`;
+        const tokens = parseFilterSearchTokens(query, { typesNavigationEnabled: false });
+
+        expect(tokens.invalidReason).toBe('types-disabled');
+        expect(tokens.invalidToken).toBe(`type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES}`);
+        expect(tokens.typeTokens).toEqual([]);
+        expect(tokens.excludeTypeTokens).toEqual([]);
+        expect(tokens.nameTokens).toEqual([]);
+        expect(tokens.excludeNameTokens).toEqual([]);
+        expect(filterSearchHasActiveCriteria(tokens)).toBe(true);
+        expect(fileMatchesFilterTokens(`type:${TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES}`, [], tokens)).toBe(false);
+        expect(buildSearchNavFilterState(query, { typesNavigationEnabled: false }).types).toEqual({ include: [], exclude: [] });
     });
 
     it('toggles Types without changing tag expression connectors', () => {
@@ -945,13 +974,18 @@ describe('fileMatchesFilterTokens', () => {
         expect(fileMatchesFilterTokens('platform plan', ['archive'], tokens)).toBe(false);
     });
 
-    it('requires every literal token when connectors appear with plain text', () => {
+    it('preserves connectors as literal terms in name-only queries', () => {
         const tokens = parseFilterSearchTokens('alpha OR beta');
         expect(tokens.mode).toBe('filter');
+        expect(tokens.invalidReason).toBeNull();
+        expect(sortTokens(tokens.nameTokens)).toEqual(['alpha', 'beta', 'or']);
         expect(fileMatchesFilterTokens('alpha or beta notes', [], tokens)).toBe(true);
         expect(fileMatchesFilterTokens('alpha beta notes', [], tokens)).toBe(false);
-        expect(fileMatchesFilterTokens('alpha notes', [], tokens)).toBe(false);
-        expect(fileMatchesFilterTokens('beta summary', [], tokens)).toBe(false);
+
+        const prose = parseFilterSearchTokens('research and development');
+        expect(prose.invalidReason).toBeNull();
+        expect(sortTokens(prose.nameTokens)).toEqual(['and', 'development', 'research']);
+        expect(fileMatchesFilterTokens('research and development', [], prose)).toBe(true);
     });
 
     it('supports OR semantics when only tag operands are present', () => {
@@ -971,12 +1005,12 @@ describe('fileMatchesFilterTokens', () => {
         expect(fileMatchesFilterTokens('note', ['ai-helper'], tokens)).toBe(false);
     });
 
-    it('requires matching both name and tag in mixed filter mode queries', () => {
+    it('fails closed for mixed name/tag OR queries', () => {
         const tokens = parseFilterSearchTokens('#alpha OR plan');
         expect(tokens.mode).toBe('filter');
-        expect(fileMatchesFilterTokens('project or plan', ['alpha'], tokens)).toBe(true);
+        expect(tokens.invalidReason).toBe('mixed-logical-operator');
+        expect(fileMatchesFilterTokens('project or plan', ['alpha'], tokens)).toBe(false);
         expect(fileMatchesFilterTokens('project or plan', [], tokens)).toBe(false);
-        expect(fileMatchesFilterTokens('roadmap', ['projects/alpha'], tokens)).toBe(false);
     });
 
     it('matches untagged notes when using -# operand in tag mode', () => {
@@ -1133,10 +1167,11 @@ describe('fileMatchesFilterTokens', () => {
         expect(fileMatchesFilterTokens('platform plan', [], tokens, { hasUnfinishedTasks: false, foldedExtension: 'pdf' })).toBe(false);
     });
 
-    it('treats OR as a literal word when unfinished task filters are mixed with tags', () => {
+    it('fails closed when OR and unfinished-task filters are mixed with tags', () => {
         const tokens = parseFilterSearchTokens('#alpha OR #beta has:task');
         expect(tokens.mode).toBe('filter');
-        expect(fileMatchesFilterTokens('note or entry', ['alpha', 'beta'], tokens, { hasUnfinishedTasks: true })).toBe(true);
+        expect(tokens.invalidReason).toBe('mixed-logical-operator');
+        expect(fileMatchesFilterTokens('note or entry', ['alpha', 'beta'], tokens, { hasUnfinishedTasks: true })).toBe(false);
         expect(fileMatchesFilterTokens('note entry', ['alpha', 'beta'], tokens, { hasUnfinishedTasks: true })).toBe(false);
         expect(fileMatchesFilterTokens('note or entry', ['alpha'], tokens, { hasUnfinishedTasks: true })).toBe(false);
         expect(fileMatchesFilterTokens('note or entry', ['alpha', 'beta'], tokens, { hasUnfinishedTasks: false })).toBe(false);

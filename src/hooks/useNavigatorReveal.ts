@@ -432,7 +432,7 @@ export function useNavigatorReveal({ app, navigationPaneRef, focusNavigationPane
                 }
             );
             if (!canonicalPath) {
-                return;
+                return false;
             }
 
             // If we have a selected file, trigger a reveal to ensure proper item visibility
@@ -447,6 +447,8 @@ export function useNavigatorReveal({ app, navigationPaneRef, focusNavigationPane
                     source: options?.source
                 });
             }
+
+            return true;
         },
         [
             expansionState.expandedTags,

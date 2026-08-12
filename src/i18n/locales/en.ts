@@ -259,9 +259,9 @@ export const STRINGS_EN = {
                     items: [
                         '`AND` and `OR` are operators only in tag/property expressions; orthogonal `type:` facets do not change that expression mode.',
                         'Tag/property expressions contain tag and property filters: `#tag`, `-#tag`, `#`, `-#`, `.key`, `-.key`, `.key=value`, `-.key=value`.',
-                        'If a query includes names, dates (`@...`), task filters (`has:task`), folder filters (`folder:...`), or extension filters (`ext:...`), `AND` and `OR` are matched as words.',
-                        'Example operator query: `#work OR .status=started`.',
-                        'Example mixed query: `#work OR ext:md` (`OR` is matched in file names).'
+                        'In name-only searches, unquoted `AND` and `OR` remain literal file-name or alias terms.',
+                        'Unquoted `AND` or `OR` makes a mixed query invalid when it also contains names and structured filters.',
+                        'Example operator query: `#work OR .status=started`.'
                     ]
                 },
                 dates: {

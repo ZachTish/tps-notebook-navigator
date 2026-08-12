@@ -34,6 +34,7 @@ import { strings } from '../i18n';
 import { useServices } from '../context/ServicesContext';
 import { useFileCache } from '../context/StorageContext';
 import { useLocalDayKey } from './useLocalDayKey';
+import { DateUtils } from '../utils/dateUtils';
 import { ItemType, ListPaneItemType } from '../types';
 import type { VisibilityPreferences } from '../types';
 import type { ListPaneItem } from '../types/virtualization';
@@ -84,7 +85,7 @@ import { useGcmEntityTypes } from '../integrations/gcm/useGcmEntityTypes';
 import { filterTpsNavigatorTypesSnapshot, isTpsNavigatorGcmLineTypeId, isTpsNavigatorStructuralTypeId } from '../types/navigatorTypes';
 import { showNotice } from '../utils/noticeUtils';
 import { buildTypeProviderRows } from '../services/rows/typeProviderRows';
-import { collectTypeScopeVisibleFilePaths } from '../services/rows/providerScope';
+import { collectTypeScopeVisibleFilePaths, resolveNavigatorRowScope } from '../services/rows/providerScope';
 import { useNavigatorTypes } from './useNavigatorTypes';
 import { useNavigatorTypeRows } from './useNavigatorTypeRows';
 import {
@@ -186,6 +187,8 @@ interface UseListPaneDataResult {
     localDayKey: string;
     /** Whether internal Filter Search is currently mixing structural rows into this result scope. */
     mixedStructuralSearchActive: boolean;
+    /** Structured invalid-query state for visible fail-closed feedback. */
+    invalidSearchReason: FilterSearchTokens['invalidReason'];
 }
 
 /**
@@ -256,7 +259,7 @@ export function useListPaneData({
     const allowedTypeSourcePaths = useMemo(() => Object.freeze([...visibleTypeSourcePaths]), [visibleTypeSourcePaths]);
     const providerOwnedTypeRowsResult = useNavigatorTypeRows({
         api: plugin.api,
-        selectedType: isTypeSelection ? selectedType : null,
+        selectedType: settings.tpsTypesNavigationEnabled && isTypeSelection ? selectedType : null,
         searchQuery: trimmedQuery,
         allowedVaultFilePaths: allowedTypeSourcePaths,
         catalogRevision: typeSnapshot.revision
@@ -287,8 +290,14 @@ export function useListPaneData({
         return providerOwnedTypeRowsResult.rows;
     }, [providerOwnedTypeRowsResult, selectedType]);
     const parsedSearchTokens = useMemo(
-        () => (hasSearchQuery ? (searchTokens ?? parseFilterSearchTokens(trimmedQuery)) : null),
-        [hasSearchQuery, searchTokens, trimmedQuery]
+        () =>
+            hasSearchQuery
+                ? parseFilterSearchTokens(trimmedQuery, {
+                      typesNavigationEnabled: settings.tpsTypesNavigationEnabled,
+                      referenceDate: DateUtils.parseLocalDayKey(dayKey) ?? undefined
+                  })
+                : null,
+        [dayKey, hasSearchQuery, settings.tpsTypesNavigationEnabled, trimmedQuery]
     );
     const hasTypeSearchFacets =
         parsedSearchTokens !== null && (parsedSearchTokens.typeTokens.length > 0 || parsedSearchTokens.excludeTypeTokens.length > 0);
@@ -588,7 +597,7 @@ export function useListPaneData({
             getDB,
             getFileTimestamps,
             omnisearchResult,
-            searchTokens,
+            searchTokens: parsedSearchTokens ?? undefined,
             searchableNames,
             settings: filterSettings,
             sortOption,
@@ -602,7 +611,7 @@ export function useListPaneData({
         getFileTimestamps,
         filterSettings,
         omnisearchResult,
-        searchTokens,
+        parsedSearchTokens,
         searchableNames,
         sortOption,
         trimmedQuery,
@@ -875,29 +884,31 @@ export function useListPaneData({
         typeRows
     ]);
     const providerScope = useMemo<NavigatorRowScope>(() => {
-        let visibleFilePaths: string[];
-        if (isTypeSelection && !isFileBackedTypeSelection) {
-            visibleFilePaths = collectTypeScopeVisibleFilePaths(typeRows, visibleTypeSourcePaths);
-        } else {
-            const seen = new Set<string>();
-            visibleFilePaths = [];
-            coreListItems.forEach(item => {
-                if (item.type !== ListPaneItemType.FILE || !(item.data instanceof TFile) || seen.has(item.data.path)) {
-                    return;
-                }
-                seen.add(item.data.path);
-                visibleFilePaths.push(item.data.path);
-            });
-        }
+        return resolveNavigatorRowScope(rowProviderSelection, () => {
+            let visibleFilePaths: string[];
+            if (isTypeSelection && !isFileBackedTypeSelection) {
+                visibleFilePaths = collectTypeScopeVisibleFilePaths(typeRows, visibleTypeSourcePaths);
+            } else {
+                const seen = new Set<string>();
+                visibleFilePaths = [];
+                coreListItems.forEach(item => {
+                    if (item.type !== ListPaneItemType.FILE || !(item.data instanceof TFile) || seen.has(item.data.path)) {
+                        return;
+                    }
+                    seen.add(item.data.path);
+                    visibleFilePaths.push(item.data.path);
+                });
+            }
 
-        return {
-            visibleFilePaths,
-            selectionType,
-            selectedFolderPath: selectionType === ItemType.FOLDER ? (selectedFolder?.path ?? null) : null,
-            selectedTag: selectionType === ItemType.TAG ? selectedTag : null,
-            selectedProperty: selectionType === ItemType.PROPERTY ? selectedProperty : null,
-            selectedType: isTypeSelection ? selectedType : null
-        };
+            return {
+                visibleFilePaths,
+                selectionType,
+                selectedFolderPath: selectionType === ItemType.FOLDER ? (selectedFolder?.path ?? null) : null,
+                selectedTag: selectionType === ItemType.TAG ? selectedTag : null,
+                selectedProperty: selectionType === ItemType.PROPERTY ? selectedProperty : null,
+                selectedType: isTypeSelection ? selectedType : null
+            };
+        });
     }, [
         coreListItems,
         isFileBackedTypeSelection,
@@ -907,6 +918,7 @@ export function useListPaneData({
         selectedTag,
         selectedType,
         selectionType,
+        rowProviderSelection,
         typeRows,
         visibleTypeSourcePaths
     ]);
@@ -998,6 +1010,9 @@ export function useListPaneData({
         return filterDuplicateRootProviderRows(providerRows, rootHasCanonicalCheckboxRows, GCM_TASK_ROW_PROVIDER_ID);
     }, [isVaultRootAggregate, providerRows, structuralTypeGroups]);
     const listItems = useMemo(() => {
+        if (parsedSearchTokens?.invalidReason) {
+            return [];
+        }
         return composeTypeListItems({
             mode: typeListMode,
             coreListItems,
@@ -1021,6 +1036,7 @@ export function useListPaneData({
         coreListItems,
         groupBy,
         noValueGroupPosition,
+        parsedSearchTokens,
         presentedTypeListItems,
         structuralTypeGroups,
         typeListMode,
@@ -1118,6 +1134,7 @@ export function useListPaneData({
         appliedSearchQuery: appliedSearchState.query,
         effectiveSearchProvider: appliedSearchState.provider,
         localDayKey: dayKey,
-        mixedStructuralSearchActive
+        mixedStructuralSearchActive,
+        invalidSearchReason: useOmnisearch ? null : (parsedSearchTokens?.invalidReason ?? null)
     };
 }

@@ -24,7 +24,10 @@ import { useSettingsState } from '../context/SettingsContext';
 import { useShortcuts } from '../context/ShortcutsContext';
 import { useUIDispatch } from '../context/UIStateContext';
 import { useUXPreferenceActions, useUXPreferences } from '../context/UXPreferencesContext';
+import { useLocalDayKey } from './useLocalDayKey';
 import { strings } from '../i18n';
+import type { IPropertyTreeProvider } from '../interfaces/IPropertyTreeProvider';
+import type { ITagTreeProvider } from '../interfaces/ITagTreeProvider';
 import { InputModal } from '../modals/InputModal';
 import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
 import { TIMEOUTS } from '../types/obsidian-extended';
@@ -46,15 +49,17 @@ import {
     updateFilterQueryWithTag,
     updateFilterQueryWithType,
     updateFilterQueryWithTypeSelection,
-    type InclusionOperator
+    type InclusionOperator,
+    type ParseFilterSearchOptions
 } from '../utils/filterSearch';
 import { showNotice } from '../utils/noticeUtils';
 import { supportsKeyboardInteractions } from '../utils/paneLayout';
 import { normalizeOptionalVaultFolderPath } from '../utils/pathUtils';
-import { parsePropertyNodeId } from '../utils/propertyTree';
+import { normalizePropertyNodeId, parsePropertyNodeId } from '../utils/propertyTree';
 import { resolveFolderShortcutTarget } from '../utils/shortcutPathResolver';
 import { normalizeTagPath } from '../utils/tagUtils';
 import type { FilterSearchTokens } from '../utils/filterSearch';
+import { DateUtils } from '../utils/dateUtils';
 import type { NavigateToFolderOptions, RevealPropertyOptions, RevealTagOptions } from './useNavigatorReveal';
 import type { EnsureSelectionOptions, EnsureSelectionResult } from './useListPaneSelectionCoordinator';
 import type { NavigatorListSearchUpdate } from '../api/types';
@@ -74,8 +79,12 @@ type SearchTruthSelection = Pick<
 >;
 
 /** Materializes the visible navigation selection before another facet is added. */
-export function includeNavigationSelectionInSearchQuery(query: string, selection: SearchTruthSelection): string {
-    const tokens = parseFilterSearchTokens(query);
+export function includeNavigationSelectionInSearchQuery(
+    query: string,
+    selection: SearchTruthSelection,
+    typesNavigationEnabled = true
+): string {
+    const tokens = parseFilterSearchTokens(query, { typesNavigationEnabled });
     if (selection.selectionType === ItemType.TAG && selection.selectedTag) {
         if (selection.selectedTag === TAGGED_TAG_ID) {
             return tokens.requireTagged || /(?:^|\s)#(?:\s|$)/u.test(query) ? query.trim() : `${query.trim()} #`.trim();
@@ -96,7 +105,7 @@ export function includeNavigationSelectionInSearchQuery(query: string, selection
         const alreadyIncluded = tokens.propertyTokens.some(token => token.key === property.key && token.value === searchValue);
         return alreadyIncluded ? query.trim() : updateFilterQueryWithProperty(query, property.key, searchValue, 'AND').query;
     }
-    if (selection.selectionType === ItemType.TYPE && selection.selectedType) {
+    if (typesNavigationEnabled && selection.selectionType === ItemType.TYPE && selection.selectedType) {
         return tokens.typeTokens.includes(selection.selectedType)
             ? query.trim()
             : updateFilterQueryWithType(query, selection.selectedType).query;
@@ -109,20 +118,26 @@ export function includeNavigationSelectionInSearchQuery(query: string, selection
  * query is important for exact-line Types, whose explicit `#tag` filters intentionally match
  * row-local tags rather than tags on the owning note.
  */
-export function getTypeFacetQueryWithNavigationSelection(query: string, selection: SearchTruthSelection): string {
-    return selection.selectionType === ItemType.TAG ? query.trim() : includeNavigationSelectionInSearchQuery(query, selection);
+export function getTypeFacetQueryWithNavigationSelection(
+    query: string,
+    selection: SearchTruthSelection,
+    typesNavigationEnabled = true
+): string {
+    return selection.selectionType === ItemType.TAG
+        ? query.trim()
+        : includeNavigationSelectionInSearchQuery(query, selection, typesNavigationEnabled);
 }
 
 /** Makes the query shown when Search opens fully describe the active navigation scope. */
-export function getSearchActivationQuery(query: string, selection: SearchTruthSelection): string {
-    return includeNavigationSelectionInSearchQuery(query, selection);
+export function getSearchActivationQuery(query: string, selection: SearchTruthSelection, typesNavigationEnabled = true): string {
+    return includeNavigationSelectionInSearchQuery(query, selection, typesNavigationEnabled);
 }
 
 interface UseListPaneSearchParams {
     rootContainerRef: RefObject<HTMLDivElement | null>;
     onSearchTokensChange?: (state: SearchNavFilterState) => void;
-    onNavigateToFolder: (folderPath: string, options?: NavigateToFolderOptions) => void;
-    onRevealTag: (tagPath: string, options?: RevealTagOptions) => void;
+    onNavigateToFolder: (folderPath: string, options?: NavigateToFolderOptions) => boolean;
+    onRevealTag: (tagPath: string, options?: RevealTagOptions) => boolean;
     onRevealProperty: (propertyNodeId: string, options?: RevealPropertyOptions) => boolean;
     ensureSelectionForCurrentFilterRef: RefObject<((options?: EnsureSelectionOptions) => EnsureSelectionResult) | null>;
 }
@@ -219,6 +234,75 @@ export function resolveSearchShortcutStartFolderPath(app: App, startTarget: Shor
     return resolveFolderShortcutTarget(app, normalizedStartFolder)?.path ?? null;
 }
 
+interface SearchShortcutStartTargetLookup {
+    tagTreeService: Pick<ITagTreeProvider, 'findTagNode'> | null;
+    propertyTreeService: Pick<IPropertyTreeProvider, 'findNode'> | null;
+}
+
+/**
+ * Resolves a saved search's start location without mutating navigation state.
+ * Exact tag and property nodes are required so a stale child target never falls
+ * back to an unrelated current scope or a broader ancestor collection.
+ */
+export function resolveSearchShortcutStartTarget(
+    app: App,
+    startTarget: ShortcutStartTarget,
+    lookup: SearchShortcutStartTargetLookup
+): ShortcutStartTarget | null {
+    if (isShortcutStartFolder(startTarget)) {
+        const path = resolveSearchShortcutStartFolderPath(app, startTarget);
+        return path ? { type: ShortcutStartType.FOLDER, path } : null;
+    }
+
+    if (isShortcutStartTag(startTarget)) {
+        const normalizedTagPath = normalizeTagPath(startTarget.tagPath);
+        if (!normalizedTagPath) {
+            return null;
+        }
+        if (normalizedTagPath === TAGGED_TAG_ID || normalizedTagPath === UNTAGGED_TAG_ID) {
+            return { type: ShortcutStartType.TAG, tagPath: normalizedTagPath };
+        }
+
+        const tagNode = lookup.tagTreeService?.findTagNode(normalizedTagPath) ?? null;
+        return tagNode ? { type: ShortcutStartType.TAG, tagPath: tagNode.path } : null;
+    }
+
+    if (!isShortcutStartProperty(startTarget)) {
+        return null;
+    }
+    if (startTarget.nodeId === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID) {
+        return { type: ShortcutStartType.PROPERTY, nodeId: PROPERTIES_ROOT_VIRTUAL_FOLDER_ID };
+    }
+
+    const normalizedNodeId = normalizePropertyNodeId(startTarget.nodeId);
+    if (!normalizedNodeId) {
+        return null;
+    }
+
+    const propertyNode = lookup.propertyTreeService?.findNode(normalizedNodeId) ?? null;
+    return propertyNode ? { type: ShortcutStartType.PROPERTY, nodeId: propertyNode.id } : null;
+}
+
+function reportUnavailableSearchShortcutStartTarget(searchShortcut: SearchShortcut): void {
+    console.warn('[TPS Notebook Navigator search shortcut] Saved start target unavailable', {
+        name: searchShortcut.name,
+        targetType: searchShortcut.startTarget?.type
+    });
+    showNotice(`Search shortcut "${searchShortcut.name}" was not run because its saved start location is no longer available.`, {
+        variant: 'warning'
+    });
+}
+
+/** Invalid Filter Search syntax must not be persisted as a shortcut that can only fail closed. */
+export function canSaveSearchShortcutQuery(query: string, provider: SearchProvider, options: ParseFilterSearchOptions = {}): boolean {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) {
+        return false;
+    }
+
+    return provider === 'omnisearch' || parseFilterSearchTokens(normalizedQuery, options).invalidReason === null;
+}
+
 export function useListPaneSearch({
     rootContainerRef,
     onSearchTokensChange,
@@ -227,7 +311,7 @@ export function useListPaneSearch({
     onRevealProperty,
     ensureSelectionForCurrentFilterRef
 }: UseListPaneSearchParams): UseListPaneSearchResult {
-    const { app, plugin } = useServices();
+    const { app, plugin, propertyTreeService, tagTreeService } = useServices();
     const settings = useSettingsState();
     const selectionState = useSelectionState();
     const shortcuts = useShortcuts();
@@ -244,10 +328,16 @@ export function useListPaneSearch({
     const [shouldFocusSearch, setShouldFocusSearch] = useState(false);
     const [isSavingSearchShortcut, setIsSavingSearchShortcut] = useState(false);
     const suppressSearchTopScrollRef = useRef(false);
+    const dayKey = useLocalDayKey();
+    const searchReferenceDate = useMemo(() => DateUtils.parseLocalDayKey(dayKey) ?? undefined, [dayKey]);
 
     const debouncedSearchTokens = useMemo(
-        () => parseFilterSearchTokens(isSearchActive ? debouncedSearchQuery : ''),
-        [debouncedSearchQuery, isSearchActive]
+        () =>
+            parseFilterSearchTokens(isSearchActive ? debouncedSearchQuery : '', {
+                typesNavigationEnabled: settings.tpsTypesNavigationEnabled,
+                referenceDate: searchReferenceDate
+            }),
+        [debouncedSearchQuery, isSearchActive, searchReferenceDate, settings.tpsTypesNavigationEnabled]
     );
     // Name highlighting uses parsed folded name tokens instead of the raw query so quoted literal
     // terms (for example `".F"`) highlight without their quotes and filter tokens such as
@@ -258,13 +348,16 @@ export function useListPaneSearch({
             return undefined;
         }
 
-        const tokens = parseFilterSearchTokens(searchQuery);
+        const tokens = parseFilterSearchTokens(searchQuery, {
+            typesNavigationEnabled: settings.tpsTypesNavigationEnabled,
+            referenceDate: searchReferenceDate
+        });
         if (tokens.mode === 'tag' || tokens.nameTokens.length === 0) {
             return undefined;
         }
 
         return tokens.nameTokens;
-    }, [isSearchActive, searchQuery]);
+    }, [isSearchActive, searchQuery, searchReferenceDate, settings.tpsTypesNavigationEnabled]);
 
     const activeSearchShortcut = useMemo(() => {
         const normalizedQuery = searchQuery.trim();
@@ -325,9 +418,14 @@ export function useListPaneSearch({
             return;
         }
 
-        const nextState = searchQuery.trim() ? buildSearchNavFilterState(searchQuery) : EMPTY_SEARCH_NAV_FILTER_STATE;
+        const nextState = searchQuery.trim()
+            ? buildSearchNavFilterState(searchQuery, {
+                  typesNavigationEnabled: settings.tpsTypesNavigationEnabled,
+                  referenceDate: searchReferenceDate
+              })
+            : EMPTY_SEARCH_NAV_FILTER_STATE;
         onSearchTokensChange(nextState);
-    }, [onSearchTokensChange, searchQuery]);
+    }, [onSearchTokensChange, searchQuery, searchReferenceDate, settings.tpsTypesNavigationEnabled]);
 
     const activeSearchShortcutStartTarget = useMemo<ShortcutStartTarget | undefined>(() => {
         if (selectionState.selectionType === 'folder' && selectionState.selectedFolder) {
@@ -416,7 +514,13 @@ export function useListPaneSearch({
 
     const handleSaveSearchShortcut = useCallback(() => {
         const normalizedQuery = searchQuery.trim();
-        if (!normalizedQuery || isSavingSearchShortcut) {
+        if (
+            isSavingSearchShortcut ||
+            !canSaveSearchShortcutQuery(normalizedQuery, searchProvider, {
+                typesNavigationEnabled: settings.tpsTypesNavigationEnabled,
+                referenceDate: searchReferenceDate
+            })
+        ) {
             return;
         }
 
@@ -471,7 +575,9 @@ export function useListPaneSearch({
         app,
         isSavingSearchShortcut,
         searchProvider,
-        searchQuery
+        searchQuery,
+        searchReferenceDate,
+        settings.tpsTypesNavigationEnabled
     ]);
 
     const handleRemoveSearchShortcut = useCallback(async () => {
@@ -510,8 +616,8 @@ export function useListPaneSearch({
     );
 
     const openSearchWithNavigationSelection = useCallback(() => {
-        updateSearchQuery(query => getSearchActivationQuery(query, selectionState));
-    }, [selectionState, updateSearchQuery]);
+        updateSearchQuery(query => getSearchActivationQuery(query, selectionState, settings.tpsTypesNavigationEnabled));
+    }, [selectionState, settings.tpsTypesNavigationEnabled, updateSearchQuery]);
 
     const handleSearchToggle = useCallback(() => {
         if (!isSearchActive) {
@@ -531,11 +637,15 @@ export function useListPaneSearch({
 
             updateSearchQuery(
                 query =>
-                    updateFilterQueryWithTag(includeNavigationSelectionInSearchQuery(query, selectionState), normalizedTag, operator).query,
+                    updateFilterQueryWithTag(
+                        includeNavigationSelectionInSearchQuery(query, selectionState, settings.tpsTypesNavigationEnabled),
+                        normalizedTag,
+                        operator
+                    ).query,
                 options
             );
         },
-        [selectionState, updateSearchQuery]
+        [selectionState, settings.tpsTypesNavigationEnabled, updateSearchQuery]
     );
 
     const modifySearchWithProperty = useCallback(
@@ -548,7 +658,7 @@ export function useListPaneSearch({
             updateSearchQuery(
                 query =>
                     updateFilterQueryWithProperty(
-                        includeNavigationSelectionInSearchQuery(query, selectionState),
+                        includeNavigationSelectionInSearchQuery(query, selectionState, settings.tpsTypesNavigationEnabled),
                         normalizedKey,
                         value,
                         operator
@@ -556,30 +666,29 @@ export function useListPaneSearch({
                 options
             );
         },
-        [selectionState, updateSearchQuery]
+        [selectionState, settings.tpsTypesNavigationEnabled, updateSearchQuery]
     );
 
     const modifySearchWithType = useCallback(
         (typeId: TpsNavigatorTypeId, options?: SearchQueryUpdateOptions) => {
+            if (!settings.tpsTypesNavigationEnabled) {
+                return;
+            }
             if (searchProvider !== 'internal') {
                 plugin.setSearchProvider('internal');
             }
 
             updateSearchQuery(query => {
-                const queryWithVisibleSelection = getTypeFacetQueryWithNavigationSelection(query, selectionState);
+                const queryWithVisibleSelection = getTypeFacetQueryWithNavigationSelection(
+                    query,
+                    selectionState,
+                    settings.tpsTypesNavigationEnabled
+                );
                 const selectedType = selectionState.selectionType === ItemType.TYPE ? selectionState.selectedType : null;
                 return updateFilterQueryWithTypeSelection(queryWithVisibleSelection, typeId, selectedType).query;
             }, options);
         },
-        [
-            plugin,
-            searchProvider,
-            selectionState.selectedProperty,
-            selectionState.selectedTag,
-            selectionState.selectedType,
-            selectionState.selectionType,
-            updateSearchQuery
-        ]
+        [plugin, searchProvider, selectionState, settings.tpsTypesNavigationEnabled, updateSearchQuery]
     );
 
     const modifySearchWithDateToken = useCallback(
@@ -595,11 +704,14 @@ export function useListPaneSearch({
 
             updateSearchQuery(
                 query =>
-                    updateFilterQueryWithDateToken(includeNavigationSelectionInSearchQuery(query, selectionState), normalizedToken).query,
+                    updateFilterQueryWithDateToken(
+                        includeNavigationSelectionInSearchQuery(query, selectionState, settings.tpsTypesNavigationEnabled),
+                        normalizedToken
+                    ).query,
                 options
             );
         },
-        [plugin, searchProvider, selectionState, updateSearchQuery]
+        [plugin, searchProvider, selectionState, settings.tpsTypesNavigationEnabled, updateSearchQuery]
     );
 
     const waitForNextFrame = useCallback(() => {
@@ -661,24 +773,41 @@ export function useListPaneSearch({
             const targetProvider = searchShortcut.provider ?? 'internal';
             const startTarget = searchShortcut.startTarget;
 
-            plugin.setSearchProvider(targetProvider);
+            const resolvedStartTarget = startTarget
+                ? resolveSearchShortcutStartTarget(app, startTarget, { propertyTreeService, tagTreeService })
+                : null;
+            if (startTarget && !resolvedStartTarget) {
+                reportUnavailableSearchShortcutStartTarget(searchShortcut);
+                return;
+            }
 
-            if (startTarget) {
-                if (isShortcutStartFolder(startTarget)) {
-                    const startFolderPath = resolveSearchShortcutStartFolderPath(app, startTarget);
-                    if (startFolderPath) {
-                        onNavigateToFolder(startFolderPath, {
-                            source: 'shortcut',
-                            suppressAutoSelect: true,
-                            skipScroll: settings.skipAutoScroll
-                        });
-                    }
-                } else if (isShortcutStartTag(startTarget)) {
-                    onRevealTag(startTarget.tagPath, { source: 'shortcut', skipScroll: settings.skipAutoScroll });
-                } else if (isShortcutStartProperty(startTarget)) {
-                    onRevealProperty(startTarget.nodeId, { source: 'shortcut', skipScroll: settings.skipAutoScroll });
+            let didNavigate = true;
+            if (resolvedStartTarget) {
+                if (isShortcutStartFolder(resolvedStartTarget)) {
+                    didNavigate = onNavigateToFolder(resolvedStartTarget.path, {
+                        source: 'shortcut',
+                        suppressAutoSelect: true,
+                        skipScroll: settings.skipAutoScroll
+                    });
+                } else if (isShortcutStartTag(resolvedStartTarget)) {
+                    didNavigate = onRevealTag(resolvedStartTarget.tagPath, {
+                        source: 'shortcut',
+                        skipScroll: settings.skipAutoScroll
+                    });
+                } else if (isShortcutStartProperty(resolvedStartTarget)) {
+                    didNavigate = onRevealProperty(resolvedStartTarget.nodeId, {
+                        source: 'shortcut',
+                        skipScroll: settings.skipAutoScroll
+                    });
                 }
             }
+
+            if (!didNavigate) {
+                reportUnavailableSearchShortcutStartTarget(searchShortcut);
+                return;
+            }
+
+            plugin.setSearchProvider(targetProvider);
 
             uiDispatch({ type: 'ACTIVATE_PANE', target: 'files' });
 
@@ -716,9 +845,11 @@ export function useListPaneSearch({
             onRevealProperty,
             onRevealTag,
             plugin,
+            propertyTreeService,
             rootContainerRef,
             setSearchActive,
             settings.skipAutoScroll,
+            tagTreeService,
             uiDispatch,
             waitForSinglePaneTransition,
             waitForNextFrame

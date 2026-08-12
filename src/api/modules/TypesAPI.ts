@@ -32,6 +32,8 @@ import type { NavigatorProvidedRow } from '../../services/rows/types';
 export interface NavigatorTypesStore {
     getSnapshot(): TpsNavigatorTypesSnapshot;
     subscribe(listener: () => void): () => void;
+    /** Internal lifecycle control implemented by the built-in store. */
+    setEnabled?(enabled: boolean): void;
 }
 
 const EMPTY_RECORDS = new Map<TpsNavigatorTypeId, readonly never[]>();
@@ -163,6 +165,8 @@ export class TypesAPI {
         private readonly providerRegistry: NavigatorTypeProviderRegistry | null = null
     ) {
         this.enabled = enabled;
+        this.store.setEnabled?.(enabled);
+        this.providerRegistry?.setEnabled(enabled);
     }
 
     /** @deprecated Kind is frontmatter metadata and is no longer published in Types. */
@@ -319,12 +323,12 @@ export class TypesAPI {
 
     /** @internal Resolve the provider that owns a currently discovered Type. */
     getProviderOwner(typeId: TpsNavigatorTypeId): NavigatorTypeProviderOwner | null {
-        return this.providerRegistry?.getOwner(typeId) ?? null;
+        return this.enabled ? (this.providerRegistry?.getOwner(typeId) ?? null) : null;
     }
 
     /** @internal Query guarded rows from the provider that establishes a Type. */
     queryProviderRows(typeId: TpsNavigatorTypeId, query: NavigatorTypeProviderRowsQuery): Promise<NavigatorProvidedRow[]> {
-        return this.providerRegistry?.queryRows(typeId, query) ?? Promise.resolve([]);
+        return this.enabled ? (this.providerRegistry?.queryRows(typeId, query) ?? Promise.resolve([])) : Promise.resolve([]);
     }
 
     /** @internal Enable or disable display after a settings update. */
@@ -333,15 +337,19 @@ export class TypesAPI {
             return;
         }
         this.enabled = enabled;
-        this.invalidateCaches();
         if (!enabled) {
             this.unsubscribeStore?.();
             this.unsubscribeStore = null;
             this.unsubscribeProviders?.();
             this.unsubscribeProviders = null;
+            this.store.setEnabled?.(false);
+            this.providerRegistry?.setEnabled(false);
         } else {
+            this.store.setEnabled?.(true);
+            this.providerRegistry?.setEnabled(true);
             this.ensureSourceSubscriptions();
         }
+        this.invalidateCaches();
         this.publish();
     }
 

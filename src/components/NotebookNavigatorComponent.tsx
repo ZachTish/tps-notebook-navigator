@@ -394,9 +394,12 @@ export const NotebookNavigatorComponent = React.memo(
 
         const handleModifySearchWithType = useCallback(
             (typeId: TpsNavigatorTypeId) => {
+                if (!settings.tpsTypesNavigationEnabled) {
+                    return;
+                }
                 listPaneRef.current?.modifySearchWithType(typeId, getNavigationSearchUpdateOptions());
             },
-            [getNavigationSearchUpdateOptions]
+            [getNavigationSearchUpdateOptions, settings.tpsTypesNavigationEnabled]
         );
 
         const handleModifySearchWithDateFilter = useCallback(

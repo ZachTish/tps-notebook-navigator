@@ -147,7 +147,7 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     syncModes: defaultSettingsSync,
 
     // TPS integration
-    tpsTypesNavigationEnabled: true,
+    tpsTypesNavigationEnabled: false,
     typeNavigationSortOrder: 'catalog',
     tpsResourceCreationTarget: 'daily-note',
     tpsResourceCreationSpecificFile: null,
@@ -472,6 +472,7 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     propertyAppearances: sanitizeRecord<ListPaneAppearance>(undefined),
     typeSortOverrides: {},
     typeAppearances: {},
+    tpsTypesPauseMigrationVersion: 1,
     tpsLinePropertyInheritanceVersion: 1,
     virtualFolderColors: sanitizeRecord<string>(undefined),
     virtualFolderBackgroundColors: sanitizeRecord<string>(undefined),

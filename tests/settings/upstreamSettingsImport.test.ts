@@ -68,6 +68,7 @@ describe('prepareUpstreamSettingsImport', () => {
         const current = structuredClone(DEFAULT_SETTINGS);
         current.recentNotesCount = 37;
         current.tpsTypesNavigationEnabled = false;
+        current.tpsTypesPauseMigrationVersion = 1;
         current.typeNavigationSortOrder = 'manual';
         current.rootTypeOrder = ['structural:table', 'entity:note'];
         current.tpsResourceCreationTarget = 'specific-note';
@@ -83,6 +84,7 @@ describe('prepareUpstreamSettingsImport', () => {
                 folderSortOrder: 'alpha-desc',
                 toolbarVisibility: { list: { search: false } },
                 tpsTypesNavigationEnabled: true,
+                tpsTypesPauseMigrationVersion: 99,
                 typeNavigationSortOrder: 'alpha-desc',
                 rootTypeOrder: ['entity:note'],
                 tpsResourceCreationTarget: 'active-note',
@@ -104,6 +106,7 @@ describe('prepareUpstreamSettingsImport', () => {
         expect(result.settingsRecord.folderSortOrder).toBe('alpha-desc');
         expect(result.settingsRecord.recentNotesCount).toBe(37);
         expect(result.settingsRecord.tpsTypesNavigationEnabled).toBe(false);
+        expect(result.settingsRecord.tpsTypesPauseMigrationVersion).toBe(1);
         expect(result.settingsRecord.typeNavigationSortOrder).toBe('manual');
         expect(result.settingsRecord.rootTypeOrder).toEqual(['structural:table', 'entity:note']);
         expect(result.settingsRecord.tpsResourceCreationTarget).toBe('specific-note');

@@ -148,7 +148,10 @@ describe('loadInitialSelectionState', () => {
         const { app, files, rootFolder } = createAppWithRoot();
         const storedFile = createFile('notes/one.md', rootFolder);
         files.set(storedFile.path, storedFile);
-        const state = loadInitialSelectionState({ app, settings: { ...DEFAULT_SETTINGS } });
+        const state = loadInitialSelectionState({
+            app,
+            settings: { ...DEFAULT_SETTINGS, tpsTypesNavigationEnabled: true }
+        });
 
         expect(state.selectionType).toBe('type');
         expect(state.selectedType).toBe('structural:task');

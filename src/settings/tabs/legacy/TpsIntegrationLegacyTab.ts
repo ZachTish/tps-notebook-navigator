@@ -18,6 +18,7 @@ import {
     renderTpsTypesNavigationEnabledSetting,
     renderUpstreamSettingsImportSetting,
     setTpsResourceCreationSpecificFileVisibility,
+    setTpsTypeCreationSettingVisibility,
     setTpsTaskRowSettingVisibility
 } from '../TpsIntegrationTab';
 import type { SettingsTabContext } from '../SettingsTabContext';
@@ -25,7 +26,7 @@ import type { SettingsTabContext } from '../SettingsTabContext';
 /** Legacy renderer for the fork-specific TPS integration destination. */
 export function renderTpsIntegrationTab(context: SettingsTabContext): void {
     const createGroup = createSettingGroupFactory(context.containerEl);
-    const typesGroup = createGroup('Types navigation');
+    const typesGroup = createGroup('Types collections (paused)');
     const resourceCreationGroup = createGroup('Type item creation');
     const taskGroup = createGroup('Task rows');
     const setupGroup = createGroup('One-way setup');
@@ -42,8 +43,11 @@ export function renderTpsIntegrationTab(context: SettingsTabContext): void {
             context.plugin.settings.tpsResourceCreationTarget === 'specific-note'
         );
     };
+    const updateResourceCreationGroupVisibility = () => {
+        setTpsTypeCreationSettingVisibility(resourceCreationGroup.rootEl, context.plugin.settings.tpsTypesNavigationEnabled);
+    };
 
-    typesGroup.addSetting(setting => renderTpsTypesNavigationEnabledSetting(setting, context));
+    typesGroup.addSetting(setting => renderTpsTypesNavigationEnabledSetting(setting, context, updateResourceCreationGroupVisibility));
     resourceCreationGroup.addSetting(setting =>
         renderTpsResourceCreationTargetSetting(setting, context, updateResourceCreationFileVisibility)
     );
@@ -51,6 +55,7 @@ export function renderTpsIntegrationTab(context: SettingsTabContext): void {
         renderTpsResourceCreationSpecificFileSetting(setting, context)
     );
     resourceCreationSpecificFileSettingEl = resourceCreationSpecificFileSetting.settingEl;
+    updateResourceCreationGroupVisibility();
     updateResourceCreationFileVisibility();
     taskGroup.addSetting(setting => renderGcmTaskRowsEnabledSetting(setting, context, updateTaskRowVisibility));
     const includeCompletedSetting = taskGroup.addSetting(setting => renderGcmTaskRowsIncludeCompletedSetting(setting, context));

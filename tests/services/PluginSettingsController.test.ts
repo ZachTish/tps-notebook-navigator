@@ -693,6 +693,7 @@ describe('PluginSettingsController.loadSettingsAtStartup', () => {
                 ? null
                 : {
                       recentNotesCount: 17,
+                      tpsTypesPauseMigrationVersion: 1,
                       unfinishedTaskBackgroundColorDark: DEFAULT_SETTINGS.unfinishedTaskBackgroundColorDark,
                       propertyGroupKey: ''
                   };
@@ -751,6 +752,7 @@ describe('PluginSettingsController.loadSettingsAtStartup', () => {
             undefined,
             {
                 recentNotesCount: 23,
+                tpsTypesPauseMigrationVersion: 1,
                 unfinishedTaskBackgroundColorDark: DEFAULT_SETTINGS.unfinishedTaskBackgroundColorDark,
                 propertyGroupKey: ''
             }
@@ -846,6 +848,7 @@ describe('PluginSettingsController.applySettingsRecord', () => {
 
         controller.applySettingsRecord(
             {
+                tpsTypesPauseMigrationVersion: 1,
                 tpsTypesNavigationEnabled: false,
                 typeNavigationSortOrder: 'count-desc',
                 rootTypeOrder: [TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId, TPS_NAVIGATOR_TYPE_IDS.TABLES, 'kind:project', 'invalid'],
@@ -899,6 +902,33 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled);
         expect(controller.settings.tpsGcmTaskRowsIncludeCompleted).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsIncludeCompleted);
         expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsPerNote);
+    });
+
+    it('pauses existing Types and attached task rows exactly once while preserving later opt-in', () => {
+        const { controller } = createController();
+
+        const migrated = controller.applySettingsRecord(
+            {
+                tpsTypesNavigationEnabled: true,
+                tpsGcmTaskRowsEnabled: true
+            },
+            { isFirstLaunch: false }
+        );
+
+        expect(migrated).toBe(true);
+        expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
+        expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(false);
+        expect(controller.settings.tpsTypesPauseMigrationVersion).toBe(1);
+
+        const persistedAfterMigration = controller.getPersistableSettings() as unknown as Record<string, unknown>;
+        persistedAfterMigration.tpsTypesNavigationEnabled = true;
+        persistedAfterMigration.tpsGcmTaskRowsEnabled = true;
+        const afterExplicitOptIn = controller.applySettingsRecord(persistedAfterMigration, { isFirstLaunch: false });
+
+        expect(afterExplicitOptIn).toBe(false);
+        expect(controller.settings.tpsTypesNavigationEnabled).toBe(true);
+        expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(true);
+        expect(controller.settings.tpsTypesPauseMigrationVersion).toBe(1);
     });
 
     it('seeds the dark task background color from the light color when the stored key is missing', () => {

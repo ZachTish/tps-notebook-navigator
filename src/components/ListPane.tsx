@@ -209,8 +209,8 @@ interface ListPaneProps {
     folderDecorationModel: FolderDecorationModel;
     fileItemPillDecorationModel: FileItemPillDecorationModel;
     fileItemPillOrderModel: FileItemPillOrderModel;
-    onNavigateToFolder: (folderPath: string, options?: NavigateToFolderOptions) => void;
-    onRevealTag: (tagPath: string, options?: RevealTagOptions) => void;
+    onNavigateToFolder: (folderPath: string, options?: NavigateToFolderOptions) => boolean;
+    onRevealTag: (tagPath: string, options?: RevealTagOptions) => boolean;
     onRevealProperty: (propertyNodeId: string, options?: RevealPropertyOptions) => boolean;
 }
 
@@ -796,7 +796,8 @@ export const ListPane = React.memo(
             appliedSearchQuery,
             effectiveSearchProvider,
             localDayKey,
-            mixedStructuralSearchActive
+            mixedStructuralSearchActive,
+            invalidSearchReason
         } = useListPaneData({
             selectionType,
             selectedFolder,
@@ -2141,7 +2142,9 @@ export const ListPane = React.memo(
                         {/* Android - toolbar at top */}
                         {useMobileChrome && isAndroid && !manualSortEditState ? listToolbar : null}
                         {/* Search bar - collapsible */}
-                        <div className={`nn-search-bar-container ${isSearchActive ? 'nn-search-bar-visible' : ''}`}>
+                        <div
+                            className={`nn-search-bar-container ${isSearchActive ? 'nn-search-bar-visible' : ''}${invalidSearchReason ? ' nn-search-bar-invalid' : ''}`}
+                        >
                             {isSearchActive && (
                                 <SearchInput
                                     searchQuery={searchQuery}
@@ -2159,8 +2162,9 @@ export const ListPane = React.memo(
                                     onSaveShortcut={!activeSearchShortcut ? handleSaveSearchShortcut : undefined}
                                     onRemoveShortcut={activeSearchShortcut ? handleRemoveSearchShortcut : undefined}
                                     isShortcutSaved={Boolean(activeSearchShortcut)}
-                                    isShortcutDisabled={isSavingSearchShortcut}
+                                    isShortcutDisabled={isSavingSearchShortcut || (!activeSearchShortcut && Boolean(invalidSearchReason))}
                                     searchProvider={searchProvider}
+                                    invalidReason={invalidSearchReason}
                                 />
                             )}
                         </div>
@@ -2214,7 +2218,13 @@ export const ListPane = React.memo(
                             isCompactMode={isCompactMode}
                             isEmptySelection={isEmptySelection}
                             hasNoFiles={hasNoFiles}
-                            emptyMessage={selectionType === ItemType.TYPE ? 'No items found.' : undefined}
+                            emptyMessage={
+                                invalidSearchReason
+                                    ? 'Fix the invalid filter query to see matching notes.'
+                                    : selectionType === ItemType.TYPE
+                                      ? 'No items found.'
+                                      : undefined
+                            }
                             topSpacerHeight={effectiveTopSpacerHeight}
                             settings={settings}
                             pinnedGroupExpanded={pinnedGroupExpanded}

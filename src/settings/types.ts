@@ -1084,6 +1084,8 @@ export interface NotebookNavigatorSettings {
     propertyAppearances: Record<string, ListPaneAppearance>;
     typeSortOverrides?: Partial<Record<TpsNavigatorStructuralTypeId, ListSortOverrideValue>>;
     typeAppearances?: Partial<Record<TpsNavigatorStructuralTypeId, TpsTypeAppearance>>;
+    /** TPS one-time marker for pausing Types and attached GCM task rows on upgrade. */
+    tpsTypesPauseMigrationVersion?: number;
     /** TPS migration marker for the task-local property inheritance default. */
     tpsLinePropertyInheritanceVersion?: number;
     virtualFolderColors: Record<string, string>;

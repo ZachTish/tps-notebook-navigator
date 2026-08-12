@@ -107,6 +107,24 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.16.0',
+        date: '2026-08-12',
+        showOnUpdate: true,
+        changed: [
+            'Types collections are paused and off by default while their code, public API, saved order, appearances, and creation preferences remain available behind the experimental settings toggle.',
+            'The one-time upgrade step turns off Types collections and individual GCM task rows without changing note task-progress bars or counts. A later explicit opt-in persists normally.'
+        ],
+        improved: [
+            'Turning Types off now cancels and clears its exact-line, Markdown-structure, Web-link, and GCM hydration work, keeps Properties note-frontmatter-only, and avoids a full visible-note scope walk when no row provider is enabled.',
+            'Calendar date selection preserves the rest of a Filter Search, relative dates refresh across local midnight or resume, and modified files refresh every active date query.',
+            'Saved searches validate their folder, tag, or property start location before changing navigation or query state.'
+        ],
+        fixed: [
+            'Incomplete filters, unsupported mixed AND/OR expressions, and Type facets while Types are off now fail closed with a visible explanation instead of becoming surprising filename terms.',
+            'Task-progress indexing preserves an unknown or last-known count for oversized notes and read failures, then retries transient failures instead of publishing a misleading zero.'
+        ]
+    },
+    {
         version: '5.15.2',
         date: '2026-08-11',
         fixed: [

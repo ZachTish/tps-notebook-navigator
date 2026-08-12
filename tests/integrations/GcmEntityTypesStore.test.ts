@@ -140,6 +140,55 @@ describe('GcmEntityTypesStore', () => {
         unsubscribe();
     });
 
+    it('clears built-in snapshots and ignores an outstanding Markdown rebuild while disabled', async () => {
+        const app = new App();
+        const file = new TFile('Notes/Pause.md');
+        (app.vault as unknown as { registerFile(file: TFile): void }).registerFile(file);
+        const staleBodyRead = deferred<string>();
+        const cachedRead = vi
+            .fn<(file: TFile) => Promise<string>>()
+            .mockImplementationOnce(() => staleBodyRead.promise)
+            .mockResolvedValueOnce('[Fresh](https://fresh.example/after-reenable)');
+        Object.assign(app.vault, {
+            getFiles: () => [file],
+            getMarkdownFiles: () => [file],
+            cachedRead
+        });
+        Object.assign(app.metadataCache, { getFileCache: () => ({}) });
+        const store = new GcmEntityTypesStore(app);
+        const listener = vi.fn();
+        const unsubscribe = store.subscribe(listener);
+
+        await vi.waitFor(() => expect(cachedRead).toHaveBeenCalledOnce());
+        expect(store.getSnapshot().recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.NOTES)).toHaveLength(1);
+
+        store.setEnabled(false);
+        const disabledSnapshot = store.getSnapshot();
+        expect(disabledSnapshot).toMatchObject({
+            availability: 'unavailable',
+            descriptors: [],
+            message: 'Types navigation is disabled.'
+        });
+        expect(disabledSnapshot.recordsByType.size).toBe(0);
+
+        staleBodyRead.resolve('[Stale](https://stale.example/before-disable)');
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(store.getSnapshot()).toBe(disabledSnapshot);
+
+        store.setEnabled(true);
+        await vi.waitFor(() => expect(cachedRead).toHaveBeenCalledTimes(2));
+        await vi.waitFor(() => expect(store.getSnapshot().markdownAvailability).toBe('ready'));
+        expect(
+            store
+                .getSnapshot()
+                .recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.WEB_LINKS)
+                ?.map(record => record.searchText)
+        ).toEqual(['https://fresh.example']);
+
+        unsubscribe();
+    });
+
     it('uses the public request/change handshake and coalesces revision bursts to one follow-up load', async () => {
         const app = new App();
         const firstQuery = deferred<readonly unknown[]>();

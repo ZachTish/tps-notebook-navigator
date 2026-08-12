@@ -808,11 +808,9 @@ export class MarkdownPipelineContentProvider extends FeatureImageContentProvider
                     hasSafeUpdate = true;
                 }
 
-                if (needsTasksContent && (!fileData || fileData.taskTotal !== 0 || fileData.taskUnfinished !== 0)) {
-                    update.taskTotal = 0;
-                    update.taskUnfinished = 0;
-                    hasSafeUpdate = true;
-                }
+                // A task-bearing note needs its body to distinguish real tasks from empty
+                // checkbox markers. When the body is intentionally not read, retain the
+                // last exact counters (or null for a first index) instead of inventing 0/0.
 
                 const nextProperties = resolvePropertyItemsFromFrontmatter(frontmatter);
                 if (!fileData || fileData.properties === null || !arePropertyItemsEqual(fileData.properties, nextProperties)) {
@@ -909,19 +907,6 @@ export class MarkdownPipelineContentProvider extends FeatureImageContentProvider
                 }
             }
 
-            if (needsTasksContent) {
-                const shouldSetTasksZero =
-                    !fileData ||
-                    fileData.taskTotal === null ||
-                    fileData.taskUnfinished === null ||
-                    (shouldFallback && (fileData.taskTotal !== 0 || fileData.taskUnfinished !== 0));
-                if (shouldSetTasksZero) {
-                    update.taskTotal = 0;
-                    update.taskUnfinished = 0;
-                    hasSafeUpdate = true;
-                }
-            }
-
             const nextProperties = resolvePropertyItemsFromFrontmatter(frontmatter);
             if (!fileData || fileData.properties === null || !arePropertyItemsEqual(fileData.properties, nextProperties)) {
                 update.properties = nextProperties;
@@ -983,11 +968,12 @@ export class MarkdownPipelineContentProvider extends FeatureImageContentProvider
             }
 
             if (hasSafeUpdate) {
-                // After repeated read failures, fall back to safe defaults and mark as processed to avoid endless retries.
-                return { update, processed: shouldFallback };
+                // Body-derived task counts are not safely approximated. Keep retrying those
+                // notes even when unrelated body consumers have reached their fallback.
+                return { update, processed: needsTasksContent ? false : shouldFallback };
             }
 
-            return { update: null, processed: shouldFallback };
+            return { update: null, processed: needsTasksContent ? false : shouldFallback };
         }
 
         if (!isDrawing && frontmatter === null) {
@@ -1159,32 +1145,24 @@ export class MarkdownPipelineContentProvider extends FeatureImageContentProvider
     }
 
     private async processTasks(context: MarkdownPipelineContext): Promise<MarkdownPipelineUpdate | null> {
-        try {
-            const counts = context.isDrawing
-                ? { taskTotal: 0, taskUnfinished: 0 }
-                : (context.taskCountsFromMetadata ?? countMarkdownTasks(context.content, context.bodyStartIndex));
+        const counts = context.isDrawing
+            ? { taskTotal: 0, taskUnfinished: 0 }
+            : (context.taskCountsFromMetadata ?? countMarkdownTasks(context.content, context.bodyStartIndex));
 
-            if (
-                !context.fileData ||
-                context.fileData.taskTotal === null ||
-                context.fileData.taskUnfinished === null ||
-                context.fileData.taskTotal !== counts.taskTotal ||
-                context.fileData.taskUnfinished !== counts.taskUnfinished
-            ) {
-                return {
-                    taskTotal: counts.taskTotal,
-                    taskUnfinished: counts.taskUnfinished
-                };
-            }
-
-            return null;
-        } catch (error) {
-            console.error(`Error generating tasks for ${context.file.path}:`, error);
-            if (!context.fileData || context.fileData.taskTotal === null || context.fileData.taskUnfinished === null) {
-                return { taskTotal: 0, taskUnfinished: 0 };
-            }
-            return null;
+        if (
+            !context.fileData ||
+            context.fileData.taskTotal === null ||
+            context.fileData.taskUnfinished === null ||
+            context.fileData.taskTotal !== counts.taskTotal ||
+            context.fileData.taskUnfinished !== counts.taskUnfinished
+        ) {
+            return {
+                taskTotal: counts.taskTotal,
+                taskUnfinished: counts.taskUnfinished
+            };
         }
+
+        return null;
     }
 
     private async processProperties(context: MarkdownPipelineContext): Promise<MarkdownPipelineUpdate | null> {

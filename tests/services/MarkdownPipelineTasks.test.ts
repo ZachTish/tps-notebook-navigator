@@ -376,7 +376,7 @@ describe('MarkdownPipelineContentProvider task counters', () => {
         expect(result).toEqual({ total: 2, unfinished: 1 });
     });
 
-    it('sets 0/0 for stale tasks when file is too large to read', async () => {
+    it('preserves last-known task counts when a task-bearing file is too large to read', async () => {
         const context = createApp();
         const settings = createSettings();
         const provider = new TestMarkdownPipelineContentProvider(context.app);
@@ -395,10 +395,10 @@ describe('MarkdownPipelineContentProvider task counters', () => {
         const result = await provider.runProcessFile(file, fileData, settings);
 
         expect(result.processed).toBe(true);
-        expect(result.update).toEqual({ path: file.path, taskTotal: 0, taskUnfinished: 0 });
+        expect(result.update).toBeNull();
     });
 
-    it('sets 0/0 for pending tasks when file is too large to read', async () => {
+    it('leaves task counts unknown on first index when a task-bearing file is too large to read', async () => {
         const context = createApp();
         const settings = createSettings();
         const provider = new TestMarkdownPipelineContentProvider(context.app);
@@ -417,10 +417,10 @@ describe('MarkdownPipelineContentProvider task counters', () => {
         const result = await provider.runProcessFile(file, fileData, settings);
 
         expect(result.processed).toBe(true);
-        expect(result.update).toEqual({ path: file.path, taskTotal: 0, taskUnfinished: 0 });
+        expect(result.update).toBeNull();
     });
 
-    it('falls back to safe defaults after repeated read failures', async () => {
+    it('preserves last-known task counts through repeated read failures and recovers on retry', async () => {
         const context = createApp();
         const settings = createSettings();
         const provider = new TestMarkdownPipelineContentProvider(context.app);
@@ -440,18 +440,22 @@ describe('MarkdownPipelineContentProvider task counters', () => {
             taskUnfinished: 2
         });
 
-        for (let attempt = 0; attempt < LIMITS.contentProvider.retry.maxAttempts - 1; attempt += 1) {
+        for (let attempt = 0; attempt < LIMITS.contentProvider.retry.maxAttempts; attempt += 1) {
             const result = await provider.runProcessFile(file, fileData, settings);
             expect(result.processed).toBe(false);
             expect(result.update).toBeNull();
         }
 
-        const result = await provider.runProcessFile(file, fileData, settings);
-        expect(result.processed).toBe(true);
-        expect(result.update).toEqual({ path: file.path, taskTotal: 0, taskUnfinished: 0 });
+        context.app.vault.cachedRead = async () => '- [ ] one\n- [x] two\n- [ ] three\n';
+
+        const recovered = await provider.runProcessFile(file, fileData, settings);
+        expect(recovered).toEqual({
+            update: { path: file.path, taskTotal: 3, taskUnfinished: 2 },
+            processed: true
+        });
     });
 
-    it('sets 0/0 immediately when pending tasks cannot be read', async () => {
+    it('leaves first-index task counts unknown after a transient read failure and recovers on retry', async () => {
         const context = createApp();
         const settings = createSettings();
         const provider = new TestMarkdownPipelineContentProvider(context.app);
@@ -473,6 +477,14 @@ describe('MarkdownPipelineContentProvider task counters', () => {
 
         const result = await provider.runProcessFile(file, fileData, settings);
         expect(result.processed).toBe(false);
-        expect(result.update).toEqual({ path: file.path, taskTotal: 0, taskUnfinished: 0 });
+        expect(result.update).toBeNull();
+
+        context.app.vault.cachedRead = async () => '- [ ] recovered\n* [x] done\n';
+
+        const recovered = await provider.runProcessFile(file, fileData, settings);
+        expect(recovered).toEqual({
+            update: { path: file.path, taskTotal: 2, taskUnfinished: 1 },
+            processed: true
+        });
     });
 });

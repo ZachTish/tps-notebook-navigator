@@ -319,6 +319,31 @@ describe('GCM entity Type task integration', () => {
         expect(refreshedSnapshot.recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES)?.[0]?.task?.isComplete).toBe(true);
     });
 
+    it('cooperatively cancels outstanding task hydration without committing its cache', async () => {
+        const entity = taskEntity();
+        const entityApi = createEntityApi(entity);
+        let resolveTaskList!: (tasks: GcmTaskRecordLike[]) => void;
+        const pendingTaskList = new Promise<GcmTaskRecordLike[]>(resolve => {
+            resolveTaskList = resolve;
+        });
+        const list = vi.fn<NonNullable<GcmTaskApiLike['list']>>(async () => pendingTaskList);
+        const taskApi: GcmTaskApiLike = { version: 1, list, focus: vi.fn(async () => true) };
+        const adapter = new GcmEntityTypeIndexAdapter(createAppWithFile());
+        adapter.acceptApiPayload(payload(entityApi.api, taskApi, createTaskLinesApi().api));
+        const controller = new AbortController();
+
+        const loading = adapter.loadSnapshot(controller.signal);
+        await vi.waitFor(() => expect(list).toHaveBeenCalledOnce());
+        controller.abort();
+        adapter.dispose();
+        resolveTaskList([taskRecord()]);
+
+        const cancelled = await loading;
+        expect(cancelled.availability).toBe('unavailable');
+        expect(cancelled.recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES) ?? []).toHaveLength(0);
+        expect((adapter as unknown as { taskHydrationCache: Map<string, unknown> }).taskHydrationCache.size).toBe(0);
+    });
+
     it('bounds the per-path task hydration cache while querying cold paths in bounded batches', async () => {
         const pathCount = GCM_TYPE_TASK_CACHE_MAX_PATHS + 1;
         const paths = Array.from({ length: pathCount }, (_, index) => `Tasks/Cache-${index}.md`);

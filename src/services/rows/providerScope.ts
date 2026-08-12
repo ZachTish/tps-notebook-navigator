@@ -1,7 +1,25 @@
 /* TPS Notebook Navigator - scope policy shared by row queries and subscriptions. */
 
 import type { NavigatorRowProviderRegistry } from './NavigatorRowProviderRegistry';
-import type { NavigatorProvidedRow, NavigatorRowProvider, NavigatorRowScope } from './types';
+import type { NavigatorProvidedRow, NavigatorRowProvider, NavigatorRowProviderSelection, NavigatorRowScope } from './types';
+
+/** Stable inert scope used while no optional row provider is selected. */
+export const EMPTY_NAVIGATOR_ROW_SCOPE: NavigatorRowScope = Object.freeze({
+    visibleFilePaths: Object.freeze([]),
+    selectionType: null,
+    selectedFolderPath: null,
+    selectedTag: null,
+    selectedProperty: null,
+    selectedType: null
+});
+
+/** Avoids deriving a potentially vault-sized scope until a provider can consume it. */
+export function resolveNavigatorRowScope(
+    selection: NavigatorRowProviderSelection,
+    buildActiveScope: () => NavigatorRowScope
+): NavigatorRowScope {
+    return selection.enabledProviderIds.length === 0 ? EMPTY_NAVIGATOR_ROW_SCOPE : buildActiveScope();
+}
 
 /**
  * Legacy providers remain active in every pre-Type scope. A provider must opt

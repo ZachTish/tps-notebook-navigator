@@ -248,7 +248,7 @@ describe('hasTypePresentationContentChange', () => {
     });
 });
 
-describe('fixed-Type search refresh', () => {
+describe('filter search refresh', () => {
     it('refreshes an active tag search when an owning note changes tags', () => {
         const changes = [{ path: 'notes/shopping.md', changes: { tags: ['shopping'] }, changeType: 'content' as const }];
 
@@ -286,7 +286,7 @@ describe('fixed-Type search refresh', () => {
         ).toBe(false);
     });
 
-    it('refreshes an active modified-date search under a fixed Type even when its sort ignores mtime', () => {
+    it('refreshes every active date search on file modification even when its sort ignores mtime', () => {
         expect(
             shouldRefreshOnFileModifyForList({
                 hasDateSearchFilters: true,
@@ -302,7 +302,7 @@ describe('fixed-Type search refresh', () => {
                 propertySortSecondary: 'title',
                 sortOption: 'title-asc'
             })
-        ).toBe(false);
+        ).toBe(true);
         expect(
             shouldRefreshOnFileModifyForList({
                 hasDateSearchFilters: false,
@@ -311,6 +311,14 @@ describe('fixed-Type search refresh', () => {
                 sortOption: 'modified-desc'
             })
         ).toBe(true);
+        expect(
+            shouldRefreshOnFileModifyForList({
+                hasDateSearchFilters: false,
+                isStructuralTypeSelection: false,
+                propertySortSecondary: 'title',
+                sortOption: 'title-asc'
+            })
+        ).toBe(false);
     });
 });
 

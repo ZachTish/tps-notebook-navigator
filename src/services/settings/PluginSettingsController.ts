@@ -572,6 +572,17 @@ export class PluginSettingsController {
         // Deep-clone the defaults so later in-place normalization (e.g. ensureVaultProfiles) cannot mutate DEFAULT_SETTINGS
         // through nested references when stored data omits a key.
         this.currentSettings = { ...structuredClone(DEFAULT_SETTINGS), ...(storedSettings ?? {}) };
+        const storedTypesPauseMigrationVersion = storedData?.['tpsTypesPauseMigrationVersion'];
+        const migratedTypesPause =
+            !isFirstLaunch && (!Number.isSafeInteger(storedTypesPauseMigrationVersion) || Number(storedTypesPauseMigrationVersion) < 1);
+        if (migratedTypesPause) {
+            // Types remain available as an explicit opt-in, but the first upgrade to the paused
+            // phase must stop both catalog indexing and attached GCM rows. The persisted marker
+            // makes every later user opt-in survive reloads and settings synchronization.
+            this.currentSettings.tpsTypesNavigationEnabled = false;
+            this.currentSettings.tpsGcmTaskRowsEnabled = false;
+            this.currentSettings.tpsTypesPauseMigrationVersion = 1;
+        }
         let migratedLinePropertyInheritanceDefault = false;
         if (storedData?.['tpsLinePropertyInheritanceVersion'] !== 1) {
             Object.entries(this.currentSettings.typeAppearances ?? {}).forEach(([typeId, appearance]) => {
@@ -863,6 +874,7 @@ export class PluginSettingsController {
             migratedReleaseState ||
             migratedRecentColors ||
             migratedCollapsedPinnedContexts ||
+            migratedTypesPause ||
             migratedLinePropertyInheritanceDefault ||
             hadLocalValuesInSettings ||
             hadLegacySearchProviderInSettings ||

@@ -391,13 +391,12 @@ const parseDateToken = (value: string): { startMs: number; endMs: number } | nul
 };
 
 // Converts a relative date keyword (today, yesterday, last7d, etc.) into a timestamp range
-const resolveRelativeDateRange = (keyword: string): { startMs: number; endMs: number } | null => {
+const resolveRelativeDateRange = (keyword: string, referenceDate: Date): { startMs: number; endMs: number } | null => {
     if (!keyword) {
         return null;
     }
 
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
     const tomorrowStart = new Date(todayStart);
     tomorrowStart.setDate(tomorrowStart.getDate() + 1);
 
@@ -439,7 +438,7 @@ const resolveRelativeDateRange = (keyword: string): { startMs: number; endMs: nu
 };
 
 // Parses a complete @-prefixed date filter token into a DateFilterRange
-export const parseDateFilterRange = (token: string): DateFilterRange | null => {
+export const parseDateFilterRange = (token: string, referenceDate: Date = new Date()): DateFilterRange | null => {
     if (!token.startsWith('@')) {
         return null;
     }
@@ -452,7 +451,7 @@ export const parseDateFilterRange = (token: string): DateFilterRange | null => {
     }
 
     if (DATE_FILTER_RELATIVE_KEYWORD_SET.has(remainder)) {
-        const relative = resolveRelativeDateRange(remainder);
+        const relative = resolveRelativeDateRange(remainder, referenceDate);
         if (!relative) {
             return null;
         }

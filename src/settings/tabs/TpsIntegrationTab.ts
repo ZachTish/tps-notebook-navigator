@@ -44,9 +44,9 @@ const UPSTREAM_IMPORT_COPY = {
 } as const;
 
 const TYPES_NAVIGATION_COPY = {
-    group: 'Types navigation',
-    name: 'Show Types in navigation',
-    desc: 'Show one Types section for vault files, checkboxes, bullets, headings, code blocks, callouts, blockquotes, tables, and web links.'
+    group: 'Types collections (paused)',
+    name: 'Enable Types collections (experimental)',
+    desc: 'Off keeps the navigator note/file-focused and stops exact-line, Markdown-structure, and Web-link Types indexing. Note task-progress bars and counts remain available while Types are off.'
 } as const;
 
 const RESOURCE_CREATION_COPY = {
@@ -67,7 +67,7 @@ const TASK_ROWS_COPY = {
     group: 'Task rows',
     enabledName: 'Show GCM tasks beneath notes',
     enabledDesc:
-        'Show task rows for exactly the notes in the current file list. Current GCM builds also let the checkbox complete or reopen a task; if GCM is unavailable, the list stays file-only.',
+        'Optionally add individual GCM task rows beneath notes. This is separate from note task-progress bars and counts, which remain available when attached rows are off.',
     includeCompletedName: 'Include completed tasks',
     includeCompletedDesc: 'Also show checked tasks beneath their note.',
     limitName: 'Tasks per note',
@@ -141,7 +141,9 @@ export function createTpsIntegrationSettingDefinitions(context: SettingsTabConte
 
     return [
         createGroupDefinition(TYPES_NAVIGATION_COPY.group, typeItems),
-        createGroupDefinition(RESOURCE_CREATION_COPY.group, resourceCreationItems),
+        createGroupDefinition(RESOURCE_CREATION_COPY.group, resourceCreationItems, {
+            visible: () => context.plugin.settings.tpsTypesNavigationEnabled
+        }),
         createGroupDefinition(TASK_ROWS_COPY.group, taskItems),
         createGroupDefinition(UPSTREAM_IMPORT_COPY.group, setupItems)
     ];
@@ -211,8 +213,15 @@ export function setTpsResourceCreationSpecificFileVisibility(element: HTMLElemen
     }
 }
 
+/** Applies progressive disclosure to the legacy Type-creation group. */
+export function setTpsTypeCreationSettingVisibility(element: HTMLElement | null, visible: boolean): void {
+    if (element) {
+        setElementVisible(element, visible);
+    }
+}
+
 /** Shared renderer for the Types-navigation enable control. */
-export function renderTpsTypesNavigationEnabledSetting(setting: Setting, context: SettingsTabContext): void {
+export function renderTpsTypesNavigationEnabledSetting(setting: Setting, context: SettingsTabContext, onAfterUpdate?: () => void): void {
     const { plugin } = context;
     setting
         .setName(TYPES_NAVIGATION_COPY.name)
@@ -221,6 +230,8 @@ export function renderTpsTypesNavigationEnabledSetting(setting: Setting, context
             toggle.setValue(plugin.settings.tpsTypesNavigationEnabled).onChange(async value => {
                 plugin.settings.tpsTypesNavigationEnabled = value;
                 await plugin.saveSettingsAndUpdate();
+                context.refreshSettingsDomState();
+                onAfterUpdate?.();
             })
         );
 }

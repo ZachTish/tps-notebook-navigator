@@ -1,6 +1,7 @@
 import { App, TFile, type Command } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import registerNavigatorCommandHandlers, {
+    hasActiveTypeCommandSelection,
     resolveOpenAllFilesContext,
     selectAdjacentFileWithoutNavigatorView
 } from '../../src/services/commands/navigatorCommandHandlers';
@@ -117,5 +118,14 @@ describe('navigator command Types context', () => {
         expect(command?.checkCallback?.(false)).toBe(false);
         expect(togglePinnedGroupCollapsed).not.toHaveBeenCalled();
         expect(getNavigatorLeaves).not.toHaveBeenCalled();
+    });
+
+    it('ignores a stale mounted Type selection after Types navigation is disabled', () => {
+        const plugin = {
+            settings: { tpsTypesNavigationEnabled: false },
+            api: { selection: { getNavItem: createTypeNavItem } }
+        };
+
+        expect(hasActiveTypeCommandSelection(plugin as never)).toBe(false);
     });
 });

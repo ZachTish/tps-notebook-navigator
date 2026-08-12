@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { NavigatorRowProviderRegistry } from '../../src/services/rows/NavigatorRowProviderRegistry';
 import {
     collectTypeScopeVisibleFilePaths,
+    EMPTY_NAVIGATOR_ROW_SCOPE,
     navigatorRowProviderSupportsScope,
-    resolveNavigatorRowProvidersForScope
+    resolveNavigatorRowProvidersForScope,
+    resolveNavigatorRowScope
 } from '../../src/services/rows/providerScope';
 import type { NavigatorProvidedRow, NavigatorRowProvider, NavigatorRowScope } from '../../src/services/rows/types';
 
@@ -28,6 +30,20 @@ function provider(id: string, supportsTypeScope?: boolean): NavigatorRowProvider
 }
 
 describe('navigator row provider scope policy', () => {
+    it('does no scope-source work and reuses one inert scope when no provider is enabled', () => {
+        const buildActiveScope = vi.fn(() => scope());
+
+        const first = resolveNavigatorRowScope({ enabledProviderIds: [] }, buildActiveScope);
+        const second = resolveNavigatorRowScope({ enabledProviderIds: [] }, buildActiveScope);
+
+        expect(buildActiveScope).not.toHaveBeenCalled();
+        expect(first).toBe(EMPTY_NAVIGATOR_ROW_SCOPE);
+        expect(second).toBe(first);
+
+        expect(resolveNavigatorRowScope({ enabledProviderIds: ['example/tasks'] }, buildActiveScope)).toEqual(scope());
+        expect(buildActiveScope).toHaveBeenCalledOnce();
+    });
+
     it('preserves every legacy provider in pre-Type scopes', () => {
         expect(navigatorRowProviderSupportsScope(provider('example/legacy'), scope())).toBe(true);
         expect(navigatorRowProviderSupportsScope(provider('example/type', true), scope())).toBe(true);

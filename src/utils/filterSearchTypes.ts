@@ -19,6 +19,9 @@
 // Determines evaluation mode for search tokens (filter uses AND for all, tag uses expression tree)
 export type FilterMode = 'filter' | 'tag';
 
+/** Machine-readable reason that an internal Filter Search query was rejected. */
+export type FilterSearchInvalidReason = 'malformed-filter' | 'mixed-logical-operator' | 'invalid-logical-expression' | 'types-disabled';
+
 // Logical operator for combining tag filter expressions
 export type InclusionOperator = 'AND' | 'OR';
 
@@ -86,6 +89,10 @@ export type TagExpressionToken =
  * Tokens extracted from a filter search query.
  */
 export interface FilterSearchTokens {
+    /** Invalid queries are deliberately fail-closed instead of widening the active note scope. */
+    invalidReason: FilterSearchInvalidReason | null;
+    /** Original unquoted term responsible for the invalid state when one can be identified. */
+    invalidToken: string | null;
     mode: FilterMode;
     expression: TagExpressionToken[];
     hasInclusions: boolean;

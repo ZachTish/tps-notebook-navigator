@@ -20,6 +20,7 @@ import { isDateFilterCandidate, parseDateFilterRange } from './filterSearchDate'
 import { evaluateTagExpression, parseTagModeTokens, propertyTokenMatches, tagMatchesToken } from './filterSearchExpression';
 import type {
     DateFilterRange,
+    FilterSearchInvalidReason,
     FilterSearchTokens,
     FolderFilterToken,
     InclusionOperator,
@@ -35,6 +36,7 @@ import { isTpsNavigatorStructuralTypeId, type TpsNavigatorTypeId } from '../type
 export { DATE_FILTER_RELATIVE_KEYWORDS, fileMatchesDateFilterTokens, parseDateFieldPrefix } from './filterSearchDate';
 export type {
     FilterMode,
+    FilterSearchInvalidReason,
     FilterSearchTokens,
     FolderFilterToken,
     InclusionOperator,
@@ -44,6 +46,8 @@ export type {
 
 // Default empty token set returned for blank queries
 const EMPTY_TOKENS: FilterSearchTokens = {
+    invalidReason: null,
+    invalidToken: null,
     mode: 'filter',
     expression: [],
     hasInclusions: false,
@@ -372,6 +376,8 @@ interface TokenClassificationResult {
     hasTagOperand: boolean;
     hasNonTagOperand: boolean;
     hasInvalidToken: boolean;
+    invalidReason: FilterSearchInvalidReason | null;
+    invalidToken: string | null;
 }
 
 // Checks if a token set can use tag expression mode
@@ -381,9 +387,8 @@ const canUseTagMode = (classification: TokenClassificationResult): boolean => {
     // - Rejects any non-tag operand (name/date/task tokens)
     // - Rejects malformed/dangling syntax
     //
-    // This keeps AND/OR operator behavior scoped to tag-only queries.
-    // Mixed queries intentionally fall back to regular filter mode where
-    // AND/OR are interpreted as literal words in file names.
+    // This keeps AND/OR operator behavior scoped to tag/property-only queries.
+    // Mixed queries are rejected by parseFilterSearchTokens.
     return classification.hasTagOperand && !classification.hasNonTagOperand && !classification.hasInvalidToken;
 };
 
@@ -542,11 +547,25 @@ const extensionMatchesToken = (fileExtension: string, token: string): boolean =>
 };
 
 // Parses raw tokens into classified tokens with metadata
-const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResult => {
+const classifyRawTokens = (
+    rawTokens: RawSearchToken[],
+    typesNavigationEnabled = true,
+    referenceDate: Date = new Date()
+): TokenClassificationResult => {
     const tokens: ClassifiedToken[] = [];
     let hasTagOperand = false;
     let hasNonTagOperand = false;
     let hasInvalidToken = false;
+    let invalidReason: FilterSearchInvalidReason | null = null;
+    let invalidToken: string | null = null;
+
+    const markInvalid = (reason: FilterSearchInvalidReason, token: string): void => {
+        hasInvalidToken = true;
+        if (invalidReason === null) {
+            invalidReason = reason;
+            invalidToken = token;
+        }
+    };
 
     for (const token of rawTokens) {
         if (!token.text) {
@@ -576,10 +595,9 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
             return foldedLowercaseToken;
         };
 
-        // Classify connector words first. Whether they behave as operators
-        // or literal words is decided later by mode selection:
-        // - expression mode (pure tag/property queries): operators
-        // - filter mode (mixed queries): literal name tokens
+        // Classify connector words first. They are operators only in pure tag/property
+        // expressions, literal name terms in name-only searches, and invalid when mixed
+        // with structured filter criteria.
         // Connector detection intentionally runs before accent folding:
         // `and`/`or` become operators, while `ånd`/`ör` stay literal tokens.
         if (lowercaseToken === 'and') {
@@ -606,7 +624,7 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
             };
 
             if (!negatedToken) {
-                hasInvalidToken = true;
+                markInvalid('malformed-filter', token.text);
                 continue;
             }
 
@@ -618,17 +636,23 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
                 continue;
             }
 
+            if (negatedToken.startsWith('has:')) {
+                markInvalid('malformed-filter', token.text);
+                continue;
+            }
+
             if (negatedToken.startsWith('@')) {
                 if (isDateFilterCandidate(negatedToken)) {
                     // Only commit to a date filter when parsing succeeds. Partial/invalid date fragments are ignored
                     // so they don't affect filtering until the token is complete.
-                    const range = parseDateFilterRange(negatedToken);
+                    const range = parseDateFilterRange(negatedToken, referenceDate);
                     if (range) {
                         tokens.push({ kind: 'dateNegation', range });
                         // Date filters are non-tag operands by design.
-                        // Their presence forces filter mode so AND/OR are
-                        // treated as literal words.
+                        // Their presence forces filter mode; unquoted AND/OR then fail closed.
                         hasNonTagOperand = true;
+                    } else {
+                        markInvalid('malformed-filter', token.text);
                     }
                     continue;
                 }
@@ -648,8 +672,9 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
                     });
                     // Folder filters are non-tag operands.
                     hasNonTagOperand = true;
+                } else {
+                    markInvalid('malformed-filter', token.text);
                 }
-                // Ignore partial/invalid folder filters (for example `-folder:`) until the token is complete.
                 continue;
             }
 
@@ -659,15 +684,22 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
                     tokens.push({ kind: 'extensionNegation', value: foldSearchTextFromLowercase(extensionValue) });
                     // Extension filters are non-tag operands.
                     hasNonTagOperand = true;
+                } else {
+                    markInvalid('malformed-filter', token.text);
                 }
-                // Ignore partial/invalid extension filters (for example `-ext:`) until the token is complete.
                 continue;
             }
 
             if (isTypeFilterCandidate(negatedToken)) {
+                if (!typesNavigationEnabled) {
+                    markInvalid('types-disabled', token.text);
+                    continue;
+                }
                 const typeValue = parseTypeFilterToken(negatedToken);
                 if (typeValue) {
                     tokens.push({ kind: 'typeNegation', value: typeValue });
+                } else {
+                    markInvalid('malformed-filter', token.text);
                 }
                 // Type is an orthogonal entity facet. It does not force tag/property
                 // expressions into name-filter mode, so their AND/OR semantics survive.
@@ -679,6 +711,8 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
                 if (propertyValue) {
                     tokens.push({ kind: 'propertyNegation', value: foldPropertySearchToken(propertyValue) });
                     hasTagOperand = true;
+                } else {
+                    markInvalid('malformed-filter', token.text);
                 }
                 continue;
             }
@@ -702,15 +736,22 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
             continue;
         }
 
+        if (lowercaseToken.startsWith('has:')) {
+            markInvalid('malformed-filter', token.text);
+            continue;
+        }
+
         if (lowercaseToken.startsWith('@')) {
             if (isDateFilterCandidate(lowercaseToken)) {
                 // Only commit to a date filter when parsing succeeds. Partial/invalid date fragments are ignored
                 // so they don't affect filtering until the token is complete.
-                const range = parseDateFilterRange(lowercaseToken);
+                const range = parseDateFilterRange(lowercaseToken, referenceDate);
                 if (range) {
                     tokens.push({ kind: 'date', range });
                     // Date filters are non-tag operands.
                     hasNonTagOperand = true;
+                } else {
+                    markInvalid('malformed-filter', token.text);
                 }
                 continue;
             }
@@ -726,8 +767,9 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
                 tokens.push({ kind: 'folder', value: { ...folderValue, value: foldSearchTextFromLowercase(folderValue.value) } });
                 // Folder filters are non-tag operands.
                 hasNonTagOperand = true;
+            } else {
+                markInvalid('malformed-filter', token.text);
             }
-            // Ignore partial/invalid folder filters (for example `folder:`) until the token is complete.
             continue;
         }
 
@@ -737,15 +779,22 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
                 tokens.push({ kind: 'extension', value: foldSearchTextFromLowercase(extensionValue) });
                 // Extension filters are non-tag operands.
                 hasNonTagOperand = true;
+            } else {
+                markInvalid('malformed-filter', token.text);
             }
-            // Ignore partial/invalid extension filters (for example `ext:`) until the token is complete.
             continue;
         }
 
         if (isTypeFilterCandidate(lowercaseToken)) {
+            if (!typesNavigationEnabled) {
+                markInvalid('types-disabled', token.text);
+                continue;
+            }
             const typeValue = parseTypeFilterToken(lowercaseToken);
             if (typeValue) {
                 tokens.push({ kind: 'type', value: typeValue });
+            } else {
+                markInvalid('malformed-filter', token.text);
             }
             // Type facets are evaluated separately from the tag/property expression.
             continue;
@@ -756,6 +805,8 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
             if (propertyValue) {
                 tokens.push({ kind: 'property', value: foldPropertySearchToken(propertyValue) });
                 hasTagOperand = true;
+            } else {
+                markInvalid('malformed-filter', token.text);
             }
             continue;
         }
@@ -775,7 +826,9 @@ const classifyRawTokens = (rawTokens: RawSearchToken[]): TokenClassificationResu
         tokens,
         hasTagOperand,
         hasNonTagOperand,
-        hasInvalidToken
+        hasInvalidToken,
+        invalidReason,
+        invalidToken
     };
 };
 
@@ -861,9 +914,8 @@ const parseFilterModeTokens = (
         }
     }
 
-    // Treat connector words as literal tokens when not in tag mode.
-    // This allows users to search for "and"/"or" in file names while
-    // keeping explicit operator behavior exclusive to pure tag queries.
+    // Name-only searches reach filter mode with connector words preserved as literal terms.
+    // Queries that mix a connector with structured criteria are rejected before this helper.
     if (connectorCandidates.length > 0) {
         nameTokens.push(...connectorCandidates);
     }
@@ -884,6 +936,8 @@ const parseFilterModeTokens = (
     const includedTagTokens = tagTokens.slice();
 
     return {
+        invalidReason: null,
+        invalidToken: null,
         mode: 'filter',
         expression: [],
         hasInclusions,
@@ -957,18 +1011,31 @@ const parseFilterModeTokens = (
  * Special handling:
  * - A term opening with a double quote is literal: `".F"` matches names containing ".F" instead of
  *   filtering on a property, and `"-.F"` matches names containing "-.F" (the minus is part of the text)
- * - AND/OR act as operators only in pure tag queries
- * - Mixed queries treat AND/OR as literal name tokens
- * - In pure tag queries, AND has higher precedence than OR
+ * - AND/OR act as operators only in pure tag/property queries
+ * - In name-only queries, unquoted AND/OR are literal name terms
+ * - AND/OR mixed with structured filter criteria are invalid; quote them to use them as name terms
+ * - In pure tag/property queries, AND has higher precedence than OR
  * - Adjacent tokens without connectors implicitly use AND
  * - Multiple positive Type facets use OR within the Type dimension and remain independent of tag/property connectors
- * - Leading or consecutive connectors are treated as literal text tokens in filter mode
+ * - Leading, trailing, or consecutive connectors are invalid only when parsed as tag/property operators
  * - All tokens are normalized with lowercase folding plus Latin diacritic folding
  *
  * @param query - Raw search query from the UI
  * @returns Parsed tokens with include/exclude criteria for filtering
  */
-export function parseFilterSearchTokens(query: string): FilterSearchTokens {
+export interface ParseFilterSearchOptions {
+    typesNavigationEnabled?: boolean;
+    /** Stable local-day reference used to resolve relative tokens such as @today. */
+    referenceDate?: Date;
+}
+
+const createInvalidFilterSearchTokens = (invalidReason: FilterSearchInvalidReason, invalidToken: string | null): FilterSearchTokens => ({
+    ...EMPTY_TOKENS,
+    invalidReason,
+    invalidToken
+});
+
+export function parseFilterSearchTokens(query: string, options: ParseFilterSearchOptions = {}): FilterSearchTokens {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) {
         return EMPTY_TOKENS;
@@ -982,8 +1049,21 @@ export function parseFilterSearchTokens(query: string): FilterSearchTokens {
         return EMPTY_TOKENS;
     }
 
-    const classification = classifyRawTokens(rawTokens);
+    const referenceDate = options.referenceDate ?? new Date();
+    const classification = classifyRawTokens(rawTokens, options.typesNavigationEnabled !== false, referenceDate);
     const { tokens: classifiedTokens } = classification;
+
+    if (classification.invalidReason !== null) {
+        return createInvalidFilterSearchTokens(classification.invalidReason, classification.invalidToken);
+    }
+
+    const firstConnector = classifiedTokens.find(token => token.kind === 'operator');
+    const hasOnlyNameTermsAndConnectors = classifiedTokens.every(
+        token => token.kind === 'name' || token.kind === 'nameNegation' || token.kind === 'operator'
+    );
+    if (firstConnector && classification.hasNonTagOperand && !hasOnlyNameTermsAndConnectors) {
+        return createInvalidFilterSearchTokens('mixed-logical-operator', firstConnector.operator);
+    }
 
     const excludeTagTokens: string[] = [];
     const excludePropertyTokens: PropertySearchToken[] = [];
@@ -1017,9 +1097,8 @@ export function parseFilterSearchTokens(query: string): FilterSearchTokens {
 
     if (canUseTagMode(classification)) {
         // Tag mode is only allowed for pure tag expressions.
-        // Once a query includes any non-tag operand (name/date/task),
-        // we intentionally stay in filter mode so connector words are
-        // evaluated as literal name tokens.
+        // A query with any non-tag/property operand was already rejected above when it
+        // contained an explicit connector, so only a valid expression reaches this branch.
         const expressionTokens = classifiedTokens.filter(token => token.kind !== 'type' && token.kind !== 'typeNegation');
         const tagModeTokens = parseTagModeTokens(expressionTokens, excludeTagTokens, excludePropertyTokens);
         if (tagModeTokens) {
@@ -1031,6 +1110,12 @@ export function parseFilterSearchTokens(query: string): FilterSearchTokens {
                 excludeTypeTokens: [...new Set(excludeTypeTokens)]
             };
         }
+
+        return createInvalidFilterSearchTokens('invalid-logical-expression', firstConnector?.operator ?? null);
+    }
+
+    if (firstConnector && !hasOnlyNameTermsAndConnectors) {
+        return createInvalidFilterSearchTokens('invalid-logical-expression', firstConnector.operator);
     }
 
     return parseFilterModeTokens(classifiedTokens, excludeTagTokens, excludePropertyTokens, hasUntaggedOperand);
@@ -1052,13 +1137,13 @@ const buildSearchNavPropertyNodeId = (token: PropertySearchToken): string => {
  * Builds the navigation highlight state for the active search query.
  * Include operators are only tracked for tag-mode expressions where AND/OR act as connectors.
  */
-export function buildSearchNavFilterState(query: string): SearchNavFilterState {
+export function buildSearchNavFilterState(query: string, options: ParseFilterSearchOptions = {}): SearchNavFilterState {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) {
         return EMPTY_SEARCH_NAV_FILTER_STATE;
     }
 
-    const tokens = parseFilterSearchTokens(trimmedQuery);
+    const tokens = parseFilterSearchTokens(trimmedQuery, options);
     const tagIncludeSet = new Set<string>();
     const tagExcludeSet = new Set<string>();
     const propertyIncludeSet = new Set<string>();
@@ -1086,7 +1171,7 @@ export function buildSearchNavFilterState(query: string): SearchNavFilterState {
 
     if (tokens.mode === 'tag') {
         const rawTokens = tokenizeFilterSearchQuery(trimmedQuery);
-        const classification = classifyRawTokens(rawTokens);
+        const classification = classifyRawTokens(rawTokens, options.typesNavigationEnabled !== false, options.referenceDate ?? new Date());
         let hasPriorOperand = false;
         let pendingOperator: InclusionOperator | null = null;
 
@@ -1567,18 +1652,31 @@ export function updateFilterQueryWithTypeSelection(
 }
 
 /**
- * Replaces a raw query string with a date token (for example `@2026-02-08`).
+ * Replaces the first positive date clause (or appends one) while preserving every
+ * other search and navigation-scope criterion.
  */
 export function updateFilterQueryWithDateToken(query: string, dateToken: string): UpdateFilterQueryWithDateTokenResult {
     const trimmedToken = dateToken.trim();
+    const trimmedQuery = query.trim();
 
-    if (!trimmedToken || !trimmedToken.startsWith('@')) {
-        const trimmedQuery = query.trim();
+    if (!trimmedToken || parseDateFilterRange(trimmedToken) === null) {
         return { query: trimmedQuery, changed: false };
     }
 
-    const trimmedQuery = query.trim();
-    const nextQuery = trimmedToken;
+    const tokens = trimmedQuery ? tokenizeFilterSearchQuery(trimmedQuery) : [];
+    const dateIndex = tokens.findIndex(token => {
+        if (token.literal || token.text.startsWith('-')) {
+            return false;
+        }
+        return parseDateFilterRange(token.text.toLowerCase()) !== null;
+    });
+    if (dateIndex === -1) {
+        tokens.push(createMutationToken(trimmedToken));
+    } else {
+        tokens[dateIndex] = createMutationToken(trimmedToken);
+    }
+
+    const nextQuery = serializeMutationTokens(tokens);
     return {
         query: nextQuery,
         changed: nextQuery !== trimmedQuery
@@ -1590,6 +1688,7 @@ export function updateFilterQueryWithDateToken(query: string, dateToken: string)
  */
 export function filterSearchHasActiveCriteria(tokens: FilterSearchTokens): boolean {
     return (
+        tokens.invalidReason !== null ||
         tokens.hasInclusions ||
         tokens.excludeNameTokens.length > 0 ||
         tokens.excludeTagTokens.length > 0 ||
@@ -1609,6 +1708,9 @@ export function filterSearchHasActiveCriteria(tokens: FilterSearchTokens): boole
  * evaluated independently by the normal search pipeline.
  */
 export function filterSearchMatchesTypeFacet(typeId: unknown, tokens: FilterSearchTokens): boolean {
+    if (tokens.invalidReason !== null) {
+        return false;
+    }
     if (!isTpsNavigatorStructuralTypeId(typeId)) {
         return false;
     }
@@ -1738,6 +1840,9 @@ export function getFileFilterSearchMatch(
     tokens: FilterSearchTokens,
     options?: FilterSearchMatchOptions
 ): FilterSearchFileMatch {
+    if (tokens.invalidReason !== null) {
+        return FILTER_SEARCH_NO_MATCH;
+    }
     const hasUnfinishedTasks = options?.hasUnfinishedTasks ?? false;
     // Callers provide pre-folded aliases/folder/extension values so this matcher can use direct comparisons.
     const foldedAliases = options?.foldedAliases ?? [];
