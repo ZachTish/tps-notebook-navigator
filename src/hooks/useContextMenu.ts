@@ -48,6 +48,7 @@ import {
     routeProviderRowContextMenu
 } from '../utils/contextMenu';
 import { getFolderNote } from '../utils/folderNoteLookup';
+import { getResetAwareFileMenuOptions } from '../utils/contextMenu/resetAwareFileMenuOptions';
 
 // Tracks the currently open navigator context menu so it can be closed before opening another
 let activeNavigatorMenu: Menu | null = null;
@@ -142,7 +143,8 @@ export function useContextMenu(elementRef: React.RefObject<HTMLElement | null>, 
                         options: {
                             source: 'list-pane',
                             orderedFiles: menuConfig.options?.orderedFiles,
-                            onStartInlineRename: menuConfig.options?.onStartInlineRename
+                            onStartInlineRename: menuConfig.options?.onStartInlineRename,
+                            ...getResetAwareFileMenuOptions(menuConfig.options)
                         }
                     };
                     menuElement = fileTarget;
@@ -152,7 +154,11 @@ export function useContextMenu(elementRef: React.RefObject<HTMLElement | null>, 
             if (settings.enableFolderNoteLinks && menuConfig.type === ItemType.FOLDER && targetElement?.closest('.nn-navitem-name')) {
                 const folderNote = getFolderNote(menuConfig.item, settings);
                 if (folderNote) {
-                    menuConfig = { type: ItemType.FILE, item: folderNote };
+                    menuConfig = {
+                        type: ItemType.FILE,
+                        item: folderNote,
+                        options: getResetAwareFileMenuOptions(menuConfig.options)
+                    };
                 }
             }
 
@@ -209,7 +215,8 @@ export function useContextMenu(elementRef: React.RefObject<HTMLElement | null>, 
                         services,
                         settings,
                         state,
-                        dispatchers
+                        dispatchers,
+                        options: menuConfig.options
                     });
                 };
             } else if (menuConfig.type === ItemType.PROPERTY) {
@@ -220,7 +227,8 @@ export function useContextMenu(elementRef: React.RefObject<HTMLElement | null>, 
                         services,
                         settings,
                         state,
-                        dispatchers
+                        dispatchers,
+                        options: menuConfig.options
                     });
                 };
             } else if (menuConfig.type === ItemType.FILE) {

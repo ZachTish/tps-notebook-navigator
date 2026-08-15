@@ -23,6 +23,7 @@ import { DEFAULT_SETTINGS } from '../../../src/settings/defaultSettings';
 import {
     resolvePropertyPillSearchValuePath,
     useFileItemPills,
+    type FileItemPillsState,
     type UseFileItemPillsParams
 } from '../../../src/components/fileItem/useFileItemPills';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../../src/utils/propertyTree';
@@ -97,30 +98,30 @@ function createTagNode(path: string, children: TagTreeNode[] = []): TagTreeNode 
     return node;
 }
 
-function renderPillRows(
-    params: Omit<
-        UseFileItemPillsParams,
-        | 'hiddenTagVisibility'
-        | 'fileItemPillDecorationModel'
-        | 'fileItemPillOrderModel'
-        | 'wordCountDisplayText'
-        | 'characterCount'
-        | 'characterCountDisplayText'
-        | 'showTags'
-        | 'showProperties'
-        | 'textCountDisplay'
-    > & {
-        hiddenTagVisibility?: HiddenTagVisibility;
-        fileItemPillDecorationModel?: FileItemPillDecorationModel;
-        fileItemPillOrderModel?: FileItemPillOrderModel;
-        wordCountDisplayText?: string | null;
-        characterCount?: number | null;
-        characterCountDisplayText?: string | null;
-        showTags?: boolean;
-        showProperties?: boolean;
-        textCountDisplay?: NotebookNavigatorSettings['textCountDisplay'];
-    }
-): string {
+type PillHarnessParams = Omit<
+    UseFileItemPillsParams,
+    | 'hiddenTagVisibility'
+    | 'fileItemPillDecorationModel'
+    | 'fileItemPillOrderModel'
+    | 'wordCountDisplayText'
+    | 'characterCount'
+    | 'characterCountDisplayText'
+    | 'showTags'
+    | 'showProperties'
+    | 'textCountDisplay'
+> & {
+    hiddenTagVisibility?: HiddenTagVisibility;
+    fileItemPillDecorationModel?: FileItemPillDecorationModel;
+    fileItemPillOrderModel?: FileItemPillOrderModel;
+    wordCountDisplayText?: string | null;
+    characterCount?: number | null;
+    characterCountDisplayText?: string | null;
+    showTags?: boolean;
+    showProperties?: boolean;
+    textCountDisplay?: NotebookNavigatorSettings['textCountDisplay'];
+};
+
+function renderPillHarness(params: PillHarnessParams): { markup: string; state: FileItemPillsState } {
     const emptyDecorationModel: FileItemPillDecorationModel = {
         navRainbowMode: 'none',
         tagRainbowColors: {
@@ -142,6 +143,8 @@ function renderPillRows(
         rootPropertyNavigationOrderMap: new Map()
     };
 
+    let captured: FileItemPillsState | null = null;
+
     function Host() {
         const state = useFileItemPills({
             ...params,
@@ -158,6 +161,7 @@ function renderPillRows(
             fileItemPillDecorationModel: params.fileItemPillDecorationModel ?? emptyDecorationModel,
             fileItemPillOrderModel: params.fileItemPillOrderModel ?? emptyOrderModel
         });
+        captured = state;
         return React.createElement(
             'div',
             {
@@ -170,7 +174,54 @@ function renderPillRows(
         );
     }
 
-    return renderToStaticMarkup(React.createElement(Host));
+    const markup = renderToStaticMarkup(React.createElement(Host));
+    if (!captured) {
+        throw new Error('Expected file item pill state');
+    }
+    return { markup, state: captured };
+}
+
+function renderPillRows(params: PillHarnessParams): string {
+    return renderPillHarness(params).markup;
+}
+
+interface ClickablePillProps {
+    className?: string;
+    children?: React.ReactNode;
+    onClick?: (event: React.MouseEvent) => void;
+}
+
+function findClickablePill(state: FileItemPillsState, classNameFragment: string): React.ReactElement<ClickablePillProps> {
+    let match: React.ReactElement<ClickablePillProps> | null = null;
+
+    const visit = (node: React.ReactNode) => {
+        if (match || !React.isValidElement<ClickablePillProps>(node)) {
+            return;
+        }
+        if (node.props.className?.includes(classNameFragment) && node.props.onClick) {
+            match = node;
+            return;
+        }
+        React.Children.forEach(node.props.children, visit);
+    };
+
+    visit(state.pillRows);
+    if (!match) {
+        throw new Error(`Expected clickable pill containing class ${classNameFragment}`);
+    }
+    return match;
+}
+
+function createPillClickEvent(modifiers: Partial<Pick<React.MouseEvent, 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey'>> = {}) {
+    return {
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        ...modifiers
+    } as unknown as React.MouseEvent;
 }
 
 describe('useFileItemPills', () => {
@@ -195,6 +246,90 @@ describe('useFileItemPills', () => {
     it('uses exact-empty search semantics for bare property pills', () => {
         expect(resolvePropertyPillSearchValuePath(true, null, '')).toBe('');
         expect(resolvePropertyPillSearchValuePath(false, 'done', 'done')).toBe('done');
+    });
+
+    it('resets only after successful ordinary tag-pill navigation and preserves modifier facets', () => {
+        const onResetSearchForNavigation = vi.fn();
+        const onModifySearchWithTag = vi.fn();
+        const params: PillHarnessParams = {
+            file: createTestTFile('Notes/Tags.md'),
+            isCompactMode: false,
+            tags: ['work'],
+            properties: null,
+            wordCount: null,
+            settings: {
+                ...DEFAULT_SETTINGS,
+                showTags: true,
+                showFileTags: true,
+                multiSelectModifier: 'shift'
+            },
+            visiblePropertyKeys: new Set<string>(),
+            visibleNavigationPropertyKeys: new Set<string>(),
+            onModifySearchWithTag,
+            onResetSearchForNavigation
+        };
+        const tagPill = findClickablePill(renderPillHarness(params).state, 'file-tag');
+
+        mockNavigateToTag.mockReturnValue('work');
+        tagPill.props.onClick?.(createPillClickEvent());
+        expect(mockNavigateToTag).toHaveBeenCalledWith('work', { preserveNavigationFocus: false });
+        expect(onResetSearchForNavigation).toHaveBeenCalledOnce();
+        expect(mockNavigateToTag.mock.invocationCallOrder[0]).toBeLessThan(onResetSearchForNavigation.mock.invocationCallOrder[0]);
+
+        mockNavigateToTag.mockClear();
+        onResetSearchForNavigation.mockClear();
+        tagPill.props.onClick?.(createPillClickEvent({ shiftKey: true }));
+        expect(onModifySearchWithTag).toHaveBeenCalledWith('work', 'AND');
+        expect(mockNavigateToTag).not.toHaveBeenCalled();
+        expect(onResetSearchForNavigation).not.toHaveBeenCalled();
+
+        onModifySearchWithTag.mockClear();
+        mockNavigateToTag.mockReturnValue(null);
+        tagPill.props.onClick?.(createPillClickEvent());
+        expect(mockNavigateToTag).toHaveBeenCalledOnce();
+        expect(onResetSearchForNavigation).not.toHaveBeenCalled();
+    });
+
+    it('resets only after successful ordinary property-pill navigation and preserves modifier facets', () => {
+        const onResetSearchForNavigation = vi.fn();
+        const onModifySearchWithProperty = vi.fn();
+        const propertyNodeId = buildPropertyValueNodeId('status', 'done');
+        const params: PillHarnessParams = {
+            file: createTestTFile('Notes/Status.md'),
+            isCompactMode: false,
+            tags: [],
+            properties: [{ fieldKey: 'status', value: 'done', valueKind: 'string' }],
+            wordCount: null,
+            settings: {
+                ...DEFAULT_SETTINGS,
+                showFileProperties: true,
+                multiSelectModifier: 'shift'
+            },
+            visiblePropertyKeys: new Set<string>(['status']),
+            visibleNavigationPropertyKeys: new Set<string>(['status']),
+            onModifySearchWithProperty,
+            onResetSearchForNavigation
+        };
+        const propertyPill = findClickablePill(renderPillHarness(params).state, 'file-property');
+
+        mockNavigateToProperty.mockReturnValue(propertyNodeId);
+        propertyPill.props.onClick?.(createPillClickEvent());
+        expect(mockNavigateToProperty).toHaveBeenCalledWith(propertyNodeId, { preserveNavigationFocus: false });
+        expect(onResetSearchForNavigation).toHaveBeenCalledOnce();
+        expect(mockNavigateToProperty.mock.invocationCallOrder[0]).toBeLessThan(onResetSearchForNavigation.mock.invocationCallOrder[0]);
+
+        mockNavigateToProperty.mockClear();
+        onResetSearchForNavigation.mockClear();
+        propertyPill.props.onClick?.(createPillClickEvent({ shiftKey: true }));
+        expect(onModifySearchWithProperty).toHaveBeenCalledWith('status', 'done', 'AND');
+        expect(mockNavigateToProperty).not.toHaveBeenCalled();
+        expect(onResetSearchForNavigation).not.toHaveBeenCalled();
+
+        onModifySearchWithProperty.mockClear();
+        mockNavigateToProperty.mockReturnValue(null);
+        propertyPill.props.onClick?.(createPillClickEvent());
+        expect(mockNavigateToProperty).toHaveBeenCalledOnce();
+        expect(onResetSearchForNavigation).not.toHaveBeenCalled();
     });
 
     it('renders custom-colored tags before uncolored tags when custom-color priority is enabled', () => {

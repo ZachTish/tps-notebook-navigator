@@ -90,6 +90,8 @@ import { showsCharacterCount, showsWordCount } from '../settings/types';
 import type { PropertySearchEvidenceGroup, PropertySearchEvidenceValue } from '../utils/propertyUtils';
 import { InlineRenameInput } from './InlineRenameInput';
 import { ObsidianIcon } from './ObsidianIcon';
+import type { RevealFileOptions } from '../hooks/useNavigatorReveal';
+import { revealFileFromListUserAction } from '../utils/listPaneReveal';
 
 const FEATURE_IMAGE_MAX_ASPECT_RATIO = 16 / 9;
 
@@ -159,6 +161,10 @@ export interface FileItemPaneProps {
     onModifySearchWithTag?: (tag: string, operator: InclusionOperator) => void;
     /** Modifies the active search query with a property token when modifier clicking */
     onModifySearchWithProperty?: (key: string, value: string | null, operator: InclusionOperator) => void;
+    /** Clears list search when an explicit row action changes the navigation scope */
+    onResetSearchForNavigation: () => void;
+    /** Reveals a file in its actual folder and reports whether navigation succeeded */
+    onRevealFileInActualFolder: (file: TFile, options?: RevealFileOptions) => boolean;
     /** Local day reference date used for relative date group calculations */
     localDayReference: Date | null;
     /** Icon size for rendering file icons */
@@ -440,6 +446,8 @@ export const FileItem = React.memo(function FileItem({
         searchHighlightTerms,
         onModifySearchWithTag,
         onModifySearchWithProperty,
+        onResetSearchForNavigation,
+        onRevealFileInActualFolder,
         localDayReference,
         fileIconSize,
         appearanceSettings,
@@ -770,6 +778,7 @@ export const FileItem = React.memo(function FileItem({
             hiddenTagVisibility,
             onModifySearchWithTag,
             onModifySearchWithProperty,
+            onResetSearchForNavigation,
             fileItemPillDecorationModel,
             fileItemPillOrderModel
         });
@@ -1198,9 +1207,12 @@ export const FileItem = React.memo(function FileItem({
 
     // Reveals the file by selecting its folder in navigation pane and showing the file in list pane
     const revealFileInNavigation = () => {
-        runAsyncAction(async () => {
-            await plugin.activateView();
-            await plugin.revealFileInActualFolder(file, { showHiddenFileNotice: true });
+        runAsyncAction(() => {
+            revealFileFromListUserAction({
+                file,
+                revealFileInActualFolder: onRevealFileInActualFolder,
+                onResetSearchForNavigation
+            });
         });
     };
 

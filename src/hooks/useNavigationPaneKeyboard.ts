@@ -119,6 +119,8 @@ interface UseNavigationPaneKeyboardProps {
     pathToIndex: Map<string, number>;
     /** Starts inline rename for the current item when available */
     onStartRename?: () => boolean;
+    /** Clears list search before a keyboard action changes the navigation selection */
+    onResetSearchForNavigation: () => void;
 }
 
 /**
@@ -130,7 +132,8 @@ export function useNavigationPaneKeyboard({
     virtualizer,
     containerRef,
     pathToIndex,
-    onStartRename
+    onStartRename,
+    onResetSearchForNavigation
 }: UseNavigationPaneKeyboardProps) {
     const { app, commandQueue, plugin } = useServices();
     const fileSystemOps = useFileSystemOps();
@@ -243,6 +246,7 @@ export function useNavigationPaneKeyboard({
             if (item.type === NavigationPaneItemType.FOLDER) {
                 if (!(item.data instanceof TFolder)) return;
                 const folder = item.data;
+                onResetSearchForNavigation();
                 selectionDispatch({ type: 'SET_SELECTED_FOLDER', folder });
 
                 // Auto-expand if enabled and folder has children
@@ -263,6 +267,7 @@ export function useNavigationPaneKeyboard({
                 return;
             } else if (item.type === NavigationPaneItemType.TAG || item.type === NavigationPaneItemType.UNTAGGED) {
                 const tagNode = item.data;
+                onResetSearchForNavigation();
                 selectionDispatch({ type: 'SET_SELECTED_TAG', tag: tagNode.path });
 
                 // Auto-expand if enabled and tag has children
@@ -282,6 +287,7 @@ export function useNavigationPaneKeyboard({
                 }
             } else if (item.type === NavigationPaneItemType.PROPERTY_KEY || item.type === NavigationPaneItemType.PROPERTY_VALUE) {
                 const propertyNode = item.data;
+                onResetSearchForNavigation();
                 selectionDispatch({
                     type: 'SET_SELECTED_PROPERTY',
                     nodeId: propertyNode.id
@@ -301,6 +307,7 @@ export function useNavigationPaneKeyboard({
                     }
                 }
             } else if (isVirtualPropertyCollection(item)) {
+                onResetSearchForNavigation();
                 selectionDispatch({
                     type: 'SET_SELECTED_PROPERTY',
                     nodeId: PROPERTIES_ROOT_VIRTUAL_FOLDER_ID
@@ -308,12 +315,14 @@ export function useNavigationPaneKeyboard({
             } else if (isVirtualTagCollection(item)) {
                 // Select virtual tag collection as a tag
                 const tagCollectionId = item.tagCollectionId;
+                onResetSearchForNavigation();
                 selectionDispatch({ type: 'SET_SELECTED_TAG', tag: tagCollectionId });
             } else if (isVirtualTypeCollection(item)) {
+                onResetSearchForNavigation();
                 selectionDispatch({ type: 'SET_SELECTED_TYPE', typeId: item.typeCollectionId });
             }
         },
-        [selectionDispatch, settings, expansionState, expansionDispatch, showHiddenItems]
+        [selectionDispatch, settings, expansionState, expansionDispatch, showHiddenItems, onResetSearchForNavigation]
     );
 
     /**

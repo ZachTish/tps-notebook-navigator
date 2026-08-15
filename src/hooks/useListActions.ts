@@ -125,6 +125,8 @@ import {
 } from '../services/types/fileResourceCreation';
 import { resolveSearchResourceCreation } from '../services/types/searchResourceCreation';
 import { getInternalPlugin } from '../utils/typeGuards';
+import type { RevealFileOptions } from './useNavigatorReveal';
+import { revealFileFromListUserAction } from '../utils/listPaneReveal';
 
 type SelectionSortTarget =
     | { type: typeof ItemType.FOLDER; key: string }
@@ -155,6 +157,8 @@ interface UseListActionsOptions {
     mixedStructuralSearchActive?: boolean;
     creationSearchQuery?: string;
     creationSearchSupported?: boolean;
+    onRevealFileInActualFolder?: (file: TFile, options?: RevealFileOptions) => boolean;
+    onResetSearchForNavigation?: () => void;
 }
 
 const BIDI_ISOLATE_START = '\u2068'; // First Strong Isolate
@@ -525,7 +529,9 @@ export function useListActions({
     trackRevealFileAvailability = false,
     mixedStructuralSearchActive = false,
     creationSearchQuery = '',
-    creationSearchSupported = true
+    creationSearchSupported = true,
+    onRevealFileInActualFolder,
+    onResetSearchForNavigation
 }: UseListActionsOptions = {}) {
     const { app, plugin, tagTreeService, propertyTreeService } = useServices();
     const settings = useSettingsState();
@@ -761,8 +767,16 @@ export function useListActions({
             return;
         }
 
+        if (onRevealFileInActualFolder && onResetSearchForNavigation) {
+            return revealFileFromListUserAction({
+                file: activeFile,
+                revealFileInActualFolder: onRevealFileInActualFolder,
+                onResetSearchForNavigation
+            });
+        }
+
         await plugin.revealFileInActualFolder(activeFile, { showHiddenFileNotice: true });
-    }, [getRevealableActiveFile, plugin]);
+    }, [getRevealableActiveFile, onResetSearchForNavigation, onRevealFileInActualFolder, plugin]);
 
     const getSelectionSortOverride = useCallback((): ListSortOverrideValue | undefined => {
         return getListSortOverrideForSelection(

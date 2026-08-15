@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
     uiDispatch: vi.fn(),
     setSearchActive: vi.fn(),
     showNotice: vi.fn(),
+    searchActive: false,
     searchProvider: ((): 'internal' | 'omnisearch' => 'internal')(),
     services: {
         app: null as App | null,
@@ -76,7 +77,7 @@ vi.mock('../../src/context/UIStateContext', () => ({
 }));
 
 vi.mock('../../src/context/UXPreferencesContext', () => ({
-    useUXPreferences: () => ({ searchActive: false }),
+    useUXPreferences: () => ({ searchActive: mocks.searchActive }),
     useUXPreferenceActions: () => ({ setSearchActive: mocks.setSearchActive })
 }));
 
@@ -121,6 +122,7 @@ describe('useListPaneSearch activation', () => {
         mocks.uiDispatch.mockClear();
         mocks.setSearchActive.mockClear();
         mocks.showNotice.mockClear();
+        mocks.searchActive = false;
         mocks.services.plugin.setSearchProvider.mockClear();
         mocks.services.propertyTreeService.findNode.mockReset();
         mocks.services.tagTreeService.findTagNode.mockReset();
@@ -167,6 +169,15 @@ describe('useListPaneSearch activation', () => {
         result.modifySearchWithTag('work', 'AND', { focusSearch: false });
 
         expect(mocks.setSearchActive).toHaveBeenCalledWith(true);
+        expect(mocks.uiDispatch).not.toHaveBeenCalled();
+    });
+
+    it('unconditionally resets navigation search state without dispatching pane focus', () => {
+        const { result } = renderSearchHarness();
+
+        result.resetSearchForNavigation();
+
+        expect(mocks.setSearchActive).toHaveBeenCalledWith(false);
         expect(mocks.uiDispatch).not.toHaveBeenCalled();
     });
 

@@ -29,7 +29,7 @@ import type { ListPaneItem } from '../../types/virtualization';
 import type { NotebookNavigatorSettings, SortOption } from '../../settings/types';
 import type { InclusionOperator } from '../../utils/filterSearch';
 import type { FolderDecorationModel } from '../../utils/folderDecoration';
-import type { NavigateToFolderOptions } from '../../hooks/useNavigatorReveal';
+import type { NavigateToFolderOptions, RevealFileOptions } from '../../hooks/useNavigatorReveal';
 import { FileItem, type FileItemInlineRenameHandlers, type FileItemPaneProps, type FileItemStorageHelpers } from '../FileItem';
 import { ServiceIcon } from '../ServiceIcon';
 import type { ListPaneAppearanceSettings } from '../../settings/listPaneAppearance';
@@ -63,7 +63,7 @@ export interface PointerClientPosition {
     clientY: number;
 }
 
-interface FolderGroupHeaderTarget {
+export interface FolderGroupHeaderTarget {
     folder: TFolder;
     folderNote: TFile | null;
 }
@@ -104,6 +104,23 @@ export function resolveVisibleStickyHeader(
     hasNoFiles: boolean
 ): HeaderRenderModel | null {
     return isEmptySelection || hasNoFiles ? null : stickyHeader;
+}
+
+export function activateFolderGroupHeaderNavigation(params: {
+    target: FolderGroupHeaderTarget;
+    suppressAutoSelect: boolean;
+    onNavigateToFolder: (folderPath: string, options?: NavigateToFolderOptions) => boolean;
+    onResetSearchForNavigation: () => void;
+}): boolean {
+    const didNavigate = params.onNavigateToFolder(params.target.folder.path, {
+        source: 'manual',
+        suppressAutoSelect: params.suppressAutoSelect
+    });
+    if (!didNavigate) {
+        return false;
+    }
+    params.onResetSearchForNavigation();
+    return true;
 }
 
 interface HeaderRenderModels {
@@ -173,7 +190,9 @@ interface ListPaneVirtualContentProps {
     onFileRenameCommit: (file: TFile, value: string) => Promise<boolean>;
     onFileRenameCancel: () => void;
     onFileRenameRestoreFocus: () => void;
-    onNavigateToFolder: (folderPath: string, options?: NavigateToFolderOptions) => void;
+    onNavigateToFolder: (folderPath: string, options?: NavigateToFolderOptions) => boolean;
+    onResetSearchForNavigation: () => void;
+    onRevealFileInActualFolder: (file: TFile, options?: RevealFileOptions) => boolean;
     folderDecorationModel: FolderDecorationModel;
     fileItemPillDecorationModel: FileItemPillDecorationModel;
     fileItemPillOrderModel: FileItemPillOrderModel;
@@ -741,6 +760,8 @@ export function ListPaneVirtualContent({
     onFileRenameCancel,
     onFileRenameRestoreFocus,
     onNavigateToFolder,
+    onResetSearchForNavigation,
+    onRevealFileInActualFolder,
     folderDecorationModel,
     fileItemPillDecorationModel,
     fileItemPillOrderModel,
@@ -956,11 +977,12 @@ export function ListPaneVirtualContent({
             event.stopPropagation();
             const folderNote = target.folderNote;
 
-            const navigateOptions: NavigateToFolderOptions = {
-                source: 'manual',
-                suppressAutoSelect: Boolean(folderNote)
-            };
-            onNavigateToFolder(target.folder.path, navigateOptions);
+            activateFolderGroupHeaderNavigation({
+                target,
+                suppressAutoSelect: Boolean(folderNote),
+                onNavigateToFolder,
+                onResetSearchForNavigation
+            });
 
             if (!folderNote) {
                 return;
@@ -991,6 +1013,7 @@ export function ListPaneVirtualContent({
             app,
             commandQueue,
             onNavigateToFolder,
+            onResetSearchForNavigation,
             plugin,
             selectedFolderPath,
             selectionType,
@@ -1009,7 +1032,12 @@ export function ListPaneVirtualContent({
 
             event.preventDefault();
             event.stopPropagation();
-            onNavigateToFolder(target.folder.path, { source: 'manual', suppressAutoSelect: true });
+            activateFolderGroupHeaderNavigation({
+                target,
+                suppressAutoSelect: true,
+                onNavigateToFolder,
+                onResetSearchForNavigation
+            });
 
             runAsyncAction(() =>
                 openFolderNoteFile({
@@ -1021,7 +1049,7 @@ export function ListPaneVirtualContent({
                 })
             );
         },
-        [app, commandQueue, onNavigateToFolder]
+        [app, commandQueue, onNavigateToFolder, onResetSearchForNavigation]
     );
 
     const handleGroupHeaderContextMenu = useCallback(
@@ -1129,6 +1157,8 @@ export function ListPaneVirtualContent({
             searchHighlightTerms,
             onModifySearchWithTag,
             onModifySearchWithProperty,
+            onResetSearchForNavigation,
+            onRevealFileInActualFolder,
             localDayReference,
             fileIconSize,
             appearanceSettings,
@@ -1151,6 +1181,8 @@ export function ListPaneVirtualContent({
             searchHighlightTerms,
             onModifySearchWithTag,
             onModifySearchWithProperty,
+            onResetSearchForNavigation,
+            onRevealFileInActualFolder,
             localDayReference,
             fileIconSize,
             appearanceSettings,

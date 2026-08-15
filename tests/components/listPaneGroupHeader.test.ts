@@ -18,10 +18,13 @@
 
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { TFile, TFolder } from 'obsidian';
 import { describe, expect, it, vi } from 'vitest';
 import {
+    activateFolderGroupHeaderNavigation,
     ListPaneGroupHeader,
     resolveVisibleStickyHeader,
+    type FolderGroupHeaderTarget,
     type HeaderRenderModel
 } from '../../src/components/listPane/ListPaneVirtualContent';
 
@@ -99,5 +102,51 @@ describe('resolveVisibleStickyHeader', () => {
         const header = createHeader(3);
 
         expect(resolveVisibleStickyHeader(header, false, false)).toBe(header);
+    });
+});
+
+describe('folder group header navigation', () => {
+    it('resets search after successful folder scope changes for plain and folder-note headers', () => {
+        const folder = new TFolder('Projects');
+        const onNavigateToFolder = vi.fn(() => true);
+        const onResetSearchForNavigation = vi.fn();
+        const target: FolderGroupHeaderTarget = { folder, folderNote: null };
+
+        activateFolderGroupHeaderNavigation({
+            target,
+            suppressAutoSelect: false,
+            onNavigateToFolder,
+            onResetSearchForNavigation
+        });
+
+        expect(onResetSearchForNavigation).toHaveBeenCalledOnce();
+        expect(onNavigateToFolder).toHaveBeenCalledWith(folder.path, { source: 'manual', suppressAutoSelect: false });
+        expect(onNavigateToFolder.mock.invocationCallOrder[0]).toBeLessThan(onResetSearchForNavigation.mock.invocationCallOrder[0]);
+
+        target.folderNote = new TFile('Projects/Projects.md');
+        activateFolderGroupHeaderNavigation({
+            target,
+            suppressAutoSelect: true,
+            onNavigateToFolder,
+            onResetSearchForNavigation
+        });
+        expect(onResetSearchForNavigation).toHaveBeenCalledTimes(2);
+        expect(onNavigateToFolder).toHaveBeenLastCalledWith(folder.path, { source: 'manual', suppressAutoSelect: true });
+    });
+
+    it('preserves search when folder group navigation fails', () => {
+        const onResetSearchForNavigation = vi.fn();
+        const onNavigateToFolder = vi.fn(() => false);
+
+        expect(
+            activateFolderGroupHeaderNavigation({
+                target: { folder: new TFolder('Missing'), folderNote: null },
+                suppressAutoSelect: false,
+                onNavigateToFolder,
+                onResetSearchForNavigation
+            })
+        ).toBe(false);
+        expect(onNavigateToFolder).toHaveBeenCalledOnce();
+        expect(onResetSearchForNavigation).not.toHaveBeenCalled();
     });
 });

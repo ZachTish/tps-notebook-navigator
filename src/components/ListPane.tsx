@@ -94,7 +94,7 @@ import { usesMobileChrome } from '../utils/paneLayout';
 import { createHiddenTagVisibility } from '../utils/tagPrefixMatcher';
 import { getPropertyKeySet } from '../utils/vaultProfiles';
 import { DateUtils } from '../utils/dateUtils';
-import type { NavigateToFolderOptions, RevealPropertyOptions, RevealTagOptions } from '../hooks/useNavigatorReveal';
+import type { NavigateToFolderOptions, RevealFileOptions, RevealPropertyOptions, RevealTagOptions } from '../hooks/useNavigatorReveal';
 import type { FileItemPillDecorationModel } from '../utils/fileItemPillDecoration';
 import type { FileItemPillOrderModel } from '../utils/fileItemPillOrder';
 import { runAsyncAction } from '../utils/async';
@@ -176,6 +176,7 @@ export interface ListPaneHandle {
     focusRow: (target: NavigatorRowFocusTarget) => boolean;
     getListSnapshot: () => NavigatorListSnapshot;
     setListSearch: (update: NavigatorListSearchUpdate | null) => Promise<boolean>;
+    resetSearchForNavigation: () => void;
     setListPresentation: (update: NavigatorListPresentationUpdate) => Promise<boolean>;
     modifySearchWithTag: (tag: string, operator: InclusionOperator, options?: SearchQueryUpdateOptions) => void;
     modifySearchWithProperty: (key: string, value: string | null, operator: InclusionOperator, options?: SearchQueryUpdateOptions) => void;
@@ -210,6 +211,7 @@ interface ListPaneProps {
     fileItemPillDecorationModel: FileItemPillDecorationModel;
     fileItemPillOrderModel: FileItemPillOrderModel;
     onNavigateToFolder: (folderPath: string, options?: NavigateToFolderOptions) => boolean;
+    onRevealFileInActualFolder: (file: TFile, options?: RevealFileOptions) => boolean;
     onRevealTag: (tagPath: string, options?: RevealTagOptions) => boolean;
     onRevealProperty: (propertyNodeId: string, options?: RevealPropertyOptions) => boolean;
 }
@@ -296,6 +298,8 @@ interface ListPaneTitleChromeProps {
     creationSearchSupported?: boolean;
     actionsDisabled?: boolean;
     shouldShowDesktopTitleArea: boolean;
+    onResetSearchForNavigation: () => void;
+    onRevealFileInActualFolder: (file: TFile, options?: RevealFileOptions) => boolean;
     children: React.ReactNode;
 }
 
@@ -313,6 +317,8 @@ function ListPaneTitleChrome({
     creationSearchSupported,
     actionsDisabled,
     shouldShowDesktopTitleArea,
+    onResetSearchForNavigation,
+    onRevealFileInActualFolder,
     children
 }: ListPaneTitleChromeProps) {
     const { desktopTitle, breadcrumbSegments, iconName, showIcon } = useListPaneTitle();
@@ -335,6 +341,8 @@ function ListPaneTitleChrome({
                 breadcrumbSegments={breadcrumbSegments}
                 iconName={iconName}
                 showIcon={showIcon}
+                onResetSearchForNavigation={onResetSearchForNavigation}
+                onRevealFileInActualFolder={onRevealFileInActualFolder}
             />
             {children}
             {shouldShowDesktopTitleArea ? <ListPaneTitleArea desktopTitle={desktopTitle} /> : null}
@@ -347,6 +355,7 @@ export const ListPane = React.memo(
         const { app, isMobile, plugin, fileSystemOps, tagTreeService, propertyTreeService } = useServices();
         const {
             onNavigateToFolder,
+            onRevealFileInActualFolder,
             onRevealTag,
             onRevealProperty,
             folderDecorationModel,
@@ -457,6 +466,7 @@ export const ListPane = React.memo(
             isSavingSearchShortcut,
             suppressSearchTopScrollRef,
             setSearchQuery,
+            resetSearchForNavigation: resetSearchStateForNavigation,
             handleSearchToggle,
             closeSearch,
             focusSearchComplete,
@@ -477,6 +487,11 @@ export const ListPane = React.memo(
             onRevealProperty,
             ensureSelectionForCurrentFilterRef
         });
+
+        const resetSearchForNavigation = React.useCallback(() => {
+            setForceSearchDescendants(false);
+            resetSearchStateForNavigation();
+        }, [resetSearchStateForNavigation]);
 
         const { selectionType, selectedFolder, selectedTag, selectedProperty, selectedType, selectedFile } = selectionState;
         const handleTypeProviderRowActivationRequested = React.useCallback(() => {
@@ -1429,7 +1444,9 @@ export const ListPane = React.memo(
             item: selectedFolder ?? null,
             options: {
                 orderedFiles,
-                onStartInlineRename: handleStartFileInlineRenameForFile
+                onStartInlineRename: handleStartFileInlineRenameForFile,
+                onRevealFileInActualFolder,
+                onResetSearchForNavigation: resetSearchForNavigation
             }
         });
 
@@ -1957,6 +1974,8 @@ export const ListPane = React.memo(
                     creationSearchQuery={isSearchActive ? searchQuery : ''}
                     creationSearchSupported={searchProvider === 'internal'}
                     useFloatingLayout={shouldUseFloatingToolbars}
+                    onRevealFileInActualFolder={onRevealFileInActualFolder}
+                    onResetSearchForNavigation={resetSearchForNavigation}
                 />
             );
         }, [
@@ -1970,6 +1989,8 @@ export const ListPane = React.memo(
             searchQuery,
             searchProvider,
             shouldUseFloatingToolbars,
+            onRevealFileInActualFolder,
+            resetSearchForNavigation,
             toggleGroupExpansion
         ]);
 
@@ -2038,6 +2059,7 @@ export const ListPane = React.memo(
                 focusRow: focusProviderRow,
                 getListSnapshot,
                 setListSearch,
+                resetSearchForNavigation,
                 setListPresentation,
                 // Toggle or modify search query to include/exclude a tag with AND/OR operator
                 modifySearchWithTag: modifySearchWithTagWithDefaultScope,
@@ -2067,6 +2089,7 @@ export const ListPane = React.memo(
                 focusProviderRow,
                 getListSnapshot,
                 setListSearch,
+                resetSearchForNavigation,
                 setListPresentation,
                 modifySearchWithTagWithDefaultScope,
                 modifySearchWithPropertyWithDefaultScope,
@@ -2138,6 +2161,8 @@ export const ListPane = React.memo(
                         creationSearchSupported={searchProvider === 'internal'}
                         actionsDisabled={isManualSortEditActive}
                         shouldShowDesktopTitleArea={shouldShowDesktopTitleArea}
+                        onResetSearchForNavigation={resetSearchForNavigation}
+                        onRevealFileInActualFolder={onRevealFileInActualFolder}
                     >
                         {/* Android - toolbar at top */}
                         {useMobileChrome && isAndroid && !manualSortEditState ? listToolbar : null}
@@ -2206,6 +2231,8 @@ export const ListPane = React.memo(
                             onScheduleKeyboardOpen={scheduleKeyboardSelectionOpen}
                             onScheduleKeyboardOpenForFile={scheduleKeyboardSelectionOpenForFile}
                             onCommitKeyboardOpen={commitPendingKeyboardSelectionOpen}
+                            onResetSearchForNavigation={resetSearchForNavigation}
+                            onRevealFileInActualFolder={onRevealFileInActualFolder}
                             onDone={handleManualSortDone}
                             onReorder={handleManualSortReorder}
                         />
@@ -2262,6 +2289,8 @@ export const ListPane = React.memo(
                             onFileRenameCancel={handleFileRenameCancel}
                             onFileRenameRestoreFocus={restoreListPaneFocus}
                             onNavigateToFolder={onNavigateToFolder}
+                            onResetSearchForNavigation={resetSearchForNavigation}
+                            onRevealFileInActualFolder={onRevealFileInActualFolder}
                             onProviderRowActivationRequested={
                                 selectionType === ItemType.TYPE ? handleTypeProviderRowActivationRequested : undefined
                             }

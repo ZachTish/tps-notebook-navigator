@@ -17,8 +17,8 @@
  */
 
 import React, { useEffect, useMemo } from 'react';
-import { Platform } from 'obsidian';
-import { useSelectionState, useSelectionDispatch } from '../context/SelectionContext';
+import { Platform, type TFile, type TFolder } from 'obsidian';
+import { useSelectionState, useSelectionDispatch, type SelectionDispatch } from '../context/SelectionContext';
 import { useCommandQueue, useServices } from '../context/ServicesContext';
 import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferences } from '../context/UXPreferencesContext';
@@ -28,6 +28,7 @@ import { getIconService, useIconServiceVersion } from '../services/icons';
 import { ServiceIcon } from './ServiceIcon';
 import { useListActions } from '../hooks/useListActions';
 import type { BreadcrumbSegment } from '../hooks/useListPaneTitle';
+import type { RevealFileOptions } from '../hooks/useNavigatorReveal';
 import { useSelectedFolderFileVersion } from '../hooks/useSelectedFolderFileVersion';
 import { ItemType } from '../types';
 import { getFolderNote, openFolderNoteFile } from '../utils/folderNotes';
@@ -61,6 +62,48 @@ interface ListPaneHeaderProps {
     breadcrumbSegments: BreadcrumbSegment[];
     iconName: string;
     showIcon: boolean;
+    onResetSearchForNavigation: () => void;
+    onRevealFileInActualFolder: (file: TFile, options?: RevealFileOptions) => boolean;
+}
+
+interface ListPaneBreadcrumbNavigationEnvironment {
+    getFolderByPath: (path: string) => TFolder | null;
+    selectionDispatch: SelectionDispatch;
+    onResetSearchForNavigation: () => void;
+}
+
+export function activateListPaneBreadcrumb(segment: BreadcrumbSegment, environment: ListPaneBreadcrumbNavigationEnvironment): boolean {
+    if (segment.isLast || segment.targetType === 'none' || !segment.targetPath) {
+        return false;
+    }
+
+    if (segment.targetType === 'folder') {
+        const targetFolder = environment.getFolderByPath(segment.targetPath);
+        if (!targetFolder) {
+            return false;
+        }
+        environment.onResetSearchForNavigation();
+        environment.selectionDispatch({ type: 'SET_SELECTED_FOLDER', folder: targetFolder });
+        return true;
+    }
+
+    if (segment.targetType === 'tag') {
+        const tag = normalizeTagPath(segment.targetPath);
+        if (!tag) {
+            return false;
+        }
+        environment.onResetSearchForNavigation();
+        environment.selectionDispatch({ type: 'SET_SELECTED_TAG', tag });
+        return true;
+    }
+
+    if (segment.targetType === 'property') {
+        environment.onResetSearchForNavigation();
+        environment.selectionDispatch({ type: 'SET_SELECTED_PROPERTY', nodeId: segment.targetPath });
+        return true;
+    }
+
+    return false;
 }
 
 export const ListPaneHeader = React.memo(function ListPaneHeader({
@@ -79,7 +122,9 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     desktopTitle,
     breadcrumbSegments,
     iconName,
-    showIcon
+    showIcon,
+    onResetSearchForNavigation,
+    onRevealFileInActualFolder
 }: ListPaneHeaderProps) {
     const iconRef = React.useRef<HTMLSpanElement | null>(null);
     const { app, plugin } = useServices();
@@ -124,7 +169,9 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         trackRevealFileAvailability: !useMobileChrome && showRevealButton,
         mixedStructuralSearchActive,
         creationSearchQuery,
-        creationSearchSupported
+        creationSearchSupported,
+        onRevealFileInActualFolder,
+        onResetSearchForNavigation
     });
     const showBackButton = listToolbarVisibility.back && uiState.singlePane;
     const isTypeSelection = selectionState.selectionType === ItemType.TYPE && Boolean(selectionState.selectedType);
@@ -295,17 +342,11 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
             } else {
                 const handleClick = (e: React.MouseEvent) => {
                     e.stopPropagation();
-                    if (segment.targetType === 'folder') {
-                        const targetPath = segment.targetPath;
-                        const targetFolder = targetPath ? app.vault.getFolderByPath(targetPath) : null;
-                        if (targetFolder) {
-                            selectionDispatch({ type: 'SET_SELECTED_FOLDER', folder: targetFolder });
-                        }
-                    } else if (segment.targetType === 'tag' && segment.targetPath) {
-                        selectionDispatch({ type: 'SET_SELECTED_TAG', tag: normalizeTagPath(segment.targetPath) });
-                    } else if (segment.targetType === 'property' && segment.targetPath) {
-                        selectionDispatch({ type: 'SET_SELECTED_PROPERTY', nodeId: segment.targetPath });
-                    }
+                    activateListPaneBreadcrumb(segment, {
+                        getFolderByPath: path => app.vault.getFolderByPath(path),
+                        selectionDispatch,
+                        onResetSearchForNavigation
+                    });
                 };
 
                 parts.push(
@@ -330,6 +371,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         breadcrumbSegments,
         desktopTitle,
         selectionDispatch,
+        onResetSearchForNavigation,
         shouldRenderBreadcrumbSegments,
         selectedFolderNote,
         handleSelectedFolderNoteClick,

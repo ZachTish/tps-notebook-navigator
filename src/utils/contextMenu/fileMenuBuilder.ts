@@ -51,6 +51,7 @@ import { addManualSortGroupHeaderMenuItems } from './manualSortGroupHeaderMenuIt
 import { addMergeNotesMenuItem } from './mergeNotesMenuItems';
 import { resolveEffectiveListGroupingForSort, resolveListGrouping } from '../listGrouping';
 import { resolveFileIconId } from '../fileIconUtils';
+import { revealFileFromFileMenu } from './fileMenuReveal';
 
 type FileStyleTarget = { type: 'folder'; folderPath: string } | { type: 'files'; files: TFile[] };
 
@@ -472,8 +473,7 @@ export function buildFileMenu(params: FileMenuBuilderParams): void {
         if (canRevealInFolder) {
             menu.addItem((item: MenuItem) => {
                 setAsyncOnClick(item.setTitle(strings.contextMenu.file.revealInFolder).setIcon('lucide-folder-search'), async () => {
-                    await services.plugin.activateView();
-                    await services.plugin.revealFileInActualFolder(file, { showHiddenFileNotice: true });
+                    await revealFileFromFileMenu({ file, plugin: services.plugin, options });
                 });
             });
         }

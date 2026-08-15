@@ -31,6 +31,8 @@ The initial TPS Global Context Menu provider can optionally show individual task
 
 The visible vault root always traverses the complete visible vault, even when the ordinary descendant preference is off, while continuing to respect the active profile's file-visibility, hidden-content, and excluded-descendant rules. With experimental Types collections enabled, it becomes a mixed all-resources scope and adds canonical Checkboxes, Bullets, Headings, Code blocks, Callouts, Blockquotes, Tables, and Web links beneath the visible files. With Types off—the default in 5.16.0—it remains note/file-focused and does not build those source indexes. Canonical Checkboxes replace the optional attached GCM task feed when available so tasks are not duplicated; the attached feed remains a compatibility fallback. The descendant toolbar control remains visibly active and non-toggleable at the root; ordinary folders, tags, and property value rows keep the user's descendant preference. A property key row is always the explicit no-value bucket: it selects and counts only notes where the field exists without a value. File-backed resources and provider rows share the same selected appearance, so **Compact** condenses attached task/provider rows as well as native file rows.
 
+An ordinary navigation-scope action fully dismisses Filter Search, clears its immediate and debounced query, and resets any temporary whole-vault search scope before the new folder, tag, property, or Type becomes the list base. This applies to navigation-tree clicks, keyboard selection, folder/tag/property pickers, mobile ancestor breadcrumbs, clickable folder group headers, tag/property pills, navigation shortcuts, reveal-in-folder actions, and note shortcuts that reveal a different scope. Context-menu creation also resets Search when it first selects a different target scope. Existing Shift and configured modifier gestures remain additive for tag, property, and structural Type facets; they preserve the current search and do not change the navigation base. Expansion chevrons, opening context menus, alternate-tab opens, property links, failed navigation, and saved-search shortcuts do not trigger the reset.
+
 ### Types navigation
 
 The first-class **Types** implementation is retained but its product development is paused. It is off by default and can be explicitly enabled through **TPS integration → Types collections (paused) → Enable Types collections (experimental)**. No Types code, public API, saved ordering, appearance, or creation preference has been removed. When enabled, it has the same flat built-in catalog of file formats and Markdown structures described below. Frontmatter values such as `kind` belong in **Properties** or a relational entity index; they are not file types and do not appear beneath **Types**.
@@ -198,6 +200,12 @@ Fork-specific integrations live in separate modules and host-global identity is 
 - This maintenance-only change preserves the exact 4.0.0 runtime bytes while reducing the fork diff from 303 files to 128 files against its current upstream base, including a reduction from 239 to 62 changed files under `src`.
 
 ## Release history
+
+### 5.16.1 — Predictable navigator search reset
+
+- Selecting or revealing a folder, tag, property, or Type from the navigation tree, keyboard, picker, list breadcrumb, folder group header, pill, shortcut, toolbar, or row menu now fully dismisses the current search and clears its temporary whole-vault scope before rendering the new navigation base.
+- Shift and configured modifier clicks retain their existing additive tag, property, and structural Type behavior without clearing the search. Expansion-only clicks, alternate-tab opens, and saved-search shortcuts remain independent.
+- This backward-compatible patch changes no settings or note data. Minimum supported Obsidian remains 1.11.0. Validation details and final artifact hashes are recorded in `release-notes/5.16.1.md`.
 
 ### 5.16.0 — Note-focused pause and reliable filtering
 

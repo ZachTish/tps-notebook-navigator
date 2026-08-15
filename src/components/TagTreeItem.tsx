@@ -106,6 +106,7 @@ interface TagTreeItemProps {
     inclusionOperator?: InclusionOperator;
     /** Enables drag and drop for tag reordering */
     isDraggable: boolean;
+    onResetSearchForNavigation: () => void;
     inlineRename?: InlineRenameControl;
 }
 
@@ -135,6 +136,7 @@ export const TagTreeItem = React.memo(
             searchMatch,
             inclusionOperator,
             isDraggable,
+            onResetSearchForNavigation,
             inlineRename
         },
         ref
@@ -277,7 +279,8 @@ export const TagTreeItem = React.memo(
         // Add context menu
         useContextMenu(itemRef, {
             type: ItemType.TAG,
-            item: tagNode.path
+            item: tagNode.path,
+            options: { onResetSearchForNavigation }
         });
 
         const tagStyle: CSSPropertiesWithVars = {

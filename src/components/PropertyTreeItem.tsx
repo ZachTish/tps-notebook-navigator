@@ -51,6 +51,7 @@ interface PropertyTreeItemProps {
     searchMatch?: 'include' | 'exclude';
     inclusionOperator?: InclusionOperator;
     isDraggable: boolean;
+    onResetSearchForNavigation: () => void;
     inlineRename?: InlineRenameControl;
 }
 
@@ -74,6 +75,7 @@ export const PropertyTreeItem = React.memo(
             searchMatch,
             inclusionOperator,
             isDraggable,
+            onResetSearchForNavigation,
             inlineRename
         },
         ref
@@ -214,7 +216,8 @@ export const PropertyTreeItem = React.memo(
 
         useContextMenu(itemRef, {
             type: ItemType.PROPERTY,
-            item: propertyNode.id
+            item: propertyNode.id,
+            options: { onResetSearchForNavigation }
         });
 
         const propertyStyle: CSSPropertiesWithVars = {

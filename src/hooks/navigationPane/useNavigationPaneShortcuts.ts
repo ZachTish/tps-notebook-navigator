@@ -44,7 +44,7 @@ import { createHiddenTagVisibility } from '../../utils/tagPrefixMatcher';
 import { getDBInstanceOrNull } from '../../storage/fileOperations';
 import type { NoteCountInfo } from '../../types/noteCounts';
 import type { SearchShortcut } from '../../types/shortcuts';
-import type { NavigateToFolderOptions, RevealPropertyOptions, RevealTagOptions } from '../useNavigatorReveal';
+import type { NavigateToFolderOptions, RevealFileOptions, RevealPropertyOptions, RevealTagOptions } from '../useNavigatorReveal';
 import { useNavigationPaneShortcutActions } from './useNavigationPaneShortcutActions';
 import { useNavigationPaneShortcutDisplay } from './useNavigationPaneShortcutDisplay';
 import { useNavigationPaneShortcutDnD } from './useNavigationPaneShortcutDnD';
@@ -66,6 +66,8 @@ interface UseNavigationPaneShortcutsProps {
     onRevealProperty: (propertyNodeId: string, options?: RevealPropertyOptions) => boolean;
     onRevealFile: (file: TFile) => void;
     onRevealShortcutFile?: (file: TFile) => void;
+    onRevealFileInActualFolder: (file: TFile, options?: RevealFileOptions) => boolean;
+    onResetSearchForNavigation: () => void;
     getFolderCounts: () => Map<string, NoteCountInfo>;
     getTagCounts: () => Map<string, NoteCountInfo>;
     getPropertyCounts: () => Map<string, NoteCountInfo>;
@@ -81,6 +83,8 @@ export function useNavigationPaneShortcuts({
     onRevealProperty,
     onRevealFile,
     onRevealShortcutFile,
+    onRevealFileInActualFolder,
+    onResetSearchForNavigation,
     getFolderCounts,
     getTagCounts,
     getPropertyCounts,
@@ -225,6 +229,7 @@ export function useNavigationPaneShortcuts({
         onRevealProperty,
         onRevealFile,
         onRevealShortcutFile,
+        onResetSearchForNavigation,
         openFolderNoteInRightSidebar: folderNote => plugin.openFolderNoteInRightSidebar(folderNote),
         tagTree: fileData.tagTree,
         hydratedShortcuts
@@ -264,6 +269,8 @@ export function useNavigationPaneShortcuts({
         uiDispatch,
         removeShortcut,
         renameShortcut,
+        onRevealFileInActualFolder,
+        onResetSearchForNavigation,
         setIsShortcutContextMenuOpen: shortcutState.setIsShortcutContextMenuOpen
     });
 

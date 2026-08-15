@@ -30,6 +30,7 @@ import type {
 } from '../../hooks/navigationPane/navigationPaneShortcutTypes';
 import type { NavigationPaneTreeInteractionsResult } from '../../hooks/navigationPane/useNavigationPaneTreeInteractions';
 import type { NavigationSearchHighlightsResult } from '../../hooks/navigationPane/useNavigationSearchHighlights';
+import type { RevealFileOptions } from '../../hooks/useNavigatorReveal';
 export type NavigationInlineRenameTarget =
     | { type: 'folder'; id: string; initialValue: string }
     | { type: 'tag'; id: string; initialValue: string; displayPath: string }
@@ -75,6 +76,8 @@ export interface NavigationPaneRowContext {
     tree: NavigationPaneTreeInteractionsResult;
     searchHighlights: NavigationSearchHighlightsResult;
     inlineRename: NavigationInlineRenameActions;
+    onRevealFileInActualFolder: (file: TFile, options?: RevealFileOptions) => boolean;
+    onResetSearchForNavigation: () => void;
     onSectionContextMenu: (
         event: React.MouseEvent<HTMLDivElement>,
         sectionId: NavigationSectionId,

@@ -409,6 +409,10 @@ export const NotebookNavigatorComponent = React.memo(
             [getNavigationSearchUpdateOptions]
         );
 
+        const handleResetSearchForNavigation = useCallback(() => {
+            listPaneRef.current?.resetSearchForNavigation();
+        }, []);
+
         const horizontalNavigationPane = useResizablePane({
             orientation: 'horizontal',
             initialSize: horizontalNavigationPaneSizing.defaultSize,
@@ -1270,7 +1274,12 @@ export const NotebookNavigatorComponent = React.memo(
                         app,
                         (targetFolder: TFolder) => {
                             // Navigate to the selected folder
-                            navigateToFolder(targetFolder, { preserveNavigationFocus: preserveNavigationFocusForModal });
+                            const didNavigate = navigateToFolder(targetFolder, {
+                                preserveNavigationFocus: preserveNavigationFocusForModal
+                            });
+                            if (didNavigate) {
+                                handleResetSearchForNavigation();
+                            }
                         },
                         strings.modals.folderSuggest.navigatePlaceholder,
                         strings.modals.folderSuggest.instructions.select,
@@ -1285,7 +1294,12 @@ export const NotebookNavigatorComponent = React.memo(
                         plugin,
                         (tagPath: string) => {
                             // Use the shared tag navigation logic
-                            navigateToTag(tagPath, { preserveNavigationFocus: preserveNavigationFocusForModal });
+                            const canonicalTagPath = navigateToTag(tagPath, {
+                                preserveNavigationFocus: preserveNavigationFocusForModal
+                            });
+                            if (canonicalTagPath !== null) {
+                                handleResetSearchForNavigation();
+                            }
                         },
                         strings.modals.tagSuggest.navigatePlaceholder,
                         strings.modals.tagSuggest.instructions.select,
@@ -1299,7 +1313,12 @@ export const NotebookNavigatorComponent = React.memo(
                         app,
                         suggestions,
                         nodeId => {
-                            navigateToProperty(nodeId, { preserveNavigationFocus: preserveNavigationFocusForModal });
+                            const resolvedNodeId = navigateToProperty(nodeId, {
+                                preserveNavigationFocus: preserveNavigationFocusForModal
+                            });
+                            if (resolvedNodeId !== null) {
+                                handleResetSearchForNavigation();
+                            }
                         },
                         strings.modals.propertySuggest.navigatePlaceholder,
                         strings.modals.propertySuggest.instructions.navigate
@@ -1437,6 +1456,7 @@ export const NotebookNavigatorComponent = React.memo(
             navigateToTag,
             navigateToProperty,
             navigateToType,
+            handleResetSearchForNavigation,
             navigateSelectionHistory,
             uiState.singlePane,
             uiState.currentSinglePaneView,
@@ -1674,10 +1694,12 @@ export const NotebookNavigatorComponent = React.memo(
                         onRevealProperty={revealProperty}
                         onRevealFile={revealFileInNearestFolder}
                         onRevealShortcutFile={handleShortcutNoteReveal}
+                        onRevealFileInActualFolder={revealFileInActualFolder}
                         onModifySearchWithTag={handleModifySearchWithTag}
                         onModifySearchWithProperty={handleModifySearchWithProperty}
                         onModifySearchWithType={handleModifySearchWithType}
                         onModifySearchWithDateFilter={handleModifySearchWithDateFilter}
+                        onResetSearchForNavigation={handleResetSearchForNavigation}
                     />
                     <ListPane
                         ref={listPaneRef}
@@ -1687,6 +1709,7 @@ export const NotebookNavigatorComponent = React.memo(
                         fileItemPillOrderModel={fileItemPillOrderModel}
                         onSearchTokensChange={handleSearchTokensChange}
                         onNavigateToFolder={navigateToFolder}
+                        onRevealFileInActualFolder={revealFileInActualFolder}
                         onRevealTag={revealTag}
                         onRevealProperty={revealProperty}
                         resizeHandleProps={!uiState.singlePane ? resizeHandleProps : undefined}

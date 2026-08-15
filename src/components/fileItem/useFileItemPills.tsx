@@ -102,6 +102,7 @@ export interface UseFileItemPillsParams {
     hiddenTagVisibility: HiddenTagVisibility;
     onModifySearchWithTag?: (tag: string, operator: InclusionOperator) => void;
     onModifySearchWithProperty?: (key: string, value: string | null, operator: InclusionOperator) => void;
+    onResetSearchForNavigation?: () => void;
     fileItemPillDecorationModel: FileItemPillDecorationModel;
     fileItemPillOrderModel: FileItemPillOrderModel;
 }
@@ -276,6 +277,7 @@ export function useFileItemPills({
     hiddenTagVisibility,
     onModifySearchWithTag,
     onModifySearchWithProperty,
+    onResetSearchForNavigation,
     fileItemPillDecorationModel,
     fileItemPillOrderModel
 }: UseFileItemPillsParams): FileItemPillsState {
@@ -316,9 +318,12 @@ export function useFileItemPills({
                 }
             }
 
-            navigateToTag(tag, { preserveNavigationFocus: false });
+            const canonicalTagPath = navigateToTag(tag, { preserveNavigationFocus: false });
+            if (canonicalTagPath !== null) {
+                onResetSearchForNavigation?.();
+            }
         },
-        [navigateToTag, onModifySearchWithTag, settings.multiSelectModifier]
+        [navigateToTag, onModifySearchWithTag, onResetSearchForNavigation, settings.multiSelectModifier]
     );
 
     const handlePropertyClick = useCallback(
@@ -358,13 +363,17 @@ export function useFileItemPills({
                 return;
             }
 
-            navigateToProperty(propertyNodeId, { preserveNavigationFocus: false });
+            const resolvedPropertyNodeId = navigateToProperty(propertyNodeId, { preserveNavigationFocus: false });
+            if (resolvedPropertyNodeId !== null) {
+                onResetSearchForNavigation?.();
+            }
         },
         [
             app.workspace,
             file.path,
             navigateToProperty,
             onModifySearchWithProperty,
+            onResetSearchForNavigation,
             settings.enablePropertyExternalLinks,
             settings.enablePropertyInternalLinks,
             settings.multiSelectModifier

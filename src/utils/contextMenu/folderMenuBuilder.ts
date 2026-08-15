@@ -45,12 +45,13 @@ import { getTemplaterCreateNewNoteFromTemplate } from '../templaterIntegration';
 import { resolveFolderDisplayName } from '../folderDisplayName';
 import { INTERNAL_NOTEBOOK_NAVIGATOR_API } from '../../api/NotebookNavigatorAPI';
 import { expandNavigationTreeItems, getFolderAncestorPaths, isFolderEffectivelyExpanded } from '../navigationExpansion';
+import { selectContextMenuTarget } from './contextMenuSelection';
 
 /**
  * Adds folder creation commands (new note/folder/canvas/base/drawing) to a menu.
  */
 export function buildFolderCreationMenu(params: FolderMenuBuilderParams, folderDisplayNameOverride?: string): void {
-    const { folder, menu, services, state, dispatchers, settings } = params;
+    const { folder, menu, services, state, dispatchers, settings, options } = params;
     const { app, fileSystemOps, metadataService, plugin } = services;
     const { selectionState, expandedFolders } = state;
     const { selectionDispatch, expansionDispatch, uiDispatch } = dispatchers;
@@ -65,16 +66,13 @@ export function buildFolderCreationMenu(params: FolderMenuBuilderParams, folderD
         });
 
     const ensureFolderSelected = (): boolean => {
-        if (
-            selectionState.selectionType === ItemType.FOLDER &&
-            selectionState.selectedFolder &&
-            selectionState.selectedFolder.path === folder.path
-        ) {
-            return false;
-        }
-
-        selectionDispatch({ type: 'SET_SELECTED_FOLDER', folder });
-        return true;
+        return selectContextMenuTarget({
+            isSelected:
+                selectionState.selectionType === ItemType.FOLDER &&
+                Boolean(selectionState.selectedFolder && selectionState.selectedFolder.path === folder.path),
+            onResetSearchForNavigation: options?.onResetSearchForNavigation,
+            onSelect: () => selectionDispatch({ type: 'SET_SELECTED_FOLDER', folder })
+        });
     };
 
     // Selects newly created file and switches focus to files pane

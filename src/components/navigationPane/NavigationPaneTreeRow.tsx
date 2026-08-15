@@ -63,6 +63,8 @@ export function NavigationPaneTreeRow({
         tree,
         searchHighlights,
         inlineRename,
+        onRevealFileInActualFolder,
+        onResetSearchForNavigation,
         onSectionContextMenu,
         onTypeContextMenu
     } = context;
@@ -99,6 +101,8 @@ export function NavigationPaneTreeRow({
                     vaultChangeVersion={vaultChangeVersion}
                     disableNavigationSeparatorActions={shouldHideFolderSeparatorActions}
                     onStartInlineRename={inlineRename.startFolder}
+                    onRevealFileInActualFolder={onRevealFileInActualFolder}
+                    onResetSearchForNavigation={onResetSearchForNavigation}
                     inlineRename={
                         renameTarget
                             ? {
@@ -232,6 +236,7 @@ export function NavigationPaneTreeRow({
                     searchMatch={searchMatch}
                     inclusionOperator={inclusionOperator}
                     isDraggable={!isMobile && tagNode.path !== UNTAGGED_TAG_ID && tagNode.path !== TAGGED_TAG_ID}
+                    onResetSearchForNavigation={onResetSearchForNavigation}
                     onToggleAllSiblings={() => tree.handleTagToggleAllSiblings(tagNode.path)}
                     countInfo={item.noteCount ?? tagCounts.get(tagNode.path)}
                     showFileCount={settings.showNoteCount}
@@ -275,6 +280,7 @@ export function NavigationPaneTreeRow({
                     searchMatch={searchMatch}
                     inclusionOperator={inclusionOperator}
                     isDraggable={!isMobile}
+                    onResetSearchForNavigation={onResetSearchForNavigation}
                     countInfo={propertyCounts.get(propertyNode.id)}
                     showFileCount={settings.showNoteCount}
                     inlineRename={

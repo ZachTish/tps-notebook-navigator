@@ -30,6 +30,7 @@ import { getVirtualTagCollection, isVirtualTagCollectionId } from '../virtualTag
 import { getActiveHiddenTags, getActiveVaultProfile } from '../vaultProfiles';
 import { resolveDisplayTagPath } from '../../services/tagOperations/TagOperationUtils';
 import { INTERNAL_NOTEBOOK_NAVIGATOR_API } from '../../api/NotebookNavigatorAPI';
+import { selectContextMenuTarget } from './contextMenuSelection';
 
 /**
  * Builds the context menu for a tag
@@ -53,12 +54,11 @@ export function buildTagMenu(params: TagMenuBuilderParams): void {
     const isVirtualTag = tagPath === UNTAGGED_TAG_ID || tagPath === TAGGED_TAG_ID;
 
     const ensureTagSelected = (): boolean => {
-        if (selectionState.selectionType === ItemType.TAG && selectionState.selectedTag === tagPath) {
-            return false;
-        }
-
-        selectionDispatch({ type: 'SET_SELECTED_TAG', tag: tagPath });
-        return true;
+        return selectContextMenuTarget({
+            isSelected: selectionState.selectionType === ItemType.TAG && selectionState.selectedTag === tagPath,
+            onResetSearchForNavigation: options?.onResetSearchForNavigation,
+            onSelect: () => selectionDispatch({ type: 'SET_SELECTED_TAG', tag: tagPath })
+        });
     };
 
     const handleFileCreation = (file: TFile | null | undefined) => {

@@ -89,6 +89,7 @@ interface UseNavigationPaneTreeInteractionsProps {
     onModifySearchWithTag: (tag: string, operator: InclusionOperator) => void;
     onModifySearchWithProperty: (key: string, value: string | null, operator: InclusionOperator) => void;
     onModifySearchWithType: (typeId: TpsNavigatorTypeId) => void;
+    onResetSearchForNavigation: () => void;
 }
 
 export interface NavigationPaneTreeInteractionsResult {
@@ -131,7 +132,8 @@ export function useNavigationPaneTreeInteractions({
     openFolderNoteInRightSidebar,
     onModifySearchWithTag,
     onModifySearchWithProperty,
-    onModifySearchWithType
+    onModifySearchWithType,
+    onResetSearchForNavigation
 }: UseNavigationPaneTreeInteractionsProps): NavigationPaneTreeInteractionsResult {
     const focusListPaneAfterRightSidebarFolderNoteSelection = useCallback(
         (openContext: FolderNoteOpenContext) => {
@@ -176,6 +178,7 @@ export function useNavigationPaneTreeInteractions({
 
     const handleFolderClick = useCallback(
         (folder: TFolder, options?: { fromShortcut?: boolean }) => {
+            onResetSearchForNavigation();
             if (!options?.fromShortcut) {
                 clearActiveShortcut();
             }
@@ -215,6 +218,7 @@ export function useNavigationPaneTreeInteractions({
             clearActiveShortcut,
             expansionState.expandedFolders,
             handleFolderToggle,
+            onResetSearchForNavigation,
             selectionDispatch,
             selectionState.selectedFolder,
             selectionState.selectionType,
@@ -239,6 +243,7 @@ export function useNavigationPaneTreeInteractions({
 
             const wasSelectedFolder =
                 selectionState.selectionType === ItemType.FOLDER && selectionState.selectedFolder?.path === folder.path;
+            onResetSearchForNavigation();
             selectionDispatch({ type: 'SET_SELECTED_FOLDER', folder, autoSelectedFile: null });
 
             // Folder-note name clicks stop before the row click handler, so automatic expansion must run in this branch.
@@ -276,6 +281,7 @@ export function useNavigationPaneTreeInteractions({
             handleFolderClick,
             handleFolderToggle,
             openFolderNoteInRightSidebar,
+            onResetSearchForNavigation,
             selectionDispatch,
             selectionState.selectedFolder,
             selectionState.selectionType,
@@ -297,11 +303,12 @@ export function useNavigationPaneTreeInteractions({
             event.preventDefault();
             event.stopPropagation();
 
+            onResetSearchForNavigation();
             selectionDispatch({ type: 'SET_SELECTED_FOLDER', folder, autoSelectedFile: null });
 
             runAsyncAction(() => openFolderNoteFile({ app, commandQueue, folder, folderNote, context: 'tab' }));
         },
-        [app, commandQueue, selectionDispatch, settings]
+        [app, commandQueue, onResetSearchForNavigation, selectionDispatch, settings]
     );
 
     const handleTagToggle = useCallback(
@@ -508,6 +515,7 @@ export function useNavigationPaneTreeInteractions({
                 clearActiveShortcut();
             }
 
+            onResetSearchForNavigation();
             onSelect();
 
             const shouldCollapseOnSelect = settings.autoExpandNavItems && !uiState.singlePane && hasChildren && isExpanded && isSelected;
@@ -524,7 +532,14 @@ export function useNavigationPaneTreeInteractions({
 
             focusAfterTreeSelection(shouldExpandOnly);
         },
-        [clearActiveShortcut, focusAfterTreeSelection, settings.autoExpandNavItems, uiDispatch, uiState.singlePane]
+        [
+            clearActiveShortcut,
+            focusAfterTreeSelection,
+            onResetSearchForNavigation,
+            settings.autoExpandNavItems,
+            uiDispatch,
+            uiState.singlePane
+        ]
     );
 
     const handleTagClick = useCallback(
@@ -759,6 +774,7 @@ export function useNavigationPaneTreeInteractions({
                 { preserveNavigationFocus: !uiState.singlePane }
             );
             if (selectedType) {
+                onResetSearchForNavigation();
                 clearActiveShortcut();
             }
         },
@@ -767,6 +783,7 @@ export function useNavigationPaneTreeInteractions({
             expansionDispatch,
             expansionState.expandedVirtualFolders,
             onModifySearchWithType,
+            onResetSearchForNavigation,
             selectionDispatch,
             settings.multiSelectModifier,
             settings.tpsTypesNavigationEnabled,

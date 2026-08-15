@@ -32,6 +32,7 @@ import type NotebookNavigatorPlugin from '../../main';
 import { ExpansionAction } from '../../context/ExpansionContext';
 import { UIAction } from '../../context/UIStateContext';
 import type { ShortcutsContextValue } from '../../context/ShortcutsContext';
+import type { RevealFileOptions } from '../../hooks/useNavigatorReveal';
 
 /**
  * Configuration for the context menu
@@ -53,10 +54,12 @@ export type MenuConfig =
     | {
           type: typeof ItemType.TAG;
           item: string; // Tag path
+          options?: TagMenuOptions;
       }
     | {
           type: typeof ItemType.PROPERTY;
           item: string; // Property node id
+          options?: PropertyMenuOptions;
       }
     | {
           type: typeof EMPTY_LIST_MENU_TYPE;
@@ -112,26 +115,34 @@ export interface MenuBuilderParams {
     dispatchers: MenuDispatchers;
 }
 
-export interface FolderMenuOptions {
+interface NavigationResetMenuOptions {
+    onResetSearchForNavigation?: () => void;
+}
+
+interface ResetAwareRevealMenuOptions extends NavigationResetMenuOptions {
+    onRevealFileInActualFolder?: (file: TFile, options?: RevealFileOptions) => boolean;
+}
+
+export interface FolderMenuOptions extends ResetAwareRevealMenuOptions {
     disableNavigationSeparatorActions?: boolean;
     onStartInlineRename?: (folder: TFolder) => boolean;
 }
 
-export interface TagMenuOptions {
+export interface TagMenuOptions extends NavigationResetMenuOptions {
     disableNavigationSeparatorActions?: boolean;
 }
 
-export interface PropertyMenuOptions {
+export interface PropertyMenuOptions extends NavigationResetMenuOptions {
     disableNavigationSeparatorActions?: boolean;
 }
 
-export interface FileMenuOptions {
+export interface FileMenuOptions extends ResetAwareRevealMenuOptions {
     source?: 'list-pane';
     orderedFiles?: readonly TFile[];
     onStartInlineRename?: (file: TFile) => boolean;
 }
 
-export interface EmptyListMenuOptions {
+export interface EmptyListMenuOptions extends ResetAwareRevealMenuOptions {
     orderedFiles?: readonly TFile[];
     onStartInlineRename?: (file: TFile) => boolean;
 }

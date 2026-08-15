@@ -107,6 +107,14 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.16.1',
+        date: '2026-08-14',
+        fixed: [
+            'Selecting or revealing a folder, tag, property, or Type from the navigation tree, keyboard, picker, list breadcrumb, group header, pill, shortcut, toolbar, or row menu now fully dismisses the active search and its temporary whole-vault scope before showing the new location.',
+            'Shift and configured modifier clicks still add tag, property, or structural Type facets without dismissing the current search.'
+        ]
+    },
+    {
         version: '5.16.0',
         date: '2026-08-12',
         showOnUpdate: true,

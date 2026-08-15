@@ -155,6 +155,7 @@ export interface UseListPaneSearchResult {
     suppressSearchTopScrollRef: { current: boolean };
     setSearchQuery: Dispatch<SetStateAction<string>>;
     setShouldFocusSearch: Dispatch<SetStateAction<boolean>>;
+    resetSearchForNavigation: () => void;
     handleSearchToggle: () => void;
     closeSearch: () => void;
     focusSearchComplete: () => void;
@@ -477,6 +478,13 @@ export function useListPaneSearch({
         setSearchActive(false);
         uiDispatch({ type: 'ACTIVATE_PANE', target: 'files' });
     }, [setSearchActive, uiDispatch]);
+
+    const resetSearchForNavigation = useCallback(() => {
+        setShouldFocusSearch(false);
+        setSearchQuery('');
+        setDebouncedSearchQuery('');
+        setSearchActive(false);
+    }, [setSearchActive]);
 
     const setPublicSearch = useCallback(
         (update: NavigatorListSearchUpdate | null): boolean => {
@@ -869,6 +877,7 @@ export function useListPaneSearch({
         suppressSearchTopScrollRef,
         setSearchQuery,
         setShouldFocusSearch,
+        resetSearchForNavigation,
         handleSearchToggle,
         closeSearch,
         focusSearchComplete: () => setShouldFocusSearch(false),

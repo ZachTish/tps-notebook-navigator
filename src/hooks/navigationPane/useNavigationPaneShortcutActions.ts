@@ -68,6 +68,7 @@ interface UseNavigationPaneShortcutActionsProps {
     onRevealProperty: (propertyNodeId: string, options?: RevealPropertyOptions) => boolean;
     onRevealFile: (file: TFile) => void;
     onRevealShortcutFile?: (file: TFile) => void;
+    onResetSearchForNavigation: () => void;
     openFolderNoteInRightSidebar: (folderNote: TFile) => Promise<void>;
     tagTree: Map<string, import('../../types/storage').TagTreeNode>;
     hydratedShortcuts: HydratedShortcutActionItem[];
@@ -91,6 +92,7 @@ export function useNavigationPaneShortcutActions({
     onRevealProperty,
     onRevealFile,
     onRevealShortcutFile,
+    onResetSearchForNavigation,
     openFolderNoteInRightSidebar,
     tagTree,
     hydratedShortcuts
@@ -143,6 +145,7 @@ export function useNavigationPaneShortcutActions({
 
     const handleShortcutFolderActivate = useCallback(
         (folder: TFolder, shortcutKey: string) => {
+            onResetSearchForNavigation();
             setActiveShortcut(shortcutKey);
             onNavigateToFolder(folder.path, { skipScroll: settings.skipAutoScroll, source: 'shortcut' });
             scheduleShortcutRelease();
@@ -151,7 +154,15 @@ export function useNavigationPaneShortcutActions({
                 container.focus();
             }
         },
-        [onNavigateToFolder, rootContainerRef, scheduleShortcutRelease, setActiveShortcut, settings.skipAutoScroll, uiState.singlePane]
+        [
+            onNavigateToFolder,
+            onResetSearchForNavigation,
+            rootContainerRef,
+            scheduleShortcutRelease,
+            setActiveShortcut,
+            settings.skipAutoScroll,
+            uiState.singlePane
+        ]
     );
 
     const handleShortcutFolderNoteClick = useCallback(
@@ -169,6 +180,7 @@ export function useNavigationPaneShortcutActions({
             }
 
             const wasSelectedFolder = selectionType === ItemType.FOLDER && selectedFolder?.path === folder.path;
+            onResetSearchForNavigation();
             selectionDispatch({ type: 'SET_SELECTED_FOLDER', folder, autoSelectedFile: null });
             const openContext = resolveFolderNoteClickOpenContext(event, settings.folderNoteOpenLocation, settings.multiSelectModifier);
             focusListPaneAfterRightSidebarFolderNoteSelection(openContext);
@@ -195,6 +207,7 @@ export function useNavigationPaneShortcutActions({
             focusListPaneAfterRightSidebarFolderNoteSelection,
             handleShortcutFolderActivate,
             openFolderNoteInRightSidebar,
+            onResetSearchForNavigation,
             scheduleShortcutRelease,
             selectedFolder,
             selectionDispatch,
@@ -217,10 +230,11 @@ export function useNavigationPaneShortcutActions({
 
             event.preventDefault();
             event.stopPropagation();
+            onResetSearchForNavigation();
             selectionDispatch({ type: 'SET_SELECTED_FOLDER', folder, autoSelectedFile: null });
             runAsyncAction(() => openFolderNoteFile({ app, commandQueue, folder, folderNote, context: 'tab' }));
         },
-        [app, commandQueue, selectionDispatch, settings]
+        [app, commandQueue, onResetSearchForNavigation, selectionDispatch, settings]
     );
 
     const handleShortcutNoteActivate = useCallback(
@@ -230,6 +244,7 @@ export function useNavigationPaneShortcutActions({
                 return;
             }
 
+            onResetSearchForNavigation();
             setActiveShortcut(shortcutKey);
             if (selectionType === ItemType.TAG && onRevealShortcutFile) {
                 onRevealShortcutFile(note);
@@ -253,6 +268,7 @@ export function useNavigationPaneShortcutActions({
             app,
             commandQueue,
             isMobile,
+            onResetSearchForNavigation,
             onRevealFile,
             onRevealShortcutFile,
             openNotePreview,
@@ -286,6 +302,7 @@ export function useNavigationPaneShortcutActions({
                 return;
             }
 
+            onResetSearchForNavigation();
             if (selectionType === ItemType.TAG && onRevealShortcutFile) {
                 onRevealShortcutFile(note);
             } else {
@@ -307,6 +324,7 @@ export function useNavigationPaneShortcutActions({
             app,
             commandQueue,
             isMobile,
+            onResetSearchForNavigation,
             onRevealFile,
             onRevealShortcutFile,
             openNotePreview,
@@ -337,6 +355,7 @@ export function useNavigationPaneShortcutActions({
                 scheduleShortcutRelease();
                 return;
             }
+            onResetSearchForNavigation();
             onRevealTag(canonicalPath, { skipScroll: settings.skipAutoScroll, source: 'shortcut' });
 
             if (!uiState.singlePane) {
@@ -352,6 +371,7 @@ export function useNavigationPaneShortcutActions({
         },
         [
             onRevealTag,
+            onResetSearchForNavigation,
             rootContainerRef,
             scheduleShortcutRelease,
             selectionDispatch,
@@ -371,6 +391,7 @@ export function useNavigationPaneShortcutActions({
                 scheduleShortcutRelease();
                 return false;
             }
+            onResetSearchForNavigation();
 
             if (!uiState.singlePane) {
                 uiDispatch({ type: 'ACTIVATE_PANE', target: 'navigation' });
@@ -386,6 +407,7 @@ export function useNavigationPaneShortcutActions({
         },
         [
             onRevealProperty,
+            onResetSearchForNavigation,
             rootContainerRef,
             scheduleShortcutRelease,
             selectionDispatch,

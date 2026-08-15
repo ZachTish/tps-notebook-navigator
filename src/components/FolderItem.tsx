@@ -50,7 +50,7 @@
  */
 
 import React, { useRef, useEffect, useMemo, useCallback } from 'react';
-import { TFolder, setTooltip } from 'obsidian';
+import { TFolder, setTooltip, type TFile } from 'obsidian';
 import { useServices } from '../context/ServicesContext';
 import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferences } from '../context/UXPreferencesContext';
@@ -68,6 +68,7 @@ import { ItemType, type CSSPropertiesWithVars } from '../types';
 import { buildFolderTooltip } from '../utils/navigationTooltipUtils';
 import { InlineRenameInput, type InlineRenameControl } from './InlineRenameInput';
 import { strings } from '../i18n';
+import type { RevealFileOptions } from '../hooks/useNavigatorReveal';
 
 interface FolderItemProps {
     folder: TFolder;
@@ -93,6 +94,8 @@ interface FolderItemProps {
     disableContextMenu?: boolean;
     disableNavigationSeparatorActions?: boolean;
     onStartInlineRename?: (folder: TFolder) => boolean;
+    onRevealFileInActualFolder: (file: TFile, options?: RevealFileOptions) => boolean;
+    onResetSearchForNavigation: () => void;
     inlineRename?: InlineRenameControl;
 }
 
@@ -134,6 +137,8 @@ export const FolderItem = React.memo(function FolderItem({
     disableContextMenu,
     disableNavigationSeparatorActions,
     onStartInlineRename,
+    onRevealFileInActualFolder,
+    onResetSearchForNavigation,
     inlineRename
 }: FolderItemProps) {
     const { app, fileSystemOps, isMobile } = useServices();
@@ -358,14 +363,13 @@ export const FolderItem = React.memo(function FolderItem({
     }, [showsHiddenFromParentsIndicator, isMobile, settings.showTooltips, shouldDisplayCount]);
 
     const folderMenuOptions = useMemo(
-        () =>
-            disableNavigationSeparatorActions || onStartInlineRename
-                ? {
-                      ...(disableNavigationSeparatorActions ? { disableNavigationSeparatorActions: true } : {}),
-                      ...(onStartInlineRename ? { onStartInlineRename } : {})
-                  }
-                : undefined,
-        [disableNavigationSeparatorActions, onStartInlineRename]
+        () => ({
+            ...(disableNavigationSeparatorActions ? { disableNavigationSeparatorActions: true } : {}),
+            ...(onStartInlineRename ? { onStartInlineRename } : {}),
+            onRevealFileInActualFolder,
+            onResetSearchForNavigation
+        }),
+        [disableNavigationSeparatorActions, onResetSearchForNavigation, onRevealFileInActualFolder, onStartInlineRename]
     );
 
     // Enable context menu

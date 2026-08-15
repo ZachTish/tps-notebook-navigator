@@ -53,7 +53,7 @@ export function useTagNavigation() {
      */
     const navigateToTag = useCallback(
         (tagPath: string, options?: NavigateToTagOptions) => {
-            navigateToTagInternal(
+            return navigateToTagInternal(
                 {
                     showTags: settings.showTags,
                     showAllTagsFolder: settings.showAllTagsFolder,
@@ -93,7 +93,7 @@ export function useTagNavigation() {
      */
     const navigateToProperty = useCallback(
         (propertyNodeId: string, options?: NavigateToPropertyOptions) => {
-            navigateToPropertyInternal(
+            return navigateToPropertyInternal(
                 {
                     showProperties: settings.showProperties,
                     showAllPropertiesFolder: settings.showAllPropertiesFolder,

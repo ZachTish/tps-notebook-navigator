@@ -51,6 +51,7 @@ import { getCachedWordCountTargetFromFrontmatter, getWordCountTargetFromProperti
 import { ObsidianIcon } from '../ObsidianIcon';
 import { FileItem, type FileItemPaneProps, type FileItemStorageHelpers } from '../FileItem';
 import { ManualSortGroupHeaderContent, ManualSortGroupHeaderProgress } from './ManualSortGroupHeaderContent';
+import type { RevealFileOptions } from '../../hooks/useNavigatorReveal';
 
 const MANUAL_SORT_MOUSE_CONSTRAINT = { distance: 2 };
 const MANUAL_SORT_TOUCH_CONSTRAINT = { distance: 4 };
@@ -95,6 +96,8 @@ interface ManualSortListContentProps {
     onScheduleKeyboardOpen?: () => void;
     onScheduleKeyboardOpenForFile?: (file: TFile) => void;
     onCommitKeyboardOpen?: () => void;
+    onResetSearchForNavigation: () => void;
+    onRevealFileInActualFolder: (file: TFile, options?: RevealFileOptions) => boolean;
     onDone: () => void;
     onReorder: (params: { nextFiles: TFile[]; movedPaths: ReadonlySet<string>; onApplied?: () => void }) => void;
 }
@@ -600,6 +603,8 @@ export function ManualSortListContent({
     onScheduleKeyboardOpen,
     onScheduleKeyboardOpenForFile,
     onCommitKeyboardOpen,
+    onResetSearchForNavigation,
+    onRevealFileInActualFolder,
     onDone,
     onReorder
 }: ManualSortListContentProps) {
@@ -680,6 +685,8 @@ export function ManualSortListContent({
             sortOption,
             onModifySearchWithTag: noopModifySearch,
             onModifySearchWithProperty: noopModifySearch,
+            onResetSearchForNavigation,
+            onRevealFileInActualFolder,
             localDayReference,
             fileIconSize,
             appearanceSettings,
@@ -698,6 +705,8 @@ export function ManualSortListContent({
         }),
         [
             onFileClick,
+            onResetSearchForNavigation,
+            onRevealFileInActualFolder,
             selectionType,
             sortOption,
             localDayReference,

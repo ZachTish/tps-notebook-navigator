@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import type { TFile } from 'obsidian';
 import { useSelectionState } from '../context/SelectionContext';
 import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferences } from '../context/UXPreferencesContext';
@@ -25,6 +26,7 @@ import { useListActions } from '../hooks/useListActions';
 import { runAsyncAction } from '../utils/async';
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
+import type { RevealFileOptions } from '../hooks/useNavigatorReveal';
 import { ItemType } from '../types';
 import {
     isVaultRootResourceScope,
@@ -45,6 +47,8 @@ interface ListToolbarProps {
     creationSearchQuery?: string;
     creationSearchSupported?: boolean;
     useFloatingLayout?: boolean;
+    onRevealFileInActualFolder: (file: TFile, options?: RevealFileOptions) => boolean;
+    onResetSearchForNavigation: () => void;
 }
 
 export function ListToolbar({
@@ -58,7 +62,9 @@ export function ListToolbar({
     mixedStructuralSearchActive = false,
     creationSearchQuery = '',
     creationSearchSupported = true,
-    useFloatingLayout = false
+    useFloatingLayout = false,
+    onRevealFileInActualFolder,
+    onResetSearchForNavigation
 }: ListToolbarProps) {
     const uxPreferences = useUXPreferences();
     const includeDescendantNotes = uxPreferences.includeDescendantNotes;
@@ -91,7 +97,9 @@ export function ListToolbar({
         trackRevealFileAvailability: showRevealButton,
         mixedStructuralSearchActive,
         creationSearchQuery,
-        creationSearchSupported
+        creationSearchSupported,
+        onRevealFileInActualFolder,
+        onResetSearchForNavigation
     });
 
     const isTypeSelection = selectionState.selectionType === ItemType.TYPE && Boolean(selectionState.selectedType);

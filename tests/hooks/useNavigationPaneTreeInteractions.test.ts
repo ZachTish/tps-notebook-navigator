@@ -21,9 +21,10 @@ import { App, Platform, TFolder } from 'obsidian';
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
+import type { NotebookNavigatorSettings } from '../../src/settings/types';
 import { ItemType } from '../../src/types';
 import type { IPropertyTreeProvider } from '../../src/interfaces/IPropertyTreeProvider';
-import type { PropertyTreeNode } from '../../src/types/storage';
+import type { PropertyTreeNode, TagTreeNode } from '../../src/types/storage';
 import type { SelectionState } from '../../src/context/SelectionContext';
 import {
     useNavigationPaneTreeInteractions,
@@ -126,6 +127,80 @@ function addChildFolder(app: App, folder: TFolder, path: string): TFolder {
     return childFolder;
 }
 
+const EMPTY_TYPE_SNAPSHOT: TpsNavigatorTypesSnapshot = {
+    availability: 'ready',
+    descriptors: [],
+    recordsByType: new Map(),
+    revision: 0
+};
+
+function renderTreeInteractionHarness(options?: {
+    app?: App;
+    settings?: NotebookNavigatorSettings;
+    tagTree?: Map<string, TagTreeNode>;
+    propertyTree?: Map<string, PropertyTreeNode>;
+    typeSnapshot?: TpsNavigatorTypesSnapshot;
+    selectionDispatch?: ReturnType<typeof vi.fn>;
+    onModifySearchWithTag?: ReturnType<typeof vi.fn>;
+    onModifySearchWithProperty?: ReturnType<typeof vi.fn>;
+    onModifySearchWithType?: ReturnType<typeof vi.fn>;
+    onResetSearchForNavigation?: ReturnType<typeof vi.fn>;
+}) {
+    const selectionDispatch = options?.selectionDispatch ?? vi.fn();
+    const onModifySearchWithTag = options?.onModifySearchWithTag ?? vi.fn();
+    const onModifySearchWithProperty = options?.onModifySearchWithProperty ?? vi.fn();
+    const onModifySearchWithType = options?.onModifySearchWithType ?? vi.fn();
+    const onResetSearchForNavigation = options?.onResetSearchForNavigation ?? vi.fn();
+    let captured: NavigationPaneTreeInteractionsResult | null = null;
+
+    function Harness() {
+        captured = useNavigationPaneTreeInteractions({
+            app: options?.app ?? new App(),
+            commandQueue: null,
+            settings: options?.settings ?? DEFAULT_SETTINGS,
+            uiState: { singlePane: false },
+            expansionState: {
+                expandedFolders: new Set(),
+                expandedTags: new Set(),
+                expandedProperties: new Set(),
+                expandedVirtualFolders: new Set()
+            },
+            expansionDispatch: vi.fn(),
+            selectionState: createSelectionState(),
+            selectionDispatch,
+            uiDispatch: vi.fn(),
+            propertyTreeService: null,
+            tagTree: options?.tagTree ?? new Map<string, TagTreeNode>(),
+            propertyTree: options?.propertyTree ?? new Map<string, PropertyTreeNode>(),
+            typeSnapshot: options?.typeSnapshot ?? EMPTY_TYPE_SNAPSHOT,
+            tagsVirtualFolderHasChildren: false,
+            setShortcutsExpanded: vi.fn(),
+            setRecentNotesExpanded: vi.fn(),
+            clearActiveShortcut: vi.fn(),
+            openFolderNoteInRightSidebar: vi.fn(),
+            onModifySearchWithTag,
+            onModifySearchWithProperty,
+            onModifySearchWithType,
+            onResetSearchForNavigation
+        });
+        return null;
+    }
+
+    renderToStaticMarkup(React.createElement(Harness));
+    if (!captured) {
+        throw new Error('Expected hook result');
+    }
+
+    return {
+        result: captured as NavigationPaneTreeInteractionsResult,
+        selectionDispatch,
+        onModifySearchWithTag,
+        onModifySearchWithProperty,
+        onModifySearchWithType,
+        onResetSearchForNavigation
+    };
+}
+
 describe('useNavigationPaneTreeInteractions', () => {
     it('turns a Shift-clicked property key into an explicit empty-value search facet', () => {
         const previousIsMobile = Platform.isMobile;
@@ -134,6 +209,7 @@ describe('useNavigationPaneTreeInteractions', () => {
         Platform.isTablet = false;
 
         const onModifySearchWithProperty = vi.fn();
+        const onResetSearchForNavigation = vi.fn();
         const preventDefault = vi.fn();
         const stopPropagation = vi.fn();
         const propertyNode = createPropertyKeyNode('status', 'Status', ['notes/empty.md']);
@@ -164,7 +240,9 @@ describe('useNavigationPaneTreeInteractions', () => {
                 clearActiveShortcut: vi.fn(),
                 openFolderNoteInRightSidebar: vi.fn(),
                 onModifySearchWithTag: vi.fn(),
-                onModifySearchWithProperty
+                onModifySearchWithProperty,
+                onModifySearchWithType: vi.fn(),
+                onResetSearchForNavigation
             });
             return null;
         }
@@ -186,6 +264,7 @@ describe('useNavigationPaneTreeInteractions', () => {
             } as unknown as React.MouseEvent);
 
             expect(onModifySearchWithProperty).toHaveBeenCalledWith('status', '', 'AND');
+            expect(onResetSearchForNavigation).not.toHaveBeenCalled();
             expect(preventDefault).toHaveBeenCalledTimes(1);
             expect(stopPropagation).toHaveBeenCalledTimes(1);
         } finally {
@@ -202,6 +281,7 @@ describe('useNavigationPaneTreeInteractions', () => {
 
         const selectionDispatch = vi.fn();
         const onModifySearchWithType = vi.fn();
+        const onResetSearchForNavigation = vi.fn();
         const preventDefault = vi.fn();
         const stopPropagation = vi.fn();
         const typeId = TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES;
@@ -248,7 +328,8 @@ describe('useNavigationPaneTreeInteractions', () => {
                 openFolderNoteInRightSidebar: vi.fn(),
                 onModifySearchWithTag: vi.fn(),
                 onModifySearchWithProperty: vi.fn(),
-                onModifySearchWithType
+                onModifySearchWithType,
+                onResetSearchForNavigation
             });
             return null;
         }
@@ -272,6 +353,7 @@ describe('useNavigationPaneTreeInteractions', () => {
             } as unknown as React.MouseEvent);
 
             expect(onModifySearchWithType).toHaveBeenCalledWith(typeId);
+            expect(onResetSearchForNavigation).not.toHaveBeenCalled();
             expect(selectionDispatch).not.toHaveBeenCalled();
             expect(preventDefault).toHaveBeenCalledTimes(1);
             expect(stopPropagation).toHaveBeenCalledTimes(1);
@@ -279,6 +361,113 @@ describe('useNavigationPaneTreeInteractions', () => {
             Platform.isMobile = previousIsMobile;
             Platform.isTablet = previousIsTablet;
         }
+    });
+
+    it('resets search before ordinary folder, tag, property, property-root, and Type selections', () => {
+        const app = new App();
+        const folder = createTestFolder(app, 'Projects');
+        const folderHarness = renderTreeInteractionHarness({ app });
+        folderHarness.result.handleFolderClick(folder);
+        expect(folderHarness.onResetSearchForNavigation).toHaveBeenCalledOnce();
+        expect(folderHarness.selectionDispatch).toHaveBeenCalledWith({ type: 'SET_SELECTED_FOLDER', folder });
+
+        const tagNode: TagTreeNode = {
+            name: 'work',
+            path: 'work',
+            displayPath: 'Work',
+            children: new Map(),
+            notesWithTag: new Set()
+        };
+        const tagHarness = renderTreeInteractionHarness({ tagTree: new Map([[tagNode.path, tagNode]]) });
+        tagHarness.result.handleTagClick(tagNode.path, {} as React.MouseEvent);
+        expect(tagHarness.onResetSearchForNavigation).toHaveBeenCalledOnce();
+        expect(tagHarness.selectionDispatch).toHaveBeenCalledWith({ type: 'SET_SELECTED_TAG', tag: tagNode.path });
+
+        const propertyNode = createPropertyKeyNode('status', 'Status', []);
+        const propertyHarness = renderTreeInteractionHarness({ propertyTree: new Map([[propertyNode.key, propertyNode]]) });
+        propertyHarness.result.handlePropertyClick(propertyNode, {} as React.MouseEvent);
+        expect(propertyHarness.onResetSearchForNavigation).toHaveBeenCalledOnce();
+        expect(propertyHarness.selectionDispatch).toHaveBeenCalledWith({
+            type: 'SET_SELECTED_PROPERTY',
+            nodeId: propertyNode.id,
+            source: undefined
+        });
+
+        const propertyRootHarness = renderTreeInteractionHarness();
+        propertyRootHarness.result.handlePropertyCollectionClick({} as React.MouseEvent<HTMLDivElement>);
+        expect(propertyRootHarness.onResetSearchForNavigation).toHaveBeenCalledOnce();
+        expect(propertyRootHarness.selectionDispatch).toHaveBeenCalledWith({
+            type: 'SET_SELECTED_PROPERTY',
+            nodeId: 'properties-root'
+        });
+
+        const typeId = TPS_NAVIGATOR_TYPE_IDS.NOTES;
+        const typeSnapshot: TpsNavigatorTypesSnapshot = {
+            availability: 'ready',
+            descriptors: [{ id: typeId, label: 'Notes', icon: 'lucide-file-text', category: 'structure', count: 0 }],
+            recordsByType: new Map([[typeId, []]]),
+            revision: 1
+        };
+        const typeHarness = renderTreeInteractionHarness({
+            settings: { ...DEFAULT_SETTINGS, tpsTypesNavigationEnabled: true },
+            typeSnapshot
+        });
+        typeHarness.result.handleTypeClick(typeId);
+        expect(typeHarness.onResetSearchForNavigation).toHaveBeenCalledOnce();
+        expect(typeHarness.selectionDispatch).toHaveBeenCalledWith({ type: 'SET_SELECTED_TYPE', typeId, source: undefined });
+    });
+
+    it('preserves search for modifier-added tag and file-backed Type facets', () => {
+        const previousIsMobile = Platform.isMobile;
+        const previousIsTablet = Platform.isTablet;
+        Platform.isMobile = false;
+        Platform.isTablet = false;
+
+        try {
+            const tagNode: TagTreeNode = {
+                name: 'work',
+                path: 'work',
+                displayPath: 'Work',
+                children: new Map(),
+                notesWithTag: new Set()
+            };
+            const tagHarness = renderTreeInteractionHarness({ tagTree: new Map([[tagNode.path, tagNode]]) });
+            tagHarness.result.handleTagClick(tagNode.path, {
+                altKey: false,
+                ctrlKey: false,
+                metaKey: false,
+                shiftKey: true,
+                preventDefault: vi.fn(),
+                stopPropagation: vi.fn()
+            } as unknown as React.MouseEvent);
+            expect(tagHarness.onModifySearchWithTag).toHaveBeenCalledWith(tagNode.path, 'AND');
+            expect(tagHarness.onResetSearchForNavigation).not.toHaveBeenCalled();
+            expect(tagHarness.selectionDispatch).not.toHaveBeenCalled();
+
+            const typeId = TPS_NAVIGATOR_TYPE_IDS.NOTES;
+            const typeHarness = renderTreeInteractionHarness();
+            typeHarness.result.handleTypeClick(typeId, {
+                altKey: false,
+                ctrlKey: false,
+                metaKey: false,
+                shiftKey: true,
+                preventDefault: vi.fn(),
+                stopPropagation: vi.fn()
+            } as unknown as React.MouseEvent);
+            expect(typeHarness.onModifySearchWithType).toHaveBeenCalledWith(typeId);
+            expect(typeHarness.onResetSearchForNavigation).not.toHaveBeenCalled();
+            expect(typeHarness.selectionDispatch).not.toHaveBeenCalled();
+        } finally {
+            Platform.isMobile = previousIsMobile;
+            Platform.isTablet = previousIsTablet;
+        }
+    });
+
+    it('does not reset search when a Type selection cannot be resolved', () => {
+        const harness = renderTreeInteractionHarness({ settings: { ...DEFAULT_SETTINGS, tpsTypesNavigationEnabled: true } });
+        harness.result.handleTypeClick(TPS_NAVIGATOR_TYPE_IDS.NOTES);
+        expect(harness.onResetSearchForNavigation).not.toHaveBeenCalled();
+        expect(harness.selectionDispatch).not.toHaveBeenCalled();
     });
 
     it('uses the property tree provider cache for global descendant expansion', () => {
@@ -326,7 +515,9 @@ describe('useNavigationPaneTreeInteractions', () => {
                 clearActiveShortcut: vi.fn(),
                 openFolderNoteInRightSidebar: vi.fn(),
                 onModifySearchWithTag: vi.fn(),
-                onModifySearchWithProperty: vi.fn()
+                onModifySearchWithProperty: vi.fn(),
+                onModifySearchWithType: vi.fn(),
+                onResetSearchForNavigation: vi.fn()
             });
             return null;
         }
@@ -390,7 +581,9 @@ describe('useNavigationPaneTreeInteractions', () => {
                 clearActiveShortcut: vi.fn(),
                 openFolderNoteInRightSidebar,
                 onModifySearchWithTag: vi.fn(),
-                onModifySearchWithProperty: vi.fn()
+                onModifySearchWithProperty: vi.fn(),
+                onModifySearchWithType: vi.fn(),
+                onResetSearchForNavigation: vi.fn()
             });
             return null;
         }
@@ -450,7 +643,9 @@ describe('useNavigationPaneTreeInteractions', () => {
                 clearActiveShortcut: vi.fn(),
                 openFolderNoteInRightSidebar: vi.fn(),
                 onModifySearchWithTag: vi.fn(),
-                onModifySearchWithProperty: vi.fn()
+                onModifySearchWithProperty: vi.fn(),
+                onModifySearchWithType: vi.fn(),
+                onResetSearchForNavigation: vi.fn()
             });
             return null;
         }
@@ -509,7 +704,9 @@ describe('useNavigationPaneTreeInteractions', () => {
                 clearActiveShortcut: vi.fn(),
                 openFolderNoteInRightSidebar: vi.fn(),
                 onModifySearchWithTag: vi.fn(),
-                onModifySearchWithProperty: vi.fn()
+                onModifySearchWithProperty: vi.fn(),
+                onModifySearchWithType: vi.fn(),
+                onResetSearchForNavigation: vi.fn()
             });
             return null;
         }
@@ -562,7 +759,9 @@ describe('useNavigationPaneTreeInteractions', () => {
                 clearActiveShortcut: vi.fn(),
                 openFolderNoteInRightSidebar: vi.fn(),
                 onModifySearchWithTag: vi.fn(),
-                onModifySearchWithProperty: vi.fn()
+                onModifySearchWithProperty: vi.fn(),
+                onModifySearchWithType: vi.fn(),
+                onResetSearchForNavigation: vi.fn()
             });
             return null;
         }

@@ -78,7 +78,7 @@ import { normalizeNavigationSectionOrderInput } from '../../utils/navigationSect
 import { usesMobileChrome } from '../../utils/paneLayout';
 import { getActiveVaultProfile } from '../../utils/vaultProfiles';
 import { PropertyKeyVisibilityModal } from '../../modals/PropertyKeyVisibilityModal';
-import type { NavigateToFolderOptions, RevealPropertyOptions, RevealTagOptions } from '../../hooks/useNavigatorReveal';
+import type { NavigateToFolderOptions, RevealFileOptions, RevealPropertyOptions, RevealTagOptions } from '../../hooks/useNavigatorReveal';
 import { NAVIGATION_PANE_SURFACE_COLOR_MAPPINGS } from '../../constants/surfaceColorMappings';
 import { showNavigationSectionContextMenu, showTypeCollectionContextMenu } from '../../utils/contextMenu';
 import { verticalAxisOnly } from '../../utils/dndConfig';
@@ -133,10 +133,12 @@ interface NavigationPaneProps {
     onRevealProperty: (propertyNodeId: string, options?: RevealPropertyOptions) => boolean;
     onRevealFile: (file: TFile) => void;
     onRevealShortcutFile?: (file: TFile) => void;
+    onRevealFileInActualFolder: (file: TFile, options?: RevealFileOptions) => boolean;
     onModifySearchWithTag: (tag: string, operator: InclusionOperator) => void;
     onModifySearchWithProperty: (key: string, value: string | null, operator: InclusionOperator) => void;
     onModifySearchWithType: (typeId: TpsNavigatorTypeId) => void;
     onModifySearchWithDateFilter: (dateToken: string) => void;
+    onResetSearchForNavigation: () => void;
 }
 
 export const NavigationPane = React.memo(
@@ -171,10 +173,12 @@ export const NavigationPane = React.memo(
             onRevealProperty,
             onRevealFile,
             onRevealShortcutFile,
+            onRevealFileInActualFolder,
             onModifySearchWithTag,
             onModifySearchWithProperty,
             onModifySearchWithType,
             onModifySearchWithDateFilter,
+            onResetSearchForNavigation,
             uiScale
         } = props;
 
@@ -381,6 +385,8 @@ export const NavigationPane = React.memo(
             onRevealProperty,
             onRevealFile,
             onRevealShortcutFile,
+            onRevealFileInActualFolder,
+            onResetSearchForNavigation,
             getFolderCounts: () => folderCountsRef.current,
             getTagCounts: () => tagCountsRef.current,
             getPropertyCounts: () => propertyCountsRef.current,
@@ -582,7 +588,8 @@ export const NavigationPane = React.memo(
             openFolderNoteInRightSidebar: folderNote => plugin.openFolderNoteInRightSidebar(folderNote),
             onModifySearchWithTag,
             onModifySearchWithProperty,
-            onModifySearchWithType
+            onModifySearchWithType,
+            onResetSearchForNavigation
         });
 
         const searchHighlights = useNavigationSearchHighlights({ searchNavFilters });
@@ -1056,7 +1063,8 @@ export const NavigationPane = React.memo(
             virtualizer: rowVirtualizer,
             containerRef: props.rootContainerRef,
             pathToIndex: keyboardPathToIndex,
-            onStartRename: handleStartInlineRename
+            onStartRename: handleStartInlineRename,
+            onResetSearchForNavigation
         });
 
         const navigationPaneStyle = useMemo<CSSPropertiesWithVars>(() => {
@@ -1151,6 +1159,8 @@ export const NavigationPane = React.memo(
                     cancel: handleCancelInlineRename,
                     restoreFocus: restoreNavigationPaneFocus
                 },
+                onRevealFileInActualFolder,
+                onResetSearchForNavigation,
                 onSectionContextMenu: handleSectionContextMenu,
                 onTypeContextMenu: handleTypeContextMenu
             }),
@@ -1173,6 +1183,8 @@ export const NavigationPane = React.memo(
                 handleStartFolderInlineRename,
                 indentGuideLevelsByKey,
                 isMobile,
+                onResetSearchForNavigation,
+                onRevealFileInActualFolder,
                 propertyCounts,
                 searchHighlights,
                 settings,

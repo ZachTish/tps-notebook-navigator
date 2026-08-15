@@ -26,6 +26,7 @@ import { addStyleMenu } from './styleMenuBuilder';
 import { resolveUXIcon, resolveUXIconForMenu } from '../uxIcons';
 import { normalizePropertyNodeId, parsePropertyNodeId } from '../propertyTree';
 import { INTERNAL_NOTEBOOK_NAVIGATOR_API } from '../../api/NotebookNavigatorAPI';
+import { selectContextMenuTarget } from './contextMenuSelection';
 
 function resolvePropertyMenuLabel(params: { propertyNodeId: string; propertyNodeName?: string; keyNodeName?: string }): string {
     const { propertyNodeId, propertyNodeName, keyNodeName } = params;
@@ -155,12 +156,11 @@ export function buildPropertyMenu(params: PropertyMenuBuilderParams): void {
     }
 
     const ensurePropertySelected = (): boolean => {
-        if (selectionState.selectionType === ItemType.PROPERTY && selectionState.selectedProperty === normalizedNodeId) {
-            return false;
-        }
-
-        selectionDispatch({ type: 'SET_SELECTED_PROPERTY', nodeId: normalizedNodeId });
-        return true;
+        return selectContextMenuTarget({
+            isSelected: selectionState.selectionType === ItemType.PROPERTY && selectionState.selectedProperty === normalizedNodeId,
+            onResetSearchForNavigation: options?.onResetSearchForNavigation,
+            onSelect: () => selectionDispatch({ type: 'SET_SELECTED_PROPERTY', nodeId: normalizedNodeId })
+        });
     };
 
     const handleFileCreation = (file: TFile | null | undefined) => {

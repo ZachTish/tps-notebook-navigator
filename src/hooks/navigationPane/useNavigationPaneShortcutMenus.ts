@@ -37,6 +37,7 @@ import {
 } from '../../utils/contextMenu';
 import { addShortcutRenameMenuItem } from '../../utils/contextMenu/shortcutRenameMenuItem';
 import type { ShortcutContextMenuTarget } from './navigationPaneShortcutTypes';
+import type { RevealFileOptions } from '../useNavigatorReveal';
 
 interface ExpansionStateLike {
     expandedFolders: Set<string>;
@@ -54,6 +55,8 @@ interface UseNavigationPaneShortcutMenusProps {
     uiDispatch: Dispatch<UIAction>;
     removeShortcut: (key: string) => Promise<boolean>;
     renameShortcut: (key: string, alias: string, defaultLabel?: string) => Promise<boolean>;
+    onRevealFileInActualFolder: (file: TFile, options?: RevealFileOptions) => boolean;
+    onResetSearchForNavigation: () => void;
     setIsShortcutContextMenuOpen: Dispatch<SetStateAction<boolean>>;
 }
 
@@ -67,6 +70,8 @@ export function useNavigationPaneShortcutMenus({
     uiDispatch,
     removeShortcut,
     renameShortcut,
+    onRevealFileInActualFolder,
+    onResetSearchForNavigation,
     setIsShortcutContextMenuOpen
 }: UseNavigationPaneShortcutMenusProps) {
     const handleShortcutContextMenu = useCallback(
@@ -147,7 +152,7 @@ export function useNavigationPaneShortcutMenus({
                     settings,
                     state,
                     dispatchers,
-                    options: { disableNavigationSeparatorActions: true }
+                    options: { disableNavigationSeparatorActions: true, onResetSearchForNavigation }
                 });
             } else if (target.type === 'note') {
                 buildFileMenu({
@@ -156,7 +161,8 @@ export function useNavigationPaneShortcutMenus({
                     services: menuServices,
                     settings,
                     state,
-                    dispatchers
+                    dispatchers,
+                    options: { onRevealFileInActualFolder, onResetSearchForNavigation }
                 });
 
                 if (target.file.extension !== 'md') {
@@ -177,7 +183,7 @@ export function useNavigationPaneShortcutMenus({
                     settings,
                     state,
                     dispatchers,
-                    options: { disableNavigationSeparatorActions: true }
+                    options: { disableNavigationSeparatorActions: true, onResetSearchForNavigation }
                 });
             } else if (target.type === 'property') {
                 buildPropertyMenu({
@@ -187,7 +193,7 @@ export function useNavigationPaneShortcutMenus({
                     settings,
                     state,
                     dispatchers,
-                    options: { disableNavigationSeparatorActions: true }
+                    options: { disableNavigationSeparatorActions: true, onResetSearchForNavigation }
                 });
             }
 
@@ -201,6 +207,8 @@ export function useNavigationPaneShortcutMenus({
             menuServices,
             removeShortcut,
             renameShortcut,
+            onResetSearchForNavigation,
+            onRevealFileInActualFolder,
             selectionDispatch,
             selectionStateRef,
             setIsShortcutContextMenuOpen,
@@ -233,7 +241,8 @@ export function useNavigationPaneShortcutMenus({
                 services: menuServices,
                 settings,
                 state,
-                dispatchers
+                dispatchers,
+                options: { onRevealFileInActualFolder, onResetSearchForNavigation }
             });
 
             menu.showAtMouseEvent(event.nativeEvent);
@@ -244,6 +253,8 @@ export function useNavigationPaneShortcutMenus({
             expansionState.expandedProperties,
             expansionState.expandedTags,
             menuServices,
+            onResetSearchForNavigation,
+            onRevealFileInActualFolder,
             selectionDispatch,
             selectionStateRef,
             settings,
