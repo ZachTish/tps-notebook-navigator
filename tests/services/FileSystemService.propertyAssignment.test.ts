@@ -239,4 +239,155 @@ describe('FileSystemOperations property assignment', () => {
         expect(target.frontmatter).toEqual({ Project: rawValue });
         expect(plainTarget.frontmatter).toEqual({ Project: rawValue });
     });
+
+    it('uses GCM property types so list values add while scalar values replace', async () => {
+        const app = new App();
+        const target = createFile('Target.md', { Parents: ['[[Alpha]]'], Priority: 'low' });
+        const propertyTreeService = new PropertyTreeService();
+        propertyTreeService.updatePropertyTree(
+            buildPropertyTreeFromDatabase(
+                createMockDb([
+                    {
+                        path: 'Source.md',
+                        properties: [
+                            { fieldKey: 'Parents', value: '[[Beta]]', valueKind: 'string' },
+                            { fieldKey: 'Priority', value: 'high', valueKind: 'string' }
+                        ]
+                    }
+                ])
+            )
+        );
+        const addListValues = vi.fn().mockResolvedValue([target]);
+        const setValues = vi.fn().mockResolvedValue([target]);
+        const itemProperties = {
+            version: 1,
+            listDefinitions: vi.fn(() => []),
+            resolveDefinition: vi.fn((key: string) =>
+                key.toLowerCase() === 'parents'
+                    ? { id: 'parents', key: 'Parents', label: 'Parents', type: 'list', listItemType: 'link', allowInlineSet: true }
+                    : { id: 'priority', key: 'Priority', label: 'Priority', type: 'selector', allowInlineSet: true }
+            ),
+            applyToTaskLines: vi.fn()
+        };
+        (app as App & { plugins: unknown }).plugins = {
+            enabledPlugins: new Set(['tps-global-context-menu']),
+            getPlugin: () => ({
+                api: {
+                    itemProperties,
+                    frontmatter: { setValues, addListValues },
+                    fileProperties: { version: 1, isTarget: vi.fn(() => false), setValues, addListValues }
+                }
+            })
+        };
+        const operations = createOperations(app, propertyTreeService);
+
+        await operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('parents', normalizePropertyTreeValuePath('[[Beta]]')), [
+            target
+        ]);
+        expect(addListValues).toHaveBeenCalledWith(
+            [target],
+            'Parents',
+            ['[[Beta]]'],
+            expect.objectContaining({ kind: 'user', sourcePluginId: 'tps-notebook-navigator' })
+        );
+
+        await operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('priority', normalizePropertyTreeValuePath('high')), [target]);
+        expect(setValues).toHaveBeenCalledWith(
+            [target],
+            { Priority: 'high' },
+            expect.objectContaining({ kind: 'user', surface: 'navigator-property-drop' })
+        );
+    });
+
+    it('reports typed GCM property no-ops as skipped instead of claiming an update', async () => {
+        const app = new App();
+        const target = createFile('Target.md', { Parents: ['[[Alpha]]'] });
+        const propertyTreeService = new PropertyTreeService();
+        propertyTreeService.updatePropertyTree(
+            buildPropertyTreeFromDatabase(
+                createMockDb([{ path: 'Source.md', properties: [{ fieldKey: 'Parents', value: '[[Alpha]]', valueKind: 'string' }] }])
+            )
+        );
+        (app as App & { plugins: unknown }).plugins = {
+            enabledPlugins: new Set(['tps-global-context-menu']),
+            getPlugin: () => ({
+                api: {
+                    itemProperties: {
+                        version: 1,
+                        listDefinitions: vi.fn(() => []),
+                        resolveDefinition: vi.fn(() => ({
+                            id: 'parents',
+                            key: 'Parents',
+                            label: 'Parents',
+                            type: 'list',
+                            listItemType: 'link',
+                            allowInlineSet: true
+                        })),
+                        applyToTaskLines: vi.fn()
+                    },
+                    frontmatter: { setValues: vi.fn(), addListValues: vi.fn().mockResolvedValue([]) },
+                    fileProperties: {
+                        version: 1,
+                        isTarget: vi.fn(() => false),
+                        setValues: vi.fn(),
+                        addListValues: vi.fn()
+                    }
+                }
+            })
+        };
+        const operations = createOperations(app, propertyTreeService);
+
+        await expect(
+            operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('parents', normalizePropertyTreeValuePath('[[Alpha]]')), [target])
+        ).resolves.toEqual({ updated: 0, skipped: 1 });
+    });
+
+    it('routes non-Markdown property drops through GCM companions without changing source bytes', async () => {
+        const app = new App();
+        const target = createFile('Board.canvas', {});
+        const processFrontMatter = vi.fn().mockResolvedValue(undefined);
+        app.fileManager.processFrontMatter = processFrontMatter;
+        const propertyTreeService = new PropertyTreeService();
+        propertyTreeService.updatePropertyTree(
+            buildPropertyTreeFromDatabase(
+                createMockDb([{ path: 'Source.md', properties: [{ fieldKey: 'Parents', value: '[[Beta]]', valueKind: 'string' }] }])
+            )
+        );
+        const frontmatterAdd = vi.fn();
+        const assetAdd = vi.fn().mockResolvedValue([target]);
+        (app as App & { plugins: unknown }).plugins = {
+            enabledPlugins: new Set(['tps-global-context-menu']),
+            getPlugin: () => ({
+                api: {
+                    itemProperties: {
+                        version: 1,
+                        listDefinitions: vi.fn(() => []),
+                        resolveDefinition: vi.fn(() => ({
+                            id: 'parents',
+                            key: 'Parents',
+                            label: 'Parents',
+                            type: 'list',
+                            listItemType: 'link',
+                            allowInlineSet: true
+                        })),
+                        applyToTaskLines: vi.fn()
+                    },
+                    frontmatter: { setValues: vi.fn(), addListValues: frontmatterAdd },
+                    fileProperties: {
+                        version: 1,
+                        isTarget: vi.fn(() => true),
+                        setValues: vi.fn(),
+                        addListValues: assetAdd
+                    }
+                }
+            })
+        };
+        const operations = createOperations(app, propertyTreeService);
+        await expect(
+            operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('parents', normalizePropertyTreeValuePath('[[Beta]]')), [target])
+        ).resolves.toEqual({ updated: 1, skipped: 0 });
+        expect(frontmatterAdd).not.toHaveBeenCalled();
+        expect(assetAdd).toHaveBeenCalledWith([target], 'Parents', ['[[Beta]]'], expect.any(Object));
+        expect(processFrontMatter).not.toHaveBeenCalled();
+    });
 });

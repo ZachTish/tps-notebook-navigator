@@ -93,6 +93,12 @@ import type {
     MoveFolderResult,
     SelectionContext
 } from './fileSystem/types';
+import {
+    resolveGcmFilePropertiesApi,
+    resolveGcmFrontmatterApi,
+    resolveGcmItemPropertiesApi,
+    type GcmFrontmatterApiLike
+} from '../integrations/gcm/gcmTaskApi';
 export { FolderMoveError } from './fileSystem/FileMoveService';
 export type { FileTrashResult };
 export type { ManualSortNewFilePlacementContext };
@@ -113,7 +119,7 @@ type PropertyNodeAssignmentValueKind = 'empty' | 'boolean' | 'string';
 /**
  * Normalized property write request derived from a tree node id.
  */
-interface ResolvedPropertyNodeAssignment {
+export interface ResolvedPropertyNodeAssignment {
     propertyKey: string;
     nodeKind: 'key' | 'value';
     desiredValue: string | null;
@@ -404,7 +410,7 @@ export class FileSystemOperations {
     /**
      * Resolves a property node id into a normalized frontmatter assignment.
      */
-    private resolvePropertyNodeAssignment(propertyNodeId: string): ResolvedPropertyNodeAssignment | null {
+    public resolvePropertyNodeAssignment(propertyNodeId: string): ResolvedPropertyNodeAssignment | null {
         const requestedNode = parsePropertyNodeId(propertyNodeId);
         if (!requestedNode) {
             return null;
@@ -917,18 +923,58 @@ export class FileSystemOperations {
      * Value nodes set `key: value`, replacing the current value. When the current value is a string array, replaces it with a single item array.
      */
     async applyPropertyNodeToFiles(propertyNodeId: string, files: readonly TFile[]): Promise<ApplyPropertyNodeResult> {
-        const markdownFiles = files.filter(file => file.extension === 'md');
-        if (markdownFiles.length === 0) {
-            return { updated: 0, skipped: 0 };
-        }
-
-        if (markdownFiles.length !== files.length) {
-            showNotice(strings.fileSystem.notifications.propertiesRequireMarkdown, { variant: 'warning' });
+        if (files.length === 0) {
             return { updated: 0, skipped: 0 };
         }
 
         const assignment = this.resolvePropertyNodeAssignment(propertyNodeId);
         if (!assignment) {
+            return { updated: 0, skipped: 0 };
+        }
+
+        const itemPropertiesApi = resolveGcmItemPropertiesApi(this.app);
+        const definition = itemPropertiesApi?.resolveDefinition(assignment.propertyKey) ?? null;
+        const frontmatterApi = resolveGcmFrontmatterApi(this.app);
+        const filePropertiesApi = resolveGcmFilePropertiesApi(this.app);
+        if (definition && frontmatterApi && filePropertiesApi) {
+            const markdownFiles = files.filter(file => file.extension === 'md');
+            const assetFiles = files.filter(file => file.extension !== 'md' && filePropertiesApi.isTarget(file));
+            if (markdownFiles.length + assetFiles.length !== files.length) {
+                showNotice(strings.fileSystem.notifications.propertiesRequireMarkdown, { variant: 'warning' });
+                return { updated: 0, skipped: files.length };
+            }
+            const cause = { kind: 'user', sourcePluginId: 'tps-notebook-navigator', surface: 'navigator-property-drop' };
+            const apply = async (targetFiles: TFile[], api: GcmFrontmatterApiLike): Promise<number> => {
+                if (targetFiles.length === 0) return 0;
+                let result: unknown;
+                if (definition.type === 'list' && assignment.nodeKind === 'value' && assignment.writeValue !== null) {
+                    result = await api.addListValues(targetFiles, definition.key, [assignment.writeValue], cause);
+                } else {
+                    result = await api.setValues(targetFiles, { [definition.key]: assignment.writeValue }, cause);
+                }
+                return Array.isArray(result) ? result.length : targetFiles.length;
+            };
+            let updated = 0;
+            try {
+                updated += await apply(markdownFiles, frontmatterApi);
+                updated += await apply(assetFiles, filePropertiesApi);
+            } catch (error) {
+                const message = getErrorMessage(error, strings.common.unknownError);
+                showNotice(strings.dragDrop.errors.failedToSetProperty.replace('{error}', message), { variant: 'warning' });
+                return { updated: 0, skipped: files.length };
+            }
+            const message =
+                updated === 1
+                    ? strings.fileSystem.notifications.propertySetOnNote
+                    : strings.fileSystem.notifications.propertySetOnNotes.replace('{count}', updated.toString());
+            showNotice(message, { variant: 'success' });
+            return { updated, skipped: files.length - updated };
+        }
+
+        const markdownFiles = files.filter(file => file.extension === 'md');
+        if (markdownFiles.length === 0) return { updated: 0, skipped: 0 };
+        if (markdownFiles.length !== files.length) {
+            showNotice(strings.fileSystem.notifications.propertiesRequireMarkdown, { variant: 'warning' });
             return { updated: 0, skipped: 0 };
         }
 

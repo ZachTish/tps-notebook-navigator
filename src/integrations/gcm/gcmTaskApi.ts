@@ -68,6 +68,42 @@ export interface GcmTaskCheckboxesApiLike {
     stateForStatus(status: unknown): string;
 }
 
+export interface GcmItemPropertyDefinitionLike {
+    id: string;
+    key: string;
+    label: string;
+    type: string;
+    listItemType?: string;
+    allowInlineSet: boolean;
+}
+
+export interface GcmItemPropertyRefLike {
+    path: string;
+    lineNumber: number;
+    rawLine?: string;
+}
+
+export interface GcmItemPropertiesApiLike {
+    readonly version: number;
+    listDefinitions(): readonly GcmItemPropertyDefinitionLike[];
+    resolveDefinition(keyOrId: unknown): GcmItemPropertyDefinitionLike | null;
+    applyToTaskLines(
+        refs: readonly GcmItemPropertyRefLike[],
+        mutation: { key: string; action: 'set' | 'add' | 'remove' | 'clear'; values?: unknown[] },
+        cause?: { sourcePluginId?: string; surface?: string }
+    ): Promise<{ ok: boolean; requested: number; updated: number; skipped: number; error?: string }>;
+}
+
+export interface GcmFrontmatterApiLike {
+    setValues(files: TFile[], updates: Record<string, unknown>, cause?: unknown): Promise<unknown>;
+    addListValues(files: TFile[], key: string, values: unknown[], cause?: unknown): Promise<unknown>;
+}
+
+export interface GcmFilePropertiesApiLike extends GcmFrontmatterApiLike {
+    readonly version: number;
+    isTarget(file: TFile): boolean;
+}
+
 /** Small synchronous menu surface used instead of exposing Obsidian's Menu object. */
 export interface GcmTaskMenuLike {
     addItem(callback: (item: MenuItem) => void): unknown;
@@ -128,6 +164,53 @@ export function isGcmTaskLinesApiLike(value: unknown): value is GcmTaskLinesApiL
 
 export function isGcmTaskCheckboxesApiLike(value: unknown): value is GcmTaskCheckboxesApiLike {
     return isRecord(value) && typeof value.version === 'number' && value.version >= 1 && typeof value.stateForStatus === 'function';
+}
+
+export function isGcmItemPropertiesApiLike(value: unknown): value is GcmItemPropertiesApiLike {
+    return (
+        isRecord(value) &&
+        typeof value.version === 'number' &&
+        value.version >= 1 &&
+        typeof value.listDefinitions === 'function' &&
+        typeof value.resolveDefinition === 'function' &&
+        typeof value.applyToTaskLines === 'function'
+    );
+}
+
+function resolveGcmPluginApi(app: App): Record<string, unknown> | null {
+    const manager = (app as App & { plugins?: PluginManagerLike }).plugins;
+    if (!manager || isExplicitlyDisabled(manager, TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID)) return null;
+    try {
+        const plugin =
+            manager.getPlugin?.(TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID) ?? manager.plugins?.[TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID] ?? null;
+        return isRecord(plugin) && isRecord(plugin.api) ? plugin.api : null;
+    } catch {
+        return null;
+    }
+}
+
+export function resolveGcmItemPropertiesApi(app: App): GcmItemPropertiesApiLike | null {
+    const api = resolveGcmPluginApi(app);
+    return api && isGcmItemPropertiesApiLike(api.itemProperties) ? api.itemProperties : null;
+}
+
+export function resolveGcmFrontmatterApi(app: App): GcmFrontmatterApiLike | null {
+    const value = resolveGcmPluginApi(app)?.frontmatter;
+    return isRecord(value) && typeof value.setValues === 'function' && typeof value.addListValues === 'function'
+        ? (value as unknown as GcmFrontmatterApiLike)
+        : null;
+}
+
+export function resolveGcmFilePropertiesApi(app: App): GcmFilePropertiesApiLike | null {
+    const value = resolveGcmPluginApi(app)?.fileProperties;
+    return isRecord(value) &&
+        typeof value.version === 'number' &&
+        value.version >= 1 &&
+        typeof value.isTarget === 'function' &&
+        typeof value.setValues === 'function' &&
+        typeof value.addListValues === 'function'
+        ? (value as unknown as GcmFilePropertiesApiLike)
+        : null;
 }
 
 /** Resolves task capabilities from one public GCM plugin API payload. */

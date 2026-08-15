@@ -54,6 +54,7 @@ import {
     isFolderEffectivelyExpanded
 } from '../utils/navigationExpansion';
 import { getIconService } from '../services/icons';
+import { resolveGcmItemPropertiesApi, type GcmItemPropertyRefLike } from '../integrations/gcm/gcmTaskApi';
 
 /**
  * Enables drag and drop for files and folders using event delegation.
@@ -1491,4 +1492,110 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
         internalDragSession,
         setDragManagerPayload
     ]);
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container || isMobile) return;
+        const ownerDocument = container.ownerDocument;
+        const handleGcmItemPointerDrop = (rawEvent: Event) => {
+            const event = rawEvent as CustomEvent<{
+                items?: unknown;
+                x?: unknown;
+                y?: unknown;
+            }>;
+            const x = Number(event.detail?.x);
+            const y = Number(event.detail?.y);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+            const dropTarget = ownerDocument.elementFromPoint(x, y) as HTMLElement | null;
+            const dropZone = dropTarget?.closest<HTMLElement>('[data-drop-zone="tag"],[data-drop-zone="property"]') ?? null;
+            if (!dropZone || !container.contains(dropZone)) return;
+            const refs = Array.isArray(event.detail?.items)
+                ? event.detail.items.filter((candidate): candidate is GcmItemPropertyRefLike => {
+                      if (!candidate || typeof candidate !== 'object') return false;
+                      const record = candidate as Record<string, unknown>;
+                      return (
+                          typeof record.path === 'string' &&
+                          typeof record.lineNumber === 'number' &&
+                          Number.isSafeInteger(record.lineNumber) &&
+                          record.lineNumber >= 0 &&
+                          (record.rawLine === undefined || typeof record.rawLine === 'string')
+                      );
+                  })
+                : [];
+            if (refs.length === 0) return;
+            const api = resolveGcmItemPropertiesApi(app);
+            if (!api) {
+                showNotice('TPS Global Context Menu item-property API is unavailable.', { variant: 'warning' });
+                return;
+            }
+            const dropType = dropZone.dataset.dropZone;
+            const targetPath = String(dropZone.dataset.dropPath || '').trim();
+            if (!targetPath) return;
+            event.preventDefault();
+            const run = async () => {
+                if (dropType === 'tag') {
+                    const definition = api
+                        .listDefinitions()
+                        .find(
+                            candidate =>
+                                candidate.type === 'list' &&
+                                (candidate.listItemType === 'tag' || candidate.key.trim().toLowerCase() === 'tags') &&
+                                candidate.allowInlineSet
+                        );
+                    if (!definition) {
+                        showNotice('GCM has no inline tag-list property available for this drop.', { variant: 'warning' });
+                        return;
+                    }
+                    const result = await api.applyToTaskLines(
+                        refs,
+                        {
+                            key: definition.key,
+                            action: targetPath === UNTAGGED_TAG_ID ? 'clear' : 'add',
+                            values: targetPath === UNTAGGED_TAG_ID ? [] : [targetPath]
+                        },
+                        { sourcePluginId: 'tps-notebook-navigator', surface: 'navigator-tag-drop' }
+                    );
+                    showNotice(
+                        result.ok
+                            ? `Updated ${result.updated} of ${result.requested} selected items.`
+                            : 'The selected task lines changed before the tag could be applied.',
+                        {
+                            variant: result.ok ? 'success' : 'warning'
+                        }
+                    );
+                    return;
+                }
+                const assignment = fileSystemOps.resolvePropertyNodeAssignment(targetPath);
+                if (!assignment || assignment.nodeKind !== 'value' || assignment.writeValue === null) {
+                    showNotice('Drop task items on a property value, not on an empty property key.', { variant: 'warning' });
+                    return;
+                }
+                const definition = api.resolveDefinition(assignment.propertyKey);
+                if (!definition || !definition.allowInlineSet || definition.type === 'folder' || definition.type === 'kind') {
+                    showNotice('That property is not available on task lines.', { variant: 'warning' });
+                    return;
+                }
+                const result = await api.applyToTaskLines(
+                    refs,
+                    {
+                        key: definition.key,
+                        action: definition.type === 'list' ? 'add' : 'set',
+                        values: [assignment.writeValue]
+                    },
+                    { sourcePluginId: 'tps-notebook-navigator', surface: 'navigator-property-drop' }
+                );
+                showNotice(
+                    result.ok
+                        ? `Updated ${result.updated} of ${result.requested} selected items.`
+                        : 'The selected task lines changed before the property could be applied.',
+                    {
+                        variant: result.ok ? 'success' : 'warning'
+                    }
+                );
+            };
+            runAsyncAction(run);
+        };
+        ownerDocument.addEventListener('tps-task-line-pointer-drop', handleGcmItemPointerDrop);
+        return () => ownerDocument.removeEventListener('tps-task-line-pointer-drop', handleGcmItemPointerDrop);
+    }, [app, containerRef, fileSystemOps, isMobile]);
 }

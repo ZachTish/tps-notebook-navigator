@@ -107,6 +107,16 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.17.0',
+        date: '2026-08-15',
+        new: [
+            'Selected GCM TPS List/Table tasks can be dropped together on Navigator tags and concrete property values, with the guarded task mutation delegated back to GCM.'
+        ],
+        improved: [
+            'Property drops now honor GCM field types: list values add and deduplicate, scalar values replace, and supported non-Markdown files use GCM companion properties.'
+        ]
+    },
+    {
         version: '5.16.1',
         date: '2026-08-14',
         fixed: [
