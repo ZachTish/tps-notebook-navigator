@@ -107,6 +107,13 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.18.1',
+        date: '2026-08-18',
+        fixed: [
+            'The vault root now honors its own Show files from subfolders choice, so disabling descendants shows only files stored directly at the root while Search whole vault remains vault-wide.'
+        ]
+    },
+    {
         version: '5.18.0',
         date: '2026-08-18',
         new: [

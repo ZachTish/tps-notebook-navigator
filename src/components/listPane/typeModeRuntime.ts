@@ -17,7 +17,7 @@ export function shouldCollapseMobileDrawerForTypeProviderActivation(selectionTyp
     return isMobile && selectionType === ItemType.TYPE;
 }
 
-/** The visible vault root is the mixed all-resources scope, not a direct-child folder query. */
+/** Reports whether the selected folder is the vault root. */
 export function isVaultRootResourceScope(
     selectionType: ItemType | null | undefined,
     selectedFolderPath: string | null | undefined
@@ -25,7 +25,7 @@ export function isVaultRootResourceScope(
     return selectionType === ItemType.FOLDER && selectedFolderPath === '/';
 }
 
-/** Keep ordinary folders preference-driven while making the root represent every visible resource. */
+/** Resolves descendant traversal while allowing an explicit whole-vault search to temporarily widen the root scope. */
 export function resolveIncludeDescendantResources({
     selectionType,
     selectedFolderPath,
@@ -37,7 +37,7 @@ export function resolveIncludeDescendantResources({
     includeDescendants: boolean;
     forceWholeVaultSearch?: boolean;
 }): boolean {
-    return includeDescendants || forceWholeVaultSearch || isVaultRootResourceScope(selectionType, selectedFolderPath);
+    return includeDescendants || forceWholeVaultSearch;
 }
 
 /** Native file presentation controls apply to ordinary scopes and fixed file-backed Types only. */

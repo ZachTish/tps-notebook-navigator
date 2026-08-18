@@ -40,7 +40,6 @@ import { resolveSelectionIncludeDescendants } from '../utils/descendantVisibilit
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
 import {
-    isVaultRootResourceScope,
     shouldShowListCreateButton,
     supportsListSortAndGroupingForSelection,
     supportsNativeListPresentationForSelection
@@ -183,11 +182,6 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     const supportsListSortAndGrouping = supportsListSortAndGroupingForSelection(selectionState.selectionType, selectionState.selectedType);
     const showSearchButton = listToolbarVisibility.search;
     const showDescendantsButton = !isTypeSelection && listToolbarVisibility.descendants;
-    const isVaultRootScope = isVaultRootResourceScope(selectionState.selectionType, selectionState.selectedFolder?.path);
-    const effectiveIncludeDescendants = includeDescendantNotes || isVaultRootScope;
-    const effectiveDescendantsTooltip = isVaultRootScope
-        ? 'All visible resources from subfolders are included at the vault root'
-        : descendantsTooltip;
     const showGroupExpansionButton = supportsListSortAndGrouping && listToolbarVisibility.groupExpansion;
     const showSortButton = supportsListSortAndGrouping && listToolbarVisibility.sort;
     const showAppearanceButton = supportsNativeListPresentation && listToolbarVisibility.appearance;
@@ -503,10 +497,10 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                     ) : null}
                     {showDescendantsButton ? (
                         <button
-                            className={`nn-icon-button ${effectiveIncludeDescendants ? 'nn-icon-button-active' : ''}`}
-                            aria-label={effectiveDescendantsTooltip}
+                            className={`nn-icon-button ${includeDescendantNotes ? 'nn-icon-button-active' : ''}`}
+                            aria-label={descendantsTooltip}
                             onClick={handleToggleDescendants}
-                            disabled={actionsDisabled || !hasNavigationSelection || isVaultRootScope}
+                            disabled={actionsDisabled || !hasNavigationSelection}
                             tabIndex={-1}
                         >
                             <ServiceIcon iconId={resolveUXIcon(settings.interfaceIcons, 'list-descendants')} />

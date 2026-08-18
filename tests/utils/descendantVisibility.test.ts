@@ -40,13 +40,17 @@ describe('per-view descendant visibility', () => {
         ).toBe(true);
     });
 
-    it('does not persist overrides for the fixed vault root or Type collections', () => {
+    it('persists a root-folder choice while leaving Type collections outside descendant semantics', () => {
         const settings = createSettings();
 
-        expect(getDescendantVisibilityTarget({ selectionType: ItemType.FOLDER, selectedFolderPath: '/' })).toBeNull();
-        expect(setSelectionIncludeDescendants(settings, { selectionType: ItemType.FOLDER, selectedFolderPath: '/' }, false)).toBe(false);
+        expect(getDescendantVisibilityTarget({ selectionType: ItemType.FOLDER, selectedFolderPath: '/' })).toEqual({
+            recordKey: 'folderAppearances',
+            key: '/'
+        });
+        expect(setSelectionIncludeDescendants(settings, { selectionType: ItemType.FOLDER, selectedFolderPath: '/' }, false)).toBe(true);
+        expect(resolveSelectionIncludeDescendants(settings, { selectionType: ItemType.FOLDER, selectedFolderPath: '/' }, true)).toBe(false);
         expect(setSelectionIncludeDescendants(settings, { selectionType: ItemType.TYPE }, true)).toBe(false);
-        expect(settings.folderAppearances).toEqual({});
+        expect(settings.folderAppearances).toEqual({ '/': { includeDescendants: false } });
         expect(settings.typeAppearances).toEqual({});
     });
 

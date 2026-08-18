@@ -22,7 +22,7 @@ interface DescendantVisibilityTarget {
 export function getDescendantVisibilityTarget(selection: DescendantVisibilitySelection): DescendantVisibilityTarget | null {
     if (selection.selectionType === ItemType.FOLDER) {
         const path = selection.selectedFolder?.path ?? selection.selectedFolderPath ?? null;
-        return path && path !== '/' ? { recordKey: 'folderAppearances', key: path } : null;
+        return path ? { recordKey: 'folderAppearances', key: path } : null;
     }
     if (selection.selectionType === ItemType.TAG && selection.selectedTag) {
         return { recordKey: 'tagAppearances', key: selection.selectedTag };
