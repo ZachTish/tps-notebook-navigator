@@ -23,7 +23,7 @@ import { getFilesForFolder, getFilesForProperty, getFilesForTag } from '../../ut
 import { localStorage } from '../../utils/localStorage';
 import { INTERNAL_NOTEBOOK_NAVIGATOR_API, type NotebookNavigatorAPI } from '../../api/NotebookNavigatorAPI';
 import type { NotebookNavigatorSettings } from '../../settings/types';
-import { PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, STORAGE_KEYS, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
+import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, STORAGE_KEYS, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
 import type { IPropertyTreeProvider } from '../../interfaces/IPropertyTreeProvider';
 import type { ITagTreeProvider } from '../../interfaces/ITagTreeProvider';
 import type { PropertyKeyDeleteEventPayload, PropertyKeyRenameEventPayload } from '../../services/PropertyOperations';
@@ -41,6 +41,7 @@ import {
 import { supportsKeyboardInteractions } from '../../utils/paneLayout';
 import { normalizeTagPath } from '../../utils/tagUtils';
 import { getActivePropertyKeySet } from '../../utils/vaultProfiles';
+import { resolveSelectionIncludeDescendants } from '../../utils/descendantVisibility';
 import { getFirstSelectedFile } from './state';
 import { createSelectionHistoryEntry } from './state';
 import type { SelectionAction, SelectionDispatch, SelectionState } from './types';
@@ -274,10 +275,16 @@ export function useSelectionEnhancedDispatch({
 
     return useCallback(
         (action: SelectionAction) => {
-            const visibility = { includeDescendantNotes, showHiddenItems };
-
             if (action.type === 'SET_SELECTED_FOLDER' && action.autoSelectedFile === undefined) {
                 if (action.folder) {
+                    const visibility = {
+                        includeDescendantNotes: resolveSelectionIncludeDescendants(
+                            settings,
+                            { selectionType: ItemType.FOLDER, selectedFolder: action.folder },
+                            includeDescendantNotes
+                        ),
+                        showHiddenItems
+                    };
                     const filesInFolder = getFilesForFolder(action.folder, settings, visibility, app);
                     dispatch({ ...action, autoSelectedFile: resolveAutoSelectedFile(filesInFolder) });
                 } else {
@@ -288,6 +295,14 @@ export function useSelectionEnhancedDispatch({
 
             if (action.type === 'SET_SELECTED_TAG' && action.autoSelectedFile === undefined) {
                 if (action.tag) {
+                    const visibility = {
+                        includeDescendantNotes: resolveSelectionIncludeDescendants(
+                            settings,
+                            { selectionType: ItemType.TAG, selectedTag: action.tag },
+                            includeDescendantNotes
+                        ),
+                        showHiddenItems
+                    };
                     const filesForTag = getFilesForTag(action.tag, settings, visibility, app, tagTreeService);
                     dispatch({ ...action, autoSelectedFile: resolveAutoSelectedFile(filesForTag) });
                 } else {
@@ -297,6 +312,14 @@ export function useSelectionEnhancedDispatch({
             }
 
             if (action.type === 'SET_SELECTED_PROPERTY' && action.autoSelectedFile === undefined) {
+                const visibility = {
+                    includeDescendantNotes: resolveSelectionIncludeDescendants(
+                        settings,
+                        { selectionType: ItemType.PROPERTY, selectedProperty: action.nodeId },
+                        includeDescendantNotes
+                    ),
+                    showHiddenItems
+                };
                 const filesForProperty = getFilesForProperty(action.nodeId, settings, visibility, app, propertyTreeService);
                 dispatch({ ...action, autoSelectedFile: resolveAutoSelectedFile(filesForProperty) });
                 return;

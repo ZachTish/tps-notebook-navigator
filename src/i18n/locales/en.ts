@@ -1265,7 +1265,7 @@ export const STRINGS_EN = {
             },
             includeDescendantNotes: {
                 name: 'Show notes from subfolders / descendants',
-                desc: 'Include notes from nested subfolders and tag and property descendants when viewing a folder, tag, or property.'
+                desc: 'Default for new folder, tag, and property views. The list toolbar can override this independently for each view.'
             },
             filterPinnedNotesByFolder: {
                 name: 'Only pin notes in their folder',

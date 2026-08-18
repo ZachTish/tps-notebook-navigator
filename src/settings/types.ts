@@ -485,6 +485,8 @@ export type ListNoteGroupingOption =
     | `line-property-day-follow:${string}`;
 
 export interface ListPaneAppearance {
+    /** Whether this folder, tag, or property list includes nested descendants. Undefined inherits the global default. */
+    includeDescendants?: boolean;
     mode?: ListDisplayMode;
     titleRows?: number;
     /** Zero hides preview text for this selection; undefined inherits the global row count. */

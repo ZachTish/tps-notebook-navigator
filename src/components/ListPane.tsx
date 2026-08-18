@@ -99,6 +99,7 @@ import type { FileItemPillDecorationModel } from '../utils/fileItemPillDecoratio
 import type { FileItemPillOrderModel } from '../utils/fileItemPillOrder';
 import { runAsyncAction } from '../utils/async';
 import { getFilesForNavigationSelection, getPinnedSectionCollapseKey } from '../utils/selectionUtils';
+import { resolveSelectionIncludeDescendants } from '../utils/descendantVisibility';
 import { buildListGroupCollapseKeyPrefix } from '../utils/listGroupCollapse';
 import {
     applyManualSortMarkdownOrder,
@@ -370,7 +371,7 @@ export const ListPane = React.memo(
         const expansionState = useExpansionState();
         const expansionDispatch = useExpansionDispatch();
         const uxPreferences = useUXPreferences();
-        const includeDescendantNotes = uxPreferences.includeDescendantNotes;
+        const defaultIncludeDescendantNotes = uxPreferences.includeDescendantNotes;
         const showHiddenItems = uxPreferences.showHiddenItems;
         const showCalendar = uxPreferences.showCalendar;
         const appearanceSettings = useListPaneAppearance();
@@ -494,6 +495,11 @@ export const ListPane = React.memo(
         }, [resetSearchStateForNavigation]);
 
         const { selectionType, selectedFolder, selectedTag, selectedProperty, selectedType, selectedFile } = selectionState;
+        const includeDescendantNotes = resolveSelectionIncludeDescendants(
+            settings,
+            { selectionType, selectedFolder, selectedTag, selectedProperty },
+            defaultIncludeDescendantNotes
+        );
         const handleTypeProviderRowActivationRequested = React.useCallback(() => {
             if (shouldCollapseMobileDrawerForTypeProviderActivation(selectionType, isMobile)) {
                 app.workspace.leftSplit?.collapse();

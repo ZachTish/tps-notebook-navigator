@@ -24,6 +24,7 @@ import { strings } from '../i18n';
 import { ServiceIcon } from './ServiceIcon';
 import { useListActions } from '../hooks/useListActions';
 import { runAsyncAction } from '../utils/async';
+import { resolveSelectionIncludeDescendants } from '../utils/descendantVisibility';
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
 import type { RevealFileOptions } from '../hooks/useNavigatorReveal';
@@ -67,9 +68,9 @@ export function ListToolbar({
     onResetSearchForNavigation
 }: ListToolbarProps) {
     const uxPreferences = useUXPreferences();
-    const includeDescendantNotes = uxPreferences.includeDescendantNotes;
     const selectionState = useSelectionState();
     const settings = useSettingsState();
+    const includeDescendantNotes = resolveSelectionIncludeDescendants(settings, selectionState, uxPreferences.includeDescendantNotes);
     const listVisibility = settings.toolbarVisibility.list;
     const showRevealButton = listVisibility.reveal;
 

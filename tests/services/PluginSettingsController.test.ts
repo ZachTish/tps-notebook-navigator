@@ -428,6 +428,7 @@ describe('PluginSettingsController.loadSettings', () => {
             loadData: vi.fn(async () => ({
                 folderAppearances: {
                     Valid: {
+                        includeDescendants: false,
                         mode: 'standard',
                         titleRows: 2,
                         previewRows: 4,
@@ -458,6 +459,7 @@ describe('PluginSettingsController.loadSettings', () => {
 
         expect(controller.settings.folderAppearances).toEqual({
             Valid: {
+                includeDescendants: false,
                 mode: 'standard',
                 titleRows: 2,
                 previewRows: 4,

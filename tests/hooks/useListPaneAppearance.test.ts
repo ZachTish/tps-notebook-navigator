@@ -192,6 +192,7 @@ describe('resolveListPaneAppearance', () => {
 describe('stored list appearance intent', () => {
     it('retains both enabling and hiding toggles and drops invalid or unknown fields', () => {
         const stored = getStoredListPaneAppearanceFields({
+            includeDescendants: false,
             mode: 'standard',
             titleRows: 2,
             previewRows: 9,
@@ -204,6 +205,7 @@ describe('stored list appearance intent', () => {
         } as ListPaneAppearance);
 
         expect(stored).toEqual({
+            includeDescendants: false,
             mode: 'standard',
             titleRows: 2,
             showTags: true,
@@ -219,6 +221,7 @@ describe('stored list appearance intent', () => {
     });
 
     it('treats toggles stored with different values as different overrides', () => {
+        expect(areStoredListPaneAppearanceFieldsEqual({ includeDescendants: true }, { includeDescendants: false })).toBe(false);
         expect(areStoredListPaneAppearanceFieldsEqual({ showTags: true }, { showTags: false })).toBe(false);
         expect(areStoredListPaneAppearanceFieldsEqual({ showTags: true }, { showTags: true })).toBe(true);
         expect(areStoredListPaneAppearanceFieldsEqual(undefined, { showTags: undefined })).toBe(true);

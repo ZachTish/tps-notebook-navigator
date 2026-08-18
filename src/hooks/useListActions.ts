@@ -21,7 +21,7 @@ import { Menu, TFolder, type App, type TFile } from 'obsidian';
 import { useSelectionState, useSelectionDispatch } from '../context/SelectionContext';
 import { useServices, useFileSystemOps, useMetadataService } from '../context/ServicesContext';
 import { useSettingsState, useSettingsUpdate } from '../context/SettingsContext';
-import { useUXPreferenceActions, useUXPreferences } from '../context/UXPreferencesContext';
+import { useUXPreferences } from '../context/UXPreferencesContext';
 import { strings } from '../i18n';
 import { ConfirmModal } from '../modals/ConfirmModal';
 import { InputModal } from '../modals/InputModal';
@@ -78,6 +78,11 @@ import {
 import type { ListPaneAppearance } from '../settings/listPaneAppearance';
 import { getFilesForFolder } from '../utils/fileFinder';
 import { runAsyncAction } from '../utils/async';
+import {
+    getDescendantVisibilityTarget,
+    resolveSelectionIncludeDescendants,
+    setSelectionIncludeDescendants
+} from '../utils/descendantVisibility';
 import { FILE_VISIBILITY } from '../utils/fileTypeUtils';
 import {
     getManualSortBaselineSettings,
@@ -538,11 +543,11 @@ export function useListActions({
     const vaultProfileId = settings.vaultProfile;
     const vaultProfiles = settings.vaultProfiles;
     const uxPreferences = useUXPreferences();
-    const includeDescendantNotes = uxPreferences.includeDescendantNotes;
+    const defaultIncludeDescendantNotes = uxPreferences.includeDescendantNotes;
     const showHiddenItems = uxPreferences.showHiddenItems;
-    const { setIncludeDescendantNotes } = useUXPreferenceActions();
     const updateSettings = useSettingsUpdate();
     const selectionState = useSelectionState();
+    const includeDescendantNotes = resolveSelectionIncludeDescendants(settings, selectionState, defaultIncludeDescendantNotes);
     const selectionDispatch = useSelectionDispatch();
     const fileSystemOps = useFileSystemOps();
     const metadataService = useMetadataService();
@@ -2344,16 +2349,20 @@ export function useListActions({
      * When enabling descendants, automatically selects the active file if it's within the current folder/tag hierarchy.
      */
     const handleToggleDescendants = useCallback(() => {
+        if (!getDescendantVisibilityTarget(selectionState)) {
+            return;
+        }
         const wasShowingDescendants = includeDescendantNotes;
         const activeFile = app.workspace.getActiveFile();
+        const next = !wasShowingDescendants;
 
-        // Toggle descendant notes preference using UX action
-        setIncludeDescendantNotes(!wasShowingDescendants);
+        runAsyncAction(async () => {
+            await updateSettings(current => {
+                setSelectionIncludeDescendants(current, selectionState, next);
+            });
 
-        // Special case: When enabling descendants, auto-select the active file if it's in the folder
-        if (!wasShowingDescendants && selectionState.selectedFolder && !selectionState.selectedFile) {
-            if (activeFile) {
-                // Check if the active file would be visible with descendants enabled
+            // When enabling descendants, retain an active file that becomes part of this folder's list.
+            if (next && selectionState.selectedFolder && !selectionState.selectedFile && activeFile) {
                 const filesInFolder = getFilesForFolder(
                     selectionState.selectedFolder,
                     settings,
@@ -2365,17 +2374,8 @@ export function useListActions({
                     selectionDispatch({ type: 'SET_SELECTED_FILE', file: activeFile });
                 }
             }
-        }
-    }, [
-        setIncludeDescendantNotes,
-        includeDescendantNotes,
-        showHiddenItems,
-        selectionState.selectedFolder,
-        selectionState.selectedFile,
-        app,
-        selectionDispatch,
-        settings
-    ]);
+        });
+    }, [updateSettings, includeDescendantNotes, showHiddenItems, selectionState, app, selectionDispatch, settings]);
 
     const hasCustomSortOrGroup = selectionSortOverride !== undefined || hasSelectionGroupOverride;
 

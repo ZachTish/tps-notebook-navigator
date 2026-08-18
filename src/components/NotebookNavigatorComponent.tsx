@@ -58,6 +58,7 @@ import {
     resolveFileOperationCurrentFiles
 } from '../utils/selectionUtils';
 import { normalizeNavigationPath } from '../utils/navigationIndex';
+import { resolveSelectionIncludeDescendants, setSelectionIncludeDescendants } from '../utils/descendantVisibility';
 import { createIndexMap } from '../utils/arrayUtils';
 import { deleteSelectedFiles } from '../utils/deleteOperations';
 import { calculateCompactListMetrics } from '../utils/listPaneMetrics';
@@ -187,6 +188,7 @@ export interface NotebookNavigatorHandle {
     removeTagFromSelectedFiles: () => Promise<void>;
     removeAllTagsFromSelectedFiles: () => Promise<void>;
     toggleSearch: () => void;
+    toggleDescendants: () => Promise<boolean>;
     searchWithDescendants: () => void;
     triggerCollapse: () => void;
     triggerListGroupCollapse: () => boolean;
@@ -1421,6 +1423,18 @@ export const NotebookNavigatorComponent = React.memo(
                 },
                 toggleSearch: () => {
                     listPaneRef.current?.toggleSearch();
+                },
+                toggleDescendants: async () => {
+                    const current = resolveSelectionIncludeDescendants(
+                        plugin.settings,
+                        selectionState,
+                        plugin.getUXPreferences().includeDescendantNotes
+                    );
+                    if (!setSelectionIncludeDescendants(plugin.settings, selectionState, !current)) {
+                        return false;
+                    }
+                    await plugin.saveSettingsAndUpdate();
+                    return true;
                 },
                 searchWithDescendants: () => {
                     listPaneRef.current?.searchWithDescendants();

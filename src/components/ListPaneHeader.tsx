@@ -36,6 +36,7 @@ import { resolveFolderNoteClickOpenContext } from '../utils/keyboardOpenContext'
 import { usesMobileChrome } from '../utils/paneLayout';
 import { normalizeTagPath } from '../utils/tagUtils';
 import { runAsyncAction } from '../utils/async';
+import { resolveSelectionIncludeDescendants } from '../utils/descendantVisibility';
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
 import {
@@ -131,8 +132,8 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     const commandQueue = useCommandQueue();
     const settings = useSettingsState();
     const uxPreferences = useUXPreferences();
-    const includeDescendantNotes = uxPreferences.includeDescendantNotes;
     const selectionState = useSelectionState();
+    const includeDescendantNotes = resolveSelectionIncludeDescendants(settings, selectionState, uxPreferences.includeDescendantNotes);
     const selectionDispatch = useSelectionDispatch();
     const uiState = useUIState();
     const uiDispatch = useUIDispatch();

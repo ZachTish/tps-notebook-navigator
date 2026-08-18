@@ -822,10 +822,9 @@ export default function registerNavigatorCommands(plugin: NotebookNavigatorPlugi
         id: 'toggle-descendants',
         name: strings.commands.toggleDescendants,
         callback: () => {
-            // Wrap toggle with error handling
             runAsyncAction(async () => {
-                await plugin.activateView();
-                plugin.toggleIncludeDescendantNotes();
+                const view = await ensureNavigatorOpen(plugin);
+                await view?.toggleDescendants();
             });
         }
     });

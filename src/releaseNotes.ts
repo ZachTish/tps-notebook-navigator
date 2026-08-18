@@ -107,6 +107,16 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.18.0',
+        date: '2026-08-18',
+        new: [
+            'Folders, tags, and properties now remember their own Show files from subfolders / descendants choice; the List setting remains the default for views without an override.'
+        ],
+        fixed: [
+            'Changing descendants in one view no longer changes unrelated views, and the command-palette toggle now updates the active view instead of the global default.'
+        ]
+    },
+    {
         version: '5.17.0',
         date: '2026-08-15',
         new: [

@@ -88,6 +88,7 @@ export type ListPaneToggleKey = (typeof LIST_PANE_TOGGLE_KEYS)[number];
 export type ListPaneAppearanceFields = Omit<ListPaneAppearance, 'groupBy'>;
 
 const LIST_PANE_APPEARANCE_FIELD_KEYS = [
+    'includeDescendants',
     'mode',
     'titleRows',
     'previewRows',
@@ -115,6 +116,9 @@ export function getStoredListPaneAppearanceFields(appearance: ListPaneAppearance
     }
 
     const normalized: ListPaneAppearanceFields = {};
+    if (typeof appearance.includeDescendants === 'boolean') {
+        normalized.includeDescendants = appearance.includeDescendants;
+    }
     if (appearance.mode === 'standard' || appearance.mode === 'compact') {
         normalized.mode = appearance.mode;
     }

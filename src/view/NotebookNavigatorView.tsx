@@ -405,6 +405,11 @@ export class NotebookNavigatorView extends ItemView {
         return (await this.componentHandle?.setListPresentation(update)) ?? false;
     }
 
+    /** Toggles descendant inclusion for this view's current folder, tag, or property scope. */
+    async toggleDescendants(): Promise<boolean> {
+        return (await this.componentHandle?.toggleDescendants()) ?? false;
+    }
+
     /**
      * Reveals a file while attempting to preserve the current navigation context
      */
