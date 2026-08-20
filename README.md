@@ -201,6 +201,19 @@ Fork-specific integrations live in separate modules and host-global identity is 
 
 ## Release history
 
+### 5.18.2 — popout virtual-list resize recovery
+
+- Fixes the blank lower region that could appear after a popped-out Navigator view or its leaf grew: its
+  authoritative `onResize()` recovery event now targets the view container's own window, which is the same window
+  TanStack Virtual observes for its scroll element.
+- Constructs the event in that owner window as well, preserving the browser-realm contract instead of relying on the
+  main application's global `window`.
+- Adds a two-window regression proving the popout listener receives the recovery while the primary-window listener
+  does not. This backward-compatible patch changes no CSS, settings, note data, or public API and retains minimum
+  Obsidian 1.11.0. Test-vault QA reloaded 5.18.2, moved Navigator into a separate popout, then expanded it after the
+  startup sampler had expired; rows remained rendered through the visible bottom. Final validation and artifact hashes
+  are recorded in `release-notes/5.18.2.md`.
+
 ### 5.18.1 — vault-root descendant visibility
 
 - Lets the vault root store and honor its own **Show files from subfolders / descendants** choice instead of forcing every subfolder item into the list.

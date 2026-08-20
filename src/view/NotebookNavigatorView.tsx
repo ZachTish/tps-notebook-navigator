@@ -58,9 +58,9 @@ import {
     TPS_NOTEBOOK_NAVIGATOR_MOBILE_CLASS,
     TPS_NOTEBOOK_NAVIGATOR_REACT_ID_PREFIX,
     TPS_NOTEBOOK_NAVIGATOR_ROOT_CLASS,
-    TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT,
-    TPS_NOTEBOOK_NAVIGATOR_VIEWPORT_EVENT
+    TPS_NOTEBOOK_NAVIGATOR_VISIBLE_EVENT
 } from '../constants/tpsIdentity';
+import { dispatchNavigatorViewportChange } from '../utils/navigatorViewEvents';
 
 export const IOS_FLOATING_TOOLBARS_CLASS = TPS_NOTEBOOK_NAVIGATOR_IOS_FLOATING_TOOLBARS_CLASS;
 
@@ -631,11 +631,7 @@ export class NotebookNavigatorView extends ItemView {
      */
     onResize() {
         const rect = this.containerEl.getBoundingClientRect();
-        window.dispatchEvent(
-            new CustomEvent(TPS_NOTEBOOK_NAVIGATOR_VIEWPORT_EVENT, {
-                detail: { container: this.containerEl }
-            })
-        );
+        dispatchNavigatorViewportChange(this.containerEl);
 
         if (!Platform.isMobile) return;
 

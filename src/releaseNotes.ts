@@ -107,6 +107,13 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.18.2',
+        date: '2026-08-20',
+        fixed: [
+            "A Navigator view in an Obsidian popout now sends its authoritative resize recovery to that popout's own window, so TanStack Virtual refreshes its viewport range instead of leaving a blank lower list region."
+        ]
+    },
+    {
         version: '5.18.1',
         date: '2026-08-18',
         fixed: [
