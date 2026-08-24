@@ -22,6 +22,7 @@ import {
     TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT,
     TPS_GCM_TASK_ROWS_PER_NOTE_MAX,
     TPS_GCM_TASK_ROWS_PER_NOTE_MIN,
+    isTpsDataArchitectureMode,
     isTpsResourceCreationTarget
 } from '../types';
 
@@ -74,8 +75,26 @@ const TASK_ROWS_COPY = {
     limitDesc: 'Limit the task rows shown beneath each note.'
 } as const;
 
+const DATA_ARCHITECTURE_COPY = {
+    group: 'Data architecture',
+    name: 'TPS data architecture',
+    desc: 'Native records keeps Navigator file-only: it disables virtual line rows and companion-property writes while preserving ordinary file navigation, multi-select, previews, tags, and typed Markdown property drops.',
+    options: {
+        legacy: 'Legacy integrations',
+        'native-records': 'Native Markdown records'
+    }
+} as const;
+
 /** Builds native settings definitions for the fork-specific TPS integration destination. */
 export function createTpsIntegrationSettingDefinitions(context: SettingsTabContext): SettingDefinitionItem[] {
+    const architectureItems: NonNullable<SettingDefinitionGroup['items']> = [
+        createRenderDefinition({
+            name: DATA_ARCHITECTURE_COPY.name,
+            desc: DATA_ARCHITECTURE_COPY.desc,
+            aliases: ['native records', 'real files', 'disable virtual rows'],
+            render: setting => renderTpsDataArchitectureSetting(setting, context)
+        })
+    ];
     const typeItems: NonNullable<SettingDefinitionGroup['items']> = [
         createRenderDefinition({
             name: TYPES_NAVIGATION_COPY.name,
@@ -140,6 +159,7 @@ export function createTpsIntegrationSettingDefinitions(context: SettingsTabConte
     ];
 
     return [
+        createGroupDefinition(DATA_ARCHITECTURE_COPY.group, architectureItems),
         createGroupDefinition(TYPES_NAVIGATION_COPY.group, typeItems),
         createGroupDefinition(RESOURCE_CREATION_COPY.group, resourceCreationItems, {
             visible: () => context.plugin.settings.tpsTypesNavigationEnabled
@@ -147,6 +167,26 @@ export function createTpsIntegrationSettingDefinitions(context: SettingsTabConte
         createGroupDefinition(TASK_ROWS_COPY.group, taskItems),
         createGroupDefinition(UPSTREAM_IMPORT_COPY.group, setupItems)
     ];
+}
+
+export function renderTpsDataArchitectureSetting(setting: Setting, context: SettingsTabContext): void {
+    const { plugin } = context;
+    setting
+        .setName(DATA_ARCHITECTURE_COPY.name)
+        .setDesc(DATA_ARCHITECTURE_COPY.desc)
+        .addDropdown(dropdown => {
+            Object.entries(DATA_ARCHITECTURE_COPY.options).forEach(([value, label]) => dropdown.addOption(value, label));
+            dropdown.setValue(plugin.settings.tpsDataArchitectureMode).onChange(async value => {
+                if (!isTpsDataArchitectureMode(value)) return;
+                plugin.settings.tpsDataArchitectureMode = value;
+                if (value === 'native-records') {
+                    plugin.settings.tpsTypesNavigationEnabled = false;
+                    plugin.settings.tpsGcmTaskRowsEnabled = false;
+                }
+                await plugin.saveSettingsAndUpdate();
+                context.refreshSettingsDomState();
+            });
+        });
 }
 
 /** Shared renderer for the source-backed Type creation target. */
@@ -227,7 +267,8 @@ export function renderTpsTypesNavigationEnabledSetting(setting: Setting, context
         .setName(TYPES_NAVIGATION_COPY.name)
         .setDesc(TYPES_NAVIGATION_COPY.desc)
         .addToggle(toggle =>
-            toggle.setValue(plugin.settings.tpsTypesNavigationEnabled).onChange(async value => {
+            toggle.setDisabled(plugin.settings.tpsDataArchitectureMode === 'native-records').setValue(plugin.settings.tpsTypesNavigationEnabled).onChange(async value => {
+                if (plugin.settings.tpsDataArchitectureMode === 'native-records') return;
                 plugin.settings.tpsTypesNavigationEnabled = value;
                 await plugin.saveSettingsAndUpdate();
                 context.refreshSettingsDomState();
@@ -243,7 +284,8 @@ export function renderGcmTaskRowsEnabledSetting(setting: Setting, context: Setti
         .setName(TASK_ROWS_COPY.enabledName)
         .setDesc(TASK_ROWS_COPY.enabledDesc)
         .addToggle(toggle =>
-            toggle.setValue(plugin.settings.tpsGcmTaskRowsEnabled).onChange(async value => {
+            toggle.setDisabled(plugin.settings.tpsDataArchitectureMode === 'native-records').setValue(plugin.settings.tpsGcmTaskRowsEnabled).onChange(async value => {
+                if (plugin.settings.tpsDataArchitectureMode === 'native-records') return;
                 plugin.settings.tpsGcmTaskRowsEnabled = value;
                 await plugin.saveSettingsAndUpdate();
                 context.refreshSettingsDomState();

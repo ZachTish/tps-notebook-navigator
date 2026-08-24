@@ -792,6 +792,7 @@ export const ListPane = React.memo(
             () =>
                 mergeNavigatorRowProviderSelections(
                     createBuiltInRowProviderSelection({
+                        tpsDataArchitectureMode: settings.tpsDataArchitectureMode,
                         tpsGcmTaskRowsEnabled: settings.tpsGcmTaskRowsEnabled,
                         tpsGcmTaskRowsIncludeCompleted: settings.tpsGcmTaskRowsIncludeCompleted,
                         tpsGcmTaskRowsPerNote: settings.tpsGcmTaskRowsPerNote
@@ -800,6 +801,7 @@ export const ListPane = React.memo(
                 ),
             [
                 externalRowProviderSelection,
+                settings.tpsDataArchitectureMode,
                 settings.tpsGcmTaskRowsEnabled,
                 settings.tpsGcmTaskRowsIncludeCompleted,
                 settings.tpsGcmTaskRowsPerNote

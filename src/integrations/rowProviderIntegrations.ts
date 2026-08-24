@@ -7,7 +7,7 @@ import { createGcmTaskRowProviderSelection, GcmTaskRowProvider } from './gcm/Gcm
 
 type BuiltInRowProviderSettings = Pick<
     NotebookNavigatorSettings,
-    'tpsGcmTaskRowsEnabled' | 'tpsGcmTaskRowsIncludeCompleted' | 'tpsGcmTaskRowsPerNote'
+    'tpsDataArchitectureMode' | 'tpsGcmTaskRowsEnabled' | 'tpsGcmTaskRowsIncludeCompleted' | 'tpsGcmTaskRowsPerNote'
 >;
 
 export function registerBuiltInRowProviders(registry: NavigatorRowProviderRegistry): void {
@@ -16,7 +16,7 @@ export function registerBuiltInRowProviders(registry: NavigatorRowProviderRegist
 
 export function createBuiltInRowProviderSelection(settings: BuiltInRowProviderSettings): NavigatorRowProviderSelection {
     return createGcmTaskRowProviderSelection({
-        enabled: settings.tpsGcmTaskRowsEnabled,
+        enabled: settings.tpsDataArchitectureMode !== 'native-records' && settings.tpsGcmTaskRowsEnabled,
         includeCompleted: settings.tpsGcmTaskRowsIncludeCompleted,
         maxRowsPerFile: settings.tpsGcmTaskRowsPerNote
     });

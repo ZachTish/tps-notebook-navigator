@@ -17,6 +17,7 @@ vi.mock('../../src/i18n', () => ({
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import {
     createTpsIntegrationSettingDefinitions,
+    renderTpsDataArchitectureSetting,
     renderTpsResourceCreationTargetSetting,
     renderTpsTypesNavigationEnabledSetting,
     setTpsResourceCreationSpecificFileVisibility,
@@ -41,31 +42,35 @@ describe('TPS integration settings', () => {
         const context = createContext();
         const definitions = createTpsIntegrationSettingDefinitions(context) as Array<Record<string, unknown>>;
 
-        expect(definitions).toHaveLength(4);
+        expect(definitions).toHaveLength(5);
         expect(definitions.map(group => group.heading)).toEqual([
+            'Data architecture',
             'Types collections (paused)',
             'Type item creation',
             'Task rows',
             'One-way setup'
         ]);
 
-        const typeItems = definitions[0].items as Array<Record<string, unknown>>;
+        const architectureItems = definitions[0].items as Array<Record<string, unknown>>;
+        expect(architectureItems.map(item => item.name)).toEqual(['TPS data architecture']);
+
+        const typeItems = definitions[1].items as Array<Record<string, unknown>>;
         expect(typeItems.map(item => item.name)).toEqual(['Enable Types collections (experimental)']);
         expect(typeItems[0].desc).toContain('stops exact-line, Markdown-structure, and Web-link Types indexing');
         expect(typeItems[0].desc).toContain('Note task-progress bars and counts remain available');
         expect(typeItems[0].aliases).toEqual(expect.arrayContaining(['code blocks', 'callouts', 'blockquotes', 'tables', 'web links']));
 
-        const resourceCreationItems = definitions[1].items as Array<Record<string, unknown>>;
-        expect((definitions[1].visible as () => boolean)()).toBe(false);
+        const resourceCreationItems = definitions[2].items as Array<Record<string, unknown>>;
+        expect((definitions[2].visible as () => boolean)()).toBe(false);
         expect(resourceCreationItems.map(item => item.name)).toEqual(['Create items in', 'Specific note']);
         expect(resourceCreationItems[0].visible).toBeUndefined();
         expect((resourceCreationItems[1].visible as () => boolean)()).toBe(false);
         context.plugin.settings.tpsResourceCreationTarget = 'specific-note';
         expect((resourceCreationItems[1].visible as () => boolean)()).toBe(true);
         context.plugin.settings.tpsTypesNavigationEnabled = true;
-        expect((definitions[1].visible as () => boolean)()).toBe(true);
+        expect((definitions[2].visible as () => boolean)()).toBe(true);
 
-        const taskItems = definitions[2].items as Array<Record<string, unknown>>;
+        const taskItems = definitions[3].items as Array<Record<string, unknown>>;
         expect(taskItems.map(item => item.name)).toEqual(['Show GCM tasks beneath notes', 'Include completed tasks', 'Tasks per note']);
         expect(taskItems[0].visible).toBeUndefined();
         expect((taskItems[1].visible as () => boolean)()).toBe(false);
@@ -78,6 +83,7 @@ describe('TPS integration settings', () => {
 
     it('defaults Types navigation and optional task rows off without disabling note task progress', () => {
         expect(DEFAULT_SETTINGS.tpsTypesNavigationEnabled).toBe(false);
+        expect(DEFAULT_SETTINGS.tpsDataArchitectureMode).toBe('legacy');
         expect(DEFAULT_SETTINGS.tpsTypesPauseMigrationVersion).toBe(1);
         expect(DEFAULT_SETTINGS.tpsResourceCreationTarget).toBe('daily-note');
         expect(DEFAULT_SETTINGS.tpsResourceCreationSpecificFile).toBeNull();
@@ -132,6 +138,7 @@ describe('TPS integration settings', () => {
         context.refreshSettingsDomState = refreshSettingsDomState;
         let handleChange: ((value: boolean) => Promise<void>) | undefined;
         const toggle = {
+            setDisabled: vi.fn().mockReturnThis(),
             setValue: vi.fn().mockReturnThis(),
             onChange: vi.fn((callback: (value: boolean) => Promise<void>) => {
                 handleChange = callback;
@@ -154,6 +161,38 @@ describe('TPS integration settings', () => {
         expect(context.plugin.settings.tpsTypesNavigationEnabled).toBe(true);
         expect(saveSettingsAndUpdate).toHaveBeenCalledOnce();
         expect(refreshSettingsDomState).toHaveBeenCalledOnce();
+    });
+
+    it('switches to native records and shuts down virtual row preferences', async () => {
+        const context = createContext();
+        context.plugin.settings.tpsTypesNavigationEnabled = true;
+        context.plugin.settings.tpsGcmTaskRowsEnabled = true;
+        let handleChange: ((value: string) => Promise<void>) | undefined;
+        const dropdown = {
+            addOption: vi.fn().mockReturnThis(),
+            setValue: vi.fn().mockReturnThis(),
+            onChange: vi.fn((callback: (value: string) => Promise<void>) => {
+                handleChange = callback;
+                return dropdown;
+            })
+        };
+        const setting = {
+            setName: vi.fn().mockReturnThis(),
+            setDesc: vi.fn().mockReturnThis(),
+            addDropdown: vi.fn((render: (control: typeof dropdown) => void) => {
+                render(dropdown);
+                return setting;
+            })
+        };
+
+        renderTpsDataArchitectureSetting(setting as never, context);
+        await handleChange?.('native-records');
+        expect(context.plugin.settings).toMatchObject({
+            tpsDataArchitectureMode: 'native-records',
+            tpsTypesNavigationEnabled: false,
+            tpsGcmTaskRowsEnabled: false
+        });
+        expect(context.plugin.saveSettingsAndUpdate).toHaveBeenCalledOnce();
     });
 
     it('uses the namespaced visibility class for dependent rows in the pre-1.13 renderer', () => {

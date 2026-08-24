@@ -935,7 +935,8 @@ export class FileSystemOperations {
         const itemPropertiesApi = resolveGcmItemPropertiesApi(this.app);
         const definition = itemPropertiesApi?.resolveDefinition(assignment.propertyKey) ?? null;
         const frontmatterApi = resolveGcmFrontmatterApi(this.app);
-        const filePropertiesApi = resolveGcmFilePropertiesApi(this.app);
+        const filePropertiesApi =
+            this.settingsProvider.settings.tpsDataArchitectureMode === 'native-records' ? null : resolveGcmFilePropertiesApi(this.app);
         if (definition && frontmatterApi && filePropertiesApi) {
             const markdownFiles = files.filter(file => file.extension === 'md');
             const assetFiles = files.filter(file => file.extension !== 'md' && filePropertiesApi.isTarget(file));

@@ -1,5 +1,12 @@
 # TPS Notebook Navigator
 
+## 5.19.0
+
+- Adds an opt-in **Native Markdown records** TPS data architecture. In this profile Navigator operates only on real vault files: virtual Types/line rows and attached GCM task rows are forcibly disabled, and non-Markdown companion-property writes are unavailable.
+- The compact dual-pane file UX, previews, properties, tags, quick actions, real-file multi-select, and visible drag previews remain available. Native record files behave like ordinary Markdown notes and can be filtered/grouped with Navigator or core Bases.
+- Property drops continue to resolve GCM's property definition. List/link/tag values add and deduplicate; scalar values replace. The native profile applies these rules only to real Markdown records and never mutates non-Markdown source bytes.
+- Legacy integrations remain the default and retain their existing Types, task-row, and companion behavior. Minimum supported Obsidian remains 1.11.0.
+
 TPS Notebook Navigator is an experimental, co-installable fork of [Notebook Navigator](https://github.com/johansan/notebook-navigator). It keeps the upstream navigator available while providing a separate place for TPS integrations, provider-rendered rows, and deeper workflow control.
 
 The fork's first integration line is based on upstream commit `2b65be66` (Notebook Navigator 3.3.0 lineage plus upstream changes through that exact commit). TPS 5.15.0 additionally incorporates the public Notebook Navigator 3.3.3 release at upstream commit `7ae7db62`. The upstream project remains the source for the mature file-browser experience, documentation, translations, icon packs, and media assets. TPS-specific changes are maintained independently in this repository.

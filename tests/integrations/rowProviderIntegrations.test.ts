@@ -13,6 +13,7 @@ describe('built-in row provider integrations', () => {
         expect(registry.get(GCM_TASK_ROW_PROVIDER_ID)).not.toBeNull();
         expect(
             createBuiltInRowProviderSelection({
+                tpsDataArchitectureMode: 'legacy',
                 tpsGcmTaskRowsEnabled: true,
                 tpsGcmTaskRowsIncludeCompleted: true,
                 tpsGcmTaskRowsPerNote: 7
@@ -27,5 +28,16 @@ describe('built-in row provider integrations', () => {
                 }
             }
         });
+    });
+
+    it('suppresses virtual GCM rows in native-record mode', () => {
+        expect(
+            createBuiltInRowProviderSelection({
+                tpsDataArchitectureMode: 'native-records',
+                tpsGcmTaskRowsEnabled: true,
+                tpsGcmTaskRowsIncludeCompleted: true,
+                tpsGcmTaskRowsPerNote: 7
+            }).enabledProviderIds
+        ).toEqual([]);
     });
 });

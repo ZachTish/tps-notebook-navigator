@@ -70,6 +70,7 @@ import {
     isSettingSyncMode,
     isSortOption,
     isTagSortOrder,
+    isTpsDataArchitectureMode,
     isTpsResourceCreationTarget,
     isTypeNavigationSortOrder,
     normalizeAppearanceGroupBy,
@@ -703,6 +704,9 @@ export class PluginSettingsController {
             DEFAULT_SETTINGS.calendarEnabled
         );
 
+        if (!isTpsDataArchitectureMode(this.currentSettings.tpsDataArchitectureMode)) {
+            this.currentSettings.tpsDataArchitectureMode = DEFAULT_SETTINGS.tpsDataArchitectureMode;
+        }
         this.currentSettings.tpsTypesNavigationEnabled = this.sanitizeBooleanSetting(
             this.currentSettings.tpsTypesNavigationEnabled,
             DEFAULT_SETTINGS.tpsTypesNavigationEnabled
@@ -720,6 +724,10 @@ export class PluginSettingsController {
             this.currentSettings.tpsGcmTaskRowsEnabled,
             DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled
         );
+        if (this.currentSettings.tpsDataArchitectureMode === 'native-records') {
+            this.currentSettings.tpsTypesNavigationEnabled = false;
+            this.currentSettings.tpsGcmTaskRowsEnabled = false;
+        }
         this.currentSettings.tpsGcmTaskRowsIncludeCompleted = this.sanitizeBooleanSetting(
             this.currentSettings.tpsGcmTaskRowsIncludeCompleted,
             DEFAULT_SETTINGS.tpsGcmTaskRowsIncludeCompleted

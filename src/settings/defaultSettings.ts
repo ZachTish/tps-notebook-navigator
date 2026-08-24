@@ -147,6 +147,7 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     syncModes: defaultSettingsSync,
 
     // TPS integration
+    tpsDataArchitectureMode: 'legacy',
     tpsTypesNavigationEnabled: false,
     typeNavigationSortOrder: 'catalog',
     tpsResourceCreationTarget: 'daily-note',

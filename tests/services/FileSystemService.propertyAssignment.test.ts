@@ -105,7 +105,11 @@ function createFile(path: string, frontmatter: Record<string, unknown>): TFile &
     return Object.assign(createTestTFile(path), { frontmatter });
 }
 
-function createOperations(app: App, propertyTreeService: PropertyTreeService): FileSystemOperations {
+function createOperations(
+    app: App,
+    propertyTreeService: PropertyTreeService,
+    settings: NotebookNavigatorSettings = { ...DEFAULT_SETTINGS }
+): FileSystemOperations {
     return new FileSystemOperations(
         app,
         () => null,
@@ -113,7 +117,7 @@ function createOperations(app: App, propertyTreeService: PropertyTreeService): F
         () => null,
         () => null,
         () => ({ includeDescendantNotes: false, showHiddenItems: false }),
-        createSettingsProvider({ ...DEFAULT_SETTINGS })
+        createSettingsProvider(settings)
     );
 }
 
@@ -389,5 +393,41 @@ describe('FileSystemOperations property assignment', () => {
         expect(frontmatterAdd).not.toHaveBeenCalled();
         expect(assetAdd).toHaveBeenCalledWith([target], 'Parents', ['[[Beta]]'], expect.any(Object));
         expect(processFrontMatter).not.toHaveBeenCalled();
+    });
+
+    it('never creates or updates companion properties in native-record mode', async () => {
+        const app = new App();
+        const target = createFile('Board.canvas', {});
+        const propertyTreeService = new PropertyTreeService();
+        propertyTreeService.updatePropertyTree(
+            buildPropertyTreeFromDatabase(
+                createMockDb([{ path: 'Source.md', properties: [{ fieldKey: 'Parents', value: '[[Beta]]', valueKind: 'string' }] }])
+            )
+        );
+        const assetAdd = vi.fn();
+        (app as App & { plugins: unknown }).plugins = {
+            enabledPlugins: new Set(['tps-global-context-menu']),
+            getPlugin: () => ({
+                api: {
+                    itemProperties: {
+                        version: 1,
+                        listDefinitions: vi.fn(() => []),
+                        resolveDefinition: vi.fn(() => ({ id: 'parents', key: 'Parents', label: 'Parents', type: 'list' })),
+                        applyToTaskLines: vi.fn()
+                    },
+                    frontmatter: { setValues: vi.fn(), addListValues: vi.fn() },
+                    fileProperties: { version: 1, isTarget: vi.fn(() => true), setValues: vi.fn(), addListValues: assetAdd }
+                }
+            })
+        };
+        const operations = createOperations(app, propertyTreeService, {
+            ...DEFAULT_SETTINGS,
+            tpsDataArchitectureMode: 'native-records'
+        });
+
+        await expect(
+            operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('parents', normalizePropertyTreeValuePath('[[Beta]]')), [target])
+        ).resolves.toEqual({ updated: 0, skipped: 0 });
+        expect(assetAdd).not.toHaveBeenCalled();
     });
 });

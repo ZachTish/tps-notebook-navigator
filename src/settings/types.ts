@@ -761,6 +761,12 @@ export const TPS_GCM_TASK_ROWS_PER_NOTE_MIN = 1;
 export const TPS_GCM_TASK_ROWS_PER_NOTE_MAX = 50;
 export const TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT = 5;
 
+export type TpsDataArchitectureMode = 'legacy' | 'native-records';
+
+export function isTpsDataArchitectureMode(value: unknown): value is TpsDataArchitectureMode {
+    return value === 'legacy' || value === 'native-records';
+}
+
 /**
  * Plugin settings interface defining all configurable options
  * Settings are organized by tab for easier maintenance
@@ -772,6 +778,7 @@ export interface NotebookNavigatorSettings {
     syncModes: Record<SyncModeSettingId, SettingSyncMode>;
 
     // TPS integration
+    tpsDataArchitectureMode: TpsDataArchitectureMode;
     tpsTypesNavigationEnabled: boolean;
     typeNavigationSortOrder: TypeNavigationSortOrder;
     tpsResourceCreationTarget: TpsResourceCreationTarget;
