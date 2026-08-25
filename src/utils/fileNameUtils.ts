@@ -193,7 +193,7 @@ export function containsForbiddenNameCharactersWindows(value: string): boolean {
  */
 export function getFileDisplayName(file: TFile, cachedData?: { fn?: string }, settings?: NotebookNavigatorSettings): string {
     // If we have cached frontmatter name and feature is enabled, use it
-    if (cachedData?.fn && settings?.useFrontmatterMetadata) {
+    if (cachedData?.fn && settings?.useFrontmatterMetadata && !containsUnresolvedTemplateExpression(cachedData.fn)) {
         return cachedData.fn;
     }
 
@@ -204,4 +204,9 @@ export function getFileDisplayName(file: TFile, cachedData?: { fn?: string }, se
 
     // Fall back to file basename
     return file.basename;
+}
+
+/** Returns true when a display value still contains an unevaluated Templater or Core Templates expression. */
+export function containsUnresolvedTemplateExpression(value: string): boolean {
+    return /<%[\s\S]*?%>|\{\{[^{}]+\}\}/u.test(String(value ?? ''));
 }

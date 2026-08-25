@@ -30,6 +30,7 @@ import {
 } from '../nativeSettingControls';
 import { addSettingSyncModeToggle } from '../syncModeToggle';
 import { FilePathInputSuggest } from '../../suggest/FilePathInputSuggest';
+import { getTpsTemplateIdentificationMode, isTpsTemplateFile } from '../../utils/tpsTemplateIdentity';
 import { FOLDER_NOTE_NAME_PATTERN_PLACEHOLDER } from '../../utils/folderNoteName';
 import { normalizeOptionalVaultFilePath } from '../../utils/pathUtils';
 import { getTemplaterCreateNoteFromTemplate } from '../../utils/templaterIntegration';
@@ -190,8 +191,15 @@ function renderFolderNoteTemplateSetting(setting: Setting, context: SettingsTabC
 
     if (folderNoteTemplateInputEl) {
         const templateSuggest = new FilePathInputSuggest(context.app, folderNoteTemplateInputEl, {
-            getBaseFolder: () => plugin.settings.calendarTemplateFolder,
-            includeFile: file => isSupportedFolderNoteExtension(file.extension)
+            getBaseFolder: () => getTpsTemplateIdentificationMode(context.app) === 'templater-folder'
+                ? plugin.settings.calendarTemplateFolder
+                : '',
+            includeFile: file => {
+                if (!isSupportedFolderNoteExtension(file.extension)) {
+                    return false;
+                }
+                return isTpsTemplateFile(context.app, file) ?? true;
+            }
         });
         folderNoteTemplateInputEl.addEventListener('input', updateWarning);
         folderNoteTemplateInputEl.addEventListener('click', () => templateSuggest.open());

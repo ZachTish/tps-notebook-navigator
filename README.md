@@ -1,5 +1,12 @@
 # TPS Notebook Navigator
 
+## 5.20.0
+
+- TPS template pickers now consume GCM's version-1 template identity rule when available. Calendar templates and folder-note templates can therefore be selected by tag or property key/value even when every file is stored at the vault root.
+- Missing or incompatible GCM keeps the established folder-based behavior. An exact configured template path remains usable, and the integration never changes Templater's own folder setting.
+- File display names now reject unresolved template expressions such as `<% ... %>` and `{{ ... }}` in a frontmatter title. The Navigator consistently shows the filename instead across visible rows, sorting, and metadata access rather than exposing a raw template program.
+- This is a backward-compatible TPS integration feature with no file or settings migration. Minimum supported Obsidian remains 1.11.0.
+
 ## 5.19.0
 
 - Adds an opt-in **Native Markdown records** TPS data architecture. In this profile Navigator operates only on real vault files: virtual Types/line rows and attached GCM task rows are forcibly disabled, and non-Markdown companion-property writes are unavailable.

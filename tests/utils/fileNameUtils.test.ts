@@ -20,6 +20,7 @@ import {
     containsForbiddenNameCharactersAllPlatforms,
     containsForbiddenNameCharactersWindows,
     containsInvalidLinkCharacters,
+    containsUnresolvedTemplateExpression,
     getFileDisplayName,
     stripForbiddenNameCharactersAllPlatforms,
     stripForbiddenNameCharactersWindows,
@@ -37,6 +38,22 @@ describe('getFileDisplayName', () => {
     it('returns basename for standard markdown files', () => {
         const file = createTestTFile('Example Note.md');
         expect(getFileDisplayName(file)).toBe('Example Note');
+    });
+
+    it('falls back to the filename while a frontmatter title still contains template expressions', () => {
+        const file = createTestTFile('Daily Note Template.md');
+        const settings = { useFrontmatterMetadata: true } as never;
+
+        expect(getFileDisplayName(file, { fn: '<% moment(tp.file.title).format("YYYY-MM-DD") %>' }, settings)).toBe(
+            'Daily Note Template'
+        );
+        expect(getFileDisplayName(file, { fn: '{{title}}' }, settings)).toBe('Daily Note Template');
+        expect(getFileDisplayName(file, { fn: 'Rendered title' }, settings)).toBe('Rendered title');
+    });
+
+    it('does not treat ordinary punctuation as an unresolved template expression', () => {
+        expect(containsUnresolvedTemplateExpression('Math {notes} and 50% complete')).toBe(false);
+        expect(containsUnresolvedTemplateExpression('Before <% tp.date.now() %> after')).toBe(true);
     });
 });
 

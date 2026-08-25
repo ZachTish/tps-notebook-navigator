@@ -364,10 +364,7 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
     const getFileDisplayName = useCallback(
         (file: TFile): string => {
             const metadata = getFrontmatterMetadata(file);
-            if (metadata?.fn) {
-                return metadata.fn;
-            }
-            return getDisplayName(file, undefined, settings);
+            return getDisplayName(file, { fn: metadata?.fn }, settings);
         },
         [getFrontmatterMetadata, settings]
     );
@@ -389,7 +386,7 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
             const timestamps = computeFileTimestamps(file, extractedMetadata);
 
             return {
-                name: extractedMetadata?.fn || getDisplayName(file, undefined, settings),
+                name: getDisplayName(file, { fn: extractedMetadata?.fn }, settings),
                 created: timestamps.created,
                 modified: timestamps.modified
             };
