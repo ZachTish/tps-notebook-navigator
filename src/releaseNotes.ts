@@ -107,6 +107,17 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.20.1',
+        date: '2026-08-25',
+        fixed: [
+            "Core Daily Note actions now share GCM's authoritative Daily Note identity when available, so flat-vault calendar, food, workout, and task records cannot be mistaken for a Daily Note or race a second creator.",
+            'Core startup placeholders, concurrent same-date actions, and delayed Templater hooks now fail closed or coalesce around one coherent folder, format, template, and exact file.'
+        ],
+        changed: [
+            'A failed Navigator-owned Daily Note template remains recoverable and is marked non-destructively in Source mode; existing notes and independent Notebook Navigator calendar-note mode remain unchanged.'
+        ]
+    },
+    {
         version: '5.18.2',
         date: '2026-08-20',
         fixed: [

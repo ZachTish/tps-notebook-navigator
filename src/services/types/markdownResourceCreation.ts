@@ -9,7 +9,7 @@
 import { getFrontMatterInfo, parseYaml, TFile, type App } from 'obsidian';
 import type { TpsResourceCreationTarget } from '../../settings/types';
 import { TPS_NAVIGATOR_TYPE_IDS, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
-import { createDailyNote, getDailyNoteSettings } from '../../utils/dailyNotes';
+import { createDailyNote, getConfiguredDailyNoteSettings } from '../../utils/dailyNotes';
 import { hasExcalidrawFrontmatterFlagValue, isExcalidrawFile } from '../../utils/fileNameUtils';
 import { getMomentApi, resolveDailyNoteLocale } from '../../utils/moment';
 import { normalizeOptionalVaultFilePath } from '../../utils/pathUtils';
@@ -183,9 +183,8 @@ export async function resolveTpsResourceCreationTarget(
               };
     }
 
-    const dailyNoteSettings = getDailyNoteSettings(app);
     const momentApi = getMomentApi();
-    if (!dailyNoteSettings || !momentApi) {
+    if (!momentApi || !(await getConfiguredDailyNoteSettings(app))) {
         return {
             ok: false,
             reason: 'daily-notes-unavailable',
@@ -194,7 +193,7 @@ export async function resolveTpsResourceCreationTarget(
     }
 
     const today = momentApi().locale(resolveDailyNoteLocale(momentApi));
-    const dailyNote = await createDailyNote(app, today, dailyNoteSettings);
+    const dailyNote = await createDailyNote(app, today);
     return (await isRegularMarkdownFile(app, dailyNote)) && dailyNote
         ? dailyNote
         : {

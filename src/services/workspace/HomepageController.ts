@@ -31,7 +31,7 @@ import {
     resolveCalendarCustomNotePathDate,
     type CalendarNoteKind
 } from '../../utils/calendarNotes';
-import { createDailyNote, getDailyNoteFile, getDailyNoteSettings } from '../../utils/dailyNotes';
+import { createDailyNote, getConfiguredDailyNoteSettings, getDailyNoteFile, getDailyNoteSettings } from '../../utils/dailyNotes';
 import { getCurrentLanguage } from '../../i18n';
 import { getMomentApi, resolveCalendarLocales, resolveCalendarPeriodicNotesLocale, resolveDailyNoteLocale } from '../../utils/moment';
 import { getActiveVaultProfile } from '../../utils/vaultProfiles';
@@ -350,12 +350,11 @@ export default class HomepageController {
         const date = momentApi().startOf('day');
 
         if (kind === 'day' && this.plugin.settings.calendarIntegrationMode === 'daily-notes') {
-            const dailyNoteSettings = getDailyNoteSettings(this.plugin.app);
-            if (!dailyNoteSettings) {
+            if (!(await getConfiguredDailyNoteSettings(this.plugin.app))) {
                 return null;
             }
 
-            return createDailyNote(this.plugin.app, date.clone().locale(resolveDailyNoteLocale(momentApi)), dailyNoteSettings);
+            return createDailyNote(this.plugin.app, date.clone().locale(resolveDailyNoteLocale(momentApi)));
         }
 
         const config = getCalendarNoteConfig(kind, this.plugin.settings);

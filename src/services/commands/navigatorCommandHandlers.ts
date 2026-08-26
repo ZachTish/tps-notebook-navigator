@@ -19,12 +19,7 @@
 import { FileView, Platform, TFile, TFolder, type WorkspaceLeaf } from 'obsidian';
 import type NotebookNavigatorPlugin from '../../main';
 import { getCurrentLanguage, strings } from '../../i18n';
-import {
-    createDailyNote,
-    getDailyNoteFile,
-    getDailyNoteFilename,
-    getDailyNoteSettings as getCoreDailyNoteSettings
-} from '../../utils/dailyNotes';
+import { createDailyNote, getConfiguredDailyNoteSettings, resolveDailyNoteReference } from '../../utils/dailyNotes';
 import {
     buildCustomCalendarFilePathForPattern,
     buildCustomCalendarMomentPattern,
@@ -620,19 +615,27 @@ async function openCalendarNoteForToday(plugin: NotebookNavigatorPlugin, kind: C
     const date: MomentInstance = momentApi().startOf('day');
 
     if (kind === 'day' && plugin.settings.calendarIntegrationMode === 'daily-notes') {
-        const dailyNoteSettings = getCoreDailyNoteSettings(plugin.app);
+        const dailyNoteSettings = await getConfiguredDailyNoteSettings(plugin.app);
         if (!dailyNoteSettings) {
             showNotice(strings.navigationCalendar.dailyNotesNotEnabled, { variant: 'warning' });
             return;
         }
 
         const dailyNoteDate = date.clone().locale(resolveDailyNoteLocale(momentApi));
-        const file = getDailyNoteFile(plugin.app, dailyNoteDate, dailyNoteSettings);
-        if (!file) {
-            const filename = getDailyNoteFilename(dailyNoteDate, dailyNoteSettings);
+        const reference = resolveDailyNoteReference(plugin.app, dailyNoteDate, dailyNoteSettings);
+        if (reference.status === 'blocked') {
+            showNotice(strings.dailyNotes.createFailed, { variant: 'warning' });
+            return;
+        }
+        if (!reference.file) {
+            const filename = reference.path.split('/').pop() ?? reference.path;
 
-            const createFile = async () => {
-                const created = await createDailyNote(plugin.app, dailyNoteDate, dailyNoteSettings);
+            const createFile = async (expectedSettings?: typeof dailyNoteSettings, expectedPath?: string) => {
+                const created = await createDailyNote(
+                    plugin.app,
+                    dailyNoteDate,
+                    expectedSettings ? { expectedSettings, ...(expectedPath ? { expectedPath } : {}) } : undefined
+                );
                 if (!created) {
                     return;
                 }
@@ -645,7 +648,7 @@ async function openCalendarNoteForToday(plugin: NotebookNavigatorPlugin, kind: C
                     strings.navigationCalendar.createDailyNote.title,
                     strings.navigationCalendar.createDailyNote.message.replace('{filename}', filename),
                     () => {
-                        runAsyncAction(createFile);
+                        runAsyncAction(() => createFile(dailyNoteSettings, reference.path));
                     },
                     strings.navigationCalendar.createDailyNote.confirmButton,
                     { confirmButtonClass: 'mod-cta' }
@@ -657,7 +660,7 @@ async function openCalendarNoteForToday(plugin: NotebookNavigatorPlugin, kind: C
             return;
         }
 
-        await openFileInActiveLeaf(plugin, file);
+        await openFileInActiveLeaf(plugin, reference.file);
         return;
     }
 

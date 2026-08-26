@@ -2,7 +2,7 @@ import { App, TFile } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const dailyNoteMocks = vi.hoisted(() => ({
-    getDailyNoteSettings: vi.fn(),
+    getConfiguredDailyNoteSettings: vi.fn(),
     createDailyNote: vi.fn()
 }));
 const momentMocks = vi.hoisted(() => ({
@@ -93,7 +93,7 @@ const SPECIFIC_TARGET = { target: 'specific-note' as const, specificFile: 'Inbox
 
 describe('TPS Markdown resource creation', () => {
     beforeEach(() => {
-        dailyNoteMocks.getDailyNoteSettings.mockReset();
+        dailyNoteMocks.getConfiguredDailyNoteSettings.mockReset();
         dailyNoteMocks.createDailyNote.mockReset();
         momentMocks.getMomentApi.mockReset();
         momentMocks.resolveDailyNoteLocale.mockClear();
@@ -226,7 +226,7 @@ describe('TPS Markdown resource creation', () => {
                 { taskTitle: '   ' }
             )
         ).resolves.toMatchObject({ ok: false, reason: 'invalid-task-title' });
-        expect(dailyNoteMocks.getDailyNoteSettings).not.toHaveBeenCalled();
+        expect(dailyNoteMocks.getConfiguredDailyNoteSettings).not.toHaveBeenCalled();
         expect(dailyNoteMocks.createDailyNote).not.toHaveBeenCalled();
     });
 
@@ -313,7 +313,7 @@ describe('TPS Markdown resource creation', () => {
         const context = createTestApp('Daily/2026-08-03.md', '');
         const today = { locale: vi.fn().mockReturnThis() };
         const momentApi = vi.fn(() => today);
-        dailyNoteMocks.getDailyNoteSettings.mockReturnValue({ folder: 'Daily', format: 'YYYY-MM-DD', template: '' });
+        dailyNoteMocks.getConfiguredDailyNoteSettings.mockResolvedValue({ folder: 'Daily', format: 'YYYY-MM-DD', template: '' });
         dailyNoteMocks.createDailyNote.mockResolvedValue(context.file);
         momentMocks.getMomentApi.mockReturnValue(momentApi);
 
@@ -321,13 +321,13 @@ describe('TPS Markdown resource creation', () => {
             context.file
         );
         expect(today.locale).toHaveBeenCalledWith('en');
-        expect(dailyNoteMocks.createDailyNote).toHaveBeenCalledWith(context.app, today, expect.objectContaining({ folder: 'Daily' }));
+        expect(dailyNoteMocks.createDailyNote).toHaveBeenCalledWith(context.app, today);
     });
 
     it("creates a resource in today's newly resolved blank daily note", async () => {
         const context = createTestApp('Daily/2026-08-03.md', '');
         const today = { locale: vi.fn().mockReturnThis() };
-        dailyNoteMocks.getDailyNoteSettings.mockReturnValue({ folder: 'Daily', format: 'YYYY-MM-DD', template: '' });
+        dailyNoteMocks.getConfiguredDailyNoteSettings.mockResolvedValue({ folder: 'Daily', format: 'YYYY-MM-DD', template: '' });
         dailyNoteMocks.createDailyNote.mockResolvedValue(context.file);
         momentMocks.getMomentApi.mockReturnValue(vi.fn(() => today));
 

@@ -159,6 +159,35 @@ describe('calendar note creation', () => {
         });
     });
 
+    it('keeps independent Notebook Navigator calendar creation out of GCM Daily Notes', async () => {
+        const app = new App();
+        const createdFile = createTestTFile('2026-08-10.md');
+        const ensureForIsoDate = vi.fn(async () => null);
+        const createNewMarkdownFile = vi.fn(async () => createdFile);
+        Object.assign(app, {
+            plugins: {
+                enabledPlugins: new Set(['tps-global-context-menu']),
+                plugins: {
+                    'tps-global-context-menu': {
+                        api: {
+                            dailyNotes: {
+                                version: 2,
+                                findForIsoDate: vi.fn(() => null),
+                                pathForIsoDate: vi.fn(() => '2026-08-10.md'),
+                                ensureForIsoDate
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        app.fileManager.createNewMarkdownFile = createNewMarkdownFile;
+
+        await expect(createCalendarMarkdownFile(app, '/', '2026-08-10.md')).resolves.toBe(createdFile);
+        expect(createNewMarkdownFile).toHaveBeenCalledWith(app.vault.getRoot(), '2026-08-10');
+        expect(ensureForIsoDate).not.toHaveBeenCalled();
+    });
+
     it('uses Templater directly when a configured template file is available', async () => {
         const app = new App();
         const templateFile = createTestTFile('Templates/Daily.md');

@@ -24,7 +24,7 @@ import type { CommandQueueService } from '../../services/CommandQueueService';
 import type { FileSystemOperations } from '../../services/FileSystemService';
 import type { NotebookNavigatorSettings } from '../../settings/types';
 import { runAsyncAction } from '../../utils/async';
-import { createDailyNote, getDailyNoteFilename, getDailyNotePath, type DailyNoteSettings } from '../../utils/dailyNotes';
+import { createDailyNote, getConfiguredDailyNoteSettings, resolveDailyNoteReference, type DailyNoteSettings } from '../../utils/dailyNotes';
 import { setAsyncOnClick } from '../../utils/contextMenu/menuAsyncHelpers';
 import { showNotice } from '../../utils/noticeUtils';
 import { openFileInContext } from '../../utils/openFileInContext';
@@ -237,9 +237,18 @@ export function useCalendarNoteActions({
                 }
 
                 const localizedDate = date.clone().locale(dailyNoteLocale);
-                const filename = getDailyNoteFilename(localizedDate, resolvedDailySettings);
-                const targetPath = getDailyNotePath(localizedDate, resolvedDailySettings);
-                const target = resolveLatestNoteTarget(targetPath);
+                const resolveDailyNoteTarget = (currentSettings: DailyNoteSettings) => {
+                    const reference = resolveDailyNoteReference(app, localizedDate, currentSettings);
+                    return reference.status === 'ready'
+                        ? { reference, target: resolveNoteTargetRef.current(reference.path, reference.file) }
+                        : null;
+                };
+                const initialResolution = resolveDailyNoteTarget(resolvedDailySettings);
+                if (!initialResolution) {
+                    showNotice(strings.dailyNotes.createFailed);
+                    return;
+                }
+                const target = initialResolution.target;
                 if (target.isHidden) {
                     showNotice(strings.navigationCalendar.noteHiddenByProfile);
                     return;
@@ -251,8 +260,23 @@ export function useCalendarNoteActions({
                     return;
                 }
 
-                const createFile = async () => {
-                    const latestTarget = resolveLatestNoteTarget(targetPath);
+                const createFile = async (expectedSettings?: DailyNoteSettings, expectedPath?: string) => {
+                    const latestSettings = await getConfiguredDailyNoteSettings(app);
+                    if (!latestSettings) {
+                        showNotice(strings.navigationCalendar.dailyNotesNotEnabled);
+                        return;
+                    }
+                    const creationSettings = expectedSettings ?? latestSettings;
+                    const latestResolution = resolveDailyNoteTarget(creationSettings);
+                    if (!latestResolution) {
+                        showNotice(strings.dailyNotes.createFailed);
+                        return;
+                    }
+                    if (expectedPath && latestResolution.reference.path !== expectedPath) {
+                        showNotice(strings.dailyNotes.createFailed);
+                        return;
+                    }
+                    const latestTarget = latestResolution.target;
                     if (latestTarget.isHidden) {
                         showNotice(strings.navigationCalendar.noteHiddenByProfile);
                         return;
@@ -263,7 +287,11 @@ export function useCalendarNoteActions({
                         return;
                     }
 
-                    const created = await createDailyNote(app, localizedDate, resolvedDailySettings);
+                    const created = await createDailyNote(
+                        app,
+                        localizedDate,
+                        expectedSettings ? { expectedSettings, ...(expectedPath ? { expectedPath } : {}) } : undefined
+                    );
                     if (!created) {
                         return;
                     }
@@ -274,12 +302,13 @@ export function useCalendarNoteActions({
                 };
 
                 if (settings.calendarConfirmBeforeCreate) {
+                    const filename = initialResolution.reference.path.split('/').pop() ?? initialResolution.reference.path;
                     new ConfirmModal(
                         app,
                         strings.navigationCalendar.createDailyNote.title,
                         strings.navigationCalendar.createDailyNote.message.replace('{filename}', filename),
                         () => {
-                            runAsyncAction(createFile);
+                            runAsyncAction(() => createFile(resolvedDailySettings, initialResolution.reference.path));
                         },
                         strings.navigationCalendar.createDailyNote.confirmButton,
                         { confirmButtonClass: 'mod-cta' }
@@ -301,7 +330,6 @@ export function useCalendarNoteActions({
             onVaultChange,
             openCalendarNoteFile,
             openOrCreateCustomCalendarNote,
-            resolveLatestNoteTarget,
             settings
         ]
     );

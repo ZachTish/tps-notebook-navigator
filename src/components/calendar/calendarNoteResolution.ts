@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { normalizePath, type TFile } from 'obsidian';
+import { normalizePath, type App, type TFile } from 'obsidian';
 import type { NotebookNavigatorSettings } from '../../settings/types';
 import { escapeMomentLiteralPath } from '../../utils/calendarCustomNotePatterns';
 import { isPathInExcludedFolder } from '../../utils/fileFilters';
@@ -27,6 +27,7 @@ import {
     resolveCalendarCustomNotePathDate
 } from '../../utils/calendarNotes';
 import type { MomentApi, MomentInstance } from '../../utils/moment';
+import { resolveDailyNoteFileDateReference, type DailyNoteSettings } from '../../utils/dailyNotes';
 import type { CalendarNoteTarget, CustomCalendarNoteConfig, CustomCalendarNoteKind } from './types';
 
 export interface CalendarNotePathResolverContext {
@@ -42,6 +43,54 @@ export interface ResolvedCalendarNotePath {
 
 export interface CalendarNoteRootFolderSettings {
     calendarCustomRootFolder: string;
+}
+
+interface ResolveCoreDailyNoteDateFromFileOptions {
+    app: App;
+    file: Pick<TFile, 'path' | 'basename'>;
+    settings: DailyNoteSettings;
+    momentApi: MomentApi;
+    locale: string;
+}
+
+/**
+ * Resolves an active Core Daily Note file to its date. GCM v3 is
+ * authoritative for canonical and legacy files; local format parsing is used
+ * only when GCM is absent.
+ */
+export function resolveCoreDailyNoteDateFromFile({
+    app,
+    file,
+    settings,
+    momentApi,
+    locale
+}: ResolveCoreDailyNoteDateFromFileOptions): MomentInstance | null {
+    const providerDate = resolveDailyNoteFileDateReference(app, file);
+    if (providerDate.status === 'blocked') {
+        return null;
+    }
+    if (providerDate.status === 'ready') {
+        if (!providerDate.isoDate) {
+            return null;
+        }
+        const parsedProviderDate = momentApi(providerDate.isoDate, 'YYYY-MM-DD', locale, true);
+        return parsedProviderDate.isValid() ? parsedProviderDate.startOf('day') : null;
+    }
+
+    const normalizedFilePath = normalizePath(file.path);
+    const pathWithoutExtension = stripMarkdownExtension(normalizedFilePath);
+    const folderPattern = escapeMomentLiteralPath(settings.folder);
+    const fullPattern = folderPattern ? `${folderPattern}/${settings.format}` : settings.format;
+    const parsedDate = momentApi(pathWithoutExtension, fullPattern, locale, true);
+    if (!parsedDate.isValid()) {
+        return null;
+    }
+
+    const normalizedFolder = normalizePath(settings.folder.trim()).replace(/^\/+|\/+$/gu, '');
+    const expectedPathWithoutExtension = normalizePath(
+        normalizedFolder ? `${normalizedFolder}/${parsedDate.format(settings.format)}` : parsedDate.format(settings.format)
+    );
+    return `${expectedPathWithoutExtension}.md` === normalizedFilePath ? parsedDate.startOf('day') : null;
 }
 
 interface ResolveCalendarNoteTargetOptions {

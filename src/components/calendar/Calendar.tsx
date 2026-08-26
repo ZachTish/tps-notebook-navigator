@@ -27,7 +27,11 @@ import { useUXPreferences } from '../../context/UXPreferencesContext';
 import { getDBInstanceOrNull, isShutdownInProgress, waitForDatabaseInitialization } from '../../storage/fileOperations';
 import { runAsyncAction } from '../../utils/async';
 import { getCalendarCustomWeekAnchorUnit } from '../../utils/calendarCustomNotePatterns';
-import { getDailyNoteFile, getDailyNotePath, getDailyNoteSettings as getCoreDailyNoteSettings } from '../../utils/dailyNotes';
+import {
+    getConfiguredDailyNoteSettings,
+    getDailyNoteSettings as getCoreDailyNoteSettings,
+    resolveDailyNoteReference
+} from '../../utils/dailyNotes';
 import {
     getMomentApi,
     resolveCalendarLocales,
@@ -54,7 +58,8 @@ import {
     createCalendarNotePathResolverContext,
     parseCalendarNoteDateFromPath,
     resolveCalendarNotePath,
-    resolveCalendarNoteTarget
+    resolveCalendarNoteTarget,
+    resolveCoreDailyNoteDateFromFile
 } from './calendarNoteResolution';
 import {
     buildDateFilterToken,
@@ -76,6 +81,7 @@ import { useCalendarHoverTooltip } from './useCalendarHoverTooltip';
 import { useCalendarNoteActions } from './useCalendarNoteActions';
 import type { CalendarDay, CalendarHeaderPeriodNoteTargets, CalendarNoteTarget, CalendarWeek, CalendarYearMonthEntry } from './types';
 import { isStringRecordValue, sanitizeRecord } from '../../utils/recordUtils';
+import { TPS_GCM_API_CHANGED_EVENT, TPS_GCM_API_REQUEST_EVENT, TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID } from '../../constants/tpsIdentity';
 
 export interface CalendarProps {
     onWeekCountChange?: (count: number) => void;
@@ -230,6 +236,7 @@ export function Calendar({
     const [hoverTooltipPreviewVersion, setHoverTooltipPreviewVersion] = useState(0);
     const [metadataVersion, setMetadataVersion] = useState(0);
     const [profileVisibilityVersion, setProfileVisibilityVersion] = useState(0);
+    const [dailyNoteSettingsRevision, setDailyNoteSettingsRevision] = useState(0);
     const isExistingFileVisible = useMemo(() => createFileVisibilityChecker(app, settings, { showHiddenItems: false }), [app, settings]);
     const resolveNoteTarget = useCallback(
         (targetPath: string | null, existingFile: TFile | null): CalendarNoteTarget => {
@@ -435,6 +442,30 @@ export function Calendar({
             }
         };
     }, [app.vault, scheduleVaultVersionUpdate, shouldTrackCalendarVaultChange]);
+
+    useEffect(() => {
+        const eventSource = app.workspace as unknown as {
+            on(name: string, callback: (payload: unknown) => void): unknown;
+            offref(ref: unknown): void;
+            trigger(name: string, payload: unknown): void;
+        };
+        if (typeof eventSource.on !== 'function' || typeof eventSource.offref !== 'function') {
+            return;
+        }
+        const ref = eventSource.on(TPS_GCM_API_CHANGED_EVENT, () => {
+            scheduleVaultVersionUpdate();
+        });
+        if (typeof eventSource.trigger === 'function') {
+            eventSource.trigger(TPS_GCM_API_REQUEST_EVENT, {
+                sourcePluginId: TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID,
+                requester: TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID,
+                timestamp: Date.now()
+            });
+        }
+        return () => {
+            eventSource.offref(ref);
+        };
+    }, [app.workspace, scheduleVaultVersionUpdate]);
 
     useEffect(() => {
         if (!db) {
@@ -653,14 +684,31 @@ export function Calendar({
         return ordered.map(label => Array.from(label.trim())[0] ?? '');
     }, [displayLocale, momentApi, weekStartsOn]);
 
+    useEffect(() => {
+        if (settings.calendarIntegrationMode !== 'daily-notes') {
+            return;
+        }
+
+        let active = true;
+        void getConfiguredDailyNoteSettings(app).then(configured => {
+            if (active && configured) {
+                setDailyNoteSettingsRevision(current => current + 1);
+            }
+        });
+        return () => {
+            active = false;
+        };
+    }, [app, settings.calendarIntegrationMode, vaultVersion]);
+
     const dailyNoteSettings = useMemo(() => {
         // Force refresh when vault contents change so `getDailyNoteFile()` reflects created/renamed/deleted daily notes.
         void vaultVersion;
+        void dailyNoteSettingsRevision;
         if (settings.calendarIntegrationMode !== 'daily-notes') {
             return null;
         }
         return getCoreDailyNoteSettings(app);
-    }, [app, settings.calendarIntegrationMode, vaultVersion]);
+    }, [app, dailyNoteSettingsRevision, settings.calendarIntegrationMode, vaultVersion]);
 
     const dayNoteResolverContext = useMemo(() => createCalendarNotePathResolverContext('day', settings), [settings]);
 
@@ -705,9 +753,8 @@ export function Calendar({
                 target = getExistingCustomCalendarNoteTarget('day', date);
             } else if (settings.calendarIntegrationMode === 'daily-notes' && dailyNoteSettings) {
                 const localizedDate = date.clone().locale(dailyNoteLocale);
-                const targetPath = getDailyNotePath(localizedDate, dailyNoteSettings);
-                const existingFile = getDailyNoteFile(app, localizedDate, dailyNoteSettings);
-                target = resolveNoteTarget(targetPath, existingFile);
+                const reference = resolveDailyNoteReference(app, localizedDate, dailyNoteSettings);
+                target = reference.status === 'ready' ? resolveNoteTarget(reference.path, reference.file) : resolveNoteTarget(null, null);
             } else {
                 target = resolveNoteTarget(null, null);
             }
@@ -761,24 +808,21 @@ export function Calendar({
                     return null;
                 }
 
-                const folderPattern = escapeMomentLiteralPath(dailyNoteSettings.folder);
-                const fullPattern = folderPattern ? `${folderPattern}/${dailyNoteSettings.format}` : dailyNoteSettings.format;
-                const parsedDate = momentApi(pathWithoutExtension, fullPattern, dailyNoteLocale, true);
-                if (!parsedDate.isValid()) {
+                const file = app.vault.getAbstractFileByPath(normalizedFilePath);
+                if (!(file instanceof TFile)) {
                     return null;
                 }
 
-                const normalizedFolder = normalizePath(dailyNoteSettings.folder.trim()).replace(/^\/+/u, '').replace(/\/+$/u, '');
-                const expectedPathWithoutExtension = normalizePath(
-                    normalizedFolder
-                        ? `${normalizedFolder}/${parsedDate.format(dailyNoteSettings.format)}`
-                        : parsedDate.format(dailyNoteSettings.format)
-                );
-                if (`${expectedPathWithoutExtension}.md` !== normalizedFilePath) {
+                const normalizedDate = resolveCoreDailyNoteDateFromFile({
+                    app,
+                    file,
+                    settings: dailyNoteSettings,
+                    momentApi,
+                    locale: dailyNoteLocale
+                });
+                if (!normalizedDate) {
                     return null;
                 }
-
-                const normalizedDate = parsedDate.startOf('day');
                 const note = getExistingDayNoteTarget(normalizedDate);
                 return note.visibleFile?.path === normalizedFilePath ? normalizedDate : null;
             }
@@ -805,6 +849,7 @@ export function Calendar({
             return normalizedDate;
         },
         [
+            app,
             canResolveCustomDayNotes,
             customCalendarRootFolderSettings.calendarCustomRootFolder,
             dailyNoteSettings,

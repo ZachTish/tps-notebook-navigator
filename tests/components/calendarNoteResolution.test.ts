@@ -16,12 +16,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { describe, expect, test } from 'vitest';
+import { App } from 'obsidian';
+import { describe, expect, test, vi } from 'vitest';
 import {
     createCalendarNotePathResolverContext,
     parseCalendarNoteDateFromPath,
-    resolveCalendarNoteTarget
+    resolveCalendarNoteTarget,
+    resolveCoreDailyNoteDateFromFile
 } from '../../src/components/calendar/calendarNoteResolution';
+import { TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID } from '../../src/constants/tpsIdentity';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import type { MomentApi, MomentInstance, MomentLocaleData } from '../../src/utils/moment';
 import { createTestTFile } from '../utils/createTestTFile';
@@ -67,7 +70,7 @@ function createFakeMoment(
 function createMomentApi(parsedByKey: Record<string, Record<string, string>>): MomentApi {
     const momentApi = ((input?: string | number | Date, format?: unknown): MomentInstance => {
         if (typeof input === 'string' && format === 'YYYY-MM-DD') {
-            return createFakeMoment();
+            return createFakeMoment({ 'YYYY-MM-DD': input });
         }
 
         if (typeof input === 'string' && typeof format === 'string') {
@@ -88,7 +91,116 @@ function createMomentApi(parsedByKey: Record<string, Record<string, string>>): M
     return momentApi;
 }
 
+function registerGcmDailyNotes(app: App, dailyNotes: Record<string, unknown>): void {
+    Object.assign(app, {
+        plugins: {
+            enabledPlugins: new Set([TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]),
+            plugins: { [TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]: { api: { dailyNotes } } }
+        }
+    });
+}
+
+function createGcmDailyNotes(overrides: Readonly<Record<string, unknown>> = {}): Record<string, unknown> {
+    return {
+        version: 3,
+        findForIsoDate: vi.fn(() => null),
+        dateForFile: vi.fn(() => null),
+        pathForIsoDate: vi.fn(() => null),
+        ensureForIsoDate: vi.fn(async () => null),
+        ...overrides
+    };
+}
+
 describe('calendar note resolution', () => {
+    test('uses GCM v3 reverse identity for an active legacy Daily Note path', () => {
+        const app = new App();
+        const existingFile = createTestTFile('Legacy/Mon, Aug 03 2026.md');
+        const dateForFile = vi.fn(() => '2026-08-03');
+        registerGcmDailyNotes(app, createGcmDailyNotes({ dateForFile }));
+
+        const result = resolveCoreDailyNoteDateFromFile({
+            app,
+            file: existingFile,
+            settings: { folder: 'Current', format: 'YYYY-MM-DD', template: '' },
+            momentApi: createMomentApi({}),
+            locale: 'en'
+        });
+
+        expect(result?.format('YYYY-MM-DD')).toBe('2026-08-03');
+        expect(dateForFile).toHaveBeenCalledWith(existingFile);
+    });
+
+    test('fails closed on GCM v3 null instead of locally parsing the active file', () => {
+        const app = new App();
+        const existingFile = createTestTFile('Daily/2026-08-03.md');
+        registerGcmDailyNotes(app, createGcmDailyNotes());
+
+        expect(
+            resolveCoreDailyNoteDateFromFile({
+                app,
+                file: existingFile,
+                settings: { folder: 'Daily', format: 'YYYY-MM-DD', template: '' },
+                momentApi: createMomentApi({
+                    '[Daily]/YYYY-MM-DD::Daily/2026-08-03': { 'YYYY-MM-DD': '2026-08-03' }
+                }),
+                locale: 'en'
+            })
+        ).toBeNull();
+    });
+
+    test('fails closed when an enabled GCM provider has no v3 reverse capability', () => {
+        const app = new App();
+        const existingFile = createTestTFile('Daily/2026-08-03.md');
+        registerGcmDailyNotes(app, createGcmDailyNotes({ version: 2, dateForFile: undefined }));
+
+        expect(
+            resolveCoreDailyNoteDateFromFile({
+                app,
+                file: existingFile,
+                settings: { folder: 'Daily', format: 'YYYY-MM-DD', template: '' },
+                momentApi: createMomentApi({
+                    '[Daily]/YYYY-MM-DD::Daily/2026-08-03': { 'YYYY-MM-DD': '2026-08-03' }
+                }),
+                locale: 'en'
+            })
+        ).toBeNull();
+    });
+
+    test('locally parses the exact active Core path only when GCM is absent', () => {
+        const app = new App();
+        const existingFile = createTestTFile('Daily/2026-08-03.md');
+        const result = resolveCoreDailyNoteDateFromFile({
+            app,
+            file: existingFile,
+            settings: { folder: 'Daily', format: 'YYYY-MM-DD', template: '' },
+            momentApi: createMomentApi({
+                '[Daily]/YYYY-MM-DD::Daily/2026-08-03': { 'YYYY-MM-DD': '2026-08-03' }
+            }),
+            locale: 'en'
+        });
+
+        expect(result?.format('YYYY-MM-DD')).toBe('2026-08-03');
+    });
+
+    test('re-resolves the current GCM API after its capability changes', () => {
+        const app = new App();
+        const existingFile = createTestTFile('Legacy/20260803.md');
+        const firstApi = createGcmDailyNotes();
+        registerGcmDailyNotes(app, firstApi);
+        const options = {
+            app,
+            file: existingFile,
+            settings: { folder: 'Daily', format: 'YYYY-MM-DD', template: '' },
+            momentApi: createMomentApi({}),
+            locale: 'en'
+        };
+
+        expect(resolveCoreDailyNoteDateFromFile(options)).toBeNull();
+        const secondApi = createGcmDailyNotes({ dateForFile: vi.fn(() => '2026-08-03') });
+        registerGcmDailyNotes(app, secondApi);
+        expect(resolveCoreDailyNoteDateFromFile(options)?.format('YYYY-MM-DD')).toBe('2026-08-03');
+    });
+
     test('retains an existing note while hiding it from a profile-hidden folder', () => {
         const existingFile = createTestTFile('Personal/Journal/2026-07-18.md');
 

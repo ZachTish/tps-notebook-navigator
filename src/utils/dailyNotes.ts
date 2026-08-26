@@ -18,18 +18,69 @@
 
 import { App, TFile, TFolder, normalizePath } from 'obsidian';
 import { strings } from '../i18n';
+import { resolveGcmDailyNotesApi } from '../integrations/gcm/gcmDailyNotesApi';
 import { getInternalPlugin } from './typeGuards';
 import { isPlainObjectRecordValue, isStringRecordValue } from './recordUtils';
 import { getMomentApi, type MomentInstance } from './moment';
 import { showNotice } from './noticeUtils';
+import {
+    getTemplaterAutoFileCreationProcessor,
+    getTemplaterFileCreationProcessor,
+    isTemplaterFileCreationPending,
+    type TemplaterFileCreationProcessor
+} from './templaterIntegration';
 
 const DAILY_NOTES_PLUGIN_ID = 'daily-notes';
 const DEFAULT_DAILY_NOTE_FORMAT = 'YYYY-MM-DD';
+const TEMPLATER_COMMAND_PATTERN = /<%[\s\S]*?%>/u;
+const RECENT_DAILY_NOTE_CREATION_WINDOW_MS = 10_000;
+const INCOMPLETE_DAILY_NOTE_TEMPLATE_MARKER = '<!-- tps-daily-note-template-incomplete:v1 -->';
+
+interface PendingDailyNoteCreate {
+    promise: Promise<TFile | null>;
+    constrained: boolean;
+}
+
+const pendingDailyNoteCreates = new WeakMap<App, Map<string, PendingDailyNoteCreate>>();
+const coherentDailyNoteSettingsCache = new WeakMap<App, DailyNoteSettings>();
+
+interface DailyNoteRuntimeObservation {
+    signature: string;
+    startupRecoveryAllowed: boolean;
+}
+
+const dailyNoteRuntimeObservations = new WeakMap<App, DailyNoteRuntimeObservation>();
+
+interface FailedOwnedDailyNote {
+    file: TFile;
+    unchangedContents: string;
+}
+
+const failedOwnedDailyNoteFiles = new WeakMap<App, Map<string, FailedOwnedDailyNote>>();
 
 export interface DailyNoteSettings {
     folder: string;
     format: string;
     template: string;
+}
+
+export type DailyNoteReference = { status: 'blocked'; file: null; path: null } | { status: 'ready'; file: TFile | null; path: string };
+
+export type DailyNoteFileDateReference =
+    { status: 'absent'; isoDate: null } | { status: 'blocked'; isoDate: null } | { status: 'ready'; isoDate: string | null };
+
+export interface CreateDailyNoteOptions {
+    /**
+     * A render-time Core snapshot to enforce after a confirmation dialog.
+     * Ordinary callers omit this so creation owns a fresh Core snapshot.
+     */
+    expectedSettings?: DailyNoteSettings;
+    /**
+     * The exact target shown or otherwise approved by a preflight-sensitive
+     * caller. GCM v4 and the standalone creator both revalidate this path at
+     * their mutation boundary.
+     */
+    expectedPath?: string;
 }
 
 interface DailyNotesInternalPlugin {
@@ -42,6 +93,12 @@ interface DailyNotesInternalPlugin {
 export interface ConfiguredDailyNoteTemplate {
     path: string;
     dateFormat: string;
+}
+
+interface DailyNoteTemplateInfo {
+    file: TFile | null;
+    contents: string;
+    foldInfo: unknown;
 }
 
 interface FoldManager {
@@ -108,6 +165,63 @@ function sanitizeDailyNoteSettings(options: unknown): DailyNoteSettings {
     return { folder, format, template };
 }
 
+function hasCompleteDailyNoteRuntimeOptions(options: unknown): boolean {
+    if (!isPlainObjectRecordValue(options)) {
+        return false;
+    }
+    return (
+        typeof options['folder'] === 'string' &&
+        typeof options['format'] === 'string' &&
+        options['format'].trim().length > 0 &&
+        typeof options['template'] === 'string'
+    );
+}
+
+function getDailyNoteRuntimeSignature(options: unknown): string {
+    if (!isPlainObjectRecordValue(options)) {
+        return `incomplete:${typeof options}`;
+    }
+    return JSON.stringify([
+        typeof options['folder'],
+        options['folder'],
+        typeof options['format'],
+        options['format'],
+        typeof options['template'],
+        options['template']
+    ]);
+}
+
+function isExactCoreStartupDefault(settings: DailyNoteSettings): boolean {
+    return settings.folder === '' && settings.format === DEFAULT_DAILY_NOTE_FORMAT && settings.template === '';
+}
+
+function observeDailyNoteRuntimeOptions(
+    app: App,
+    options: unknown
+): { runtime: DailyNoteSettings; complete: boolean; startupRecoveryAllowed: boolean } {
+    const runtime = sanitizeDailyNoteSettings(options);
+    const complete = hasCompleteDailyNoteRuntimeOptions(options);
+    const signature = getDailyNoteRuntimeSignature(options);
+    let observation = dailyNoteRuntimeObservations.get(app);
+    if (!observation) {
+        const startupShape = !complete || isExactCoreStartupDefault(runtime);
+        observation = {
+            signature,
+            startupRecoveryAllowed: startupShape
+        };
+        dailyNoteRuntimeObservations.set(app, observation);
+    } else if (observation.signature !== signature) {
+        // Once live Core options change, including an intentional transition
+        // to a blank/default template, persisted startup recovery is disabled
+        // for the rest of this app session.
+        observation.signature = signature;
+        observation.startupRecoveryAllowed = false;
+        coherentDailyNoteSettingsCache.delete(app);
+    }
+
+    return { runtime, complete, startupRecoveryAllowed: observation.startupRecoveryAllowed };
+}
+
 export function getDailyNoteSettings(app: App): DailyNoteSettings | null {
     // The Daily Notes core plugin isn't part of the public plugin API; we read its internal options defensively.
     const plugin = getInternalPlugin<DailyNotesInternalPlugin>(app, DAILY_NOTES_PLUGIN_ID);
@@ -116,7 +230,15 @@ export function getDailyNoteSettings(app: App): DailyNoteSettings | null {
     }
 
     const options = plugin.instance?.options;
-    return sanitizeDailyNoteSettings(options);
+    const observation = observeDailyNoteRuntimeOptions(app, options);
+    if (observation.complete && (!isExactCoreStartupDefault(observation.runtime) || !observation.startupRecoveryAllowed)) {
+        coherentDailyNoteSettingsCache.set(app, observation.runtime);
+        return observation.runtime;
+    }
+
+    // Sync callers must not resolve the initial root/YYYY-MM-DD startup
+    // lookalike before the persisted coherent snapshot has been read.
+    return coherentDailyNoteSettingsCache.get(app) ?? null;
 }
 
 async function readPersistedDailyNoteSettings(app: App): Promise<DailyNoteSettings | null> {
@@ -148,12 +270,30 @@ export async function getConfiguredDailyNoteSettings(app: App): Promise<DailyNot
         return null;
     }
 
-    const runtime = sanitizeDailyNoteSettings(plugin.instance?.options);
-    if (runtime.template) {
-        return runtime;
+    const runtimeOptions = plugin.instance?.options;
+    const observation = observeDailyNoteRuntimeOptions(app, runtimeOptions);
+    if (observation.complete && (!isExactCoreStartupDefault(observation.runtime) || !observation.startupRecoveryAllowed)) {
+        coherentDailyNoteSettingsCache.set(app, observation.runtime);
+        return observation.runtime;
     }
+
+    if (!observation.startupRecoveryAllowed) {
+        return null;
+    }
+
+    const cached = coherentDailyNoteSettingsCache.get(app);
+    if (cached) {
+        return cached;
+    }
+
+    // Persisted settings are startup recovery for an incomplete
+    // runtime object or Core's exact blank/root/default placeholder. Folder,
+    // format, and template travel as one coherent snapshot.
     const persisted = await readPersistedDailyNoteSettings(app);
-    return persisted?.template ? persisted : runtime;
+    if (persisted) {
+        coherentDailyNoteSettingsCache.set(app, persisted);
+    }
+    return persisted;
 }
 
 /**
@@ -189,10 +329,76 @@ function formatDailyNoteTitle(date: MomentInstance, format: string): string {
     return basename.replace(/\.md$/i, '');
 }
 
-export function getDailyNoteFile(app: App, date: MomentInstance, settings: DailyNoteSettings): TFile | null {
+function formatInvariantIsoDate(date: MomentInstance): string {
+    const year = date.year();
+    const month = date.month() + 1;
+    const day = date.date();
+    return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+export function resolveDailyNoteReference(app: App, date: MomentInstance, settings: DailyNoteSettings): DailyNoteReference {
+    const gcmResolution = resolveGcmDailyNotesApi(app);
+    if (gcmResolution.status === 'blocked') {
+        return { status: 'blocked', file: null, path: null };
+    }
+    if (gcmResolution.status === 'ready') {
+        const gcmDailyNotes = gcmResolution.api;
+        const isoDate = formatInvariantIsoDate(date);
+        try {
+            // GCM owns both canonical and supported legacy Daily Note identity.
+            // Its null result is authoritative: falling through could select a
+            // date-looking record and create a duplicate on the next action.
+            const file = gcmDailyNotes.findForIsoDate(isoDate);
+            const path = file?.path ?? gcmDailyNotes.pathForIsoDate(isoDate);
+            return path ? { status: 'ready', file, path } : { status: 'blocked', file: null, path: null };
+        } catch (error) {
+            console.warn('[TPS Notebook Navigator] GCM Daily Note resolution failed closed', { isoDate, error });
+            return { status: 'blocked', file: null, path: null };
+        }
+    }
+
     const path = getDailyNotePath(date, settings);
     const file = app.vault.getAbstractFileByPath(path);
-    return file instanceof TFile ? file : null;
+    return { status: 'ready', file: file instanceof TFile ? file : null, path };
+}
+
+export function getDailyNoteFile(app: App, date: MomentInstance, settings: DailyNoteSettings): TFile | null {
+    const reference = resolveDailyNoteReference(app, date, settings);
+    return reference.status === 'ready' ? reference.file : null;
+}
+
+/**
+ * Resolves a file back to its canonical Daily Note ISO date. GCM v3 owns
+ * legacy identity when present; a blocked or authoritative null provider
+ * result never falls through to filename parsing.
+ */
+export function resolveDailyNoteFileDateReference(app: App, file: Pick<TFile, 'path' | 'basename'>): DailyNoteFileDateReference {
+    const gcmResolution = resolveGcmDailyNotesApi(app);
+    if (gcmResolution.status === 'absent') {
+        return { status: 'absent', isoDate: null };
+    }
+    if (gcmResolution.status === 'blocked') {
+        return { status: 'blocked', isoDate: null };
+    }
+
+    const { api } = gcmResolution;
+    if (api.version < 3 || !api.dateForFile) {
+        return { status: 'blocked', isoDate: null };
+    }
+
+    try {
+        const isoDate = api.dateForFile(file);
+        return {
+            status: 'ready',
+            isoDate: isoDate && /^\d{4}-\d{2}-\d{2}$/u.test(isoDate) ? isoDate : null
+        };
+    } catch (error) {
+        console.warn('[TPS Notebook Navigator] GCM Daily Note reverse resolution failed closed', {
+            path: file.path,
+            error
+        });
+        return { status: 'blocked', isoDate: null };
+    }
 }
 
 async function ensureFolderExists(app: App, path: string): Promise<void> {
@@ -219,10 +425,10 @@ async function ensureFolderExists(app: App, path: string): Promise<void> {
     }
 }
 
-async function readTemplateInfo(app: App, templatePath: string): Promise<{ contents: string; foldInfo: unknown } | null> {
+async function readTemplateInfo(app: App, templatePath: string): Promise<DailyNoteTemplateInfo | null> {
     const normalized = normalizePath(templatePath);
     if (!normalized || normalized === '/') {
-        return { contents: '', foldInfo: null };
+        return { file: null, contents: '', foldInfo: null };
     }
 
     try {
@@ -244,11 +450,190 @@ async function readTemplateInfo(app: App, templatePath: string): Promise<{ conte
             // Fold state is optional presentation metadata. A corrupt or
             // unavailable fold store must not invalidate a readable template.
         }
-        return { contents, foldInfo };
+        return { file: templateFile, contents, foldInfo };
     } catch (error) {
         console.error(`Failed to read the daily note template "${normalized}"`, error);
         showNotice(strings.dailyNotes.templateReadFailed);
         return null;
+    }
+}
+
+async function finishCreatedDailyNoteContent(
+    app: App,
+    file: TFile,
+    templaterProcessor: TemplaterFileCreationProcessor,
+    createStartedAt: number,
+    preparedInput?: string
+): Promise<void> {
+    // The execution owner was chosen before exact-path creation. Auto mode
+    // awaits Templater's hook; manual mode invokes one pass. Core variables
+    // were already rendered before creation, and output is never rewritten or
+    // retried based on residual delimiter text.
+    await templaterProcessor.finish(file, createStartedAt);
+    if (preparedInput !== undefined) {
+        const processedContents = await app.vault.read(file);
+        if (processedContents === preparedInput) {
+            throw new Error('Templater finished without changing the prepared Daily Note template.');
+        }
+    }
+}
+
+function rememberFailedOwnedDailyNote(app: App, path: string, file: TFile, unchangedContents: string): void {
+    let failedByPath = failedOwnedDailyNoteFiles.get(app);
+    if (!failedByPath) {
+        failedByPath = new Map<string, FailedOwnedDailyNote>();
+        failedOwnedDailyNoteFiles.set(app, failedByPath);
+    }
+    failedByPath.set(path, { file, unchangedContents });
+}
+
+function forgetFailedOwnedDailyNote(app: App, path: string, file?: TFile): void {
+    const failedByPath = failedOwnedDailyNoteFiles.get(app);
+    if (!failedByPath) {
+        return;
+    }
+    if (!file || failedByPath.get(path)?.file === file) {
+        failedByPath.delete(path);
+    }
+}
+
+function hasIncompleteDailyNoteTemplateMarker(contents: string): boolean {
+    return contents.includes(INCOMPLETE_DAILY_NOTE_TEMPLATE_MARKER);
+}
+
+function appendIncompleteDailyNoteTemplateMarker(contents: string): string {
+    const separator = !contents || contents.endsWith('\n') ? '' : '\n';
+    return `${contents}${separator}${INCOMPLETE_DAILY_NOTE_TEMPLATE_MARKER}\n`;
+}
+
+async function markFailedOwnedDailyNote(app: App, file: TFile, path: string, preparedInput: string): Promise<void> {
+    rememberFailedOwnedDailyNote(app, path, file, preparedInput);
+    try {
+        const current = app.vault.getAbstractFileByPath(path);
+        if (current !== file) {
+            return;
+        }
+        const currentContents = await app.vault.read(file);
+        rememberFailedOwnedDailyNote(app, path, file, currentContents);
+        // A failed Templater pass may have written partial output. Use those
+        // exact bytes as the compare-and-set fingerprint too.
+        let markerWritten = false;
+        await app.vault.process(file, latestContents => {
+            if (latestContents !== currentContents) {
+                return latestContents;
+            }
+            markerWritten = true;
+            return hasIncompleteDailyNoteTemplateMarker(latestContents)
+                ? latestContents
+                : appendIncompleteDailyNoteTemplateMarker(latestContents);
+        });
+        if (markerWritten) {
+            // The file now carries durable, sync-safe failure evidence. The
+            // WeakMap remains only a fallback when read/process is unavailable.
+            forgetFailedOwnedDailyNote(app, path, file);
+        }
+    } catch {
+        // Keep the in-memory fingerprint. A later request in this session must
+        // not return the failed file if durable marking was unavailable.
+    }
+}
+
+type ExistingDailyNoteSettlement = 'settled' | 'unchanged' | 'failed';
+
+async function settleExistingDailyNoteIfNeeded(
+    app: App,
+    file: TFile,
+    date: MomentInstance,
+    settings: DailyNoteSettings,
+    externalCollision: boolean
+): Promise<ExistingDailyNoteSettlement> {
+    const timestamps = [file.stat.ctime, file.stat.mtime].filter(value => Number.isFinite(value) && value > 0 && value <= Date.now());
+    const createdAt = timestamps.length > 0 ? Math.max(...timestamps) : 0;
+    const isRecent = createdAt > 0 && Date.now() - createdAt <= RECENT_DAILY_NOTE_CREATION_WINDOW_MS;
+    const isPending = isTemplaterFileCreationPending(app, file.path);
+    let currentContents: string;
+    try {
+        currentContents = await app.vault.read(file);
+    } catch {
+        return 'failed';
+    }
+    if (hasIncompleteDailyNoteTemplateMarker(currentContents)) {
+        return 'failed';
+    }
+    if (!settings.template) {
+        if (!isPending && !isRecent) {
+            return 'settled';
+        }
+        const autoProcessor = isPending
+            ? getTemplaterFileCreationProcessor(app, file.path)
+            : getTemplaterAutoFileCreationProcessor(app, file.path);
+        if (!autoProcessor) {
+            return isPending ? 'failed' : 'settled';
+        }
+        try {
+            await finishCreatedDailyNoteContent(app, file, autoProcessor, createdAt || Date.now());
+            return 'settled';
+        } catch {
+            return 'failed';
+        }
+    }
+    if (!externalCollision && !isRecent && !isPending) {
+        return 'unchanged';
+    }
+
+    const passiveProcessor = isPending
+        ? getTemplaterFileCreationProcessor(app, file.path)
+        : isRecent
+          ? getTemplaterAutoFileCreationProcessor(app, file.path)
+          : null;
+    if (passiveProcessor) {
+        try {
+            await finishCreatedDailyNoteContent(
+                app,
+                file,
+                passiveProcessor,
+                createdAt || Date.now(),
+                TEMPLATER_COMMAND_PATTERN.test(currentContents) ? currentContents : undefined
+            );
+            return 'settled';
+        } catch {
+            return 'failed';
+        }
+    }
+    if (!TEMPLATER_COMMAND_PATTERN.test(currentContents)) {
+        return 'settled';
+    }
+    const templateInfo = await readTemplateInfo(app, settings.template);
+    if (!templateInfo || !TEMPLATER_COMMAND_PATTERN.test(templateInfo.contents)) {
+        return externalCollision || isRecent || isPending ? 'failed' : 'unchanged';
+    }
+
+    const noteTitle = formatDailyNoteTitle(date, settings.format);
+    const coreRenderedTemplate = renderDailyNoteTemplate(templateInfo.contents, date, noteTitle, settings.format);
+    const matchesRawTemplate = currentContents === templateInfo.contents || currentContents === coreRenderedTemplate;
+    if (!matchesRawTemplate) {
+        // A mature pre-existing note remains untouched. For an external
+        // collision, changed bytes with no pending hook are positive evidence
+        // that the winning creator already completed its pass, even if that
+        // pass intentionally emitted a literal delimiter.
+        return externalCollision ? 'settled' : 'unchanged';
+    }
+    if (!isRecent) {
+        return externalCollision ? 'failed' : 'unchanged';
+    }
+
+    const processor = getTemplaterFileCreationProcessor(app, file.path);
+    if (!processor) {
+        return 'failed';
+    }
+    try {
+        if (currentContents === templateInfo.contents && currentContents !== coreRenderedTemplate) {
+            await app.vault.modify(file, coreRenderedTemplate);
+        }
+        await finishCreatedDailyNoteContent(app, file, processor, createdAt || Date.now(), coreRenderedTemplate);
+        return 'settled';
+    } catch {
+        return 'failed';
     }
 }
 
@@ -306,42 +691,340 @@ export function renderDailyNoteTemplate(template: string, date: MomentInstance, 
         .replace(/{{\s*tomorrow\s*}}/gi, formatDailyNoteTitle(date.clone().add(1, 'day'), format));
 }
 
-export async function createDailyNote(app: App, date: MomentInstance, settings: DailyNoteSettings): Promise<TFile | null> {
-    const configuredSettings = settings.template ? settings : ((await getConfiguredDailyNoteSettings(app)) ?? settings);
-    const path = getDailyNotePath(date, configuredSettings);
-    const existing = app.vault.getAbstractFileByPath(path);
-    if (existing instanceof TFile) {
-        return existing;
+function dailyNoteSettingsMatch(left: DailyNoteSettings, right: DailyNoteSettings): boolean {
+    return left.folder === right.folder && left.format === right.format && left.template === right.template;
+}
+
+function normalizeExpectedDailyNotePath(path: string): string | null {
+    const trimmed = path.trim().replace(/^\/+/, '');
+    if (!trimmed) {
+        return null;
+    }
+    return normalizePath(trimmed);
+}
+
+function hasDailyNotePreflightConstraint(options: CreateDailyNoteOptions): boolean {
+    return options.expectedSettings !== undefined || options.expectedPath !== undefined;
+}
+
+async function validateJoinedDailyNoteResult(
+    app: App,
+    date: MomentInstance,
+    isoDate: string,
+    options: CreateDailyNoteOptions,
+    file: TFile | null
+): Promise<TFile | null> {
+    if (!hasDailyNotePreflightConstraint(options)) {
+        return file;
     }
 
-    try {
-        // A configured template is part of the creation contract. Resolve and read it before
-        // creating folders or the note so a stale template path cannot silently produce a blank daily note.
-        const templateInfo = await readTemplateInfo(app, configuredSettings.template);
-        if (!templateInfo) {
+    let currentSettings: DailyNoteSettings | null = null;
+    if (options.expectedSettings) {
+        currentSettings = await getConfiguredDailyNoteSettings(app);
+        if (!currentSettings || !dailyNoteSettingsMatch(currentSettings, options.expectedSettings)) {
+            console.warn('[TPS Notebook Navigator] Core Daily Notes changed while joining confirmed creation; failed closed', { isoDate });
+            showNotice(strings.dailyNotes.createFailed);
             return null;
         }
-        await ensureFolderExists(app, path);
+    }
 
-        const { contents: templateContents, foldInfo } = templateInfo;
-        const noteTitle = formatDailyNoteTitle(date, configuredSettings.format);
-
-        const createdFile = await app.vault.create(
-            path,
-            renderDailyNoteTemplate(templateContents, date, noteTitle, configuredSettings.format)
-        );
-        if (foldInfo) {
-            try {
-                const foldManager = getFoldManager(app);
-                foldManager?.save(createdFile, foldInfo);
-            } catch {
-                // ignore
-            }
-        }
-        return createdFile;
-    } catch (error) {
-        console.error(`Failed to create daily note "${path}"`, error);
+    let expectedPath = options.expectedPath === undefined ? null : normalizeExpectedDailyNotePath(options.expectedPath);
+    if (options.expectedPath !== undefined && !expectedPath) {
+        console.warn('[TPS Notebook Navigator] Joined Daily Note confirmation has an invalid target; failed closed', { isoDate });
         showNotice(strings.dailyNotes.createFailed);
         return null;
     }
+
+    if (!expectedPath && options.expectedSettings) {
+        const gcmResolution = resolveGcmDailyNotesApi(app);
+        if (gcmResolution.status !== 'absent') {
+            console.warn('[TPS Notebook Navigator] Joined GCM Daily Note confirmation has no authoritative target; failed closed', {
+                isoDate
+            });
+            showNotice(strings.dailyNotes.createFailed);
+            return null;
+        }
+        expectedPath = getDailyNotePath(date, currentSettings ?? options.expectedSettings);
+    }
+
+    if (file && expectedPath && normalizePath(file.path) !== expectedPath) {
+        console.warn("[TPS Notebook Navigator] Shared Daily Note result differs from this caller's confirmed target; failed closed", {
+            isoDate,
+            expectedPath,
+            actualPath: file.path
+        });
+        showNotice(strings.dailyNotes.createFailed);
+        return null;
+    }
+
+    return file;
+}
+
+export async function createDailyNote(app: App, date: MomentInstance, options: CreateDailyNoteOptions = {}): Promise<TFile | null> {
+    const isoDate = formatInvariantIsoDate(date);
+    let byIsoDate = pendingDailyNoteCreates.get(app);
+    if (!byIsoDate) {
+        byIsoDate = new Map<string, PendingDailyNoteCreate>();
+        pendingDailyNoteCreates.set(app, byIsoDate);
+    }
+    const pending = byIsoDate.get(isoDate);
+    if (pending) {
+        const file = await pending.promise;
+        if (!file && pending.constrained && !hasDailyNotePreflightConstraint(options)) {
+            // The first owner may have declined only because its confirmed
+            // preflight no longer matched. Once its gate is deterministically
+            // released, an ordinary caller is allowed to become the next
+            // owner rather than inheriting that unrelated confirmation.
+            return await createDailyNote(app, date, options);
+        }
+        return await validateJoinedDailyNoteResult(app, date, isoDate, options, file);
+    }
+
+    // The invariant date gate owns provider discovery, confirmation checks,
+    // Core snapshot resolution, exact-path reservation, and Templater. A GCM
+    // startup transition therefore cannot race a standalone creator for the
+    // same logical day.
+    const operation = createDailyNoteForIsoDate(app, date, options, isoDate);
+    const sharedPromise = operation.finally(() => {
+        if (byIsoDate.get(isoDate)?.promise === sharedPromise) {
+            byIsoDate.delete(isoDate);
+        }
+    });
+    byIsoDate.set(isoDate, {
+        promise: sharedPromise,
+        constrained: hasDailyNotePreflightConstraint(options)
+    });
+    return await sharedPromise;
+}
+
+async function createDailyNoteForIsoDate(
+    app: App,
+    date: MomentInstance,
+    options: CreateDailyNoteOptions,
+    isoDate: string
+): Promise<TFile | null> {
+    const expectedPath = options.expectedPath === undefined ? null : normalizeExpectedDailyNotePath(options.expectedPath);
+    if (options.expectedPath !== undefined && !expectedPath) {
+        console.warn('[TPS Notebook Navigator] Confirmed Daily Note path is invalid; failed closed', { isoDate });
+        showNotice(strings.dailyNotes.createFailed);
+        return null;
+    }
+
+    let confirmedSettings: DailyNoteSettings | null = null;
+    if (options.expectedSettings) {
+        const currentSettings = await getConfiguredDailyNoteSettings(app);
+        if (!currentSettings || !dailyNoteSettingsMatch(currentSettings, options.expectedSettings)) {
+            console.warn('[TPS Notebook Navigator] Core Daily Notes changed before confirmed creation; failed closed');
+            showNotice(strings.dailyNotes.createFailed);
+            return null;
+        }
+        confirmedSettings = currentSettings;
+    }
+
+    const gcmResolution = resolveGcmDailyNotesApi(app);
+    if (gcmResolution.status === 'blocked') {
+        console.warn('[TPS Notebook Navigator] GCM Daily Note provider is enabled but not ready; creation failed closed', { isoDate });
+        showNotice(strings.dailyNotes.createFailed);
+        return null;
+    }
+    if (gcmResolution.status === 'ready') {
+        const gcmDailyNotes = gcmResolution.api;
+        if (options.expectedSettings && !expectedPath) {
+            console.warn('[TPS Notebook Navigator] Confirmed GCM Daily Note creation has no authoritative target; failed closed', {
+                isoDate
+            });
+            showNotice(strings.dailyNotes.createFailed);
+            return null;
+        }
+        if (expectedPath && gcmDailyNotes.version < 4) {
+            console.warn('[TPS Notebook Navigator] GCM Daily Note provider cannot enforce the confirmed target; creation failed closed', {
+                isoDate,
+                providerVersion: gcmDailyNotes.version
+            });
+            showNotice(strings.dailyNotes.createFailed);
+            return null;
+        }
+        try {
+            // GCM is authoritative whenever the compatible capability is
+            // present. A null result must not fall through to a second creator.
+            const file = expectedPath
+                ? await gcmDailyNotes.ensureForIsoDate(isoDate, { expectedPath })
+                : await gcmDailyNotes.ensureForIsoDate(isoDate);
+            if (file && expectedPath && normalizePath(file.path) !== expectedPath) {
+                console.warn('[TPS Notebook Navigator] GCM returned a different Daily Note than the confirmed target; failed closed', {
+                    isoDate,
+                    expectedPath,
+                    actualPath: file.path
+                });
+                showNotice(strings.dailyNotes.createFailed);
+                return null;
+            }
+            return file;
+        } catch (error) {
+            console.warn('[TPS Notebook Navigator] GCM Daily Note creation failed closed', { isoDate, error });
+            showNotice(strings.dailyNotes.createFailed);
+            return null;
+        }
+    }
+
+    // Ordinary creation always owns a fresh coherent Core snapshot. Only a
+    // caller that explicitly supplied expectedSettings above is bound to a
+    // render-time confirmation snapshot.
+    const configuredSettings = confirmedSettings ?? (await getConfiguredDailyNoteSettings(app));
+    if (!configuredSettings) {
+        console.warn('[TPS Notebook Navigator] Core Daily Notes is unavailable; creation failed closed');
+        showNotice(strings.dailyNotes.createFailed);
+        return null;
+    }
+    const path = getDailyNotePath(date, configuredSettings);
+    if (expectedPath && path !== expectedPath) {
+        console.warn('[TPS Notebook Navigator] Core Daily Notes target changed after preflight; creation failed closed', {
+            isoDate,
+            expectedPath,
+            actualPath: path
+        });
+        showNotice(strings.dailyNotes.createFailed);
+        return null;
+    }
+    return await (async (): Promise<TFile | null> => {
+        const existing = app.vault.getAbstractFileByPath(path);
+        if (existing instanceof TFile) {
+            const failedOwned = failedOwnedDailyNoteFiles.get(app)?.get(path);
+            if (failedOwned?.file === existing) {
+                try {
+                    if ((await app.vault.read(existing)) === failedOwned.unchangedContents) {
+                        console.warn('[TPS Notebook Navigator] Previously failed owned Daily Note remains unresolved; failed closed', {
+                            path
+                        });
+                        showNotice(strings.dailyNotes.createFailed);
+                        return null;
+                    }
+                    // A user or another successful processor changed the
+                    // failed bytes. Stop treating this exact file as the raw
+                    // artifact from our failed attempt.
+                    forgetFailedOwnedDailyNote(app, path, existing);
+                } catch {
+                    console.warn('[TPS Notebook Navigator] Previously failed owned Daily Note could not be verified; failed closed', {
+                        path
+                    });
+                    showNotice(strings.dailyNotes.createFailed);
+                    return null;
+                }
+            }
+            if (failedOwned) {
+                forgetFailedOwnedDailyNote(app, path);
+            }
+            // Existing user content is authoritative. The one narrow recovery
+            // case is a just-created file whose bytes still exactly match the
+            // configured raw template (a Core/Templater startup race).
+            const settlement = await settleExistingDailyNoteIfNeeded(app, existing, date, configuredSettings, false);
+            if (settlement === 'failed') {
+                console.warn('[TPS Notebook Navigator] Recent Daily Note template recovery failed closed', { path });
+                showNotice(strings.dailyNotes.createFailed);
+                return null;
+            }
+            return existing;
+        }
+        if (failedOwnedDailyNoteFiles.get(app)?.has(path)) {
+            forgetFailedOwnedDailyNote(app, path);
+        }
+
+        try {
+            // A configured template is part of the creation contract. Resolve and read it before
+            // creating folders or the note so a stale template path cannot silently produce a blank daily note.
+            const templateInfo = await readTemplateInfo(app, configuredSettings.template);
+            if (!templateInfo) {
+                return null;
+            }
+            const { file: templateFile, contents: templateContents, foldInfo } = templateInfo;
+            const noteTitle = formatDailyNoteTitle(date, configuredSettings.format);
+            const hasTemplaterCommands = TEMPLATER_COMMAND_PATTERN.test(templateContents);
+            const preparedTemplateContents = renderDailyNoteTemplate(templateContents, date, noteTitle, configuredSettings.format);
+            const templaterProcessor = hasTemplaterCommands
+                ? getTemplaterFileCreationProcessor(app, path)
+                : getTemplaterAutoFileCreationProcessor(app, path);
+            if (hasTemplaterCommands && !templaterProcessor) {
+                console.warn('[TPS Notebook Navigator] Daily Note template requires Templater, but no callable processor is available', {
+                    path,
+                    template: templateFile?.path ?? configuredSettings.template
+                });
+                showNotice(strings.dailyNotes.createFailed);
+                return null;
+            }
+            await ensureFolderExists(app, path);
+
+            const reservationSettings = await getConfiguredDailyNoteSettings(app);
+            if (!reservationSettings || !dailyNoteSettingsMatch(reservationSettings, configuredSettings)) {
+                console.warn('[TPS Notebook Navigator] Core Daily Notes changed before exact-path reservation; failed closed', {
+                    isoDate
+                });
+                showNotice(strings.dailyNotes.createFailed);
+                return null;
+            }
+
+            const raced = app.vault.getAbstractFileByPath(path);
+            if (raced instanceof TFile) {
+                const settlement = await settleExistingDailyNoteIfNeeded(app, raced, date, configuredSettings, true);
+                if (settlement === 'failed') {
+                    console.warn('[TPS Notebook Navigator] External Daily Note creator did not settle before return', { path });
+                    showNotice(strings.dailyNotes.createFailed);
+                    return null;
+                }
+                return raced;
+            }
+
+            let createdFile: TFile;
+            let createCompletedAt: number;
+            try {
+                // Exact-path vault creation is the atomic reservation. It
+                // cannot silently choose Templater's " 1.md" collision path.
+                createdFile = await app.vault.create(path, preparedTemplateContents);
+                // Anchor Templater's delayed hook grace period to completion
+                // of the potentially slow vault write, not to the time before
+                // an iCloud-backed create began.
+                createCompletedAt = Date.now();
+            } catch (error) {
+                const concurrent = app.vault.getAbstractFileByPath(path);
+                if (concurrent instanceof TFile) {
+                    const settlement = await settleExistingDailyNoteIfNeeded(app, concurrent, date, configuredSettings, true);
+                    if (settlement === 'failed') {
+                        console.warn('[TPS Notebook Navigator] Colliding Daily Note creator did not settle before return', { path });
+                        showNotice(strings.dailyNotes.createFailed);
+                        return null;
+                    }
+                    return concurrent;
+                }
+                throw error;
+            }
+
+            if (templaterProcessor) {
+                try {
+                    await finishCreatedDailyNoteContent(
+                        app,
+                        createdFile,
+                        templaterProcessor,
+                        createCompletedAt,
+                        hasTemplaterCommands ? preparedTemplateContents : undefined
+                    );
+                } catch (error) {
+                    await markFailedOwnedDailyNote(app, createdFile, path, preparedTemplateContents);
+                    throw error;
+                }
+            }
+            forgetFailedOwnedDailyNote(app, path, createdFile);
+            if (foldInfo) {
+                try {
+                    const foldManager = getFoldManager(app);
+                    foldManager?.save(createdFile, foldInfo);
+                } catch {
+                    // ignore
+                }
+            }
+            return createdFile;
+        } catch (error) {
+            console.error(`Failed to create daily note "${path}"`, error);
+            showNotice(strings.dailyNotes.createFailed);
+            return null;
+        }
+    })();
 }
