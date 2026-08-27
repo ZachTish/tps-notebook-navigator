@@ -408,7 +408,8 @@ export function useListPaneRefresh({
                 useFrontmatterMetadata: settings.useFrontmatterMetadata,
                 frontmatterNameField: settings.frontmatterNameField,
                 frontmatterCreatedField: settings.frontmatterCreatedField,
-                frontmatterModifiedField: settings.frontmatterModifiedField
+                frontmatterModifiedField: settings.frontmatterModifiedField,
+                tpsDataArchitectureMode: settings.tpsDataArchitectureMode
             });
 
         const vaultEvents = [
@@ -698,6 +699,7 @@ export function useListPaneRefresh({
         settings.frontmatterCreatedField,
         settings.frontmatterModifiedField,
         settings.frontmatterNameField,
+        settings.tpsDataArchitectureMode,
         propertySortKey,
         propertySortSecondary,
         settings.showFileBackgroundUnfinishedTask,

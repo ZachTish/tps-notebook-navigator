@@ -492,6 +492,32 @@ describe('sort refresh triggers', () => {
                 frontmatterModifiedField: ''
             })
         ).toBe(false);
+
+        expect(
+            shouldRefreshOnMetadataChangeForSort({
+                sortOption: 'title-asc',
+                propertySortKey: '',
+                propertySortSecondary: 'created',
+                useFrontmatterMetadata: false,
+                frontmatterNameField: '',
+                frontmatterCreatedField: '',
+                frontmatterModifiedField: '',
+                tpsDataArchitectureMode: 'native-records'
+            })
+        ).toBe(true);
+
+        expect(
+            shouldRefreshOnMetadataChangeForSort({
+                sortOption: 'property-asc',
+                propertySortKey: '',
+                propertySortSecondary: 'title',
+                useFrontmatterMetadata: false,
+                frontmatterNameField: '',
+                frontmatterCreatedField: '',
+                frontmatterModifiedField: '',
+                tpsDataArchitectureMode: 'native-records'
+            })
+        ).toBe(true);
     });
 });
 

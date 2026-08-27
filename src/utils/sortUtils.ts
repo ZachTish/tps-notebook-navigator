@@ -563,6 +563,7 @@ export function shouldRefreshOnMetadataChangeForSort(params: {
     frontmatterNameField: string;
     frontmatterCreatedField: string;
     frontmatterModifiedField: string;
+    tpsDataArchitectureMode?: NotebookNavigatorSettings['tpsDataArchitectureMode'];
 }): boolean {
     const {
         sortOption,
@@ -571,10 +572,16 @@ export function shouldRefreshOnMetadataChangeForSort(params: {
         useFrontmatterMetadata,
         frontmatterNameField,
         frontmatterCreatedField,
-        frontmatterModifiedField
+        frontmatterModifiedField,
+        tpsDataArchitectureMode
     } = params;
+    const usesNativeRecordTitles = tpsDataArchitectureMode === 'native-records';
     if (!isPropertySortOption(sortOption)) {
         // Date/title sorts depend on frontmatter values when configured; metadata changes must refresh the ordering.
+        if (sortOption.startsWith('title') && usesNativeRecordTitles) {
+            return true;
+        }
+
         if (!useFrontmatterMetadata) {
             return false;
         }
@@ -595,6 +602,10 @@ export function shouldRefreshOnMetadataChangeForSort(params: {
     }
 
     if (propertySortKey.trim().length > 0) {
+        return true;
+    }
+
+    if (propertySortSecondary === 'title' && usesNativeRecordTitles) {
         return true;
     }
 

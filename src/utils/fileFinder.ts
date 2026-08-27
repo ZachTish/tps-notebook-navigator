@@ -37,7 +37,7 @@ import { getDBInstanceOrNull } from '../storage/fileOperations';
 import { extractMetadata, type ProcessedMetadata } from '../utils/metadataExtractor';
 import { extractCurrentFrontmatterMetadataFromFileData } from './frontmatterMetadataCache';
 import { METADATA_SENTINEL } from '../storage/IndexedDBStorage';
-import { getFileDisplayName as getDisplayName } from './fileNameUtils';
+import { getFileDisplayNameWithGcmNativeFallback } from '../integrations/gcm/gcmNativeRecordDisplayName';
 import { getFolderNote, getFolderNoteDetectionSettings } from './folderNoteLookup';
 import { createHiddenTagVisibility, normalizeTagPathValue } from './tagPrefixMatcher';
 import {
@@ -199,12 +199,29 @@ function createPropertySortValueGetter(app: App, propertySortKey: string): (file
     };
 }
 
-export function sortNavigationFiles(files: TFile[], settings: NotebookNavigatorSettings, app: App, sortSpec: EffectiveListSort): void {
+export function sortNavigationFiles(
+    files: TFile[],
+    settings: NotebookNavigatorSettings,
+    app: App,
+    sortSpec: EffectiveListSort,
+    getLiveDisplayName?: (file: TFile) => string
+): void {
     const sortOption = sortSpec.option;
     const isPropertySort = isPropertySortOption(sortOption);
     const propertySortKey = sortSpec.propertyKey.trim();
     const getPropertySortValue =
         isPropertySort && propertySortKey.length > 0 ? createPropertySortValueGetter(app, propertySortKey) : undefined;
+    const displayNameCache = new Map<string, string>();
+    const getTitle = (file: TFile, cachedData?: { fn?: string }): string => {
+        let displayName = displayNameCache.get(file.path);
+        if (displayName === undefined) {
+            displayName = getLiveDisplayName
+                ? getLiveDisplayName(file)
+                : getFileDisplayNameWithGcmNativeFallback(app, file, cachedData, settings);
+            displayNameCache.set(file.path, displayName);
+        }
+        return displayName;
+    };
 
     if (settings.useFrontmatterMetadata) {
         const db = getDBInstanceOrNull();
@@ -248,18 +265,17 @@ export function sortNavigationFiles(files: TFile[], settings: NotebookNavigatorS
             return metadata.fm;
         };
 
-        const getTitle = (file: TFile) => {
+        const getCachedTitle = (file: TFile) => {
             const metadata = getCached(file);
-            return getDisplayName(file, { fn: metadata.fn }, settings);
+            return getTitle(file, { fn: metadata.fn });
         };
 
-        sortFiles(files, sortOption, getCreatedTime, getModifiedTime, getTitle, getPropertySortValue, sortSpec.propertySortSecondary);
+        sortFiles(files, sortOption, getCreatedTime, getModifiedTime, getCachedTitle, getPropertySortValue, sortSpec.propertySortSecondary);
         return;
     }
 
     const getCreatedTime = (file: TFile) => file.stat.ctime;
     const getModifiedTime = (file: TFile) => file.stat.mtime;
-    const getTitle = (file: TFile) => file.basename;
     sortFiles(files, sortOption, getCreatedTime, getModifiedTime, getTitle, getPropertySortValue, sortSpec.propertySortSecondary);
 }
 

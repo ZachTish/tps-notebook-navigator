@@ -61,7 +61,10 @@ import { METADATA_SENTINEL, type FileData as DBFileData, type IndexedDBStorage }
 import { getDBInstance, getDBInstanceOrNull } from '../storage/fileOperations';
 import type { StorageFileData } from './storage/storageFileData';
 import type { PropertyTreeNode, TagTreeNode } from '../types/storage';
-import { getFileDisplayName as getDisplayName } from '../utils/fileNameUtils';
+import {
+    getFileDisplayNameWithGcmNativeFallback,
+    subscribeGcmNativeRecordApiLifecycle
+} from '../integrations/gcm/gcmNativeRecordDisplayName';
 import { findTagNode, collectAllTagPaths } from '../utils/tagTree';
 import { useServices } from './ServicesContext';
 import { useSettingsState, useActiveProfile } from './SettingsContext';
@@ -173,6 +176,17 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
         untagged: 0,
         hiddenRootTags: new Map()
     });
+    const [gcmNativeRecordApiRevision, setGcmNativeRecordApiRevision] = useState(0);
+
+    useEffect(() => {
+        if (settings.tpsDataArchitectureMode !== 'native-records') {
+            return;
+        }
+
+        return subscribeGcmNativeRecordApiLifecycle(app, () => {
+            setGcmNativeRecordApiRevision(revision => revision + 1);
+        });
+    }, [app, settings.tpsDataArchitectureMode]);
 
     // Registry managing content providers for generated file content
     const contentRegistry = useRef<ContentProviderRegistry | null>(null);
@@ -363,10 +377,13 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
 
     const getFileDisplayName = useCallback(
         (file: TFile): string => {
+            // This revision is presentation-only; reading it keeps the callback
+            // identity aligned with optional GCM API lifecycle announcements.
+            void gcmNativeRecordApiRevision;
             const metadata = getFrontmatterMetadata(file);
-            return getDisplayName(file, { fn: metadata?.fn }, settings);
+            return getFileDisplayNameWithGcmNativeFallback(app, file, { fn: metadata?.fn }, settings);
         },
-        [getFrontmatterMetadata, settings]
+        [app, gcmNativeRecordApiRevision, getFrontmatterMetadata, settings]
     );
 
     const getFileTimestamps = useCallback(
@@ -386,12 +403,12 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
             const timestamps = computeFileTimestamps(file, extractedMetadata);
 
             return {
-                name: getDisplayName(file, { fn: extractedMetadata?.fn }, settings),
+                name: getFileDisplayName(file),
                 created: timestamps.created,
                 modified: timestamps.modified
             };
         },
-        [getFrontmatterMetadata, settings]
+        [getFileDisplayName, getFrontmatterMetadata]
     );
 
     const hasPreview = useCallback((path: string): boolean => getDBInstance().hasPreview(path), []);

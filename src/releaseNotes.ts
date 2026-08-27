@@ -107,6 +107,15 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.20.2',
+        date: '2026-08-26',
+        fixed: [
+            'In Native Markdown records mode, GCM-verified records now display their canonical title when no explicit Navigator frontmatter display-name field is configured, so stable identity filenames such as item_<uuid> remain readable without being renamed.',
+            'Strict whole wikilink titles use their readable alias or target basename, including escaped punctuation, while malformed links and unresolved templates fail back safely to the filename.',
+            'GCM load, replacement, and unload now refresh visible names, search evidence, and title ordering together, including selected file-backed Types.'
+        ]
+    },
+    {
         version: '5.20.1',
         date: '2026-08-25',
         fixed: [

@@ -1,5 +1,13 @@
 # TPS Notebook Navigator
 
+## 5.20.2
+
+- In **Native Markdown records** mode, a file that GCM's version-2-or-newer `nativeRecords` API verifies now uses its canonical record title when no explicit Navigator frontmatter display-name field produced a usable value. Opaque identity filenames such as `item_<uuid>` therefore remain stable on disk while task rows show their readable title.
+- A strict whole wikilink title displays its alias, or its readable target basename when no alias exists. Backslash-escaped wikilink punctuation remains literal, embedded or Markdown-link syntax is not reinterpreted, and unresolved template output falls back safely to the filename.
+- GCM API readiness and replacement refresh visible names, search evidence, metadata access, and title sorting—including selected file-backed Types—without persisting a cache entry or changing filenames, frontmatter, or settings. Legacy mode, ordinary files, unavailable/incompatible GCM, and unverified records retain their existing filename behavior.
+- This is a backward-compatible presentation fix. Minimum supported Obsidian remains 1.11.0.
+- Validation passed 253/253 test files and 2,863/2,863 tests, followed by the separate production build and byte-identical test-vault deployment. Obsidian 1.13.7 reloaded 5.20.2 and displayed an opaque native workout file by its canonical title in a reversible provider QA; both plugins returned to Legacy mode, only the expected `lastShownVersion` changed, and production was not accessed.
+
 ## 5.20.1
 
 - Core Daily Note actions now use GCM's authoritative Daily Notes API when it is available, including legacy-path date resolution in API v3 and exact confirmed-path enforcement in API v4. A present but starting, incompatible, failed, or declining provider fails closed instead of racing a second creator; confirmations that require path binding fail closed on older providers.

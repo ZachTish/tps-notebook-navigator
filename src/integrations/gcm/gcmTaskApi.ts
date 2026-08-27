@@ -104,6 +104,19 @@ export interface GcmFilePropertiesApiLike extends GcmFrontmatterApiLike {
     isTarget(file: TFile): boolean;
 }
 
+export interface GcmNativeRecordInspectionLike {
+    readonly id: string;
+    readonly kind: string;
+    readonly schemaVersion: number;
+    readonly frontmatter: Readonly<Record<string, unknown>>;
+}
+
+export interface GcmNativeRecordsApiLike {
+    readonly version: number;
+    getMode(): unknown;
+    inspect(frontmatter: unknown): GcmNativeRecordInspectionLike | null;
+}
+
 /** Small synchronous menu surface used instead of exposing Obsidian's Menu object. */
 export interface GcmTaskMenuLike {
     addItem(callback: (item: MenuItem) => void): unknown;
@@ -177,6 +190,16 @@ export function isGcmItemPropertiesApiLike(value: unknown): value is GcmItemProp
     );
 }
 
+export function isGcmNativeRecordsApiLike(value: unknown): value is GcmNativeRecordsApiLike {
+    return (
+        isRecord(value) &&
+        typeof value.version === 'number' &&
+        value.version >= 2 &&
+        typeof value.getMode === 'function' &&
+        typeof value.inspect === 'function'
+    );
+}
+
 function resolveGcmPluginApi(app: App): Record<string, unknown> | null {
     const manager = (app as App & { plugins?: PluginManagerLike }).plugins;
     if (!manager || isExplicitlyDisabled(manager, TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID)) return null;
@@ -211,6 +234,11 @@ export function resolveGcmFilePropertiesApi(app: App): GcmFilePropertiesApiLike 
         typeof value.addListValues === 'function'
         ? (value as unknown as GcmFilePropertiesApiLike)
         : null;
+}
+
+export function resolveGcmNativeRecordsApi(app: App): GcmNativeRecordsApiLike | null {
+    const value = resolveGcmPluginApi(app)?.nativeRecords;
+    return isGcmNativeRecordsApiLike(value) ? value : null;
 }
 
 /** Resolves task capabilities from one public GCM plugin API payload. */

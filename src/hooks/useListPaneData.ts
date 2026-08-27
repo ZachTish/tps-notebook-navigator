@@ -460,6 +460,9 @@ export function useListPaneData({
         settings.showProperties,
         selectedSortOverride,
         sortSpec,
+        // The callback identity changes when GCM's optional native-record API is replaced.
+        // Re-run the file finder so title sorting follows the same live names as visible rows.
+        getFileDisplayName,
         propertyTreeService,
         includeDescendantNotes,
         showHiddenItems,
@@ -471,7 +474,7 @@ export function useListPaneData({
     const baseFiles = useMemo(() => {
         if (isFileBackedTypeSelection && selectedType && !useGlobalTypeSearch) {
             const files = collectFileBackedTypeFiles(app, visibleTypeFiles, selectedType);
-            sortNavigationFiles(files, settings, app, sortSpec);
+            sortNavigationFiles(files, settings, app, sortSpec, getFileDisplayName);
             return files;
         }
         if (isTypeSelection && !useGlobalTypeSearch) {
@@ -483,6 +486,7 @@ export function useListPaneData({
         return selectionBaseFiles.filter(file => fileMatchesStructuralTypeSearch(app, file, parsedSearchTokens));
     }, [
         app,
+        getFileDisplayName,
         hasSearchQuery,
         isFileBackedTypeSelection,
         isTypeSelection,
