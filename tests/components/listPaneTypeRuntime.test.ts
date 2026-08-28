@@ -64,6 +64,13 @@ describe('Type-mode list runtime behavior', () => {
         expect(source).toContain("(['top', 'bottom'] as const)");
     });
 
+    it('keeps required aggregate grouping available during manual sort without exposing latent ordinary overrides', async () => {
+        const source = await readFile('src/hooks/useListActions.ts', 'utf8');
+
+        expect(source).toContain('isManualSortActive && !preserveAggregateGrouping');
+        expect(source).toMatch(/addGroupOptionItem\([\s\S]*?'tags'[\s\S]*?isManualSortActive && !preserveAggregateGrouping[\s\S]*?\);/u);
+    });
+
     it('disables calendar interactions only for Type selections', () => {
         expect(supportsCalendarInteractionsForSelection(ItemType.TYPE)).toBe(false);
         expect(supportsCalendarInteractionsForSelection(ItemType.FOLDER)).toBe(true);
@@ -124,6 +131,12 @@ describe('Type-mode list runtime behavior', () => {
         expect(resolveRenderedPropertyGroupingForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, configured, false)).toBe(
             configured
         );
+    });
+
+    it('limits Tags grouping to file-backed Types', () => {
+        expect(resolveRenderedPropertyGroupingForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, 'tags', false)).toBe('custom');
+        expect(resolveRenderedPropertyGroupingForSelection(ItemType.TYPE, TPS_NAVIGATOR_TYPE_IDS.NOTES, 'tags', false)).toBe('tags');
+        expect(resolveRenderedPropertyGroupingForSelection(ItemType.TAG, null, 'tags', false)).toBe('tags');
     });
 
     it('offers day property buckets for standalone line Types and active mixed structural search scopes', () => {

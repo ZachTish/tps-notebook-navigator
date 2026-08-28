@@ -76,6 +76,9 @@ export function resolveRenderedPropertyGroupingForSelection(
     groupBy: ListNoteGroupingOption,
     mixedStructuralSearchActive: boolean
 ): ListNoteGroupingOption {
+    if (groupBy === 'tags' && selectionType === ItemType.TYPE && isTpsNavigatorLineTypeId(selectedType)) {
+        return 'custom';
+    }
     return normalizePropertyGroupingSourceForMenu(
         groupBy,
         supportsLinePropertyGroupingSourceForSelection(selectionType, selectedType, mixedStructuralSearchActive)

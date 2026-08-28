@@ -7,7 +7,7 @@ import {
     persistNavigatorListPresentationUpdate,
     resolveNavigatorListPresentationTarget
 } from '../../src/services/listViewState/listPresentation';
-import { ItemType } from '../../src/types';
+import { ALL_TAGS_TAG_ID, ItemType } from '../../src/types';
 import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 function settings() {
@@ -88,6 +88,8 @@ describe('public list presentation plans', () => {
         expect(current.typeAppearances?.[TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]).toEqual({ groupBy: 'line-property-day:Status' });
         expect(createNavigatorListPresentationPlan(current, lineType, { displayMode: 'compact' })).toBeNull();
         expect(createNavigatorListPresentationPlan(current, lineType, { groupBy: 'folder' })).toBeNull();
+        expect(createNavigatorListPresentationPlan(current, lineType, { groupBy: 'tags' })).toBeNull();
+        expect(createNavigatorListPresentationPlan(current, fileType, { groupBy: 'tags' })).not.toBeNull();
         expect(createNavigatorListPresentationPlan(current, lineType, { groupBy: 'custom' })).not.toBeNull();
         expect(createNavigatorListPresentationPlan(current, fileType, { groupBy: 'line-property:status' })).not.toBeNull();
         expect(
@@ -175,6 +177,58 @@ describe('public list presentation plans', () => {
                 sort: { option: 'property-asc', propertyKey: 'Status' }
             })
         ).toBeNull();
+    });
+
+    it('normalizes aggregate-scope automatic grouping without persisting redundant overrides', () => {
+        const current = settings();
+        current.noteGrouping = 'custom';
+        current.propertyGroupKey = 'Priority';
+        current.tagAppearances[ALL_TAGS_TAG_ID] = { groupBy: 'custom', previewRows: 2 };
+        current.propertyAppearances['key:status'] = { groupBy: 'custom', titleRows: 3 };
+
+        const allTagsPlan = createNavigatorListPresentationPlan(current, { type: ItemType.TAG, key: ALL_TAGS_TAG_ID }, { groupBy: 'tags' });
+        expect(allTagsPlan).toMatchObject({
+            changed: true,
+            grouping: { included: true, value: undefined }
+        });
+        applyNavigatorListPresentationPlan(current, allTagsPlan!);
+        expect(current.tagAppearances[ALL_TAGS_TAG_ID]).toEqual({ previewRows: 2 });
+
+        const propertyKeyPlan = createNavigatorListPresentationPlan(
+            current,
+            { type: ItemType.PROPERTY, key: 'key:status' },
+            { groupBy: 'property-follow:status' }
+        );
+        expect(propertyKeyPlan).toMatchObject({
+            changed: true,
+            grouping: { included: true, value: undefined }
+        });
+        applyNavigatorListPresentationPlan(current, propertyKeyPlan!);
+        expect(current.propertyAppearances['key:status']).toEqual({ titleRows: 3 });
+    });
+
+    it('persists explicit grouping that differs from an aggregate scope default', () => {
+        const current = settings();
+        current.noteGrouping = 'custom';
+        current.propertyGroupKey = 'Priority';
+
+        const allTagsPlan = createNavigatorListPresentationPlan(
+            current,
+            { type: ItemType.TAG, key: ALL_TAGS_TAG_ID },
+            { groupBy: 'custom' }
+        );
+        expect(allTagsPlan?.grouping.value).toBe('custom');
+        applyNavigatorListPresentationPlan(current, allTagsPlan!);
+        expect(current.tagAppearances[ALL_TAGS_TAG_ID]?.groupBy).toBe('custom');
+
+        const propertyKeyPlan = createNavigatorListPresentationPlan(
+            current,
+            { type: ItemType.PROPERTY, key: 'key:status' },
+            { groupBy: 'tags' }
+        );
+        expect(propertyKeyPlan?.grouping.value).toBe('tags');
+        applyNavigatorListPresentationPlan(current, propertyKeyPlan!);
+        expect(current.propertyAppearances['key:status']?.groupBy).toBe('tags');
     });
 
     it('restores the affected live scope when persistence rejects', async () => {

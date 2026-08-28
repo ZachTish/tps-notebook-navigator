@@ -1,5 +1,8 @@
 /* TPS Notebook Navigator - scope policy shared by row queries and subscriptions. */
 
+import { TFile } from 'obsidian';
+import { ListPaneItemType } from '../../types';
+import type { ListPaneItem } from '../../types/virtualization';
 import type { NavigatorRowProviderRegistry } from './NavigatorRowProviderRegistry';
 import type { NavigatorProvidedRow, NavigatorRowProvider, NavigatorRowProviderSelection, NavigatorRowScope } from './types';
 
@@ -60,6 +63,35 @@ export function collectTypeScopeVisibleFilePaths(
         seen.add(row.sourcePath);
         paths.push(row.sourcePath);
     }
+
+    return paths;
+}
+
+/**
+ * Collects the exact native-note scope represented by a built list. Property/tag grouping can
+ * render provider rows in a different bucket from their source note, so collapsed native groups
+ * contribute their header-owned file paths even though their FILE rows are not mounted.
+ */
+export function collectListProviderScopeVisibleFilePaths(
+    listItems: readonly ListPaneItem[],
+    includeGroupedHeaderMembers: boolean
+): string[] {
+    const seen = new Set<string>();
+    const paths: string[] = [];
+    const addPath = (path: string): void => {
+        if (seen.has(path)) return;
+        seen.add(path);
+        paths.push(path);
+    };
+
+    listItems.forEach(item => {
+        if (includeGroupedHeaderMembers && item.type === ListPaneItemType.HEADER) {
+            item.groupFilePaths?.forEach(addPath);
+        }
+        if (item.type === ListPaneItemType.FILE && item.data instanceof TFile) {
+            addPath(item.data.path);
+        }
+    });
 
     return paths;
 }

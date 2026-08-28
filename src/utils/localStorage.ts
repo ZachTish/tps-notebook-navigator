@@ -22,7 +22,8 @@ import { TPS_NOTEBOOK_NAVIGATOR_STORAGE_PREFIX } from '../constants/tpsIdentity'
 // Current localStorage schema version
 // Version 2: removes the legacy pre-IndexedDB file cache blob
 // Version 3: adds the device-local What's new version marker
-export const LOCALSTORAGE_VERSION = 3;
+// Version 4: migrates the former Tags-root selection to the new all-notes Tags collection
+export const LOCALSTORAGE_VERSION = 4;
 
 /**
  * Keys the plugin no longer reads or writes. Removed from existing devices by the

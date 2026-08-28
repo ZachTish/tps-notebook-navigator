@@ -61,6 +61,12 @@ export const UNTAGGED_TAG_ID = '__untagged__';
 export const TAGGED_TAG_ID = '__tagged__';
 
 /**
+ * Internal virtual tag collection id for the selectable Tags root.
+ * Unlike TAGGED_TAG_ID, this aggregate includes both tagged and untagged notes.
+ */
+export const ALL_TAGS_TAG_ID = '__all_tags__';
+
+/**
  * Virtual folder id for the root Tags row in navigation.
  * Used by virtual-folder expansion state and tag section rendering.
  */

@@ -15,6 +15,7 @@ import type {
 import { NAVIGATOR_ROW_PROVIDER_MAX_ROWS } from '../../services/rows/types';
 import { TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT, TPS_GCM_TASK_ROWS_PER_NOTE_MAX, TPS_GCM_TASK_ROWS_PER_NOTE_MIN } from '../../settings/types';
 import { showNotice } from '../../utils/noticeUtils';
+import { casefold } from '../../utils/recordUtils';
 import {
     isGcmTaskRecord,
     resolveGcmTaskApi,
@@ -53,6 +54,28 @@ interface GcmTaskRowScopeState {
     epoch: number;
     scannedPaths: Set<string>;
     tasksByPath: Map<string, readonly GcmTaskRecordLike[]>;
+}
+
+function setTaskRowPropertyCaseInsensitively(
+    properties: Record<string, string | readonly string[]>,
+    key: string,
+    value: string | readonly string[]
+): void {
+    const normalizedKey = casefold(key);
+    const matchingKeys = Object.keys(properties).filter(candidate => casefold(candidate) === normalizedKey);
+    const targetKey = matchingKeys[0] ?? key;
+    properties[targetKey] = value;
+    matchingKeys.slice(1).forEach(duplicateKey => delete properties[duplicateKey]);
+}
+
+function buildTaskRowProperties(task: GcmTaskRecordLike): Readonly<Record<string, string | readonly string[]>> {
+    const properties = Object.create(null) as Record<string, string | readonly string[]>;
+    Object.entries(task.fields ?? {}).forEach(([key, value]) => {
+        setTaskRowPropertyCaseInsensitively(properties, key, value);
+    });
+    setTaskRowPropertyCaseInsensitively(properties, 'tags', Object.freeze([...task.tags]));
+    setTaskRowPropertyCaseInsensitively(properties, 'status', task.status);
+    return Object.freeze(properties);
 }
 
 async function awaitGcmBatch<T>(pending: Promise<T>, signal: AbortSignal): Promise<T | typeof CANCELLED_GCM_QUERY> {
@@ -501,11 +524,7 @@ export class GcmTaskRowProvider implements NavigatorRowProvider {
             sourcePath: task.path,
             sourceLineNumber: task.lineNumber,
             dragText: task.rawLine,
-            properties: {
-                tags: Object.freeze([...task.tags]),
-                ...task.fields,
-                status: task.status
-            },
+            properties: buildTaskRowProperties(task),
             indicator: {
                 type: 'checkbox',
                 checked: task.isComplete,

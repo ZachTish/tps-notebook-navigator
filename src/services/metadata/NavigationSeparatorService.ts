@@ -34,7 +34,7 @@ import {
 } from '../../utils/navigationSeparators';
 import { createConfiguredPropertyNodeValidator, normalizePropertyNodeId } from '../../utils/propertyTree';
 import { normalizeTagPath } from '../../utils/tagUtils';
-import { TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
+import { ALL_TAGS_TAG_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
 import { ensureRecord, isBooleanRecordValue } from '../../utils/recordUtils';
 import { getDBInstanceOrNull } from '../../storage/fileOperations';
 import { getActivePropertyFields } from '../../utils/vaultProfiles';
@@ -42,7 +42,7 @@ import { collectAllTagPaths } from '../../utils/tagTree';
 
 const FOLDER_PREFIX = 'folder:';
 const TAG_PREFIX = 'tag:';
-const VIRTUAL_TAG_PATHS = new Set([TAGGED_TAG_ID, UNTAGGED_TAG_ID]);
+const VIRTUAL_TAG_PATHS = new Set([ALL_TAGS_TAG_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID]);
 
 /**
  * Manages persisted separator entries for navigation sections, folders, tags, and properties.

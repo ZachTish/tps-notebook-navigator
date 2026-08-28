@@ -23,11 +23,11 @@ import { ConfirmModal } from '../../modals/ConfirmModal';
 import type { NotebookNavigatorSettings } from '../../settings/types';
 import { MetadataService } from '../../services/MetadataService';
 import {
+    ALL_TAGS_TAG_ID,
     NavigationSectionId,
     PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
     RECENT_NOTES_VIRTUAL_FOLDER_ID,
     SHORTCUTS_VIRTUAL_FOLDER_ID,
-    TAGGED_TAG_ID,
     TAGS_ROOT_VIRTUAL_FOLDER_ID
 } from '../../types';
 import { executeCommand } from '../../utils/typeGuards';
@@ -144,7 +144,7 @@ export function showNavigationSectionContextMenu({
     const menu = new Menu();
     let hasActions = false;
 
-    const tagRootShortcutKey = isTagSection ? shortcutActions.tagShortcutKeysByPath.get(TAGGED_TAG_ID) : undefined;
+    const tagRootShortcutKey = isTagSection ? shortcutActions.tagShortcutKeysByPath.get(ALL_TAGS_TAG_ID) : undefined;
     const propertyRootShortcutKey = isPropertySection
         ? shortcutActions.propertyShortcutKeysByNodeId.get(PROPERTIES_ROOT_VIRTUAL_FOLDER_ID)
         : undefined;
@@ -350,7 +350,7 @@ export function showNavigationSectionContextMenu({
                 .onClick(() => {
                     runAsyncAction(async () => {
                         if (isTagSection) {
-                            await shortcutActions.addTagShortcut(TAGGED_TAG_ID);
+                            await shortcutActions.addTagShortcut(ALL_TAGS_TAG_ID);
                             return;
                         }
 

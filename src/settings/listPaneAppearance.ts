@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { ItemType } from '../types';
+import { ALL_TAGS_TAG_ID, ItemType, TAGGED_TAG_ID } from '../types';
 import { resolveListGroupingOverride } from '../utils/listGrouping';
 import {
     isTextCountDisplay,
@@ -35,6 +35,40 @@ export type { LinePropertyInheritance, ListPaneAppearance, MultiValueGrouping, N
 /** Compatibility name for stored selection appearances, including TPS Type-only fields. */
 export type FolderAppearance = import('./types').TpsTypeAppearance;
 export type TagAppearance = FolderAppearance;
+
+/**
+ * Copies the former visible Tags-root presentation onto the new all-notes Tags root during the
+ * one-time device migration. The tagged-only compatibility scope remains intact, and an existing
+ * all-notes override always wins.
+ */
+export function copyFormerTagsRootPresentationSettings(settings: NotebookNavigatorSettings): boolean {
+    let changed = false;
+
+    if (
+        Object.prototype.hasOwnProperty.call(settings.tagAppearances, TAGGED_TAG_ID) &&
+        !Object.prototype.hasOwnProperty.call(settings.tagAppearances, ALL_TAGS_TAG_ID)
+    ) {
+        settings.tagAppearances = {
+            ...settings.tagAppearances,
+            [ALL_TAGS_TAG_ID]: { ...settings.tagAppearances[TAGGED_TAG_ID] }
+        };
+        changed = true;
+    }
+
+    if (
+        Object.prototype.hasOwnProperty.call(settings.tagSortOverrides, TAGGED_TAG_ID) &&
+        !Object.prototype.hasOwnProperty.call(settings.tagSortOverrides, ALL_TAGS_TAG_ID)
+    ) {
+        const formerOverride = settings.tagSortOverrides[TAGGED_TAG_ID];
+        settings.tagSortOverrides = {
+            ...settings.tagSortOverrides,
+            [ALL_TAGS_TAG_ID]: typeof formerOverride === 'string' ? formerOverride : { ...formerOverride }
+        };
+        changed = true;
+    }
+
+    return changed;
+}
 
 export interface ListPaneAppearanceSettings {
     mode: ListDisplayMode;
@@ -246,11 +280,13 @@ function resolveListMode({ appearance, defaultMode }: { appearance?: ListPaneApp
 export function resolveListPaneAppearance({
     settings,
     appearance,
-    selectionType
+    selectionType,
+    defaultGrouping = settings.noteGrouping
 }: {
     settings: NotebookNavigatorSettings;
     appearance?: ListPaneAppearance;
     selectionType: ItemType;
+    defaultGrouping?: ListNoteGroupingOption;
 }): ListPaneAppearanceSettings {
     const mode = resolveListMode({ appearance, defaultMode: getDefaultListMode(settings) });
     const isCompact = mode === 'compact';
@@ -264,7 +300,7 @@ export function resolveListPaneAppearance({
     const textCountUnavailable = isCompact && settings.textCountPlacement === 'property' && !settings.showFilePropertiesInCompactMode;
     const textCountDisplay = textCountUnavailable ? 'none' : (appearance?.textCount ?? settings.textCountDisplay);
     const grouping = resolveListGroupingOverride({
-        noteGrouping: settings.noteGrouping,
+        noteGrouping: defaultGrouping,
         selectionType,
         groupBy: appearance?.groupBy
     });

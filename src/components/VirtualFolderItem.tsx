@@ -47,13 +47,7 @@ import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import type { DragEvent } from 'react';
 import { useSettingsState } from '../context/SettingsContext';
 import { getIconService, useIconServiceVersion } from '../services/icons';
-import {
-    PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
-    SHORTCUTS_VIRTUAL_FOLDER_ID,
-    TAGS_ROOT_VIRTUAL_FOLDER_ID,
-    VirtualFolder,
-    type CSSPropertiesWithVars
-} from '../types';
+import { PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, SHORTCUTS_VIRTUAL_FOLDER_ID, VirtualFolder, type CSSPropertiesWithVars } from '../types';
 import { useUXPreferences } from '../context/UXPreferencesContext';
 import type { NoteCountInfo } from '../types/noteCounts';
 import { buildNoteCountDisplay } from '../utils/noteCountFormatting';
@@ -165,10 +159,7 @@ export const VirtualFolderComponent = React.memo(function VirtualFolderComponent
         if (!noteCountDisplay) {
             return false;
         }
-        if (
-            (virtualFolder.id === TAGS_ROOT_VIRTUAL_FOLDER_ID || virtualFolder.id === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID) &&
-            !includeDescendantNotes
-        ) {
+        if (virtualFolder.id === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID && !includeDescendantNotes) {
             return false;
         }
         return noteCountDisplay.shouldDisplay;

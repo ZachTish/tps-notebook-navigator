@@ -41,6 +41,7 @@ import { FolderSuggestModal } from '../modals/FolderSuggestModal';
 import { buildPropertyNodeSuggestions, PropertyNodeSuggestModal } from '../modals/PropertyNodeSuggestModal';
 import { TagSuggestModal } from '../modals/TagSuggestModal';
 import {
+    ALL_TAGS_TAG_ID,
     ItemType,
     NAVPANE_MEASUREMENTS,
     PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
@@ -676,7 +677,7 @@ export const NotebookNavigatorComponent = React.memo(
                         return null;
                     }
 
-                    if (normalizedTag === TAGGED_TAG_ID || normalizedTag === UNTAGGED_TAG_ID) {
+                    if (normalizedTag === ALL_TAGS_TAG_ID || normalizedTag === TAGGED_TAG_ID || normalizedTag === UNTAGGED_TAG_ID) {
                         return {
                             type: ItemType.TAG,
                             value: normalizedTag
@@ -1108,6 +1109,7 @@ export const NotebookNavigatorComponent = React.memo(
                     if (
                         selectionState.selectionType === ItemType.TAG &&
                         selectionState.selectedTag &&
+                        selectionState.selectedTag !== ALL_TAGS_TAG_ID &&
                         selectionState.selectedTag !== TAGGED_TAG_ID &&
                         selectionState.selectedTag !== UNTAGGED_TAG_ID
                     ) {

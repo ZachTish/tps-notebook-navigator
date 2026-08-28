@@ -24,7 +24,7 @@ import {
     isValidTagPrecedingChar
 } from '../../src/utils/tagUtils';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
-import { TAGGED_TAG_ID } from '../../src/types';
+import { ALL_TAGS_TAG_ID, TAGGED_TAG_ID } from '../../src/types';
 import { createDefaultFileData, type FileData } from '../../src/storage/IndexedDBStorage';
 import { createTestTFile } from './createTestTFile';
 
@@ -141,6 +141,32 @@ describe('tagUtils', () => {
 
             expect(shortestPathResult).toBe(TAGGED_TAG_ID);
             expect(exactPathResult).toBe('project/task');
+        });
+
+        it('keeps the aggregate Tags root selected for tagged and untagged files', () => {
+            const taggedFile = createTestTFile('projects/tagged.md');
+            const untaggedFile = createTestTFile('projects/untagged.md');
+
+            expect(
+                determineTagToReveal(
+                    taggedFile,
+                    ALL_TAGS_TAG_ID,
+                    DEFAULT_SETTINGS,
+                    createTagRevealStorage(taggedFile.path, ['project/task']),
+                    false,
+                    false
+                )
+            ).toBe(ALL_TAGS_TAG_ID);
+            expect(
+                determineTagToReveal(
+                    untaggedFile,
+                    ALL_TAGS_TAG_ID,
+                    DEFAULT_SETTINGS,
+                    createTagRevealStorage(untaggedFile.path, []),
+                    false,
+                    false
+                )
+            ).toBe(ALL_TAGS_TAG_ID);
         });
     });
 

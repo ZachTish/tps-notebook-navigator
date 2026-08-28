@@ -25,7 +25,7 @@ import type { CleanupValidators } from '../../src/services/MetadataService';
 import { createDefaultFileData } from '../../src/storage/indexeddb/fileData';
 import type { FileData } from '../../src/storage/IndexedDBStorage';
 import { createVaultProfile } from '../../src/utils/vaultProfiles';
-import { TAGGED_TAG_ID, UNTAGGED_TAG_ID, type CollapsedPinnedContexts } from '../../src/types';
+import { ALL_TAGS_TAG_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID, type CollapsedPinnedContexts } from '../../src/types';
 
 class TestSettingsProvider implements ISettingsProvider {
     constructor(public settings: NotebookNavigatorSettings) {}
@@ -337,6 +337,7 @@ describe('TagMetadataService.cleanupWithValidators', () => {
         const settings = createSettings();
         const provider = new TestSettingsProvider(settings);
         provider.collapsedPinnedContexts = {
+            [`tag:${ALL_TAGS_TAG_ID}`]: true,
             [`tag:${TAGGED_TAG_ID}`]: true,
             [`tag:${UNTAGGED_TAG_ID}`]: true,
             'tag:stale': true
@@ -347,8 +348,29 @@ describe('TagMetadataService.cleanupWithValidators', () => {
 
         expect(changes).toEqual({ settingsChanged: false, localChanged: true });
         expect(provider.collapsedPinnedContexts).toEqual({
+            [`tag:${ALL_TAGS_TAG_ID}`]: true,
             [`tag:${TAGGED_TAG_ID}`]: true,
             [`tag:${UNTAGGED_TAG_ID}`]: true
         });
+    });
+
+    it('keeps all-tags appearance and sort metadata while removing stale real tags', async () => {
+        const settings = createSettings();
+        settings.tagAppearances = {
+            [ALL_TAGS_TAG_ID]: { groupBy: 'tags' },
+            stale: { groupBy: 'date' }
+        };
+        settings.tagSortOverrides = {
+            [ALL_TAGS_TAG_ID]: 'title-asc',
+            stale: 'modified-desc'
+        };
+        const provider = new TestSettingsProvider(settings);
+        const service = new TagMetadataService(app, provider, () => null);
+
+        const changes = await service.cleanupWithValidators(createValidators([createMarkdownFile('Note.md', [])]), settings);
+
+        expect(changes).toEqual({ settingsChanged: true, localChanged: false });
+        expect(settings.tagAppearances).toEqual({ [ALL_TAGS_TAG_ID]: { groupBy: 'tags' } });
+        expect(settings.tagSortOverrides).toEqual({ [ALL_TAGS_TAG_ID]: 'title-asc' });
     });
 });

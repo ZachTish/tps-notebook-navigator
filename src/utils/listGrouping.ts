@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { ItemType } from '../types';
+import { ALL_TAGS_TAG_ID, ItemType } from '../types';
 import {
     createPropertyGroupingOption,
     getPropertyGroupingGranularity,
@@ -34,6 +34,7 @@ import type {
 import { isTpsNavigatorFileTypeId, isTpsNavigatorStructuralTypeId, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 import { DEFAULT_SETTINGS } from '../settings/defaultSettings';
 import { casefold } from './recordUtils';
+import { parsePropertyNodeId } from './propertyTree';
 import {
     getSortDirection,
     getSortField,
@@ -90,21 +91,54 @@ export interface ListGroupingResolution {
     hasCustomOverride: boolean;
 }
 
+/** Resolves the implicit grouping owned by aggregate navigation rows. */
+export function resolveNavigationSelectionDefaultGrouping({
+    noteGrouping,
+    selectionType,
+    tag,
+    propertyNodeId
+}: {
+    noteGrouping: ListNoteGroupingOption;
+    selectionType?: ItemType | null;
+    tag?: string | null;
+    propertyNodeId?: string | null;
+}): ListNoteGroupingOption {
+    if (selectionType === ItemType.TAG && tag === ALL_TAGS_TAG_ID) {
+        return 'tags';
+    }
+
+    if (selectionType === ItemType.PROPERTY && propertyNodeId) {
+        const property = parsePropertyNodeId(propertyNodeId);
+        if (property && property.valuePath === null) {
+            return createPropertyGroupingOption(property.key, 'follow');
+        }
+    }
+
+    return noteGrouping;
+}
+
 export function resolveEffectiveListGroupingForSort({
     groupBy,
     sortOption,
     selectionType,
     isManualSortActive = false,
-    isManualSortEditActive = false
+    isManualSortEditActive = false,
+    preserveGroupingDuringManualSort = false
 }: {
     groupBy: ListNoteGroupingOption;
     sortOption: SortOption;
     selectionType?: ItemType | null;
     isManualSortActive?: boolean;
     isManualSortEditActive?: boolean;
+    /** Aggregate roots keep their required automatic grouping while using manual order inside each group. */
+    preserveGroupingDuringManualSort?: boolean;
 }): ListNoteGroupingOption {
-    if (isManualSortActive || isManualSortEditActive) {
+    if ((isManualSortActive || isManualSortEditActive) && !preserveGroupingDuringManualSort) {
         return 'custom';
+    }
+
+    if (groupBy === 'tags') {
+        return groupBy;
     }
 
     // Property grouping buckets by frontmatter value independent of the file order, so it survives every sort.
@@ -194,6 +228,12 @@ export function pruneUnavailablePropertyGroupingOverrides(settings: NotebookNavi
         Object.entries(record).forEach(([entryKey, appearance]) => {
             const propertyKey = getPropertyGroupingKey(appearance?.groupBy);
             if (propertyKey === null || availablePropertyKeys.has(casefold(propertyKey))) {
+                return;
+            }
+            const selectedProperty = recordKey === 'propertyAppearances' ? parsePropertyNodeId(entryKey) : null;
+            if (selectedProperty?.valuePath === null && casefold(selectedProperty.key) === casefold(propertyKey)) {
+                // A top-level property row always offers its own key as the automatic grouping,
+                // even when the key is not part of the global grouping-property list.
                 return;
             }
 
@@ -482,6 +522,12 @@ export function resolveListGrouping({
     typeId
 }: ResolveListGroupingParams): ListGroupingResolution {
     const globalDefault: ListNoteGroupingOption = settings.noteGrouping ?? 'custom';
+    const selectionDefault = resolveNavigationSelectionDefaultGrouping({
+        noteGrouping: globalDefault,
+        selectionType,
+        tag,
+        propertyNodeId
+    });
 
     // Folder selection: use folder-specific override if set, otherwise use global default
     if (selectionType === ItemType.FOLDER && folderPath) {
@@ -495,7 +541,7 @@ export function resolveListGrouping({
     // Tag and property selections don't support "folder" grouping.
     if (selectionType === ItemType.TAG && tag) {
         return resolveListGroupingOverride({
-            noteGrouping: globalDefault,
+            noteGrouping: selectionDefault,
             selectionType,
             groupBy: settings.tagAppearances?.[tag]?.groupBy
         });
@@ -503,7 +549,7 @@ export function resolveListGrouping({
 
     if (selectionType === ItemType.PROPERTY && propertyNodeId) {
         return resolveListGroupingOverride({
-            noteGrouping: globalDefault,
+            noteGrouping: selectionDefault,
             selectionType,
             groupBy: settings.propertyAppearances?.[propertyNodeId]?.groupBy
         });

@@ -168,6 +168,10 @@ describe('public list state', () => {
             value: { sort: { option: 'property-asc', propertyKey: 'Rank' } }
         });
         expect(validateListPresentationUpdate({ groupBy: 'property:' })).toEqual({ ok: false });
+        expect(validateListPresentationUpdate({ groupBy: 'tags' })).toMatchObject({
+            ok: true,
+            value: { groupBy: 'tags' }
+        });
         expect(validateListPresentationUpdate({ groupBy: 'property-day:scheduled ' })).toMatchObject({
             ok: true,
             value: { groupBy: 'property-day:scheduled' }

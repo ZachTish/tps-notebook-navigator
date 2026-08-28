@@ -26,6 +26,8 @@ import {
     NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW,
     NOTEBOOK_NAVIGATOR_VIEW,
     STORAGE_KEYS,
+    ALL_TAGS_TAG_ID,
+    TAGGED_TAG_ID,
     type CollapsedPinnedContexts,
     type DualPaneOrientation,
     type PinnedSectionCollapseKey,
@@ -78,6 +80,7 @@ import { NOTEBOOK_NAVIGATOR_ICON_ID, NOTEBOOK_NAVIGATOR_ICON_SVG } from './const
 import { PluginSettingsController, type SettingsLoadResult } from './services/settings/PluginSettingsController';
 import { prepareUpstreamSettingsImport } from './services/settings/UpstreamSettingsImport';
 import { PluginPreferencesController } from './services/settings/PluginPreferencesController';
+import { copyFormerTagsRootPresentationSettings } from './settings/listPaneAppearance';
 import { clearPendingPdfProcessingDiagnostic, consumePendingPdfProcessingDiagnostic } from './services/content/pdf/pdfCrashDiagnostics';
 import {
     DebugLoggingService,
@@ -692,12 +695,29 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
             // Check localStorage version for potential migrations
             const versionNumber =
                 typeof storedLocalStorageVersion === 'number' ? storedLocalStorageVersion : Number(storedLocalStorageVersion ?? Number.NaN);
+            let shouldPersistMigratedSettings = false;
             if (!versionNumber || versionNumber !== this.settingsController.getCurrentLocalStorageVersion()) {
+                if (!versionNumber || versionNumber < 4) {
+                    // Before 5.21 the visible Tags root used the tagged-only collection ID.
+                    // Migrate only the UI-owned current selection; saved/API tagged-only shortcuts
+                    // remain valid and are now labeled distinctly as "# Tags".
+                    const selectedTag = localStorage.get<unknown>(STORAGE_KEYS.selectedTagKey);
+                    if (selectedTag === TAGGED_TAG_ID) {
+                        localStorage.set(STORAGE_KEYS.selectedTagKey, ALL_TAGS_TAG_ID);
+                    }
+                    shouldPersistMigratedSettings = copyFormerTagsRootPresentationSettings(this.settings);
+                }
                 // One-time removal of stored values under keys the plugin no longer uses
                 LEGACY_STORAGE_KEYS.forEach(key => {
                     localStorage.remove(key);
                 });
                 this.settingsController.setLocalStorageVersion();
+            }
+            if (shouldPersistMigratedSettings) {
+                await this.saveData(this.settingsController.getPersistableSettings());
+                if (this.isUnloading) {
+                    return;
+                }
             }
         }
 

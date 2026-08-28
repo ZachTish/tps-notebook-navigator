@@ -107,6 +107,23 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.21.0',
+        date: '2026-08-27',
+        new: [
+            'The top-level Tags row now shows every visible Markdown note and groups the list by visible tags, including an Untagged group.',
+            'A top-level property key now shows every note containing that key and groups values automatically, including a No value group for blank or null fields.',
+            "Public API 3.5.0 adds tagCollections.allId and note-list groupBy: 'tags'."
+        ],
+        improved: [
+            'Aggregate empty groups follow the current-folder top/bottom preference unless the scope has its own override, and manual ordering remains within the required groups.',
+            'Attached task/provider rows use their own visible tags, including hidden-tag and multi-value grouping rules.'
+        ],
+        fixed: [
+            'Dropping a note on a property-key row now retains a blank YAML key even when a compatible GCM property API is enabled.',
+            'Virtual collection identifiers are rejected from tag mutation paths, and existing Tags-root selections migrate to the new all-note collection.'
+        ]
+    },
+    {
         version: '5.20.2',
         date: '2026-08-26',
         fixed: [

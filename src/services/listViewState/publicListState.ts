@@ -128,6 +128,7 @@ export function validateListPresentationUpdate(value: unknown): PublicListInputR
             groupBy !== 'custom' &&
             groupBy !== 'date' &&
             groupBy !== 'folder' &&
+            groupBy !== 'tags' &&
             !(
                 typeof groupBy === 'string' &&
                 (/^property:[^\s].*$/.test(groupBy) ||

@@ -180,6 +180,70 @@ describe('FileSystemOperations property assignment', () => {
         expect(target.frontmatter).toEqual({ Categories: null });
     });
 
+    it('keeps GCM-enabled Legacy property key drops present with an empty value', async () => {
+        const app = new App();
+        const missingTarget = createFile('Missing.md', {});
+        const valuedTarget = createFile('Valued.md', { Status: 'done' });
+        const propertyTreeService = new PropertyTreeService();
+        propertyTreeService.updatePropertyTree(
+            buildPropertyTreeFromDatabase(
+                createMockDb([
+                    {
+                        path: 'Source.md',
+                        properties: [{ fieldKey: 'Status', value: 'todo', valueKind: 'string' }]
+                    }
+                ])
+            )
+        );
+
+        const processFrontMatter = vi.fn((file: TFile, callback: (frontmatter: Record<string, unknown>) => void) => {
+            callback((file as TFile & { frontmatter: Record<string, unknown> }).frontmatter);
+            return Promise.resolve();
+        });
+        const setValues = vi.fn().mockResolvedValue([missingTarget, valuedTarget]);
+        const addListValues = vi.fn().mockResolvedValue([missingTarget, valuedTarget]);
+        app.fileManager.processFrontMatter = processFrontMatter;
+        (app as App & { plugins: unknown }).plugins = {
+            enabledPlugins: new Set(['tps-global-context-menu']),
+            getPlugin: () => ({
+                api: {
+                    itemProperties: {
+                        version: 1,
+                        listDefinitions: vi.fn(() => []),
+                        resolveDefinition: vi.fn(() => ({
+                            id: 'status',
+                            key: 'Status',
+                            label: 'Status',
+                            type: 'selector',
+                            allowInlineSet: true
+                        })),
+                        applyToTaskLines: vi.fn()
+                    },
+                    frontmatter: { setValues, addListValues },
+                    fileProperties: {
+                        version: 1,
+                        isTarget: vi.fn(() => false),
+                        setValues,
+                        addListValues
+                    }
+                }
+            })
+        };
+        const operations = createOperations(app, propertyTreeService, {
+            ...DEFAULT_SETTINGS,
+            tpsDataArchitectureMode: 'legacy'
+        });
+
+        await expect(operations.applyPropertyNodeToFiles(buildPropertyKeyNodeId('status'), [missingTarget, valuedTarget])).resolves.toEqual(
+            { updated: 2, skipped: 0 }
+        );
+        expect(missingTarget.frontmatter).toEqual({ Status: null });
+        expect(valuedTarget.frontmatter).toEqual({ Status: null });
+        expect(processFrontMatter).toHaveBeenCalledTimes(2);
+        expect(setValues).not.toHaveBeenCalled();
+        expect(addListValues).not.toHaveBeenCalled();
+    });
+
     it('creates a note with an empty value when invoked from a property key node', async () => {
         const app = new App();
         const createdFile = createFile('Untitled.md', {});

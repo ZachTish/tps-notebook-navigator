@@ -23,10 +23,10 @@ import type { ITagTreeProvider } from '../../../interfaces/ITagTreeProvider';
 import { strings } from '../../../i18n';
 import type { NotebookNavigatorSettings } from '../../../settings/types';
 import {
+    ALL_TAGS_TAG_ID,
     ItemType,
     NavigationPaneItemType,
     PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
-    TAGGED_TAG_ID,
     TAGS_ROOT_VIRTUAL_FOLDER_ID,
     UNTAGGED_TAG_ID,
     type VirtualFolder
@@ -458,17 +458,6 @@ export function useNavigationPaneTreeSections({
         const shouldIncludeUntagged = settings.showUntagged && activeUntaggedCount > 0;
         const matcherForMarking = !shouldHideTags && hasHiddenPatterns ? sourceState.hiddenTagMatcher : undefined;
         const { rootNodeMap, hasVisibleTags } = renderRootTagOrdering;
-        const taggedCollectionCount: NoteCountInfo = (() => {
-            if (!includeDescendantNotes) {
-                return { current: 0, descendants: 0, total: 0 };
-            }
-            return {
-                current: activeTaggedCount,
-                descendants: 0,
-                total: activeTaggedCount
-            };
-        })();
-
         const pushUntaggedNode = (level: number) => {
             if (!shouldIncludeUntagged) {
                 return;
@@ -525,10 +514,9 @@ export function useNavigationPaneTreeSections({
             if (settings.showAllTagsFolder) {
                 const folderId = TAGS_ROOT_VIRTUAL_FOLDER_ID;
                 addVirtualFolder(folderId, strings.tagList.tags, resolveUXIcon(settings.interfaceIcons, 'nav-tags'), {
-                    tagCollectionId: TAGGED_TAG_ID,
+                    tagCollectionId: ALL_TAGS_TAG_ID,
                     hasChildren: shouldIncludeUntagged,
-                    showFileCount: settings.showNoteCount,
-                    noteCount: taggedCollectionCount
+                    showFileCount: settings.showNoteCount
                 });
 
                 if (expansionState.expandedVirtualFolders.has(folderId) && shouldIncludeUntagged) {
@@ -567,10 +555,9 @@ export function useNavigationPaneTreeSections({
             if (hasContent) {
                 const folderId = TAGS_ROOT_VIRTUAL_FOLDER_ID;
                 addVirtualFolder(folderId, strings.tagList.tags, resolveUXIcon(settings.interfaceIcons, 'nav-tags'), {
-                    tagCollectionId: TAGGED_TAG_ID,
+                    tagCollectionId: ALL_TAGS_TAG_ID,
                     hasChildren: tagsFolderHasChildren,
-                    showFileCount: settings.showNoteCount,
-                    noteCount: taggedCollectionCount
+                    showFileCount: settings.showNoteCount
                 });
 
                 if (expansionState.expandedVirtualFolders.has(folderId)) {

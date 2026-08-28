@@ -21,6 +21,7 @@ import { MarkdownPipelineContentProvider } from '../../src/services/content/Mark
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import type { NotebookNavigatorSettings } from '../../src/settings/types';
 import type { FileData } from '../../src/storage/IndexedDBStorage';
+import { DB_CONTENT_VERSION } from '../../src/storage/indexeddb/constants';
 import { deriveFileMetadata } from '../utils/pathMetadata';
 import { setActivePropertyFields } from '../../src/utils/vaultProfiles';
 
@@ -71,6 +72,10 @@ function setFrontmatter(context: ReturnType<typeof createApp>, file: TFile, fron
 }
 
 describe('MarkdownPipelineContentProvider frontmatter custom properties', () => {
+    it('bumps cached content so upgraded notes are reindexed for blank-key presence', () => {
+        expect(DB_CONTENT_VERSION).toBe(8);
+    });
+
     // Custom property items persist the source field key, raw value, and value kind; styling is derived at render time.
     it('returns multiple properties as pills', async () => {
         const context = createApp();
@@ -177,6 +182,39 @@ describe('MarkdownPipelineContentProvider frontmatter custom properties', () => 
         expect(result).toEqual([
             { fieldKey: 'status', value: '' },
             { fieldKey: 'type', value: 'Project', valueKind: 'string' }
+        ]);
+    });
+
+    it('retains every present key when its YAML value has no searchable scalar', async () => {
+        const context = createApp();
+        const settings = createSettings({ propertyFields: 'status' });
+        const provider = new TestMarkdownPipelineContentProvider(context.app);
+        const file = createFile('notes/note.md');
+
+        setFrontmatter(context, file, {
+            position: {
+                start: { line: 0, col: 0, offset: 0 },
+                end: { line: 2, col: 0, offset: 24 }
+            },
+            nullValue: null,
+            emptyString: '',
+            whitespaceString: '   ',
+            emptyList: [],
+            nestedEmptyList: [[], ['  ']],
+            objectValue: { nested: 'unsupported' },
+            populatedList: ['Active', '', [], 'Waiting']
+        });
+        const result = await provider.runCustomProperty(file, settings);
+
+        expect(result).toEqual([
+            { fieldKey: 'nullValue', value: '' },
+            { fieldKey: 'emptyString', value: '' },
+            { fieldKey: 'whitespaceString', value: '' },
+            { fieldKey: 'emptyList', value: '' },
+            { fieldKey: 'nestedEmptyList', value: '' },
+            { fieldKey: 'objectValue', value: '' },
+            { fieldKey: 'populatedList', value: 'Active', valueKind: 'string' },
+            { fieldKey: 'populatedList', value: 'Waiting', valueKind: 'string' }
         ]);
     });
 });

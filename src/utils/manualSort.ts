@@ -87,6 +87,34 @@ export interface ManualSortMoveResult<T extends ManualSortFileLike> {
     scrollPath: string;
 }
 
+/** Preserves the first visible instance of each path for path-owned manual-sort operations. */
+export function dedupeManualSortFilesByPath<T extends ManualSortFileLike>(files: readonly T[]): T[] {
+    const seenPaths = new Set<string>();
+    return files.filter(file => {
+        if (seenPaths.has(file.path)) {
+            return false;
+        }
+        seenPaths.add(file.path);
+        return true;
+    });
+}
+
+export function canUseManualSortKeyboardReorder({
+    isManualSortEditActive,
+    isSearchActive,
+    isManualSortActive,
+    propertyKey,
+    groupingMode
+}: {
+    isManualSortEditActive: boolean;
+    isSearchActive: boolean;
+    isManualSortActive: boolean;
+    propertyKey: string;
+    groupingMode: string;
+}): boolean {
+    return !isManualSortEditActive && !isSearchActive && isManualSortActive && propertyKey.length > 0 && groupingMode === 'custom';
+}
+
 export interface ManualSortRankPlan<T extends ManualSortFileLike> {
     files: T[];
     assignments: ManualSortOrderAssignment[];

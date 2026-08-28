@@ -17,7 +17,9 @@ import {
     resolveNoValueGroupPosition,
     type ListPaneAppearanceSettings
 } from '../settings/listPaneAppearance';
-import { ItemType } from '../types';
+import { ALL_TAGS_TAG_ID, ItemType } from '../types';
+import { resolveNavigationSelectionDefaultGrouping } from '../utils/listGrouping';
+import { parsePropertyNodeId } from '../utils/propertyTree';
 import { isTpsNavigatorLineTypeId, isTpsNavigatorStructuralTypeId } from '../types/navigatorTypes';
 
 export {
@@ -62,11 +64,29 @@ export function useListPaneAppearance(): ListPaneAppearanceSettings {
         // still controls grouping, while mode and content toggles remain file-only.
         const presentationAppearance =
             isSelectedLineType && selectedAppearance ? { groupBy: selectedAppearance.groupBy } : selectedAppearance;
-        const resolved = resolveListPaneAppearance({ settings, appearance: presentationAppearance, selectionType });
+        const defaultGrouping = resolveNavigationSelectionDefaultGrouping({
+            noteGrouping: settings.noteGrouping,
+            selectionType,
+            tag: selectedTagPath,
+            propertyNodeId: selectedPropertyNodeId
+        });
+        const resolved = resolveListPaneAppearance({ settings, appearance: presentationAppearance, selectionType, defaultGrouping });
+        const automaticAggregateGrouping =
+            (selectionType === ItemType.TAG && selectedTagPath === ALL_TAGS_TAG_ID) ||
+            (selectionType === ItemType.PROPERTY &&
+                selectedPropertyNodeId !== null &&
+                parsePropertyNodeId(selectedPropertyNodeId)?.valuePath === null);
         return {
             ...resolved,
             multiValueGrouping: resolveMultiValueGrouping(selectedAppearance?.multiValueGrouping),
-            noValueGroupPosition: resolveNoValueGroupPosition(selectedAppearance?.noValueGroupPosition)
+            noValueGroupPosition:
+                selectedAppearance?.noValueGroupPosition !== undefined
+                    ? resolveNoValueGroupPosition(selectedAppearance.noValueGroupPosition)
+                    : automaticAggregateGrouping
+                      ? settings.showCurrentFolderFilesAtBottom
+                          ? 'bottom'
+                          : 'top'
+                      : resolveNoValueGroupPosition(undefined)
         };
-    }, [isSelectedLineType, selectedAppearance, selectionType, settings]);
+    }, [isSelectedLineType, selectedAppearance, selectedPropertyNodeId, selectedTagPath, selectionType, settings]);
 }

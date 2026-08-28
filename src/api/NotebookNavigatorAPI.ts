@@ -109,6 +109,7 @@ export class NotebookNavigatorAPI {
         'registerFileMenu' | 'registerFolderMenu' | 'registerTagMenu' | 'registerPropertyMenu' | 'registerTypeMenu' | 'registerRowMenu'
     >;
     public readonly tagCollections: {
+        readonly allId: TagCollectionId;
         readonly taggedId: TagCollectionId;
         readonly untaggedId: TagCollectionId;
         isCollection: (tag: string | null | undefined) => tag is TagCollectionId;
@@ -223,6 +224,7 @@ export class NotebookNavigatorAPI {
             return typeof tag === 'string' ? tag : '';
         };
         this.tagCollections = Object.freeze({
+            allId: VIRTUAL_TAG_COLLECTION_IDS.ALL,
             taggedId: VIRTUAL_TAG_COLLECTION_IDS.TAGGED,
             untaggedId: VIRTUAL_TAG_COLLECTION_IDS.UNTAGGED,
             isCollection: (tag: string | null | undefined): tag is TagCollectionId => isVirtualTagCollectionId(tag),

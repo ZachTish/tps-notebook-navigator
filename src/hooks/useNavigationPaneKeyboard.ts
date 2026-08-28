@@ -37,7 +37,13 @@ import { useServices, useFileSystemOps } from '../context/ServicesContext';
 import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferences } from '../context/UXPreferencesContext';
 import { useUIState, useUIDispatch } from '../context/UIStateContext';
-import { NavigationPaneItemType, ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../types';
+import {
+    ALL_TAGS_TAG_ID,
+    NavigationPaneItemType,
+    ItemType,
+    PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
+    TYPES_ROOT_VIRTUAL_FOLDER_ID
+} from '../types';
 import type { CombinedNavigationItem, VirtualFolderItem } from '../types/virtualization';
 import { deleteSelectedFolder } from '../utils/deleteOperations';
 import { useKeyboardNavigation, KeyboardNavigationHelpers } from './useKeyboardNavigation';
@@ -514,7 +520,7 @@ export function useNavigationPaneKeyboard({
                         if (!settings.showAllTagsFolder) {
                             return;
                         }
-                        const parentIndex = resolveIndex(TAGGED_TAG_ID, ItemType.TAG);
+                        const parentIndex = resolveIndex(ALL_TAGS_TAG_ID, ItemType.TAG);
                         if (parentIndex >= 0) {
                             const parentItem = helpers.getItemAt(parentIndex);
                             if (parentItem) {

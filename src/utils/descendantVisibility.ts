@@ -1,8 +1,8 @@
 import type { TFolder } from 'obsidian';
 
 import type { NotebookNavigatorSettings } from '../settings/types';
-import { ItemType, type NavigationItemType } from '../types';
-import type { PropertySelectionNodeId } from './propertyTree';
+import { ALL_TAGS_TAG_ID, ItemType, type NavigationItemType } from '../types';
+import { parsePropertyNodeId, type PropertySelectionNodeId } from './propertyTree';
 import { ensureRecord, sanitizeRecord } from './recordUtils';
 
 export interface DescendantVisibilitySelection {
@@ -18,8 +18,25 @@ interface DescendantVisibilityTarget {
     key: string;
 }
 
+/** Aggregate navigation rows define a complete scope, so descendants do not alter their results. */
+export function isAggregateNavigationSelection(selection: DescendantVisibilitySelection): boolean {
+    if (selection.selectionType === ItemType.TAG) {
+        return selection.selectedTag === ALL_TAGS_TAG_ID;
+    }
+
+    if (selection.selectionType === ItemType.PROPERTY && selection.selectedProperty) {
+        return parsePropertyNodeId(selection.selectedProperty)?.valuePath === null;
+    }
+
+    return false;
+}
+
 /** Resolves the persisted appearance record that owns one list scope's descendant preference. */
 export function getDescendantVisibilityTarget(selection: DescendantVisibilitySelection): DescendantVisibilityTarget | null {
+    if (isAggregateNavigationSelection(selection)) {
+        return null;
+    }
+
     if (selection.selectionType === ItemType.FOLDER) {
         const path = selection.selectedFolder?.path ?? selection.selectedFolderPath ?? null;
         return path ? { recordKey: 'folderAppearances', key: path } : null;

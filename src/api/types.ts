@@ -56,9 +56,9 @@ export type IconInput = string;
 export type IconValue = string;
 
 /**
- * Aggregate tag collection ids used by the navigator for virtual tag rows.
+ * Aggregate tag collection scope ids used by tag navigation and filtering.
  */
-export type TagCollectionId = '__tagged__' | '__untagged__';
+export type TagCollectionId = '__all_tags__' | '__tagged__' | '__untagged__';
 
 // ============================================================================
 // TPS HOST API LIFECYCLE
@@ -318,6 +318,7 @@ export type NavigatorListGrouping =
     | 'custom'
     | 'date'
     | 'folder'
+    | 'tags'
     | `property:${string}`
     | `property-desc:${string}`
     | `property-follow:${string}`
@@ -623,7 +624,7 @@ export interface FolderMenuExtensionContext {
 export interface TagMenuExtensionContext {
     /** Add a menu item (must be called synchronously during menu construction) */
     addItem: (cb: (item: MenuItem) => void) => void;
-    /** Canonical tag path, or a tag collection id for aggregate tag rows */
+    /** Canonical tag path, or an aggregate tag collection scope id */
     tag: string;
 }
 

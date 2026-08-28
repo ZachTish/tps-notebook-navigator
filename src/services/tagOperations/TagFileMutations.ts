@@ -33,6 +33,7 @@ import { findFencedCodeBlockRanges, findInlineCodeRanges, isIndexInRanges } from
 import { parseCommaSeparatedList } from '../../utils/commaSeparatedListUtils';
 import { findHtmlTagRanges } from '../../utils/htmlParsingUtils';
 import { findMatchingRecordKey } from '../../utils/recordUtils';
+import { isReservedVirtualTagPath } from '../../utils/virtualTagCollections';
 
 /**
  * Type for frontmatter objects that may contain a tags property
@@ -69,7 +70,7 @@ export class TagFileMutations {
      * Rejects empty tags, leading/trailing slashes, and double slashes
      */
     isValidTagName(tag: string): boolean {
-        return hasValidTagCharacters(tag);
+        return hasValidTagCharacters(tag) && !isReservedVirtualTagPath(tag);
     }
 
     /**
@@ -114,7 +115,7 @@ export class TagFileMutations {
      * First removes any descendant tags to avoid redundancy
      */
     async addTagToFile(file: TFile, tag: string): Promise<void> {
-        if (!this.isMarkdownFile(file)) {
+        if (!this.isMarkdownFile(file) || isReservedVirtualTagPath(tag)) {
             return;
         }
 
@@ -160,7 +161,7 @@ export class TagFileMutations {
      * Returns true if the tag was found and removed
      */
     async removeTagFromFile(file: TFile, tag: string): Promise<boolean> {
-        if (!this.isMarkdownFile(file)) {
+        if (!this.isMarkdownFile(file) || isReservedVirtualTagPath(tag)) {
             return false;
         }
 
@@ -177,7 +178,7 @@ export class TagFileMutations {
      * Used when adding a parent tag to avoid redundancy
      */
     async removeDescendantTagsFromFile(file: TFile, ancestorTag: string): Promise<boolean> {
-        if (!this.isMarkdownFile(file)) {
+        if (!this.isMarkdownFile(file) || isReservedVirtualTagPath(ancestorTag)) {
             return false;
         }
 

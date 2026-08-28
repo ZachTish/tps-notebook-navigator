@@ -31,8 +31,8 @@ import {
     normalizePropertyGroupingSourceForMenu,
     replacePropertyGroupingSource
 } from '../../src/settings/types';
-import { ItemType } from '../../src/types';
-import { buildPropertyKeyNodeId } from '../../src/utils/propertyTree';
+import { ALL_TAGS_TAG_ID, ItemType } from '../../src/types';
+import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 import {
     areListGroupingOptionsEqual,
@@ -78,7 +78,7 @@ describe('resolveListGrouping property selections', () => {
             propertyNodeId
         });
 
-        expect(result.defaultGrouping).toBe('custom');
+        expect(result.defaultGrouping).toBe('property-follow:status');
         expect(result.effectiveGrouping).toBe('date');
         expect(result.normalizedOverride).toBe('date');
         expect(result.hasCustomOverride).toBe(true);
@@ -97,13 +97,13 @@ describe('resolveListGrouping property selections', () => {
             propertyNodeId
         });
 
-        expect(result.defaultGrouping).toBe('date');
-        expect(result.effectiveGrouping).toBe('date');
+        expect(result.defaultGrouping).toBe('property-follow:status');
+        expect(result.effectiveGrouping).toBe('property-follow:status');
         expect(result.normalizedOverride).toBeUndefined();
         expect(result.hasCustomOverride).toBe(false);
     });
 
-    it('falls back to normalized default grouping when no property override exists', () => {
+    it('groups a top-level property selection by that property when no override exists', () => {
         const settings = createGroupingSettings('folder');
 
         const result = resolveListGrouping({
@@ -112,10 +112,53 @@ describe('resolveListGrouping property selections', () => {
             propertyNodeId: buildPropertyKeyNodeId('status')
         });
 
-        expect(result.defaultGrouping).toBe('date');
-        expect(result.effectiveGrouping).toBe('date');
+        expect(result.defaultGrouping).toBe('property-follow:status');
+        expect(result.effectiveGrouping).toBe('property-follow:status');
         expect(result.normalizedOverride).toBeUndefined();
         expect(result.hasCustomOverride).toBe(false);
+    });
+
+    it('keeps a property value selection on the normalized global default', () => {
+        const settings = createGroupingSettings('folder');
+
+        const result = resolveListGrouping({
+            settings,
+            selectionType: ItemType.PROPERTY,
+            propertyNodeId: buildPropertyValueNodeId('status', 'open')
+        });
+
+        expect(result.defaultGrouping).toBe('date');
+        expect(result.effectiveGrouping).toBe('date');
+        expect(result.hasCustomOverride).toBe(false);
+    });
+});
+
+describe('resolveListGrouping aggregate Tags selection', () => {
+    it('groups the Tags root by tag without changing ordinary tag defaults', () => {
+        const settings = createGroupingSettings('date');
+
+        expect(
+            resolveListGrouping({
+                settings,
+                selectionType: ItemType.TAG,
+                tag: ALL_TAGS_TAG_ID
+            })
+        ).toMatchObject({
+            defaultGrouping: 'tags',
+            effectiveGrouping: 'tags',
+            hasCustomOverride: false
+        });
+        expect(
+            resolveListGrouping({
+                settings,
+                selectionType: ItemType.TAG,
+                tag: 'projects'
+            })
+        ).toMatchObject({
+            defaultGrouping: 'date',
+            effectiveGrouping: 'date',
+            hasCustomOverride: false
+        });
     });
 });
 
@@ -240,6 +283,18 @@ describe('resolveEffectiveListGroupingForSort', () => {
         ).toBe(groupBy);
     });
 
+    it('keeps tag grouping under every sort', () => {
+        (['modified-desc', 'title-asc', 'property-asc'] as const).forEach(sortOption => {
+            expect(
+                resolveEffectiveListGroupingForSort({
+                    groupBy: 'tags',
+                    sortOption,
+                    selectionType: ItemType.TAG
+                })
+            ).toBe('tags');
+        });
+    });
+
     it('locks manual sort to custom groups even with property grouping', () => {
         expect(
             resolveEffectiveListGroupingForSort({
@@ -249,6 +304,27 @@ describe('resolveEffectiveListGroupingForSort', () => {
                 isManualSortActive: true
             })
         ).toBe('custom');
+    });
+
+    it('preserves aggregate grouping while manual order remains within each group', () => {
+        expect(
+            resolveEffectiveListGroupingForSort({
+                groupBy: 'tags',
+                sortOption: 'title-asc',
+                selectionType: ItemType.TAG,
+                isManualSortActive: true,
+                preserveGroupingDuringManualSort: true
+            })
+        ).toBe('tags');
+        expect(
+            resolveEffectiveListGroupingForSort({
+                groupBy: createPropertyGroupingOption('status', 'follow'),
+                sortOption: 'title-asc',
+                selectionType: ItemType.PROPERTY,
+                isManualSortActive: true,
+                preserveGroupingDuringManualSort: true
+            })
+        ).toBe('property-follow:status');
     });
 });
 
@@ -365,6 +441,7 @@ describe('property grouping option encoding', () => {
         expect(normalizeListNoteGroupingBaseOption('none')).toBe('custom');
         expect(normalizeListNoteGroupingBaseOption('folder')).toBe('folder');
         expect(normalizeListNoteGroupingBaseOption('date')).toBe('date');
+        expect(normalizeListNoteGroupingBaseOption('tags')).toBe('tags');
     });
 
     it('accepts complete property encodings for persisted defaults and appearances', () => {
@@ -449,6 +526,17 @@ describe('pruneUnavailablePropertyGroupingOverrides', () => {
 
         expect(pruneUnavailablePropertyGroupingOverrides(settings)).toBe(false);
         expect(settings.folderAppearances.Projects.groupBy).toBe('property:Status');
+    });
+
+    it('retains a top-level property scope grouping by its own unregistered key', () => {
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        settings.propertyGroupKey = 'genre';
+        settings.propertyAppearances['key:status'] = { groupBy: 'property-follow:Status' };
+        settings.propertyAppearances['value:status:done'] = { groupBy: 'property:Status' };
+
+        expect(pruneUnavailablePropertyGroupingOverrides(settings)).toBe(true);
+        expect(settings.propertyAppearances['key:status']).toEqual({ groupBy: 'property-follow:Status' });
+        expect(settings.propertyAppearances['value:status:done']).toBeUndefined();
     });
 });
 

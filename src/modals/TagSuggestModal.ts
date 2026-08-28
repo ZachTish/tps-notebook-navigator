@@ -23,6 +23,7 @@ import { BaseSuggestModal } from './BaseSuggestModal';
 import type NotebookNavigatorPlugin from '../main';
 import { hasValidTagCharacters } from '../utils/tagUtils';
 import { normalizeTagPathValue } from '../utils/tagPrefixMatcher';
+import { isReservedVirtualTagPath } from '../utils/virtualTagCollections';
 
 export function hasExactTagSuggestionMatch(input: string, suggestions: readonly FuzzyMatch<TagTreeNode>[]): boolean {
     const normalizedInput = normalizeTagPathValue(input);
@@ -93,7 +94,7 @@ export class TagSuggestModal extends BaseSuggestModal<TagTreeNode> {
         const suggestions = super.getSuggestions(query);
 
         // If query is empty or invalid, don't show create option
-        if (!this.allowTagCreation || !hasValidTagCharacters(this.currentInput)) {
+        if (!this.allowTagCreation || !hasValidTagCharacters(this.currentInput) || isReservedVirtualTagPath(this.currentInput)) {
             return suggestions;
         }
 

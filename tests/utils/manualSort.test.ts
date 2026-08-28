@@ -25,6 +25,8 @@ import {
     buildManualSortInsertionRankPlan,
     buildManualSortOrderAssignments,
     buildManualSortRankPlan,
+    canUseManualSortKeyboardReorder,
+    dedupeManualSortFilesByPath,
     formatManualSortGroupHeaderLabel,
     getCachedManualSortGroupHeader,
     getCachedManualSortGroupHeaderValue,
@@ -85,6 +87,20 @@ function addChildFile(parent: TFolder, path: string): TFile {
 }
 
 describe('manual sort helpers', () => {
+    it('allows keyboard rank writes only in the ungrouped custom presentation', () => {
+        const common = {
+            isManualSortEditActive: false,
+            isSearchActive: false,
+            isManualSortActive: true,
+            propertyKey: 'index'
+        };
+
+        expect(canUseManualSortKeyboardReorder({ ...common, groupingMode: 'custom' })).toBe(true);
+        expect(canUseManualSortKeyboardReorder({ ...common, groupingMode: 'tags' })).toBe(false);
+        expect(canUseManualSortKeyboardReorder({ ...common, groupingMode: 'property:asc:value:note:status' })).toBe(false);
+        expect(canUseManualSortKeyboardReorder({ ...common, groupingMode: 'custom', isSearchActive: true })).toBe(false);
+    });
+
     it('builds numeric assignments for markdown files only', () => {
         const files = [
             { path: 'notes/one.md', extension: 'md' },
@@ -221,6 +237,30 @@ describe('manual sort helpers', () => {
             'assets/file.pdf'
         ]);
         expect(result?.scrollPath).toBe('notes/three.md');
+    });
+
+    it('deduplicates multi-group file instances before keyboard sorting without losing paths', () => {
+        const files = [
+            { path: 'notes/one.md', extension: 'md', instance: 'tag-a' },
+            { path: 'notes/one.md', extension: 'md', instance: 'tag-b' },
+            { path: 'notes/two.md', extension: 'md', instance: 'tag-a' },
+            { path: 'notes/three.md', extension: 'md', instance: 'tag-c' }
+        ];
+
+        const scope = dedupeManualSortFilesByPath(files);
+        expect(scope.map(file => `${file.path}:${file.instance}`)).toEqual([
+            'notes/one.md:tag-a',
+            'notes/two.md:tag-a',
+            'notes/three.md:tag-c'
+        ]);
+        expect(
+            moveManualSortSelectionByDirection(scope, 'notes/one.md', new Set(['notes/one.md']), 'down')?.files.map(file => file.path)
+        ).toEqual(['notes/two.md', 'notes/one.md', 'notes/three.md']);
+        expect(
+            moveManualSortSelectionByDirection(scope, 'notes/three.md', new Set(['notes/two.md', 'notes/three.md']), 'up')?.files.map(
+                file => file.path
+            )
+        ).toEqual(['notes/two.md', 'notes/three.md', 'notes/one.md']);
     });
 
     it('moves non-contiguous selected markdown files as a keyboard block', () => {

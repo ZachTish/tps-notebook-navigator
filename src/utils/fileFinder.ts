@@ -19,7 +19,7 @@
 import { TFile, TFolder, App } from 'obsidian';
 import type { NotebookNavigatorSettings } from '../settings/types';
 import type { NavigatorContext, PinnedNotes, VisibilityPreferences } from '../types';
-import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
+import { ALL_TAGS_TAG_ID, ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
 import {
     createFrontmatterPropertyExclusionMatcher,
     shouldExcludeFolder,
@@ -531,8 +531,11 @@ export function getFilesForTag(
 
     let filteredFiles: TFile[];
 
-    // Special case for untagged files
-    if (tag === UNTAGGED_TAG_ID) {
+    // The selectable Tags root is an aggregate view: grouping, rather than filtering,
+    // distinguishes tagged and untagged notes.
+    if (tag === ALL_TAGS_TAG_ID) {
+        filteredFiles = getMarkdownFiles().filter(matchesCurrentVisibility);
+    } else if (tag === UNTAGGED_TAG_ID) {
         // Only show markdown files in untagged section since only they can be tagged
         filteredFiles = getMarkdownFiles().filter(file => {
             // Check if the markdown file has tags using our cache
@@ -686,10 +689,9 @@ export function getFilesForProperty(
         }
 
         if (normalizedValue === null) {
-            // A property-key row is the explicit no-value bucket. Value-bearing notes
-            // remain selectable through their child value rows, regardless of the
-            // global descendant preference used by folders and tags.
-            return propertyTreeService.collectFilePaths(buildPropertyKeyNodeId(selectedPropertyKey), false);
+            // A property-key row is the complete key-presence scope. The list groups
+            // blank and populated values; child rows remain exact value selections.
+            return propertyTreeService.collectFilePaths(buildPropertyKeyNodeId(selectedPropertyKey), true);
         }
 
         const valueNodeId = buildPropertyValueNodeId(selectedPropertyKey, normalizedValue);
@@ -740,19 +742,13 @@ export function getFilesForProperty(
                 return properties.some(entry => configuredPropertyKeys.has(casefold(entry.fieldKey)));
             }
 
-            let hasDirectMatchingKey = false;
             for (const entry of properties) {
                 if (casefold(entry.fieldKey) !== selectedPropertyKey) {
                     continue;
                 }
 
                 if (normalizedValue === null) {
-                    const normalizedEntryValue = normalizePropertyTreeValuePath(entry.value);
-                    if (normalizedEntryValue.length === 0) {
-                        hasDirectMatchingKey = true;
-                        return true;
-                    }
-                    continue;
+                    return true;
                 }
 
                 const normalizedEntryValue = normalizePropertyTreeValuePath(entry.value);
@@ -763,10 +759,6 @@ export function getFilesForProperty(
                 if (matchesPropertyValuePath(normalizedEntryValue, normalizedValue)) {
                     return true;
                 }
-            }
-
-            if (normalizedValue === null) {
-                return hasDirectMatchingKey;
             }
 
             return false;

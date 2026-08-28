@@ -34,6 +34,7 @@ import { buildUsageSummary, confirmInlineTagParsingRisk, yieldToEventLoop } from
 import type { TagRenameEventPayload } from './types';
 import { TagFileMutations } from './TagFileMutations';
 import { showNotice } from '../../utils/noticeUtils';
+import { isReservedVirtualTagPath } from '../../utils/virtualTagCollections';
 
 const RENAME_BATCH_SIZE = LIMITS.operations.metadataMutationYieldBatchSize;
 
@@ -78,6 +79,9 @@ export class TagRenameWorkflow {
      * Shows affected files and prevents invalid renames
      */
     async promptRenameTag(tagPath: string, initialValue?: string): Promise<void> {
+        if (isReservedVirtualTagPath(tagPath)) {
+            return;
+        }
         const displayPath = this.resolveDisplayTagPathInternal(tagPath);
         const oldTagDescriptor = new TagDescriptor(displayPath);
         const presetTargets = collectRenameFiles(this.app, oldTagDescriptor);
@@ -104,6 +108,9 @@ export class TagRenameWorkflow {
      * Renames a tag from an already-collected target path.
      */
     async renameTag(tagPath: string, newTagPath: string): Promise<boolean> {
+        if (isReservedVirtualTagPath(tagPath) || isReservedVirtualTagPath(newTagPath)) {
+            return false;
+        }
         const displayPath = this.resolveDisplayTagPathInternal(tagPath);
         const oldTagDescriptor = new TagDescriptor(displayPath);
         const presetTargets = collectRenameFiles(this.app, oldTagDescriptor);
@@ -265,6 +272,9 @@ export class TagRenameWorkflow {
      * Validates, executes rename, updates metadata and notifies listeners
      */
     async runTagRename(oldTagPath: string, newTagPath: string, presetTargets: RenameFile[] | null = null): Promise<boolean> {
+        if (isReservedVirtualTagPath(oldTagPath) || isReservedVirtualTagPath(newTagPath)) {
+            return false;
+        }
         const hooks = this.getHooks();
         const analysis = this.buildRenameAnalysis(oldTagPath, newTagPath, presetTargets);
 

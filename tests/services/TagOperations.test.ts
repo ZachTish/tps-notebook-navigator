@@ -21,7 +21,7 @@ import * as TagRenameModule from '../../src/services/tagRename/TagRenameEngine';
 import { TagOperations } from '../../src/services/TagOperations';
 import { TagRenameWorkflow, type TagRenameAnalysis, type TagRenameResult } from '../../src/services/tagOperations/TagRenameWorkflow';
 import { ShortcutType, type ShortcutEntry } from '../../src/types/shortcuts';
-import { TAGGED_TAG_ID } from '../../src/types';
+import { ALL_TAGS_TAG_ID, TAGGED_TAG_ID } from '../../src/types';
 import type { NotebookNavigatorSettings } from '../../src/settings';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import type { ISettingsProvider } from '../../src/interfaces/ISettingsProvider';
@@ -952,6 +952,31 @@ describe('TagOperations drag-based tag renames', () => {
 
         expect(resolveSpy).not.toHaveBeenCalled();
         expect(modalSpy).not.toHaveBeenCalled();
+    });
+
+    it('skips every rename entry point for the all-tags virtual collection', async () => {
+        const tagOperations = createTagOperationsInstance();
+        const modalSpy = vi.spyOn(TagRenameWorkflow.prototype, 'promptRenameTag').mockResolvedValue(undefined);
+
+        await tagOperations.promptRenameTag('#__ALL_TAGS__');
+        await tagOperations.renameTagByDrag(`${ALL_TAGS_TAG_ID}/child`, 'targetTag');
+        expect(await tagOperations.renameTag('sourceTag', '#__ALL_TAGS__/child')).toBe(false);
+
+        expect(modalSpy).not.toHaveBeenCalled();
+    });
+
+    it('skips direct delete execution for the all-tags virtual collection', async () => {
+        const tagOperations = createTagOperationsInstance();
+
+        expect(await tagOperations.runTagDelete(ALL_TAGS_TAG_ID, ['Note.md'])).toBe(false);
+    });
+
+    it('never adds or removes a normalized virtual collection tag', async () => {
+        const tagOperations = createTagOperationsInstance();
+        const file = createTestTFile('Note.md');
+
+        await expect(tagOperations.addTagToFiles('#__ALL_TAGS__/child', [file])).resolves.toEqual({ added: 0, skipped: 1 });
+        await expect(tagOperations.removeTagFromFiles('#__ALL_TAGS__', [file])).resolves.toBe(0);
     });
 
     it('skips drag rename when target resolves to same path', async () => {

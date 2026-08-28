@@ -23,7 +23,7 @@ import { getFilesForFolder, getFilesForProperty, getFilesForTag } from '../../ut
 import { localStorage } from '../../utils/localStorage';
 import { INTERNAL_NOTEBOOK_NAVIGATOR_API, type NotebookNavigatorAPI } from '../../api/NotebookNavigatorAPI';
 import type { NotebookNavigatorSettings } from '../../settings/types';
-import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, STORAGE_KEYS, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
+import { ALL_TAGS_TAG_ID, ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, STORAGE_KEYS, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
 import type { IPropertyTreeProvider } from '../../interfaces/IPropertyTreeProvider';
 import type { ITagTreeProvider } from '../../interfaces/ITagTreeProvider';
 import type { PropertyKeyDeleteEventPayload, PropertyKeyRenameEventPayload } from '../../services/PropertyOperations';
@@ -442,7 +442,7 @@ export function useSelectionReconciliation({
                 return;
             }
 
-            if (selectedTag === TAGGED_TAG_ID || selectedTag === UNTAGGED_TAG_ID) {
+            if (selectedTag === ALL_TAGS_TAG_ID || selectedTag === TAGGED_TAG_ID || selectedTag === UNTAGGED_TAG_ID) {
                 return;
             }
 

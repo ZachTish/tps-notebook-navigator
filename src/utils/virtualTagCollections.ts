@@ -17,10 +17,12 @@
  */
 
 import { strings } from '../i18n';
-import { TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
+import { ALL_TAGS_TAG_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
+import { normalizeTagPath } from './tagUtils';
 
 // Constants for virtual tag collection identifiers
 export const VIRTUAL_TAG_COLLECTION_IDS = {
+    ALL: ALL_TAGS_TAG_ID,
     TAGGED: TAGGED_TAG_ID,
     UNTAGGED: UNTAGGED_TAG_ID
 } as const;
@@ -36,9 +38,15 @@ export interface VirtualTagCollectionDefinition {
 
 // Registry of all available virtual tag collections with their localized labels
 const virtualTagCollections: Record<VirtualTagCollectionId, VirtualTagCollectionDefinition> = {
+    [VIRTUAL_TAG_COLLECTION_IDS.ALL]: {
+        id: VIRTUAL_TAG_COLLECTION_IDS.ALL,
+        getLabel: () => strings.tagList.tags
+    },
     [VIRTUAL_TAG_COLLECTION_IDS.TAGGED]: {
         id: VIRTUAL_TAG_COLLECTION_IDS.TAGGED,
-        getLabel: () => strings.tagList.tags
+        // The selectable Tags root now includes every note. Keep the older tagged-only
+        // public collection visibly distinct in existing shortcuts and API navigation.
+        getLabel: () => `# ${strings.tagList.tags}`
     },
     [VIRTUAL_TAG_COLLECTION_IDS.UNTAGGED]: {
         id: VIRTUAL_TAG_COLLECTION_IDS.UNTAGGED,
@@ -51,7 +59,23 @@ export function isVirtualTagCollectionId(value: string | null | undefined): valu
     if (!value) {
         return false;
     }
-    return value === VIRTUAL_TAG_COLLECTION_IDS.TAGGED || value === VIRTUAL_TAG_COLLECTION_IDS.UNTAGGED;
+    return (
+        value === VIRTUAL_TAG_COLLECTION_IDS.ALL ||
+        value === VIRTUAL_TAG_COLLECTION_IDS.TAGGED ||
+        value === VIRTUAL_TAG_COLLECTION_IDS.UNTAGGED
+    );
+}
+
+/**
+ * Rejects user tag paths that would create, rename, or delete a virtual collection ID.
+ * Descendants are reserved too because Obsidian would synthesize the virtual ID as their root.
+ */
+export function isReservedVirtualTagPath(value: string | null | undefined): boolean {
+    const normalized = normalizeTagPath(value);
+    if (!normalized) {
+        return false;
+    }
+    return Object.values(VIRTUAL_TAG_COLLECTION_IDS).some(id => normalized === id || normalized.startsWith(`${id}/`));
 }
 
 // Retrieves the definition for a virtual tag collection

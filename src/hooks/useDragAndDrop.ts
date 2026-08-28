@@ -27,7 +27,7 @@ import { useExpansionState, useExpansionDispatch } from '../context/ExpansionCon
 import { useInternalDragSession } from '../context/InternalDragContext';
 import { strings } from '../i18n';
 import { showNotice } from '../utils/noticeUtils';
-import { ItemType, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
+import { ALL_TAGS_TAG_ID, ItemType, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
 import { SHORTCUT_DRAG_MIME } from '../types/shortcuts';
 import { DragManagerPayload, PROPERTY_DRAG_MIME, TAG_DRAG_MIME, hasDragManager, TIMEOUTS } from '../types/obsidian-extended';
 import { getPathFromDataAttribute } from '../utils/domUtils';
@@ -962,6 +962,11 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
                         e.dataTransfer.dropEffect = 'none';
                         return;
                     }
+                    if (targetPath === ALL_TAGS_TAG_ID || targetPath === TAGGED_TAG_ID) {
+                        clearAutoExpandTimer();
+                        e.dataTransfer.dropEffect = 'none';
+                        return;
+                    }
                     e.dataTransfer.dropEffect = targetPath === UNTAGGED_TAG_ID ? 'move' : 'copy';
                     if (targetPath !== UNTAGGED_TAG_ID) {
                         const canonicalTagPath = dropZone.getAttribute('data-tag');
@@ -1016,6 +1021,9 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
      */
     const handleTagDrop = useCallback(
         async (e: DragEvent, targetTag: string) => {
+            if (targetTag === ALL_TAGS_TAG_ID || targetTag === TAGGED_TAG_ID) {
+                return;
+            }
             const { files, hasNonMarkdown } = getMarkdownFilesFromDragEvent(e);
             if (files.length === 0) {
                 return;
@@ -1252,7 +1260,12 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
                         if (targetPath === UNTAGGED_TAG_ID) {
                             return;
                         }
-                        if (targetCanonical === TAGGED_TAG_ID || targetPath === TAGGED_TAG_ID) {
+                        if (
+                            targetCanonical === ALL_TAGS_TAG_ID ||
+                            targetPath === ALL_TAGS_TAG_ID ||
+                            targetCanonical === TAGGED_TAG_ID ||
+                            targetPath === TAGGED_TAG_ID
+                        ) {
                             return;
                         }
                         // Reject drops on same tag
@@ -1534,6 +1547,9 @@ export function useDragAndDrop(containerRef: React.RefObject<HTMLElement | null>
             event.preventDefault();
             const run = async () => {
                 if (dropType === 'tag') {
+                    if (targetPath === ALL_TAGS_TAG_ID || targetPath === TAGGED_TAG_ID) {
+                        return;
+                    }
                     const definition = api
                         .listDefinitions()
                         .find(

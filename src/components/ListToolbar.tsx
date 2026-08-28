@@ -24,7 +24,7 @@ import { strings } from '../i18n';
 import { ServiceIcon } from './ServiceIcon';
 import { useListActions } from '../hooks/useListActions';
 import { runAsyncAction } from '../utils/async';
-import { resolveSelectionIncludeDescendants } from '../utils/descendantVisibility';
+import { isAggregateNavigationSelection, resolveSelectionIncludeDescendants } from '../utils/descendantVisibility';
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
 import type { RevealFileOptions } from '../hooks/useNavigatorReveal';
@@ -109,7 +109,7 @@ export function ListToolbar({
     );
     const supportsListSortAndGrouping = supportsListSortAndGroupingForSelection(selectionState.selectionType, selectionState.selectedType);
     const showSearchButton = listVisibility.search;
-    const showDescendantsButton = !isTypeSelection && listVisibility.descendants;
+    const showDescendantsButton = !isTypeSelection && !isAggregateNavigationSelection(selectionState) && listVisibility.descendants;
     const showGroupExpansionButton = supportsListSortAndGrouping && listVisibility.groupExpansion;
     const showSortButton = supportsListSortAndGrouping && listVisibility.sort;
     const showAppearanceButton = supportsNativeListPresentation && listVisibility.appearance;

@@ -21,11 +21,12 @@ import { App } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
-import { NavigationPaneItemType } from '../../src/types';
+import { ALL_TAGS_TAG_ID, NavigationPaneItemType } from '../../src/types';
 import type { PropertyTreeNode } from '../../src/types/storage';
 import type { NavigationNoteCounts } from '../../src/hooks/navigationPane/data/useNavigationNoteCounts';
 import { useNavigationNoteCounts } from '../../src/hooks/navigationPane/data/useNavigationNoteCounts';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
+import { createTestTFile } from '../utils/createTestTFile';
 
 function createPropertyKeyNode(key: string, name: string, notes: string[], values: PropertyTreeNode[] = []): PropertyTreeNode {
     const node: PropertyTreeNode = {
@@ -60,11 +61,12 @@ function createPropertyValueNode(key: string, valuePath: string, name: string, n
 }
 
 describe('useNavigationNoteCounts', () => {
-    it('counts only empty-valued notes on a property key row when descendants are enabled', () => {
+    it('counts every note containing a property on its key row', () => {
         const valueNode = createPropertyValueNode('status', 'working', 'Working', ['notes/value.md']);
         const keyNode = createPropertyKeyNode('status', 'Status', ['notes/empty.md', 'notes/value.md'], [valueNode]);
 
         const app = new App();
+        app.vault.getFiles = () => [];
         let captured: NavigationNoteCounts | null = null;
 
         function Harness() {
@@ -111,7 +113,53 @@ describe('useNavigationNoteCounts', () => {
             throw new Error('Expected hook result');
         }
 
-        expect((captured as NavigationNoteCounts).propertyCounts.get(keyNode.id)).toEqual({ current: 1, descendants: 0, total: 1 });
+        expect((captured as NavigationNoteCounts).propertyCounts.get(keyNode.id)).toEqual({ current: 2, descendants: 0, total: 2 });
+    });
+
+    it('counts tagged and untagged notes together on the aggregate Tags root', () => {
+        const app = new App();
+        app.vault.getFiles = () => ['one.md', 'two.md', 'three.md', 'four.md', 'five.md'].map(path => createTestTFile(path));
+        let captured: NavigationNoteCounts | null = null;
+
+        function Harness() {
+            captured = useNavigationNoteCounts({
+                app,
+                isVisible: true,
+                settings: {
+                    ...DEFAULT_SETTINGS,
+                    showNoteCount: true,
+                    showTags: true
+                },
+                propertiesSectionActive: false,
+                itemsWithMetadata: [],
+                includeDescendantNotes: false,
+                visibleTaggedCount: 3,
+                untaggedCount: 2,
+                renderPropertyTree: new Map(),
+                propertyCollectionCount: undefined,
+                effectiveFrontmatterExclusions: [],
+                hiddenFolders: [],
+                descendantExcludedFolders: [],
+                hiddenFileTags: [],
+                showHiddenItems: false,
+                folderCountFileNameMatcher: null,
+                fileVisibility: DEFAULT_SETTINGS.vaultProfiles[0].fileVisibility,
+                folderChangeVersion: 0,
+                vaultChangeVersion: 0,
+                metadataVisibilityVersion: 0,
+                tagDataVersion: 0
+            });
+            return null;
+        }
+
+        renderToStaticMarkup(React.createElement(Harness));
+
+        expect(captured).not.toBeNull();
+        expect((captured as NavigationNoteCounts).tagCounts.get(ALL_TAGS_TAG_ID)).toEqual({
+            current: 5,
+            descendants: 0,
+            total: 5
+        });
     });
 
     it('uses the rendered property tree when computing scoped property totals', () => {
@@ -121,6 +169,7 @@ describe('useNavigationNoteCounts', () => {
         const scopedKeyNode = createPropertyKeyNode('status', 'Status', ['notes/a.md'], [scopedValueNode]);
 
         const app = new App();
+        app.vault.getFiles = () => [];
         let captured: NavigationNoteCounts | null = null;
 
         function Harness() {

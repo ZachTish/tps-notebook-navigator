@@ -940,7 +940,7 @@ export function ListPaneVirtualContent({
                 folderGroupHeaderPath: item.headerKind === 'folder' ? (headerFolderPath ?? '/') : null,
                 folderGroupHeaderSegments,
                 groupFilePaths: item.groupFilePaths ?? [],
-                itemCount: settings.showGroupHeaderItemCounts ? (item.groupFilePaths?.length ?? 0) : null,
+                itemCount: settings.showGroupHeaderItemCounts ? (item.groupItemCount ?? item.groupFilePaths?.length ?? 0) : null,
                 totalItemCount: settings.showGroupHeaderItemCounts ? (item.groupTotalItemCount ?? null) : null,
                 manualSortHeaderFilePath: item.headerKind === 'manual-sort-custom' ? (item.manualSortHeaderFilePath ?? null) : null,
                 manualSortHeader,

@@ -767,6 +767,9 @@ describe('public API declaration file', () => {
         expect(getTypeLiteralCallableSignature(publicTagCollectionsType, 'getLabel', publicFile)).toEqual(
             getTypeLiteralCallableSignature(tagCollectionsType, 'getLabel', apiFile)
         );
+        expect(getTypeLiteralPropertySignature(publicTagCollectionsType, 'allId', publicFile)).toEqual(
+            getTypeLiteralPropertySignature(tagCollectionsType, 'allId', apiFile)
+        );
         expect(getTypeLiteralPropertySignature(publicTagCollectionsType, 'taggedId', publicFile)).toEqual(
             getTypeLiteralPropertySignature(tagCollectionsType, 'taggedId', apiFile)
         );
@@ -783,6 +786,7 @@ describe('public API declaration file', () => {
             'NavItem',
             'NavItemType',
             'TagCollectionId',
+            'NavigatorListGrouping',
             'NavigatorRowSelectionType',
             'NavigatorTypeProviderOptions',
             'PropertyNodeParts'

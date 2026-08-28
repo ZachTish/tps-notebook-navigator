@@ -22,7 +22,7 @@ import { strings } from '../i18n';
 import { InputModal } from '../modals/InputModal';
 import { ConfirmModal } from '../modals/ConfirmModal';
 import type { NotebookNavigatorSettings } from '../settings/types';
-import { PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
+import { ALL_TAGS_TAG_ID, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
 import type { VisibilityPreferences } from '../types';
 import { ExtendedApp, TIMEOUTS, OBSIDIAN_COMMANDS } from '../types/obsidian-extended';
 import {
@@ -800,7 +800,7 @@ export class FileSystemOperations {
         manualSortContext?: ManualSortNewFilePlacementContext | null
     ): Promise<TFile | null> {
         const normalizedTag = normalizeTagPath(tagPath);
-        if (!normalizedTag || normalizedTag === TAGGED_TAG_ID || normalizedTag === UNTAGGED_TAG_ID) {
+        if (!normalizedTag || normalizedTag === ALL_TAGS_TAG_ID || normalizedTag === TAGGED_TAG_ID || normalizedTag === UNTAGGED_TAG_ID) {
             return null;
         }
 
@@ -937,7 +937,11 @@ export class FileSystemOperations {
         const frontmatterApi = resolveGcmFrontmatterApi(this.app);
         const filePropertiesApi =
             this.settingsProvider.settings.tpsDataArchitectureMode === 'native-records' ? null : resolveGcmFilePropertiesApi(this.app);
-        if (definition && frontmatterApi && filePropertiesApi) {
+        // GCM's typed setValues contract treats null as deletion. Property key nodes instead
+        // mean "keep this key present with no value", so Markdown key assignments must use
+        // Obsidian's processFrontMatter path below. Concrete value nodes keep the typed GCM
+        // behavior (list values add; scalar values replace).
+        if (assignment.nodeKind === 'value' && definition && frontmatterApi && filePropertiesApi) {
             const markdownFiles = files.filter(file => file.extension === 'md');
             const assetFiles = files.filter(file => file.extension !== 'md' && filePropertiesApi.isTarget(file));
             if (markdownFiles.length + assetFiles.length !== files.length) {

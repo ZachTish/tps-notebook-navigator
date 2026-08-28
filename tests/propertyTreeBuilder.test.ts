@@ -721,7 +721,7 @@ describe('property reveal selection', () => {
         expect(resolved).toBeNull();
     });
 
-    it('reveals boolean value nodes instead of collapsing them to the key node', () => {
+    it('keeps a property key root selected for boolean values', () => {
         const settings = {
             ...DEFAULT_SETTINGS,
             showProperties: true
@@ -735,10 +735,10 @@ describe('property reveal selection', () => {
             false
         );
 
-        expect(resolved).toBe(buildPropertyValueNodeId('finished', normalizePropertyTreeValuePath('false')));
+        expect(resolved).toBe(buildPropertyKeyNodeId('finished'));
     });
 
-    it('reveals a value node instead of a property key root when descendants are enabled', () => {
+    it('keeps a property key root selected when the file has any value for that key', () => {
         const settings = {
             ...DEFAULT_SETTINGS,
             showProperties: true
@@ -752,6 +752,6 @@ describe('property reveal selection', () => {
             true
         );
 
-        expect(resolved).toBe(buildPropertyValueNodeId('status', normalizePropertyTreeValuePath('working')));
+        expect(resolved).toBe(buildPropertyKeyNodeId('status'));
     });
 });

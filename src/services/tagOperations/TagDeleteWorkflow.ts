@@ -23,7 +23,6 @@ import { strings } from '../../i18n';
 import type { ITagTreeProvider } from '../../interfaces/ITagTreeProvider';
 import type { MetadataService } from '../MetadataService';
 import { ConfirmModal } from '../../modals/ConfirmModal';
-import { TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
 import { TagDescriptor } from '../tagRename/TagRenameEngine';
 import { TagFileMutations } from './TagFileMutations';
 import { collectPreviewPaths, yieldToEventLoop, buildUsageSummaryFromPaths } from './TagOperationUtils';
@@ -31,6 +30,7 @@ import type { TagDeleteEventPayload } from './types';
 import { runAsyncAction } from '../../utils/async';
 import { showNotice } from '../../utils/noticeUtils';
 import { renderAffectedFilesPreview } from '../operations/OperationBatchUtils';
+import { isReservedVirtualTagPath } from '../../utils/virtualTagCollections';
 
 const DELETE_BATCH_SIZE = LIMITS.operations.metadataMutationYieldBatchSize;
 const DELETE_SAMPLE_LIMIT = 8;
@@ -63,7 +63,7 @@ export class TagDeleteWorkflow {
      * Shows affected files and handles special tag IDs
      */
     async promptDeleteTag(tagPath: string): Promise<void> {
-        if (tagPath === TAGGED_TAG_ID || tagPath === UNTAGGED_TAG_ID) {
+        if (isReservedVirtualTagPath(tagPath)) {
             return;
         }
 
@@ -109,6 +109,9 @@ export class TagDeleteWorkflow {
      * Removes tag and all descendant tags, updates metadata and shortcuts
      */
     async runTagDelete(tagPath: string, presetPaths?: readonly string[] | null): Promise<boolean> {
+        if (isReservedVirtualTagPath(tagPath)) {
+            return false;
+        }
         const hooks = this.getHooks();
         const descriptor = new TagDescriptor(tagPath);
         const targetPathsSet = new Set<string>();

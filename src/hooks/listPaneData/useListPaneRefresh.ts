@@ -29,7 +29,7 @@ import { shouldRefreshOnFileModifyForSort, shouldRefreshOnMetadataChangeForSort 
 import type { FileContentChange, IndexedDBStorage } from '../../storage/IndexedDBStorage';
 import type { IPropertyTreeProvider } from '../../interfaces/IPropertyTreeProvider';
 import type { ITagTreeProvider } from '../../interfaces/ITagTreeProvider';
-import { ItemType, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
+import { ALL_TAGS_TAG_ID, ItemType, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
 import type { PropertySelectionNodeId } from '../../utils/propertyTree';
 import { createFrontmatterPropertyExclusionMatcher } from '../../utils/fileFilters';
 import { getCachedManualSortGroupHeader } from '../../utils/manualSort';
@@ -382,6 +382,7 @@ export function useListPaneRefresh({
         if (
             selectionType === ItemType.TAG &&
             selectedTag &&
+            selectedTag !== ALL_TAGS_TAG_ID &&
             selectedTag !== TAGGED_TAG_ID &&
             selectedTag !== UNTAGGED_TAG_ID &&
             tagTreeService
@@ -400,6 +401,7 @@ export function useListPaneRefresh({
         // Property grouping reads frontmatter at list build time, so an edited grouping value must
         // rebuild group membership even when the active sort ignores metadata changes.
         const shouldRefreshOnMetadataChange =
+            groupBy === 'tags' ||
             getPropertyGroupingKey(groupBy) !== null ||
             shouldRefreshOnMetadataChangeForSort({
                 sortOption,

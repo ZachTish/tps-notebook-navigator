@@ -19,6 +19,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     areStoredListPaneAppearanceFieldsEqual,
+    copyFormerTagsRootPresentationSettings,
     getStoredListPaneAppearanceFields,
     hasStoredListPaneAppearanceOverride,
     mergeListPaneAppearanceAndGrouping,
@@ -28,7 +29,7 @@ import {
 } from '../../src/settings/listPaneAppearance';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import type { NotebookNavigatorSettings } from '../../src/settings/types';
-import { ItemType } from '../../src/types';
+import { ALL_TAGS_TAG_ID, ItemType, TAGGED_TAG_ID } from '../../src/types';
 
 function createSettings(overrides: Partial<NotebookNavigatorSettings> = {}): NotebookNavigatorSettings {
     return { ...structuredClone(DEFAULT_SETTINGS), ...overrides };
@@ -258,5 +259,42 @@ describe('appearance map snapshots', () => {
         expect(nextSnapshot).not.toBe(initialSnapshot);
         expect(nextSnapshot.Writing.textCount).toBe('characters');
         expect(initialSnapshot.Writing.textCount).toBe('words');
+    });
+});
+
+describe('former Tags-root presentation migration', () => {
+    it('copies both presentation maps without removing or aliasing the tagged-only settings', () => {
+        const settings = createSettings();
+        settings.tagAppearances = {
+            [TAGGED_TAG_ID]: { groupBy: 'date', noValueGroupPosition: 'top' }
+        };
+        settings.tagSortOverrides = {
+            [TAGGED_TAG_ID]: { option: 'property-desc', propertyKey: 'Status' }
+        };
+
+        expect(copyFormerTagsRootPresentationSettings(settings)).toBe(true);
+        expect(settings.tagAppearances[ALL_TAGS_TAG_ID]).toEqual(settings.tagAppearances[TAGGED_TAG_ID]);
+        expect(settings.tagSortOverrides[ALL_TAGS_TAG_ID]).toEqual(settings.tagSortOverrides[TAGGED_TAG_ID]);
+        expect(settings.tagAppearances[ALL_TAGS_TAG_ID]).not.toBe(settings.tagAppearances[TAGGED_TAG_ID]);
+        expect(settings.tagSortOverrides[ALL_TAGS_TAG_ID]).not.toBe(settings.tagSortOverrides[TAGGED_TAG_ID]);
+        expect(settings.tagAppearances[TAGGED_TAG_ID]).toBeDefined();
+        expect(settings.tagSortOverrides[TAGGED_TAG_ID]).toBeDefined();
+        expect(copyFormerTagsRootPresentationSettings(settings)).toBe(false);
+    });
+
+    it('preserves an existing all-notes Tags-root presentation', () => {
+        const settings = createSettings();
+        settings.tagAppearances = {
+            [TAGGED_TAG_ID]: { groupBy: 'date' },
+            [ALL_TAGS_TAG_ID]: { groupBy: 'tags' }
+        };
+        settings.tagSortOverrides = {
+            [TAGGED_TAG_ID]: 'title-desc',
+            [ALL_TAGS_TAG_ID]: 'modified-desc'
+        };
+
+        expect(copyFormerTagsRootPresentationSettings(settings)).toBe(false);
+        expect(settings.tagAppearances[ALL_TAGS_TAG_ID]).toEqual({ groupBy: 'tags' });
+        expect(settings.tagSortOverrides[ALL_TAGS_TAG_ID]).toBe('modified-desc');
     });
 });

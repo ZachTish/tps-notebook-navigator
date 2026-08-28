@@ -47,4 +47,28 @@ describe('TPS Notebook Navigator API lifecycle main integration', () => {
             'this.api = null;'
         ]);
     });
+
+    it('migrates the former tagged-only root selection before registering navigator views', async () => {
+        const main = await readFile(mainPath, 'utf8');
+        const completeStartup = main.slice(
+            main.indexOf('private async completeStartup'),
+            main.indexOf('public registerSettingsUpdateListener')
+        );
+
+        expectOrdered(completeStartup, [
+            'selectedTag === TAGGED_TAG_ID',
+            'localStorage.set(STORAGE_KEYS.selectedTagKey, ALL_TAGS_TAG_ID);',
+            'copyFormerTagsRootPresentationSettings(this.settings)',
+            'this.registerView(NOTEBOOK_NAVIGATOR_VIEW'
+        ]);
+        const presentationMigration = completeStartup.slice(
+            completeStartup.indexOf('copyFormerTagsRootPresentationSettings(this.settings)'),
+            completeStartup.indexOf('// Initialize recent data management')
+        );
+        expectOrdered(presentationMigration, [
+            'copyFormerTagsRootPresentationSettings(this.settings)',
+            'if (shouldPersistMigratedSettings)',
+            'await this.saveData(this.settingsController.getPersistableSettings());'
+        ]);
+    });
 });

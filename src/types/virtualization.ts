@@ -54,6 +54,13 @@ export interface ListPaneItem {
     manualSortHeaderFilePath?: string | null;
     // File paths belonging to this rendered group. Used by group-header actions even when the group is collapsed.
     groupFilePaths?: string[];
+    // Number of visible row instances in this group. Provider rows affect this count without
+    // becoming native file members for reveal or group-file actions.
+    groupItemCount?: number;
+    // Opaque property bucket metadata used to merge provider-only groups into native group order.
+    groupBucketKey?: string;
+    groupNumericSortValue?: number | null;
+    groupDaySortValue?: number | null;
     // Item count for the same group before list search filtering.
     // Present only while a non-empty search is active and group header counts are shown.
     groupTotalItemCount?: number;

@@ -337,6 +337,21 @@ type ExtractedPropertyValue = {
     valueKind?: PropertyValueKind;
 };
 
+function isSyntheticFrontmatterPosition(fieldKey: string, value: unknown): boolean {
+    if (fieldKey !== 'position' || typeof value !== 'object' || value === null || Array.isArray(value)) {
+        return false;
+    }
+    const position = value as Record<string, unknown>;
+    return ['start', 'end'].every(boundary => {
+        const location = position[boundary];
+        if (typeof location !== 'object' || location === null || Array.isArray(location)) {
+            return false;
+        }
+        const record = location as Record<string, unknown>;
+        return ['line', 'col', 'offset'].every(key => typeof record[key] === 'number' && Number.isFinite(record[key]));
+    });
+}
+
 // Converts frontmatter values into searchable scalar entries.
 // Supports scalars and nested arrays; treats null as unassigned; skips empty strings and non-finite numbers.
 function extractFrontmatterValues(value: unknown): ExtractedPropertyValue[] {
@@ -383,8 +398,15 @@ function resolvePropertyItemsFromFrontmatter(frontmatter: FrontMatterCache | nul
     const entries: PropertyItem[] = [];
 
     Object.keys(frontmatter).forEach(fieldKey => {
+        if (isSyntheticFrontmatterPosition(fieldKey, frontmatter[fieldKey])) {
+            return;
+        }
         const values = extractFrontmatterValues(frontmatter[fieldKey]);
         if (values.length === 0) {
+            // The key itself is meaningful even when Obsidian exposes an empty string/array or an
+            // unsupported YAML value. Preserve one unassigned marker so the top-level property
+            // scope can include every note that actually contains the key.
+            entries.push({ fieldKey, value: '' });
             return;
         }
 

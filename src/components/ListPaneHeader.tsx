@@ -36,7 +36,7 @@ import { resolveFolderNoteClickOpenContext } from '../utils/keyboardOpenContext'
 import { usesMobileChrome } from '../utils/paneLayout';
 import { normalizeTagPath } from '../utils/tagUtils';
 import { runAsyncAction } from '../utils/async';
-import { resolveSelectionIncludeDescendants } from '../utils/descendantVisibility';
+import { isAggregateNavigationSelection, resolveSelectionIncludeDescendants } from '../utils/descendantVisibility';
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
 import {
@@ -181,7 +181,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     );
     const supportsListSortAndGrouping = supportsListSortAndGroupingForSelection(selectionState.selectionType, selectionState.selectedType);
     const showSearchButton = listToolbarVisibility.search;
-    const showDescendantsButton = !isTypeSelection && listToolbarVisibility.descendants;
+    const showDescendantsButton = !isTypeSelection && !isAggregateNavigationSelection(selectionState) && listToolbarVisibility.descendants;
     const showGroupExpansionButton = supportsListSortAndGrouping && listToolbarVisibility.groupExpansion;
     const showSortButton = supportsListSortAndGrouping && listToolbarVisibility.sort;
     const showAppearanceButton = supportsNativeListPresentation && listToolbarVisibility.appearance;

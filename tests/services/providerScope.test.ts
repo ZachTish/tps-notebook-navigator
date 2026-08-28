@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { NavigatorRowProviderRegistry } from '../../src/services/rows/NavigatorRowProviderRegistry';
 import {
+    collectListProviderScopeVisibleFilePaths,
     collectTypeScopeVisibleFilePaths,
     EMPTY_NAVIGATOR_ROW_SCOPE,
     navigatorRowProviderSupportsScope,
@@ -8,6 +9,9 @@ import {
     resolveNavigatorRowScope
 } from '../../src/services/rows/providerScope';
 import type { NavigatorProvidedRow, NavigatorRowProvider, NavigatorRowScope } from '../../src/services/rows/types';
+import { ListPaneItemType } from '../../src/types';
+import type { ListPaneItem } from '../../src/types/virtualization';
+import { createTestTFile } from '../utils/createTestTFile';
 
 function scope(overrides: Partial<NavigatorRowScope> = {}): NavigatorRowScope {
     return {
@@ -130,5 +134,28 @@ describe('collectTypeScopeVisibleFilePaths', () => {
         ];
 
         expect(collectTypeScopeVisibleFilePaths(rows, new Set(['Notes/one.md', 'Notes/two.md']))).toEqual(['Notes/one.md', 'Notes/two.md']);
+    });
+});
+
+describe('collectListProviderScopeVisibleFilePaths', () => {
+    it('includes collapsed group members only when provider rows own their grouping', () => {
+        const collapsedSource = createTestTFile('Daily.md');
+        const visibleSource = createTestTFile('Visible.md');
+        const items: ListPaneItem[] = [
+            { type: ListPaneItemType.TOP_SPACER, data: '', key: 'top' },
+            {
+                type: ListPaneItemType.HEADER,
+                data: 'dailynote',
+                key: 'header-tags-value:dailynote',
+                headerKind: 'property',
+                isCollapsed: true,
+                groupFilePaths: [collapsedSource.path, visibleSource.path]
+            },
+            { type: ListPaneItemType.FILE, data: visibleSource, key: visibleSource.path },
+            { type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom' }
+        ];
+
+        expect(collectListProviderScopeVisibleFilePaths(items, false)).toEqual([visibleSource.path]);
+        expect(collectListProviderScopeVisibleFilePaths(items, true)).toEqual([collapsedSource.path, visibleSource.path]);
     });
 });

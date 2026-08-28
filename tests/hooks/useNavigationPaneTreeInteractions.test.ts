@@ -22,7 +22,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import type { NotebookNavigatorSettings } from '../../src/settings/types';
-import { ItemType } from '../../src/types';
+import { ALL_TAGS_TAG_ID, ItemType } from '../../src/types';
 import type { IPropertyTreeProvider } from '../../src/interfaces/IPropertyTreeProvider';
 import type { PropertyTreeNode, TagTreeNode } from '../../src/types/storage';
 import type { SelectionState } from '../../src/context/SelectionContext';
@@ -202,7 +202,7 @@ function renderTreeInteractionHarness(options?: {
 }
 
 describe('useNavigationPaneTreeInteractions', () => {
-    it('turns a Shift-clicked property key into an explicit empty-value search facet', () => {
+    it('turns a Shift-clicked property key into a key-presence search facet', () => {
         const previousIsMobile = Platform.isMobile;
         const previousIsTablet = Platform.isTablet;
         Platform.isMobile = false;
@@ -263,7 +263,7 @@ describe('useNavigationPaneTreeInteractions', () => {
                 stopPropagation
             } as unknown as React.MouseEvent);
 
-            expect(onModifySearchWithProperty).toHaveBeenCalledWith('status', '', 'AND');
+            expect(onModifySearchWithProperty).toHaveBeenCalledWith('status', null, 'AND');
             expect(onResetSearchForNavigation).not.toHaveBeenCalled();
             expect(preventDefault).toHaveBeenCalledTimes(1);
             expect(stopPropagation).toHaveBeenCalledTimes(1);
@@ -271,6 +271,20 @@ describe('useNavigationPaneTreeInteractions', () => {
             Platform.isMobile = previousIsMobile;
             Platform.isTablet = previousIsTablet;
         }
+    });
+
+    it('selects the aggregate Tags root instead of the legacy tagged-only collection', () => {
+        const harness = renderTreeInteractionHarness({
+            settings: {
+                ...DEFAULT_SETTINGS,
+                showAllTagsFolder: true
+            }
+        });
+
+        harness.result.handleTagCollectionClick(ALL_TAGS_TAG_ID, {} as React.MouseEvent<HTMLDivElement>);
+
+        expect(harness.onResetSearchForNavigation).toHaveBeenCalledOnce();
+        expect(harness.selectionDispatch).toHaveBeenCalledWith({ type: 'SET_SELECTED_TAG', tag: ALL_TAGS_TAG_ID });
     });
 
     it('turns a Shift-clicked structural Type into a search facet without changing navigation selection', () => {

@@ -45,7 +45,7 @@ import {
     type ManualSortGroupHeaderData
 } from '../../utils/manualSort';
 import { getCachedWordCountTargetFromFrontmatter, getWordCountTargetFromProperties } from '../../utils/wordCountUtils';
-import { createHiddenTagVisibility } from '../../utils/tagPrefixMatcher';
+import { createHiddenTagVisibility, normalizeTagPathValue } from '../../utils/tagPrefixMatcher';
 import { getCachedFileTags } from '../../utils/tagUtils';
 import { DateUtils } from '../../utils/dateUtils';
 import { buildListGroupCollapseKey } from '../../utils/listGroupCollapse';
@@ -299,6 +299,9 @@ function buildListItemsInternal(
     >;
     const pushFileItem = (file: TFile, overrides: FileItemOverrides = {}, instanceKey?: string) => {
         activeGroupHeaderItem?.groupFilePaths?.push(file.path);
+        if (activeGroupHeaderItem) {
+            activeGroupHeaderItem.groupItemCount = (activeGroupHeaderItem.groupItemCount ?? 0) + 1;
+        }
         if (activeGroupHeaderKey && groupItemCountByKey) {
             groupItemCountByKey.set(activeGroupHeaderKey, (groupItemCountByKey.get(activeGroupHeaderKey) ?? 0) + 1);
         }
@@ -350,10 +353,22 @@ function buildListItemsInternal(
         collapseKey,
         manualSortHeader,
         manualSortHeaderFilePath,
-        groupFiles
+        groupFiles,
+        groupBucketKey,
+        groupNumericSortValue,
+        groupDaySortValue
     }: Pick<
         ListPaneItem,
-        'data' | 'key' | 'headerFolderPath' | 'headerFolderSegments' | 'headerKind' | 'collapseKey' | 'manualSortHeaderFilePath'
+        | 'data'
+        | 'key'
+        | 'headerFolderPath'
+        | 'headerFolderSegments'
+        | 'headerKind'
+        | 'collapseKey'
+        | 'manualSortHeaderFilePath'
+        | 'groupBucketKey'
+        | 'groupNumericSortValue'
+        | 'groupDaySortValue'
     > & {
         manualSortHeader?: ManualSortGroupHeaderData;
         groupFiles?: readonly TFile[];
@@ -384,6 +399,10 @@ function buildListItemsInternal(
             headerFolderSegments,
             manualSortHeaderFilePath,
             groupFilePaths: collectGroupItemCounts ? undefined : groupFiles ? groupFiles.map(file => file.path) : [],
+            groupItemCount: groupFiles?.length ?? 0,
+            groupBucketKey,
+            groupNumericSortValue,
+            groupDaySortValue,
             groupTotalItemCount: groupItemCountData?.groupItemCountByKey.get(key),
             manualSortHeaderShowsWordCount: manualSortHeader ? shouldShowManualSortGroupHeaderWordCount(manualSortHeader) : undefined,
             manualSortHeader,
@@ -461,10 +480,11 @@ function buildListItemsInternal(
 
     const shouldGroupByDate = groupingMode === 'date' && isDateSortOption(sortOption);
     const shouldGroupByFolder = groupingMode === 'folder' && selectionType === ItemType.FOLDER;
+    const shouldGroupByTags = groupingMode === 'tags';
     const propertyGroupingKey = getPropertyGroupingKey(groupingMode);
     const shouldShowUnsortedSection = isPropertySortOption(sortOption) && isManualSortActive && propertySortKey.trim().length > 0;
 
-    if (!shouldGroupByDate && !shouldGroupByFolder && propertyGroupingKey === null) {
+    if (!shouldGroupByDate && !shouldGroupByFolder && !shouldGroupByTags && propertyGroupingKey === null) {
         const sortedFiles: TFile[] = [];
         const unsortedFiles: TFile[] = [];
         if (shouldShowUnsortedSection) {
@@ -532,6 +552,67 @@ function buildListItemsInternal(
 
             pushFileItem(file);
         });
+    } else if (shouldGroupByTags) {
+        const tagGroups = new Map<string, { label: string; files: TFile[] }>();
+        const untaggedFiles: TFile[] = [];
+        const tagVisibility = createHiddenTagVisibility(hiddenTags, showHiddenItems);
+
+        unpinnedFiles.forEach(file => {
+            if (file.extension !== 'md') {
+                untaggedFiles.push(file);
+                return;
+            }
+
+            const visibleTags = getCachedFileTags({ app, file, db })
+                .map(tag => ({ label: tag.replace(/^#/, ''), key: normalizeTagPathValue(tag) }))
+                .filter(tag => tag.key.length > 0 && tagVisibility.isTagVisible(tag.key));
+            const uniqueTags = Array.from(new Map(visibleTags.map(tag => [tag.key, tag])).values());
+            if (uniqueTags.length === 0) {
+                untaggedFiles.push(file);
+                return;
+            }
+
+            const groupingTags =
+                listConfig.multiValueGrouping === 'combine'
+                    ? [
+                          {
+                              key: uniqueTags.map(tag => tag.key).join('\u0000'),
+                              label: uniqueTags.map(tag => tag.label).join(', ')
+                          }
+                      ]
+                    : uniqueTags;
+            groupingTags.forEach(tag => {
+                const group = tagGroups.get(tag.key);
+                if (group) {
+                    group.files.push(file);
+                } else {
+                    tagGroups.set(tag.key, { label: tag.label, files: [file] });
+                }
+            });
+        });
+
+        const renderTagGroup = (label: string, groupFiles: TFile[], groupId: string): void => {
+            pushHeaderItem({
+                data: label,
+                collapseKey: createCollapseKey(groupId),
+                key: `header-${groupId}`,
+                headerKind: 'property',
+                groupFiles
+            });
+            groupFiles.forEach(file => {
+                pushFileItem(file, {}, `${file.path}:group:${groupId}`);
+            });
+        };
+        const renderUntaggedGroup = (): void => {
+            renderTagGroup(strings.common.untagged, untaggedFiles, 'tags-no-value');
+        };
+        const orderedTagGroups = Array.from(tagGroups.entries())
+            .map(([key, group]) => ({ key, ...group }))
+            .sort((left, right) => compareByAlphaSortOrder(left.label, right.label, 'alpha-asc') || left.key.localeCompare(right.key));
+
+        if (untaggedFiles.length > 0 && listConfig.noValueGroupPosition === 'top') renderUntaggedGroup();
+        orderedTagGroups.forEach(group => renderTagGroup(group.label, group.files, `tags-value:${group.key}`));
+        if (untaggedFiles.length > 0 && listConfig.noValueGroupPosition !== 'top') renderUntaggedGroup();
     } else if (propertyGroupingKey !== null) {
         // Buckets match the extracted value parts element-wise and groups sort in the configured
         // direction: number-keyed groups first in numeric order, then text groups in natural string
@@ -622,13 +703,21 @@ function buildListItemsInternal(
                 return directionMultiplier * (left.bucketKey < right.bucketKey ? -1 : 1);
             });
 
-        const renderPropertyGroup = (label: string, groupFiles: TFile[], groupId: string): void => {
+        const renderPropertyGroup = (
+            label: string,
+            groupFiles: TFile[],
+            groupId: string,
+            sortMetadata?: { bucketKey: string; numericValue: number | null; daySortValue: number | null }
+        ): void => {
             pushHeaderItem({
                 data: label,
                 collapseKey: createCollapseKey(groupId),
                 key: `header-${groupId}`,
                 headerKind: 'property',
-                groupFiles
+                groupFiles,
+                groupBucketKey: sortMetadata?.bucketKey,
+                groupNumericSortValue: sortMetadata?.numericValue,
+                groupDaySortValue: sortMetadata?.daySortValue
             });
             groupFiles.forEach(file => {
                 pushFileItem(file, {}, `${file.path}:group:${groupId}`);
@@ -642,7 +731,11 @@ function buildListItemsInternal(
         };
         if (ungroupedFiles.length > 0 && listConfig.noValueGroupPosition === 'top') renderNoValueGroup();
         orderedPropertyGroups.forEach(group => {
-            renderPropertyGroup(group.label, group.files, `property-${propertyGroupingGranularity}:${group.bucketKey}`);
+            renderPropertyGroup(group.label, group.files, `property-${propertyGroupingGranularity}:${group.bucketKey}`, {
+                bucketKey: group.bucketKey,
+                numericValue: group.numericValue,
+                daySortValue: group.daySortValue
+            });
         });
         if (ungroupedFiles.length > 0 && listConfig.noValueGroupPosition !== 'top') {
             renderNoValueGroup();
@@ -848,7 +941,7 @@ function buildListItemsInternal(
 export function buildFilePathToIndexMap(listItems: ListPaneItem[]): Map<string, number> {
     const filePathToIndex = new Map<string, number>();
     listItems.forEach((item, index) => {
-        if (item.type === ListPaneItemType.FILE && item.data instanceof TFile) {
+        if (item.type === ListPaneItemType.FILE && item.data instanceof TFile && !filePathToIndex.has(item.data.path)) {
             filePathToIndex.set(item.data.path, index);
         }
     });
@@ -858,7 +951,9 @@ export function buildFilePathToIndexMap(listItems: ListPaneItem[]): Map<string, 
 export function buildFileIndexMap(files: TFile[]): Map<string, number> {
     const fileIndexMap = new Map<string, number>();
     files.forEach((file, index) => {
-        fileIndexMap.set(file.path, index);
+        if (!fileIndexMap.has(file.path)) {
+            fileIndexMap.set(file.path, index);
+        }
     });
     return fileIndexMap;
 }
@@ -872,6 +967,9 @@ export function buildOrderedFiles(listItems: ListPaneItem[]): {
 
     listItems.forEach(item => {
         if (item.type === ListPaneItemType.FILE && item.data instanceof TFile) {
+            if (orderedFileIndexMap.has(item.data.path)) {
+                return;
+            }
             orderedFileIndexMap.set(item.data.path, orderedFiles.length);
             orderedFiles.push(item.data);
         }

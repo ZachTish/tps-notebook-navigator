@@ -27,8 +27,8 @@ import { TagFileMutations } from './tagOperations/TagFileMutations';
 import { TagRenameWorkflow, type TagRenameAnalysis, type TagRenameHooks, type TagRenameResult } from './tagOperations/TagRenameWorkflow';
 import { TagShortcutMutations } from './tagOperations/TagShortcutMutations';
 import type { TagDeleteEventPayload, TagRenameEventPayload } from './tagOperations/types';
-import { TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
 import { resolveDisplayTagPath } from './tagOperations/TagOperationUtils';
+import { isReservedVirtualTagPath } from '../utils/virtualTagCollections';
 
 export type { TagRenameEventPayload, TagDeleteEventPayload } from './tagOperations/types';
 
@@ -91,6 +91,9 @@ export class TagOperations {
     }
 
     async addTagToFiles(tag: string, files: TFile[]): Promise<{ added: number; skipped: number }> {
+        if (isReservedVirtualTagPath(tag)) {
+            return { added: 0, skipped: files.length };
+        }
         return this.batchOperations.addTagToFiles(tag, files);
     }
 
@@ -99,6 +102,9 @@ export class TagOperations {
     }
 
     async removeTagFromFiles(tag: string, files: TFile[]): Promise<number> {
+        if (isReservedVirtualTagPath(tag)) {
+            return 0;
+        }
         return this.batchOperations.removeTagFromFiles(tag, files);
     }
 
@@ -107,11 +113,14 @@ export class TagOperations {
     }
 
     async promptRenameTag(tagPath: string): Promise<void> {
+        if (isReservedVirtualTagPath(tagPath)) {
+            return;
+        }
         await this.openRenameModal(tagPath);
     }
 
     async renameTag(tagPath: string, newTagPath: string): Promise<boolean> {
-        if (tagPath === TAGGED_TAG_ID || tagPath === UNTAGGED_TAG_ID) {
+        if (isReservedVirtualTagPath(tagPath) || isReservedVirtualTagPath(newTagPath)) {
             return false;
         }
         return this.renameWorkflow.renameTag(tagPath, newTagPath);
@@ -122,7 +131,7 @@ export class TagOperations {
      * Renames "parent/child" to just "child"
      */
     async promoteTagToRoot(sourceTagPath: string): Promise<void> {
-        if (sourceTagPath === TAGGED_TAG_ID || sourceTagPath === UNTAGGED_TAG_ID) {
+        if (isReservedVirtualTagPath(sourceTagPath)) {
             return;
         }
         const sourceDisplay = this.resolveDisplayTagPath(sourceTagPath);
@@ -141,7 +150,7 @@ export class TagOperations {
      * Moves source tag to become child of target tag
      */
     async renameTagByDrag(sourceTagPath: string, targetTagPath: string): Promise<void> {
-        if (targetTagPath === TAGGED_TAG_ID || targetTagPath === UNTAGGED_TAG_ID) {
+        if (isReservedVirtualTagPath(sourceTagPath) || isReservedVirtualTagPath(targetTagPath)) {
             return;
         }
         const sourceDisplay = this.resolveDisplayTagPath(sourceTagPath);
@@ -155,6 +164,9 @@ export class TagOperations {
     }
 
     async promptDeleteTag(tagPath: string): Promise<void> {
+        if (isReservedVirtualTagPath(tagPath)) {
+            return;
+        }
         await this.deleteWorkflow.promptDeleteTag(tagPath);
     }
 
@@ -179,10 +191,16 @@ export class TagOperations {
     }
 
     protected async runTagRename(oldTagPath: string, newTagPath: string, presetTargets?: RenameFile[] | null): Promise<boolean> {
+        if (isReservedVirtualTagPath(oldTagPath) || isReservedVirtualTagPath(newTagPath)) {
+            return false;
+        }
         return this.renameWorkflow.runTagRename(oldTagPath, newTagPath, presetTargets ?? null);
     }
 
     protected async runTagDelete(tagPath: string, presetPaths?: readonly string[] | null): Promise<boolean> {
+        if (isReservedVirtualTagPath(tagPath)) {
+            return false;
+        }
         return this.deleteWorkflow.runTagDelete(tagPath, presetPaths);
     }
 

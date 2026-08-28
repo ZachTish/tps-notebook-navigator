@@ -23,6 +23,8 @@ import type { PropertyItem } from '../../../src/storage/IndexedDBStorage';
 import type { IndexedDBStorage } from '../../../src/storage/IndexedDBStorage';
 import {
     buildListGroupItemCountData,
+    buildFilePathToIndexMap,
+    buildOrderedFiles,
     buildListItems,
     findCollapsedListGroupRevealTarget,
     resolveListGroupExpansionToggleState,
@@ -30,7 +32,7 @@ import {
 } from '../../../src/hooks/listPaneData/listItems';
 import { FILE_VISIBILITY } from '../../../src/utils/fileTypeUtils';
 import { createTestTFile } from '../../utils/createTestTFile';
-import { ItemType, ListPaneItemType, PINNED_SECTION_HEADER_KEY } from '../../../src/types';
+import { ALL_TAGS_TAG_ID, ItemType, ListPaneItemType, PINNED_SECTION_HEADER_KEY } from '../../../src/types';
 import { buildListGroupCollapseKey, buildListGroupCollapseKeyPrefix } from '../../../src/utils/listGroupCollapse';
 import { formatTextCount } from '../../../src/utils/wordCountUtils';
 import type { ListPaneItem } from '../../../src/types/virtualization';
@@ -1912,6 +1914,86 @@ describe('buildListItems pinned display scope', () => {
         expect(getFileItems(items)).toEqual([{ path: regularFile.path, isPinned: false }]);
         expect(findCollapsedListGroupRevealTarget(items, pinnedFile.path, false)).toEqual({ type: 'pinned' });
         expect(findCollapsedListGroupRevealTarget(items, regularFile.path, false)).toBeNull();
+    });
+});
+
+describe('buildListItems tag grouping', () => {
+    it('groups notes by every tag and places untagged notes at the configured edge', () => {
+        const alpha = createTestTFile('notes/Alpha.md');
+        const both = createTestTFile('notes/Both.md');
+        const untagged = createTestTFile('notes/Untagged.md');
+        const db = createDb({
+            [alpha.path]: { tags: ['alpha'], properties: null },
+            [both.path]: { tags: ['beta', 'alpha'], properties: null },
+            [untagged.path]: { tags: [], properties: null }
+        });
+        const build = (noValueGroupPosition: 'top' | 'bottom') =>
+            buildListItems({
+                app: createApp(),
+                dayKey: '2026-03-07',
+                fileVisibility: FILE_VISIBILITY.DOCUMENTS,
+                files: [alpha, both, untagged],
+                getDB: () => db,
+                getFileTimestamps: () => ({ created: 0, modified: 0 }),
+                hiddenFileState: new Map(),
+                hiddenTags: [],
+                listConfig: {
+                    ...createListConfig({}),
+                    groupBy: 'tags',
+                    multiValueGrouping: 'separate',
+                    noValueGroupPosition
+                },
+                searchMetaMap: new Map(),
+                selectedFolder: null,
+                selectedTag: ALL_TAGS_TAG_ID,
+                selectionType: ItemType.TAG,
+                showHiddenItems: false,
+                sortOption: 'title-asc'
+            });
+
+        const bottomItems = build('bottom');
+        expect(getHeaderItems(bottomItems).map(item => item.data)).toEqual(['alpha', 'beta', 'Untagged']);
+        expect(getFileItems(bottomItems).map(item => item.path)).toEqual([alpha.path, both.path, both.path, untagged.path]);
+
+        expect(getHeaderItems(build('top')).map(item => item.data)).toEqual(['Untagged', 'alpha', 'beta']);
+
+        const bothRowIndexes = bottomItems
+            .map((item, index) => ({ item, index }))
+            .filter(({ item }) => item.type === ListPaneItemType.FILE && item.data instanceof TFile && item.data.path === both.path)
+            .map(({ index }) => index);
+        expect(bothRowIndexes).toHaveLength(2);
+        expect(buildFilePathToIndexMap(bottomItems).get(both.path)).toBe(bothRowIndexes[0]);
+        expect(buildOrderedFiles(bottomItems).orderedFiles.map(file => file.path)).toEqual([alpha.path, both.path, untagged.path]);
+    });
+
+    it('uses the same hidden-tag visibility for search-independent totals and rendered tag groups', () => {
+        const visible = createTestTFile('notes/Visible.md');
+        const hiddenOnly = createTestTFile('notes/Hidden.md');
+        const db = createDb({
+            [visible.path]: { tags: ['alpha'], properties: null },
+            [hiddenOnly.path]: { tags: ['private'], properties: null }
+        });
+        const commonArgs = {
+            app: createApp(),
+            dayKey: '2026-03-07',
+            fileVisibility: FILE_VISIBILITY.DOCUMENTS,
+            getDB: () => db,
+            getFileTimestamps: () => ({ created: 0, modified: 0 }),
+            hiddenFileState: new Map<string, boolean>(),
+            hiddenTags: ['private'],
+            listConfig: { ...createListConfig({}), groupBy: 'tags' as const },
+            searchMetaMap: new Map(),
+            selectedFolder: null,
+            selectedTag: ALL_TAGS_TAG_ID,
+            selectionType: ItemType.TAG,
+            showHiddenItems: false,
+            sortOption: 'title-asc' as const
+        };
+        const totals = buildListGroupItemCountData({ ...commonArgs, files: [visible, hiddenOnly] });
+        const items = buildListItems({ ...commonArgs, files: [hiddenOnly], groupItemCountData: totals });
+
+        expect(getHeaderItems(items).map(item => item.data)).toEqual(['Untagged']);
+        expect(items.find(item => item.type === ListPaneItemType.HEADER)?.groupTotalItemCount).toBe(1);
     });
 });
 

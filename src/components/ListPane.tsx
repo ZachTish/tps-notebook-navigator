@@ -106,6 +106,8 @@ import {
     applyManualSortTargetOrderToPlanningScope,
     areManualSortAssignmentsCached,
     buildManualSortRankPlan,
+    canUseManualSortKeyboardReorder,
+    dedupeManualSortFilesByPath,
     getFolderPlanningInsertionIndex,
     getCachedManualSortRank,
     getLocalizedManualSortWriteFailureMessage,
@@ -123,7 +125,8 @@ import { showNotice } from '../utils/noticeUtils';
 import { getErrorMessage } from '../utils/errorUtils';
 import { strings } from '../i18n';
 import { ConfirmModal } from '../modals/ConfirmModal';
-import { resolveEffectiveListGroupingForSort, resolveListGroupingOverride } from '../utils/listGrouping';
+import { resolveEffectiveListGroupingForSort, resolveListGrouping } from '../utils/listGrouping';
+import { isAggregateNavigationSelection } from '../utils/descendantVisibility';
 import { focusElementPreventScroll } from '../utils/domUtils';
 import { createBuiltInRowProviderSelection } from '../integrations/rowProviderIntegrations';
 import { useExternalRowProviderSelection } from '../hooks/useProviderRows';
@@ -599,6 +602,15 @@ export const ListPane = React.memo(
             setManualSortEditState(null);
         }, [manualSortSelectionKey, manualSortEditState]);
 
+        const effectiveGroupBy = resolveEffectiveListGroupingForSort({
+            groupBy: appearanceSettings.groupBy,
+            sortOption: effectiveSortOption,
+            selectionType,
+            isManualSortActive,
+            isManualSortEditActive,
+            preserveGroupingDuringManualSort: isAggregateNavigationSelection({ selectionType, selectedTag, selectedProperty })
+        });
+
         useEffect(() => {
             if (!propertyKeyboardReorderState) {
                 return;
@@ -609,6 +621,7 @@ export const ListPane = React.memo(
                 isSearchActive ||
                 !isManualSortActive ||
                 !effectivePropertySortKey ||
+                effectiveGroupBy !== 'custom' ||
                 propertyKeyboardReorderState.selectionKey !== manualSortSelectionKey ||
                 propertyKeyboardReorderState.propertyKey !== effectivePropertySortKey
             ) {
@@ -618,6 +631,7 @@ export const ListPane = React.memo(
             }
         }, [
             effectivePropertySortKey,
+            effectiveGroupBy,
             isManualSortEditActive,
             isManualSortActive,
             isSearchActive,
@@ -625,8 +639,13 @@ export const ListPane = React.memo(
             propertyKeyboardReorderState
         ]);
 
-        const canUsePropertyKeyboardReorder =
-            !isManualSortEditActive && !isSearchActive && isManualSortActive && effectivePropertySortKey.length > 0;
+        const canUsePropertyKeyboardReorder = canUseManualSortKeyboardReorder({
+            isManualSortEditActive,
+            isSearchActive,
+            isManualSortActive,
+            propertyKey: effectivePropertySortKey,
+            groupingMode: effectiveGroupBy
+        });
         const activePropertyKeyboardReorderState =
             canUsePropertyKeyboardReorder &&
             propertyKeyboardReorderState?.selectionKey === manualSortSelectionKey &&
@@ -635,13 +654,6 @@ export const ListPane = React.memo(
                 : null;
         const propertySortOrderOverride = activePropertyKeyboardReorderState?.order ?? null;
 
-        const effectiveGroupBy = resolveEffectiveListGroupingForSort({
-            groupBy: appearanceSettings.groupBy,
-            sortOption: effectiveSortOption,
-            selectionType,
-            isManualSortActive,
-            isManualSortEditActive
-        });
         const effectiveAppearanceSettings = useMemo(
             () =>
                 effectiveGroupBy === appearanceSettings.groupBy ? appearanceSettings : { ...appearanceSettings, groupBy: effectiveGroupBy },
@@ -861,10 +873,13 @@ export const ListPane = React.memo(
             selectedProperty,
             selectedType
         );
-        const groupingResolution = resolveListGroupingOverride({
-            noteGrouping: settings.noteGrouping,
+        const groupingResolution = resolveListGrouping({
+            settings,
             selectionType,
-            groupBy: selectedAppearance?.groupBy
+            folderPath: selectedFolder?.path ?? null,
+            tag: selectedTag,
+            propertyNodeId: selectedProperty,
+            typeId: selectedType
         });
         const renderedEffectiveGroupBy = resolveRenderedPropertyGroupingForSelection(
             selectionType,
@@ -1750,15 +1765,17 @@ export const ListPane = React.memo(
                 }
 
                 const activePinnedState = Boolean(activeItem.isPinned);
-                return listItems.flatMap(item => {
-                    if (item.type !== ListPaneItemType.FILE || !(item.data instanceof TFile)) {
-                        return [];
-                    }
-                    if (Boolean(item.isPinned) !== activePinnedState) {
-                        return [];
-                    }
-                    return [item.data];
-                });
+                return dedupeManualSortFilesByPath(
+                    listItems.flatMap(item => {
+                        if (item.type !== ListPaneItemType.FILE || !(item.data instanceof TFile)) {
+                            return [];
+                        }
+                        if (Boolean(item.isPinned) !== activePinnedState) {
+                            return [];
+                        }
+                        return [item.data];
+                    })
+                );
             },
             [listItems]
         );

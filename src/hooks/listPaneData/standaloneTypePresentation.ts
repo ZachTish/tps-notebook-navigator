@@ -70,6 +70,11 @@ export function getEffectiveStandaloneStructuralTypeGrouping(
     groupBy: ListNoteGroupingOption,
     mixedStructuralSearchActive: boolean
 ): ListNoteGroupingOption {
+    // Source-backed rows do not have a stable tag-instance contract. Keep a global Tags default
+    // from claiming a grouping the structural presenter cannot render.
+    if (groupBy === 'tags') {
+        return 'custom';
+    }
     if (mixedStructuralSearchActive || isTpsNavigatorGcmLineTypeId(selectedType) || getPropertyGroupingSource(groupBy) !== 'line') {
         return groupBy;
     }

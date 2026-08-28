@@ -7,13 +7,29 @@ import { ListPaneItemType } from '../../types';
 import type { ListPaneItem } from '../../types/virtualization';
 import type { TpsNavigatorLineTypeId } from '../../types/navigatorTypes';
 import { NAVIGATOR_ROW_PROVIDER_MAX_ROWS, type NavigatorProvidedRow } from './types';
-import { getPropertyGroupingValues } from '../../utils/sortUtils';
+import {
+    compareByAlphaSortOrder,
+    getPropertyDayGroupingValue,
+    getPropertyDayGroupingValues,
+    getPropertyGroupingValues
+} from '../../utils/sortUtils';
 import { getMatchingRecordValue } from '../../utils/recordUtils';
 
 export interface ProviderPropertyGrouping {
     propertyKey: string;
     noValueLabel: string;
     noValuePosition: 'top' | 'bottom';
+    valueGroupIdPrefix: string;
+    noValueGroupId: string;
+    granularity?: 'value' | 'day';
+    multiValueGrouping?: 'separate' | 'combine';
+    formatLabel?: (label: string) => string;
+    isLabelVisible?: (label: string) => boolean;
+    getLabelKey?: (label: string) => string;
+    compareLabelKeys?: (left: string, right: string) => number;
+    direction?: 'asc' | 'desc';
+    getCollapseKey?: (groupId: string) => string;
+    isCollapsed?: (collapseKey: string) => boolean;
 }
 
 /**
@@ -106,75 +122,230 @@ export function mergeProviderRowsIntoList(
 
     if (!propertyGrouping || propertyRows.length === 0) return merged;
 
-    const rowsByGroup = new Map<string, NavigatorProvidedRow[]>();
+    const noValueKey = '\u0000no-value';
+    type ProviderGroup = {
+        key: string;
+        label: string;
+        numericValue: number | null;
+        daySortValue: number | null;
+        rows: NavigatorProvidedRow[];
+    };
+    const rowsByGroup = new Map<string, ProviderGroup>();
+    const normalizeValue = (value: {
+        parts: readonly string[];
+        numericValue?: number | null;
+        sortValue?: number;
+    }): Omit<ProviderGroup, 'rows'> | null => {
+        const parts = value.parts;
+        const formatted = propertyGrouping.formatLabel?.(parts.join(', ')) ?? parts.join(', ');
+        if (!formatted || propertyGrouping.isLabelVisible?.(formatted) === false) {
+            return null;
+        }
+        return {
+            key: propertyGrouping.getLabelKey?.(formatted) ?? parts.join('\u0000'),
+            label: formatted,
+            numericValue: value.numericValue ?? null,
+            daySortValue: value.sortValue ?? null
+        };
+    };
     propertyRows.forEach(row => {
         const rawValue = getMatchingRecordValue(row.properties, propertyGrouping.propertyKey);
-        const values = getPropertyGroupingValues(rawValue);
-        const labels = values.length > 0 ? values.map(value => value.parts.join(', ')) : [propertyGrouping.noValueLabel];
-        labels.forEach(label => {
-            const rows = rowsByGroup.get(label) ?? [];
-            rows.push(row);
-            rowsByGroup.set(label, rows);
+        const values =
+            propertyGrouping.granularity === 'day'
+                ? propertyGrouping.multiValueGrouping === 'combine'
+                    ? [getPropertyDayGroupingValue(rawValue)].filter(value => value !== null)
+                    : getPropertyDayGroupingValues(rawValue)
+                : getPropertyGroupingValues(rawValue);
+        const normalizedValues = values
+            .map(value => normalizeValue(value))
+            .filter((value): value is Omit<ProviderGroup, 'rows'> => value !== null);
+        const uniqueValues = Array.from(new Map(normalizedValues.map(value => [value.key, value])).values());
+        const groups =
+            uniqueValues.length === 0
+                ? [
+                      {
+                          key: noValueKey,
+                          label: propertyGrouping.noValueLabel,
+                          numericValue: null,
+                          daySortValue: null
+                      }
+                  ]
+                : propertyGrouping.multiValueGrouping === 'combine'
+                  ? [
+                        {
+                            key: uniqueValues.map(value => value.key).join('\u0000'),
+                            label: uniqueValues.map(value => value.label).join(', '),
+                            numericValue: null,
+                            daySortValue: uniqueValues[0]?.daySortValue ?? null
+                        }
+                    ]
+                  : uniqueValues;
+        groups.forEach(group => {
+            const entry = rowsByGroup.get(group.key) ?? { ...group, rows: [] };
+            entry.rows.push(row);
+            rowsByGroup.set(group.key, entry);
         });
     });
 
+    const getHeaderGroupKey = (item: ListPaneItem): string | null => {
+        if (item.key === `header-${propertyGrouping.noValueGroupId}`) {
+            return noValueKey;
+        }
+        const prefix = `header-${propertyGrouping.valueGroupIdPrefix}`;
+        return item.key.startsWith(prefix) ? item.key.slice(prefix.length) : null;
+    };
     const result: ListPaneItem[] = [];
-    let currentPropertyLabel: string | null = null;
-    const renderedLabels = new Set<string>();
+    let currentPropertyKey: string | null = null;
+    const renderedKeys = new Set<string>();
     const flush = () => {
-        if (currentPropertyLabel === null) return;
-        const rows = rowsByGroup.get(currentPropertyLabel) ?? [];
+        if (currentPropertyKey === null) return;
+        const rows = rowsByGroup.get(currentPropertyKey)?.rows ?? [];
         rows.forEach(row => {
             result.push({
                 type: ListPaneItemType.PROVIDER_ROW,
                 data: row,
-                key: `provider:${row.providerId}:${row.id}:${currentPropertyLabel}`
+                key: `provider:${row.providerId}:${row.id}:${currentPropertyKey}`
             });
         });
-        if (rows.length > 0) renderedLabels.add(currentPropertyLabel);
-        currentPropertyLabel = null;
+        currentPropertyKey = null;
     };
     merged.forEach(item => {
-        if (item.type === ListPaneItemType.HEADER && item.headerKind === 'property') {
+        if (
+            currentPropertyKey !== null &&
+            (item.type === ListPaneItemType.HEADER_SPACER ||
+                (item.type === ListPaneItemType.HEADER && item.headerKind === 'property') ||
+                item.type === ListPaneItemType.BOTTOM_SPACER)
+        ) {
             flush();
-            currentPropertyLabel = typeof item.data === 'string' ? item.data : '';
+        }
+        let outputItem = item;
+        if (item.type === ListPaneItemType.HEADER && item.headerKind === 'property') {
+            const groupKey = getHeaderGroupKey(item);
+            if (groupKey !== null && rowsByGroup.has(groupKey)) {
+                renderedKeys.add(groupKey);
+                outputItem = {
+                    ...item,
+                    groupItemCount:
+                        (item.groupItemCount ?? item.groupFilePaths?.length ?? 0) + (rowsByGroup.get(groupKey)?.rows.length ?? 0),
+                    // Provider rows are queried from the visible/search scope, so an unfiltered
+                    // provider total is unavailable. Suppress the native-only total rather than
+                    // rendering an impossible visible/total pair such as 2/1.
+                    groupTotalItemCount: undefined
+                };
+            }
+            currentPropertyKey = item.isCollapsed ? null : groupKey;
         } else if (item.type === ListPaneItemType.BOTTOM_SPACER) {
             flush();
         }
-        result.push(item);
+        result.push(outputItem);
     });
     flush();
 
-    const missingLabels = Array.from(rowsByGroup.keys()).filter(label => !renderedLabels.has(label));
-    const bottomIndex = result.findIndex(item => item.type === ListPaneItemType.BOTTOM_SPACER);
-    const additions: ListPaneItem[] = missingLabels.flatMap(label => [
-        {
-            type: ListPaneItemType.HEADER,
-            data: label,
-            key: `header-provider-property:${propertyGrouping.propertyKey}:${label}`,
-            headerKind: 'property' as const,
-            groupFilePaths: (rowsByGroup.get(label) ?? []).map(row => row.sourcePath)
-        },
-        ...(rowsByGroup.get(label) ?? []).map(row => ({
-            type: ListPaneItemType.PROVIDER_ROW,
-            data: row,
-            key: `provider:${row.providerId}:${row.id}:${label}`
-        }))
-    ]);
-    if (additions.length === 0) return result;
-    const insertionIndex = bottomIndex === -1 ? result.length : bottomIndex;
-    if (propertyGrouping.noValuePosition === 'top' && missingLabels.includes(propertyGrouping.noValueLabel)) {
-        const firstHeader = result.findIndex(item => item.type === ListPaneItemType.HEADER && item.headerKind === 'property');
-        const noValueAdditions = additions.filter(
-            item => item.data === propertyGrouping.noValueLabel || item.key.endsWith(`:${propertyGrouping.noValueLabel}`)
-        );
-        const otherAdditions = additions.filter(item => !noValueAdditions.includes(item));
-        const topIndex = firstHeader === -1 ? insertionIndex : firstHeader;
-        result.splice(topIndex, 0, ...noValueAdditions);
-        result.splice(insertionIndex + noValueAdditions.length, 0, ...otherAdditions);
-        return result;
-    }
-    result.splice(insertionIndex, 0, ...additions);
+    const directionMultiplier = propertyGrouping.direction === 'desc' ? -1 : 1;
+    const alphaOrder = propertyGrouping.direction === 'desc' ? 'alpha-desc' : 'alpha-asc';
+    const compareGroups = (left: Omit<ProviderGroup, 'rows'>, right: Omit<ProviderGroup, 'rows'>): number => {
+        if (left.daySortValue !== null && right.daySortValue !== null && left.daySortValue !== right.daySortValue) {
+            return directionMultiplier * (left.daySortValue < right.daySortValue ? -1 : 1);
+        }
+        if (left.numericValue !== null && right.numericValue !== null) {
+            if (left.numericValue !== right.numericValue) {
+                return directionMultiplier * (left.numericValue < right.numericValue ? -1 : 1);
+            }
+        } else if (left.numericValue !== null || right.numericValue !== null) {
+            return directionMultiplier * (left.numericValue !== null ? -1 : 1);
+        } else {
+            const labelCompare = compareByAlphaSortOrder(left.label, right.label, alphaOrder);
+            if (labelCompare !== 0) {
+                return labelCompare;
+            }
+        }
+        const keyCompare = propertyGrouping.compareLabelKeys?.(left.key, right.key) ?? (left.key < right.key ? -1 : 1);
+        return directionMultiplier * keyCompare;
+    };
+    const missingGroups = Array.from(rowsByGroup.entries())
+        .filter(([key]) => !renderedKeys.has(key))
+        .map(([key, group]) => ({ key, group, isNoValue: key === noValueKey }))
+        .sort((left, right) => {
+            if (left.isNoValue || right.isNoValue) {
+                if (left.isNoValue && right.isNoValue) return 0;
+                const noValueFirst = propertyGrouping.noValuePosition === 'top';
+                return left.isNoValue === noValueFirst ? -1 : 1;
+            }
+            return compareGroups(left.group, right.group);
+        });
+    missingGroups.forEach(({ key, group, isNoValue }) => {
+        const groupId = isNoValue ? propertyGrouping.noValueGroupId : `${propertyGrouping.valueGroupIdPrefix}${key}`;
+        const collapseKey = propertyGrouping.getCollapseKey?.(groupId);
+        const isCollapsed = collapseKey ? propertyGrouping.isCollapsed?.(collapseKey) === true : false;
+        const block: ListPaneItem[] = [
+            {
+                type: ListPaneItemType.HEADER,
+                data: group.label,
+                key: `header-${groupId}`,
+                headerKind: 'property',
+                collapseKey,
+                isCollapsed,
+                groupFilePaths: [],
+                groupItemCount: group.rows.length,
+                groupBucketKey: group.key,
+                groupNumericSortValue: group.numericValue,
+                groupDaySortValue: group.daySortValue
+            },
+            ...(isCollapsed
+                ? []
+                : group.rows.map<ListPaneItem>(row => ({
+                      type: ListPaneItemType.PROVIDER_ROW,
+                      data: row,
+                      key: `provider:${row.providerId}:${row.id}:${key}`
+                  })))
+        ];
+        const bottomIndex = result.findIndex(item => item.type === ListPaneItemType.BOTTOM_SPACER);
+        let insertionIndex = bottomIndex === -1 ? result.length : bottomIndex;
+        const propertyHeaderIndexes = result
+            .map((item, index) => ({ item, index }))
+            .filter(({ item }) => item.type === ListPaneItemType.HEADER && item.headerKind === 'property');
+        if (isNoValue && propertyGrouping.noValuePosition === 'top') {
+            insertionIndex = propertyHeaderIndexes[0]?.index ?? insertionIndex;
+        } else if (!isNoValue) {
+            const nextHeader = propertyHeaderIndexes.find(({ item }) => {
+                if (getHeaderGroupKey(item) === noValueKey) {
+                    return propertyGrouping.noValuePosition === 'bottom';
+                }
+                const label = typeof item.data === 'string' ? item.data : '';
+                const existingKey = getHeaderGroupKey(item) ?? label;
+                return (
+                    compareGroups(
+                        {
+                            key: item.groupBucketKey ?? existingKey,
+                            label,
+                            numericValue: item.groupNumericSortValue ?? null,
+                            daySortValue: item.groupDaySortValue ?? null
+                        },
+                        group
+                    ) > 0
+                );
+            });
+            insertionIndex = nextHeader?.index ?? insertionIndex;
+        }
+        if (insertionIndex > 0 && result[insertionIndex - 1]?.type === ListPaneItemType.HEADER_SPACER) {
+            insertionIndex -= 1;
+        }
+        if (insertionIndex > 0 && result[insertionIndex - 1]?.type !== ListPaneItemType.TOP_SPACER) {
+            block.unshift({
+                type: ListPaneItemType.HEADER_SPACER,
+                data: '',
+                key: `header-${groupId}-spacer-before`
+            });
+        }
+        if (result[insertionIndex]?.type === ListPaneItemType.HEADER) {
+            block.push({
+                type: ListPaneItemType.HEADER_SPACER,
+                data: '',
+                key: `header-${groupId}-spacer-after`
+            });
+        }
+        result.splice(insertionIndex, 0, ...block);
+    });
     return result;
 }
 

@@ -25,7 +25,13 @@ import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferenceActions, useUXPreferences } from '../context/UXPreferencesContext';
 import { useFileCache } from '../context/StorageContext';
 import type { ItemScope } from '../settings/types';
-import { PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, TAGS_ROOT_VIRTUAL_FOLDER_ID, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../types';
+import {
+    ALL_TAGS_TAG_ID,
+    PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
+    TAGGED_TAG_ID,
+    TAGS_ROOT_VIRTUAL_FOLDER_ID,
+    TYPES_ROOT_VIRTUAL_FOLDER_ID
+} from '../types';
 import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
 import type { PropertyTreeNode } from '../types/storage';
 import { getPropertyKeyNodeIdFromNodeId } from '../utils/propertyTree';
@@ -263,7 +269,7 @@ function getSelectedPropertyKeyNodeId(selectedPropertyNodeId: string | null): st
 }
 
 function shouldRevealTagsRoot(selectedTag: string | null, showAllTagsFolder: boolean): boolean {
-    return showAllTagsFolder && Boolean(selectedTag) && selectedTag !== TAGGED_TAG_ID;
+    return showAllTagsFolder && Boolean(selectedTag) && selectedTag !== ALL_TAGS_TAG_ID && selectedTag !== TAGGED_TAG_ID;
 }
 
 function shouldRevealPropertiesRoot(selectedPropertyNodeId: string | null, showAllPropertiesFolder: boolean): boolean {

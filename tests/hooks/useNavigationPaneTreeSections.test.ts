@@ -23,7 +23,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import type { NotebookNavigatorSettings } from '../../src/settings/types';
 import type { PropertyItem } from '../../src/storage/IndexedDBStorage';
-import { ItemType, NavigationPaneItemType } from '../../src/types';
+import { ALL_TAGS_TAG_ID, ItemType, NavigationPaneItemType, TAGS_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
 import type { TagTreeNode, PropertyTreeNode } from '../../src/types/storage';
 import { createHiddenTagVisibility } from '../../src/utils/tagPrefixMatcher';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
@@ -135,6 +135,8 @@ function createSourceState(params?: {
     rootPropertyOrderMap?: Map<string, number>;
     visiblePropertyNavigationKeySet?: Set<string>;
     hasRootPropertyShortcut?: boolean;
+    visibleTaggedCount?: number;
+    untaggedCount?: number;
 }): NavigationPaneSourceState {
     const hiddenTagVisibility = createHiddenTagVisibility([], false);
     const visibleTagTree = params?.visibleTagTree ?? new Map<string, TagTreeNode>();
@@ -158,8 +160,8 @@ function createSourceState(params?: {
         missingRootFolderPaths: [],
         tagTree: visibleTagTree,
         propertyTree,
-        untaggedCount: 0,
-        visibleTaggedCount: 2,
+        untaggedCount: params?.untaggedCount ?? 0,
+        visibleTaggedCount: params?.visibleTaggedCount ?? 2,
         hiddenTagMatcher: hiddenTagVisibility.matcher,
         hiddenMatcherHasRules: false,
         visibleTagTree,
@@ -186,6 +188,53 @@ function createSourceState(params?: {
 }
 
 describe('useNavigationPaneTreeSections', () => {
+    it('renders the top-level Tags row as the aggregate collection and delegates its count to the shared count map', () => {
+        dbFileDataByPath.clear();
+
+        let captured: NavigationPaneTreeSectionsResult | null = null;
+
+        function Harness() {
+            captured = useNavigationPaneTreeSections({
+                app: new App(),
+                settings: createSettings({
+                    showAllTagsFolder: true,
+                    showUntagged: true,
+                    scopeTagsToCurrentContext: false
+                }),
+                expansionState: {
+                    expandedFolders: new Set(),
+                    expandedTags: new Set(),
+                    expandedProperties: new Set(),
+                    expandedVirtualFolders: new Set()
+                },
+                showHiddenItems: false,
+                includeDescendantNotes: false,
+                sourceState: createSourceState({
+                    visibleTaggedCount: 3,
+                    untaggedCount: 2
+                }),
+                selectionScope: {
+                    selectionType: ItemType.FOLDER,
+                    selectedFolder: null
+                },
+                tagTreeService: null,
+                propertyTreeService: null
+            });
+            return null;
+        }
+
+        renderToStaticMarkup(React.createElement(Harness));
+
+        expect(captured).not.toBeNull();
+        const rootItem = (captured as NavigationPaneTreeSectionsResult).tagItems[0];
+        expect(rootItem).toMatchObject({
+            type: NavigationPaneItemType.VIRTUAL_FOLDER,
+            key: TAGS_ROOT_VIRTUAL_FOLDER_ID,
+            tagCollectionId: ALL_TAGS_TAG_ID
+        });
+        expect(rootItem?.noteCount).toBeUndefined();
+    });
+
     it('keeps global root tag ordering available while scoped rendering shows only current-context tags', () => {
         dbFileDataByPath.clear();
 

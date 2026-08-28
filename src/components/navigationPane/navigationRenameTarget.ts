@@ -17,7 +17,7 @@
  */
 
 import { TFolder } from 'obsidian';
-import { NavigationPaneItemType, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
+import { ALL_TAGS_TAG_ID, NavigationPaneItemType, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
 import type { CombinedNavigationItem } from '../../types/virtualization';
 import type { NavigationInlineRenameTarget } from './NavigationPaneItemRenderer.types';
 
@@ -57,7 +57,7 @@ export function buildNavigationInlineRenameTarget(
 
     if (item.type === NavigationPaneItemType.TAG) {
         const tagNode = item.data;
-        if (tagNode.path === TAGGED_TAG_ID || tagNode.path === UNTAGGED_TAG_ID) {
+        if (tagNode.path === ALL_TAGS_TAG_ID || tagNode.path === TAGGED_TAG_ID || tagNode.path === UNTAGGED_TAG_ID) {
             return null;
         }
         return {

@@ -20,7 +20,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App, TFile, TFolder } from 'obsidian';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import type { NotebookNavigatorSettings, VaultProfile } from '../../src/settings/types';
-import { PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, type VisibilityPreferences } from '../../src/types';
+import { ALL_TAGS_TAG_ID, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, type VisibilityPreferences } from '../../src/types';
 import type { ITagTreeProvider } from '../../src/interfaces/ITagTreeProvider';
 import type { IPropertyTreeProvider } from '../../src/interfaces/IPropertyTreeProvider';
 import type { TagTreeNode } from '../../src/types/storage';
@@ -231,6 +231,23 @@ describe('fileFinder getFilesForTag', () => {
         fileDataByPath.clear();
     });
 
+    it.each([false, true])('returns every visible Markdown note for the Tags root when descendants are %s', includeDescendantNotes => {
+        const taggedFile = createTestTFile('notes/tagged.md');
+        setFileTags(taggedFile, ['projects']);
+
+        const untaggedFile = createTestTFile('notes/untagged.md');
+        setFileTags(untaggedFile, []);
+
+        const imageFile = createTestTFile('notes/cover.png');
+        const app = createAppWithFiles([taggedFile, untaggedFile, imageFile]);
+
+        const files = getFilesForTag(ALL_TAGS_TAG_ID, createSettings(), { includeDescendantNotes, showHiddenItems: false }, app, null, {
+            orderResults: false
+        });
+
+        expect(toSortedPaths(files)).toEqual([taggedFile.path, untaggedFile.path]);
+    });
+
     it('uses tag tree candidate paths without scanning all vault files', () => {
         const projectsFile = createTestTFile('notes/projects.md');
         projectsFile.stat.mtime = 10;
@@ -423,7 +440,7 @@ describe('fileFinder getFilesForProperty', () => {
         fileDataByPath.clear();
     });
 
-    it('keeps a property key row scoped to empty values when descendants are enabled', () => {
+    it('returns every note containing a property key regardless of its value', () => {
         const keyOnlyFile = createTestTFile('notes/key-only.md');
         setFileProperties(keyOnlyFile, [{ fieldKey: 'status', value: '' }]);
 
@@ -446,17 +463,17 @@ describe('fileFinder getFilesForProperty', () => {
             { orderResults: false }
         );
 
-        expect(files.map(file => file.path)).toEqual([keyOnlyFile.path]);
+        expect(files.map(file => file.path)).toEqual([keyOnlyFile.path, stringValueFile.path, booleanValueFile.path]);
     });
 
-    it.each([false, true])('asks the property provider for direct key paths when descendants are %s', includeDescendantNotes => {
+    it.each([false, true])('asks the property provider for complete key-presence paths when descendants are %s', includeDescendantNotes => {
         const keyOnlyFile = createTestTFile('notes/key-only.md');
         setFileProperties(keyOnlyFile, [{ fieldKey: 'status', value: '' }]);
 
         const valueFile = createTestTFile('notes/value.md');
         setFileProperties(valueFile, [{ fieldKey: 'status', value: 'working', valueKind: 'string' }]);
 
-        const collectFilePaths = vi.fn(() => new Set([keyOnlyFile.path]));
+        const collectFilePaths = vi.fn(() => new Set([keyOnlyFile.path, valueFile.path]));
         const propertyTreeService: IPropertyTreeProvider = {
             addTreeUpdateListener: () => () => {},
             hasNodes: () => true,
@@ -479,8 +496,8 @@ describe('fileFinder getFilesForProperty', () => {
             { orderResults: false }
         );
 
-        expect(collectFilePaths).toHaveBeenCalledWith(buildPropertyKeyNodeId('status'), false);
-        expect(files.map(file => file.path)).toEqual([keyOnlyFile.path]);
+        expect(collectFilePaths).toHaveBeenCalledWith(buildPropertyKeyNodeId('status'), true);
+        expect(files.map(file => file.path)).toEqual([keyOnlyFile.path, valueFile.path]);
     });
 
     it('keeps property pins visible in property views when folder pin scoping is enabled', () => {

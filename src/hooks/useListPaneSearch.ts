@@ -29,7 +29,7 @@ import { strings } from '../i18n';
 import type { IPropertyTreeProvider } from '../interfaces/IPropertyTreeProvider';
 import type { ITagTreeProvider } from '../interfaces/ITagTreeProvider';
 import { InputModal } from '../modals/InputModal';
-import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
+import { ALL_TAGS_TAG_ID, ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
 import { TIMEOUTS } from '../types/obsidian-extended';
 import {
     ShortcutStartType,
@@ -58,6 +58,7 @@ import { normalizeOptionalVaultFolderPath } from '../utils/pathUtils';
 import { normalizePropertyNodeId, parsePropertyNodeId } from '../utils/propertyTree';
 import { resolveFolderShortcutTarget } from '../utils/shortcutPathResolver';
 import { normalizeTagPath } from '../utils/tagUtils';
+import { getVirtualTagCollection, isVirtualTagCollectionId } from '../utils/virtualTagCollections';
 import type { FilterSearchTokens } from '../utils/filterSearch';
 import { DateUtils } from '../utils/dateUtils';
 import type { NavigateToFolderOptions, RevealPropertyOptions, RevealTagOptions } from './useNavigatorReveal';
@@ -86,6 +87,9 @@ export function includeNavigationSelectionInSearchQuery(
 ): string {
     const tokens = parseFilterSearchTokens(query, { typesNavigationEnabled });
     if (selection.selectionType === ItemType.TAG && selection.selectedTag) {
+        if (selection.selectedTag === ALL_TAGS_TAG_ID) {
+            return query.trim();
+        }
         if (selection.selectedTag === TAGGED_TAG_ID) {
             return tokens.requireTagged || /(?:^|\s)#(?:\s|$)/u.test(query) ? query.trim() : `${query.trim()} #`.trim();
         }
@@ -101,7 +105,7 @@ export function includeNavigationSelectionInSearchQuery(
     if (selection.selectionType === ItemType.PROPERTY && selection.selectedProperty !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID) {
         const property = selection.selectedProperty ? parsePropertyNodeId(selection.selectedProperty) : null;
         if (!property) return query.trim();
-        const searchValue = property.valuePath ?? '';
+        const searchValue = property.valuePath;
         const alreadyIncluded = tokens.propertyTokens.some(token => token.key === property.key && token.value === searchValue);
         return alreadyIncluded ? query.trim() : updateFilterQueryWithProperty(query, property.key, searchValue, 'AND').query;
     }
@@ -179,12 +183,8 @@ function formatSearchShortcutFolderLabel(folderPath: string): string {
 }
 
 function formatSearchShortcutTagLabel(tagPath: string): string {
-    if (tagPath === TAGGED_TAG_ID) {
-        return strings.tagList.tags;
-    }
-
-    if (tagPath === UNTAGGED_TAG_ID) {
-        return strings.common.untagged;
+    if (isVirtualTagCollectionId(tagPath)) {
+        return getVirtualTagCollection(tagPath).getLabel();
     }
 
     if (tagPath.startsWith('#')) {
@@ -260,7 +260,7 @@ export function resolveSearchShortcutStartTarget(
         if (!normalizedTagPath) {
             return null;
         }
-        if (normalizedTagPath === TAGGED_TAG_ID || normalizedTagPath === UNTAGGED_TAG_ID) {
+        if (normalizedTagPath === ALL_TAGS_TAG_ID || normalizedTagPath === TAGGED_TAG_ID || normalizedTagPath === UNTAGGED_TAG_ID) {
             return { type: ShortcutStartType.TAG, tagPath: normalizedTagPath };
         }
 
@@ -639,7 +639,7 @@ export function useListPaneSearch({
     const modifySearchWithTag = useCallback(
         (tag: string, operator: InclusionOperator, options?: SearchQueryUpdateOptions) => {
             const normalizedTag = normalizeTagPath(tag);
-            if (!normalizedTag || normalizedTag === UNTAGGED_TAG_ID) {
+            if (!normalizedTag || normalizedTag === ALL_TAGS_TAG_ID || normalizedTag === UNTAGGED_TAG_ID) {
                 return;
             }
 

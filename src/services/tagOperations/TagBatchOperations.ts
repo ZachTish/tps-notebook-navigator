@@ -18,6 +18,7 @@
 
 import type { TFile } from 'obsidian';
 import { TagFileMutations } from './TagFileMutations';
+import { isReservedVirtualTagPath } from '../../utils/virtualTagCollections';
 
 /**
  * Handles batch tag operations on multiple files
@@ -30,6 +31,9 @@ export class TagBatchOperations {
      * Skips non-markdown files and files that already have the tag or its ancestor
      */
     async addTagToFiles(tag: string, files: TFile[]): Promise<{ added: number; skipped: number }> {
+        if (isReservedVirtualTagPath(tag)) {
+            return { added: 0, skipped: files.length };
+        }
         let added = 0;
         let skipped = 0;
 
@@ -56,6 +60,9 @@ export class TagBatchOperations {
      * Returns count of files where the tag was actually removed
      */
     async removeTagFromFiles(tag: string, files: TFile[]): Promise<number> {
+        if (isReservedVirtualTagPath(tag)) {
+            return 0;
+        }
         let removed = 0;
 
         for (const file of files) {

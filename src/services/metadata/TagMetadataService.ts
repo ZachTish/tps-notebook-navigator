@@ -18,7 +18,7 @@
 
 import { App } from 'obsidian';
 import type { AlphaSortOrder, ListSortOverrideValue, NotebookNavigatorSettings } from '../../settings/types';
-import { ItemType, TAGGED_TAG_ID, UNTAGGED_TAG_ID, type CollapsedPinnedContexts } from '../../types';
+import { ALL_TAGS_TAG_ID, ItemType, TAGGED_TAG_ID, UNTAGGED_TAG_ID, type CollapsedPinnedContexts } from '../../types';
 import { ISettingsProvider } from '../../interfaces/ISettingsProvider';
 import { ITagTreeProvider } from '../../interfaces/ITagTreeProvider';
 import { BaseMetadataService, type MetadataCleanupResult } from './BaseMetadataService';
@@ -38,7 +38,7 @@ import {
 type SettingsMutation = (settings: NotebookNavigatorSettings) => boolean;
 
 function isValidCollapsedPinnedTagContext(path: string, realTagValidator: (path: string) => boolean): boolean {
-    return path === TAGGED_TAG_ID || path === UNTAGGED_TAG_ID || realTagValidator(path);
+    return path === ALL_TAGS_TAG_ID || path === TAGGED_TAG_ID || path === UNTAGGED_TAG_ID || realTagValidator(path);
 }
 
 export interface TagColorData {
@@ -496,11 +496,12 @@ export class TagMetadataService extends BaseMetadataService {
         const validTagPaths = tagTreeProvider?.getAllTagPaths() || [];
 
         const validTags = new Set(validTagPaths.map(path => normalizeTagPath(path)).filter((value): value is string => value !== null));
-        const validator = (path: string) => {
+        const realTagValidator = (path: string) => {
             const normalized = normalizeTagPath(path);
             return normalized ? validTags.has(normalized) : false;
         };
-        const collapsedPinnedContextValidator = (path: string) => isValidCollapsedPinnedTagContext(path, validator);
+        const validator = (path: string) => isValidCollapsedPinnedTagContext(path, realTagValidator);
+        const collapsedPinnedContextValidator = validator;
         const collapsedPinnedContextChanges = this.cleanupCollapsedPinnedContexts(
             ItemType.TAG,
             collapsedPinnedContextValidator,
@@ -561,11 +562,12 @@ export class TagMetadataService extends BaseMetadataService {
         }
 
         const validTags = new Set(validTagPaths.map(path => normalizeTagPath(path)).filter((value): value is string => value !== null));
-        const validator = (path: string) => {
+        const realTagValidator = (path: string) => {
             const normalized = normalizeTagPath(path);
             return normalized ? validTags.has(normalized) : false;
         };
-        const collapsedPinnedContextValidator = (path: string) => isValidCollapsedPinnedTagContext(path, validator);
+        const validator = (path: string) => isValidCollapsedPinnedTagContext(path, realTagValidator);
+        const collapsedPinnedContextValidator = validator;
         const collapsedPinnedContextChanges = this.cleanupCollapsedPinnedContexts(
             ItemType.TAG,
             collapsedPinnedContextValidator,

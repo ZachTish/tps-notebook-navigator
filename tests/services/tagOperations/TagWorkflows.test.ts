@@ -23,6 +23,7 @@ import { TagDeleteWorkflow, type TagDeleteHooks } from '../../../src/services/ta
 import { TagFileMutations } from '../../../src/services/tagOperations/TagFileMutations';
 import { RenameFile, TagDescriptor, TagReplacement, type RenameFileApplyResult } from '../../../src/services/tagRename/TagRenameEngine';
 import { DEFAULT_SETTINGS } from '../../../src/settings/defaultSettings';
+import { ALL_TAGS_TAG_ID } from '../../../src/types';
 import { createTestTFile } from '../../utils/createTestTFile';
 
 class ControlledRenameFile extends RenameFile {
@@ -120,6 +121,17 @@ describe('TagRenameWorkflow', () => {
         expect(hooks.executeRename).not.toHaveBeenCalled();
     });
 
+    it('rejects normalized virtual collection paths at the rename workflow boundary', async () => {
+        const targets = [new RenameFile(app, 'Notes/One.md', [], false)];
+
+        await expect(workflow.runTagRename('#__ALL_TAGS__', 'Projects', targets)).resolves.toBe(false);
+        await expect(workflow.runTagRename('Projects', `${ALL_TAGS_TAG_ID}/child`, targets)).resolves.toBe(false);
+        await expect(workflow.renameTag('Projects', '#__ALL_TAGS__')).resolves.toBe(false);
+
+        expect(hooks.executeRename).not.toHaveBeenCalled();
+        expect(hooks.notifyTagRenamed).not.toHaveBeenCalled();
+    });
+
     it('counts unchanged targets as skipped during executeRename', async () => {
         const oldTag = new TagDescriptor('Projects/Client');
         const newTag = new TagDescriptor('Projects/Clients');
@@ -184,6 +196,15 @@ describe('TagDeleteWorkflow', () => {
             path: 'project/client',
             canonicalPath: 'project/client'
         });
+    });
+
+    it('rejects the all-tags virtual collection at the workflow boundary', async () => {
+        const result = await workflow.runTagDelete(ALL_TAGS_TAG_ID, [file.path]);
+
+        expect(result).toBe(false);
+        expect(deleteTagFromFile).not.toHaveBeenCalled();
+        expect(hooks.removeTagMetadataAfterDelete).not.toHaveBeenCalled();
+        expect(hooks.notifyTagDeleted).not.toHaveBeenCalled();
     });
 
     it('short-circuits when no tags were removed', async () => {

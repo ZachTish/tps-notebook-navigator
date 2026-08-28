@@ -296,8 +296,10 @@
 
                 'Should expose tagCollections helpers': async function () {
                     this.assertExists(this.api.tagCollections, 'tagCollections helper not found');
+                    this.assertEqual(this.api.tagCollections.allId, '__all_tags__', 'allId should match the public constant');
                     this.assertEqual(this.api.tagCollections.taggedId, '__tagged__', 'taggedId should match the public constant');
                     this.assertEqual(this.api.tagCollections.untaggedId, '__untagged__', 'untaggedId should match the public constant');
+                    this.assertTrue(this.api.tagCollections.isCollection('__all_tags__'), 'Should detect all-notes aggregate id');
                     this.assertTrue(this.api.tagCollections.isCollection('__tagged__'), 'Should detect tagged aggregate id');
                     this.assertFalse(this.api.tagCollections.isCollection('work'), 'Normal tags should not be treated as aggregate ids');
                     this.assertTrue(

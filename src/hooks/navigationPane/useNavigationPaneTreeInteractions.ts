@@ -27,12 +27,12 @@ import type { NavigationSelectionState, SelectionAction } from '../../context/Se
 import type { UIAction } from '../../context/UIStateContext';
 import { localStorage } from '../../utils/localStorage';
 import {
+    ALL_TAGS_TAG_ID,
     STORAGE_KEYS,
     ItemType,
     PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
     RECENT_NOTES_VIRTUAL_FOLDER_ID,
     SHORTCUTS_VIRTUAL_FOLDER_ID,
-    TAGGED_TAG_ID,
     TAGS_ROOT_VIRTUAL_FOLDER_ID,
     UNTAGGED_TAG_ID
 } from '../../types';
@@ -561,7 +561,7 @@ export function useNavigationPaneTreeInteractions({
                 return;
             }
 
-            const isVirtualTagRoot = settings.showAllTagsFolder && canonicalPath === TAGGED_TAG_ID;
+            const isVirtualTagRoot = settings.showAllTagsFolder && canonicalPath === ALL_TAGS_TAG_ID;
             const isExpanded = isVirtualTagRoot
                 ? expansionState.expandedVirtualFolders.has(TAGS_ROOT_VIRTUAL_FOLDER_ID)
                 : Boolean(tagNode && expansionState.expandedTags.has(tagNode.path));
@@ -649,7 +649,7 @@ export function useNavigationPaneTreeInteractions({
                     event.preventDefault();
                     event.stopPropagation();
                 }
-                const valuePath = propertyNode.kind === 'value' && propertyNode.valuePath ? propertyNode.valuePath : '';
+                const valuePath = propertyNode.kind === 'value' && propertyNode.valuePath ? propertyNode.valuePath : null;
                 onModifySearchWithProperty(propertyNode.key, valuePath, operator);
                 return;
             }

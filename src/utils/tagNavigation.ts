@@ -20,7 +20,7 @@ import type { ExpansionAction } from '../context/ExpansionContext';
 import type { SelectionAction, SelectionRevealSource } from '../context/SelectionContext';
 import type { ContentPane } from '../context/UIStateContext';
 import type { TagTreeNode } from '../types/storage';
-import { ItemType, TAGS_ROOT_VIRTUAL_FOLDER_ID } from '../types';
+import { ItemType, TAGGED_TAG_ID, TAGS_ROOT_VIRTUAL_FOLDER_ID } from '../types';
 import { resolveCanonicalTagPath } from './tagUtils';
 import { isVirtualTagCollectionId } from './virtualTagCollections';
 import { expandNavigationTreeItems } from './navigationExpansion';
@@ -126,7 +126,9 @@ export function navigateToTag(env: TagNavigationEnvironment, tagPath: string, op
 
     selectTagAndFocus(env, canonicalPath, options);
 
-    const shouldSkipScroll = Boolean(options?.skipScroll);
+    // The tagged-only collection remains addressable for API/shortcut compatibility but has no
+    // dedicated tree row after the visible Tags root became the all-notes collection.
+    const shouldSkipScroll = Boolean(options?.skipScroll) || canonicalPath === TAGGED_TAG_ID;
     if (!shouldSkipScroll && env.requestScroll) {
         env.requestScroll(canonicalPath, { align: 'auto', itemType: ItemType.TAG });
     }

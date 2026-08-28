@@ -516,6 +516,7 @@ export function renderNoteGroupingSetting(setting: Setting, context: SettingsTab
                     attr: { label: strings.settings.items.defaultGrouping.families.groups }
                 });
                 groupsGroupEl.createEl('option', { value: 'folder', text: strings.settings.items.defaultGrouping.options.folder });
+                groupsGroupEl.createEl('option', { value: 'tags', text: strings.tagList.tags });
                 getAvailablePropertyGroupKeys(plugin.settings).forEach(propertyKey => {
                     groupsGroupEl.createEl('option', {
                         value: createPropertyGroupingOption(propertyKey, 'follow'),

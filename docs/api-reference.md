@@ -1,10 +1,10 @@
 # TPS Notebook Navigator API Reference
 
-Updated: August 10, 2026
+Updated: August 27, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 3.4.0
+**Current API Version:** 3.5.0
 
 ## Table of Contents
 
@@ -71,7 +71,7 @@ The API provides nine main namespaces:
 - **`metadata`** - Folder, tag, and property node colors/icons, and pinned files
 - **`navigation`** - Navigate to files in the navigator
 - **`types`** - Discover fixed file and Markdown-structure collections plus registered-provider collections
-- **`tagCollections`** - Work with aggregate tag rows such as "Tags" and "Untagged"
+- **`tagCollections`** - Work with the all-notes, tagged-only, and untagged aggregate tag scopes
 - **`propertyNodes`** - Build and parse property node ids
 - **`rows`** - Register transient rows and actions beneath owning note files
 - **`list`** - Pull or control the current composed list in the primary mounted TPS view
@@ -356,6 +356,7 @@ When calling `navigateToFolder(folder)`:
 When calling `navigateToTag(tag)`:
 
 - Accepts `'work'`, `'#work'`, and aggregate tag collection ids from `nn.tagCollections`
+- `allId` selects the visible all-note **Tags** root; `taggedId` retains the tagged-only compatibility scope used by existing shortcuts and does not correspond to a separate tree row
 - Requires tag data to be available (`storage-ready`)
 - Expands the tags root when "All tags" is enabled and collapsed
 - Expands parent tags for hierarchical tags (e.g. `'parent/child'`)
@@ -432,14 +433,15 @@ if (row) {
 
 ## Tag Collections API
 
-Helpers for aggregate tag rows used by tag menus and navigation.
+Helpers for aggregate tag collection scopes used by tag menus and navigation. The all-notes collection is the visible Tags root; the tagged-only compatibility collection remains addressable without rendering a separate tree row.
 
 | Method | Description | Returns |
 | ------ | ----------- | ------- |
-| `taggedId` | Aggregate row id for notes with at least one tag | `'__tagged__'` |
-| `untaggedId` | Aggregate row id for notes without tags | `'__untagged__'` |
-| `isCollection(tag)` | Check whether a tag target is an aggregate row id | `boolean` |
-| `getLabel(tag)` | Current localized label for an aggregate row id | `string` |
+| `allId` | Collection id for every visible Markdown note and the visible Tags root | `'__all_tags__'` |
+| `taggedId` | Tagged-only compatibility collection id; saved shortcuts remain supported, but it is not a separate tree row | `'__tagged__'` |
+| `untaggedId` | Collection id for notes without tags | `'__untagged__'` |
+| `isCollection(tag)` | Check whether a tag target is an aggregate collection id | `boolean` |
+| `getLabel(tag)` | Current localized label for an aggregate collection id | `string` |
 
 ```typescript
 nn.menus.registerTagMenu(({ tag, addItem }) => {
@@ -789,19 +791,25 @@ result contract.
 
 `setPresentation(update)` validates every supplied field before one settings transaction. It works for folder, tag,
 property, and every fixed built-in Type scope. Fixed source-backed Types accept title, filename, configured created/modified,
-and configured non-manual property sort plus compatible date/property/ungrouped (`custom`) grouping. Property grouping may
+and configured non-manual property sort plus compatible date/property/ungrouped (`custom`) grouping. `groupBy: 'tags'`
+groups note files by their visible tags and keeps notes without a visible tag in a separate group. Property grouping may
 request owning-note values with `property:` / `property-desc:` and `property-day:` / `property-day-desc:`; each also has a
 `-follow` form that tracks sort direction. Line-only `line-property:` / `line-property-desc:` and `line-property-day:` /
 `line-property-day-desc:` forms likewise accept `-follow` and are accepted on folder,
 tag, property, file-backed Type, and GCM line-Type targets so the same saved presentation can govern their active mixed
 structural searches. Standalone Navigator-owned range Types reject line-only grouping because they have no inline-property
-contract. The property key must still be configured. Fixed source-backed Types reject display mode, manual sort, and
+contract. A property grouping key must normally be configured; the selected key itself is also valid when the target is a
+top-level property-key scope. Fixed source-backed Types reject display mode, manual sort, and
 folder/manual grouping. External provider Type and none scopes remain unsupported. All scopes reject the manual-rank
 property, unconfigured property sort/group keys, and an explicitly requested date grouping with a non-date sort. Each
 `null` field removes only that per-scope override and inherits the current default. Values equal to inherited defaults are
 normalized away, unrelated appearance fields are preserved, and any invalid field rejects the whole request without a
 partial write. There is no list subscription: integrations pull snapshots when they need them so large provider
 collections are not cloned continuously.
+
+The aggregate `nn.tagCollections.allId` scope inherits `tags` grouping. A top-level property-key scope inherits
+`property-follow:<selected-key>` grouping, so its group order follows the active sort direction. Passing those inherited
+values clears a redundant override; passing another valid grouping stores an explicit override for that scope.
 
 The presentation snapshot keeps its stable three-field shape. For a source-backed Type, `displayMode` reports the inherited
 default for compatibility, but source rows use their fixed native presentation and `setPresentation({ displayMode: ... })`
@@ -816,7 +824,7 @@ selection are restored from localStorage on startup; row selection is deliberate
 reload.
 
 When `navItem.type === 'tag'`, `navItem.tag` can be either a canonical tag path or an aggregate tag collection id
-(`'__tagged__'` or `'__untagged__'`).
+(`'__all_tags__'`, `'__tagged__'`, or `'__untagged__'`).
 
 When `navItem.type === 'type'`, `navItem.navigatorType` is a fixed file or structural id such as `entity:note`,
 `structural:task`, `structural:code-block`, or `file:pdf`, or a canonical id for an externally registered provider collection. Current snapshots emit
@@ -952,7 +960,7 @@ const dispose = nn?.menus?.registerFolderMenu(({ addItem, folder }) => {
 ### Tag and property context menus
 
 - `registerTagMenu(callback)` receives `context.tag`
-- Use `nn.tagCollections.isCollection(context.tag)` to detect aggregate rows
+- Use `nn.tagCollections.isCollection(context.tag)` to detect aggregate collection scopes
 - `registerPropertyMenu(callback)` receives `context.nodeId`
 
 ### Type collection context menu
@@ -1054,7 +1062,7 @@ Row menu registrations and filters are runtime-only. They do not persist callbac
 Subscribe to navigator events to react to user actions.
 
 Tag strings in events use canonical form (no `#` prefix, lowercase path) for real tags. Some tag events may also use
-aggregate tag collection ids (`'__tagged__'` or `'__untagged__'`). Property node ids use canonical lowercase node ids.
+aggregate tag collection ids (`'__all_tags__'`, `'__tagged__'`, or `'__untagged__'`). Property node ids use canonical lowercase node ids.
 
 | Event                  | Payload                                         | Description                  |
 | ---------------------- | ----------------------------------------------- | ---------------------------- |
@@ -1188,6 +1196,14 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 3.5.0 (2026-08-27)
+
+- Added `tagCollections.allId` for the top-level all-visible-Markdown tag scope
+- Added `groupBy: 'tags'` to List API presentation updates and snapshots
+- Made List API override normalization selection-aware: the all-notes tag scope inherits tag grouping, and top-level
+  property-key scopes inherit grouping by their own key without requiring that key in the global grouping list
+- Preserved the existing tagged-only and untagged collection ids and all other API 3.x contracts
 
 ### Version 3.4.0 (2026-08-10)
 

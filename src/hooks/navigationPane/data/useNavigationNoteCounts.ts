@@ -18,7 +18,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { TFolder, type App } from 'obsidian';
-import { NavigationPaneItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../../types';
+import { ALL_TAGS_TAG_ID, NavigationPaneItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../../types';
 import type { CombinedNavigationItem } from '../../../types/virtualization';
 import type { NoteCountInfo } from '../../../types/noteCounts';
 import type { NotebookNavigatorSettings } from '../../../settings/types';
@@ -30,7 +30,8 @@ import { getDBInstanceOrNull } from '../../../storage/fileOperations';
 import { getFolderNoteDetectionSettings } from '../../../utils/folderNoteLookup';
 import { calculateFolderNoteCounts } from '../../../utils/noteCountUtils';
 import type { PropertyTreeNode } from '../../../types/storage';
-import { getDirectPropertyKeyNoteCount, getTotalPropertyNoteCount } from '../../../utils/propertyTree';
+import { getTotalPropertyNoteCount } from '../../../utils/propertyTree';
+import { getFilesForTag } from '../../../utils/fileFinder';
 
 export interface NavigationNoteCounts {
     tagCounts: Map<string, NoteCountInfo>;
@@ -94,6 +95,13 @@ export function useNavigationNoteCounts(params: UseNavigationNoteCountsParams): 
     const folderCountCacheRef = useRef<{ key: object; counts: Map<string, NoteCountInfo> } | null>(null);
     const hiddenFileTagDataVersion = !showHiddenItems && hiddenFileTags.length > 0 ? tagDataVersion : 0;
     const hiddenFilePropertyVersion = effectiveFrontmatterExclusions.length > 0 ? metadataVisibilityVersion : 0;
+    const allTagsCollectionCount = useMemo(
+        () =>
+            getFilesForTag(ALL_TAGS_TAG_ID, settings, { includeDescendantNotes: false, showHiddenItems }, app, null, {
+                orderResults: false
+            }).length,
+        [app, folderChangeVersion, metadataVisibilityVersion, settings, showHiddenItems, tagDataVersion, vaultChangeVersion]
+    );
 
     const computedTagCounts = useMemo((): Map<string, NoteCountInfo> | null => {
         if (!isVisible || !settings.showTags || !settings.showNoteCount) {
@@ -102,6 +110,12 @@ export function useNavigationNoteCounts(params: UseNavigationNoteCountsParams): 
 
         const counts = new Map<string, NoteCountInfo>();
         const taggedCollectionCurrent = includeDescendantNotes ? visibleTaggedCount : 0;
+
+        counts.set(ALL_TAGS_TAG_ID, {
+            current: allTagsCollectionCount,
+            descendants: 0,
+            total: allTagsCollectionCount
+        });
 
         counts.set(TAGGED_TAG_ID, {
             current: taggedCollectionCurrent,
@@ -132,6 +146,7 @@ export function useNavigationNoteCounts(params: UseNavigationNoteCountsParams): 
 
         return counts;
     }, [
+        allTagsCollectionCount,
         includeDescendantNotes,
         isVisible,
         itemsWithMetadata,
@@ -182,7 +197,7 @@ export function useNavigationNoteCounts(params: UseNavigationNoteCountsParams): 
 
         visiblePropertyNodes.forEach(node => {
             if (node.kind === 'key') {
-                const current = getDirectPropertyKeyNoteCount(node);
+                const current = node.notesWithValue.size;
                 counts.set(node.id, { current, descendants: 0, total: current });
                 return;
             }

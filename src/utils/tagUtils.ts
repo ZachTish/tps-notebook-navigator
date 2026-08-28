@@ -18,7 +18,7 @@
 
 import { TFile, getAllTags, type App } from 'obsidian';
 import type { MultiSelectModifier, NotebookNavigatorSettings } from '../settings/types';
-import { TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
+import { ALL_TAGS_TAG_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
 import type { FileData } from '../storage/IndexedDBStorage';
 import { getDBInstanceOrNull } from '../storage/fileOperations';
 import { isMultiSelectModifierPressed } from './keyboardOpenContext';
@@ -164,6 +164,9 @@ export function normalizeTagPath(tagPath: string | null | undefined): string | n
  * Returns the node path when available, otherwise the normalized string.
  */
 export function resolveCanonicalTagPath(tagPath: string | null | undefined, tagTree?: Map<string, TagTreeNode>): string | null {
+    if (tagPath === ALL_TAGS_TAG_ID) {
+        return ALL_TAGS_TAG_ID;
+    }
     if (tagPath === TAGGED_TAG_ID) {
         return TAGGED_TAG_ID;
     }
@@ -347,6 +350,10 @@ export function determineTagToReveal(
         return currentTag;
     }
 
+    if (currentTag === ALL_TAGS_TAG_ID) {
+        return ALL_TAGS_TAG_ID;
+    }
+
     // Check if file has no tags
     const fileTags = getNormalizedTagsForFile(file, storage);
     if (fileTags.length === 0) {
@@ -368,7 +375,7 @@ export function determineTagToReveal(
     }
 
     // Check if we should stay on the current tag
-    if (currentTag && currentTag !== UNTAGGED_TAG_ID && currentTag !== TAGGED_TAG_ID) {
+    if (currentTag && currentTag !== ALL_TAGS_TAG_ID && currentTag !== UNTAGGED_TAG_ID && currentTag !== TAGGED_TAG_ID) {
         // First check exact match
         if (fileHasExactTag(file, currentTag, storage)) {
             return currentTag; // Stay on current tag
@@ -395,7 +402,7 @@ export function determineTagToReveal(
 }
 
 function isTagVisible(tagPath: string, expandedTags: Set<string>): boolean {
-    if (!tagPath || tagPath === UNTAGGED_TAG_ID || tagPath === TAGGED_TAG_ID) {
+    if (!tagPath || tagPath === ALL_TAGS_TAG_ID || tagPath === UNTAGGED_TAG_ID || tagPath === TAGGED_TAG_ID) {
         return true;
     }
 
@@ -413,7 +420,7 @@ function isTagVisible(tagPath: string, expandedTags: Set<string>): boolean {
 }
 
 export function findNearestVisibleTagAncestor(tagPath: string, expandedTags: Set<string>): string {
-    if (!tagPath || tagPath === UNTAGGED_TAG_ID || tagPath === TAGGED_TAG_ID) {
+    if (!tagPath || tagPath === ALL_TAGS_TAG_ID || tagPath === UNTAGGED_TAG_ID || tagPath === TAGGED_TAG_ID) {
         return tagPath;
     }
 

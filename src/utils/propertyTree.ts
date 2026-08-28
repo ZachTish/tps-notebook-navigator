@@ -317,11 +317,7 @@ export function determinePropertyToReveal(
             const candidateForKey = candidatesByKey.get(parsed.key);
             if (candidateForKey) {
                 if (!parsed.valuePath) {
-                    if (candidateForKey.hasKeyOnlyValue) {
-                        return candidateForKey.keyNodeId;
-                    }
-
-                    return candidateForKey.valueNodeIds[0] ?? null;
+                    return candidateForKey.keyNodeId;
                 }
 
                 const normalizedSelectionValuePath = normalizePropertyTreeValuePath(parsed.valuePath);

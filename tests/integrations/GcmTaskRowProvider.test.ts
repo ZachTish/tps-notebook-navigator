@@ -205,6 +205,32 @@ describe('GcmTaskRowProvider', () => {
         });
     });
 
+    it('publishes canonical task tags and status after case-insensitive inline-field collisions', async () => {
+        const sourceTask = {
+            ...task('Notes/one.md', 4, 'Canonical'),
+            status: 'working',
+            tags: ['career', 'urgent'],
+            fields: {
+                Tags: 'stale-tags',
+                tags: 'duplicate-stale-tags',
+                Status: 'stale-status',
+                status: 'duplicate-stale-status',
+                priority: 'high'
+            }
+        } satisfies GcmTaskRecordLike;
+        const api: GcmTaskApiLike = {
+            version: 1,
+            list: vi.fn(async () => [sourceTask]),
+            focus: vi.fn(async () => true)
+        };
+        const { app } = createApp(api);
+        const provider = new GcmTaskRowProvider();
+
+        const rows = await provider.getRows(context(app, [sourceTask.path]), { enabled: true });
+
+        expect(rows[0]?.properties).toEqual({ Tags: ['career', 'urgent'], Status: 'working', priority: 'high' });
+    });
+
     it('re-resolves the current task and GCM task-line API when the attached-row menu opens', async () => {
         const sourceTask = task('Notes/one.md', 4, 'Initial');
         const currentTask = {

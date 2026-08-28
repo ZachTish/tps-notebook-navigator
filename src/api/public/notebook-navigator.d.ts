@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 3.4.0
+ * Version: 3.5.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -66,9 +66,9 @@ export type IconInput = string;
 export type IconValue = string;
 
 /**
- * Aggregate tag collection ids used by the navigator for virtual tag rows.
+ * Aggregate tag collection scope ids used by tag navigation and filtering.
  */
-export type TagCollectionId = '__tagged__' | '__untagged__';
+export type TagCollectionId = '__all_tags__' | '__tagged__' | '__untagged__';
 
 /** Current host API state published through `tps:notebook-navigator-api-changed`. */
 export interface TpsNotebookNavigatorApiChangedPayload {
@@ -286,6 +286,7 @@ export type NavigatorListGrouping =
     | 'custom'
     | 'date'
     | 'folder'
+    | 'tags'
     | `property:${string}`
     | `property-desc:${string}`
     | `property-follow:${string}`
@@ -514,7 +515,7 @@ export interface FolderMenuExtensionContext {
 export interface TagMenuExtensionContext {
     /** Add a menu item (must be called synchronously during menu construction) */
     addItem(cb: (item: MenuItem) => void): void;
-    /** Canonical tag path, or a tag collection id for aggregate tag rows */
+    /** Canonical tag path, or an aggregate tag collection scope id */
     tag: string;
 }
 
@@ -639,7 +640,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 3.4.0
+ * @version 3.5.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */
@@ -748,15 +749,17 @@ export interface NotebookNavigatorAPI {
         getCurrentRow(): NavigatorRowSelection | null;
     };
 
-    /** Helpers for aggregate tag rows used by tag menus and navigation */
+    /** Helpers for aggregate tag collection scopes used by tag menus and navigation */
     tagCollections: {
-        /** Aggregate row id for notes with at least one tag */
+        /** Collection id for every visible Markdown note; this is the visible Tags root */
+        readonly allId: TagCollectionId;
+        /** Tagged-only compatibility collection id; it has no separate tree row */
         readonly taggedId: TagCollectionId;
-        /** Aggregate row id for notes without tags */
+        /** Collection id for notes without tags */
         readonly untaggedId: TagCollectionId;
-        /** Check whether a tag target is an aggregate row id */
+        /** Check whether a tag target is an aggregate collection id */
         isCollection(tag: string | null | undefined): tag is TagCollectionId;
-        /** Current localized label for an aggregate row id */
+        /** Current localized label for an aggregate collection id */
         getLabel(tag: TagCollectionId): string;
     };
 

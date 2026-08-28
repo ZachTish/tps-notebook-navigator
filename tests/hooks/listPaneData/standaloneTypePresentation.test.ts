@@ -107,6 +107,7 @@ describe('standalone structural Type presentation', () => {
         expect(getEffectiveStandaloneStructuralTypeGrouping(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, 'line-property:status', false)).toBe(
             'line-property:status'
         );
+        expect(getEffectiveStandaloneStructuralTypeGrouping(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES, 'tags', false)).toBe('custom');
     });
 
     it('sorts Title by row label and resolves equal labels by source path, line, and id', () => {

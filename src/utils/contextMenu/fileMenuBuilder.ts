@@ -50,6 +50,7 @@ import { getEffectiveListSort, isManualSortPropertyKey } from '../sortUtils';
 import { addManualSortGroupHeaderMenuItems } from './manualSortGroupHeaderMenuItems';
 import { addMergeNotesMenuItem } from './mergeNotesMenuItems';
 import { resolveEffectiveListGroupingForSort, resolveListGrouping } from '../listGrouping';
+import { isAggregateNavigationSelection } from '../descendantVisibility';
 import { resolveFileIconId } from '../fileIconUtils';
 import { revealFileFromFileMenu } from './fileMenuReveal';
 
@@ -627,7 +628,8 @@ function addManualSortGroupHeaderAction(params: AddManualSortGroupHeaderActionPa
         groupBy: groupingInfo.effectiveGrouping,
         sortOption: sortSpec.option,
         selectionType: selectionState.selectionType,
-        isManualSortActive: isManualSortPropertyKey(settings, sortSpec.propertyKey)
+        isManualSortActive: isManualSortPropertyKey(settings, sortSpec.propertyKey),
+        preserveGroupingDuringManualSort: isAggregateNavigationSelection(selectionState)
     });
     if (effectiveGrouping !== 'custom') {
         return false;

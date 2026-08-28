@@ -26,7 +26,7 @@ import { useFileCache } from '../context/StorageContext';
 import { useExpansionState } from '../context/ExpansionContext';
 import { strings } from '../i18n';
 import { getDBInstance } from '../storage/fileOperations';
-import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
+import { ALL_TAGS_TAG_ID, ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
 import { FOLDER_NOTE_TYPE_EXTENSIONS } from '../types/folderNote';
 import { hasSubfolders } from '../utils/fileFilters';
 import { resolveFolderNoteName } from '../utils/folderNoteName';
@@ -389,9 +389,11 @@ export function useListPaneTitle(): UseListPaneTitleResult {
         if (selectionState.selectionType === ItemType.TAG && selectionState.selectedTag) {
             const tag = selectionState.selectedTag;
 
-            // Handle virtual tag collection showing all tagged notes
-            if (tag === TAGGED_TAG_ID) {
-                const taggedLabel = getVirtualTagCollection(VIRTUAL_TAG_COLLECTION_IDS.TAGGED).getLabel();
+            // Handle the aggregate Tags root and the legacy tagged-only collection.
+            if (tag === ALL_TAGS_TAG_ID || tag === TAGGED_TAG_ID) {
+                const taggedLabel = getVirtualTagCollection(
+                    tag === ALL_TAGS_TAG_ID ? VIRTUAL_TAG_COLLECTION_IDS.ALL : VIRTUAL_TAG_COLLECTION_IDS.TAGGED
+                ).getLabel();
                 const taggedBreadcrumb: BreadcrumbSegment[] = [
                     {
                         label: taggedLabel,

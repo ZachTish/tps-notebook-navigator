@@ -42,6 +42,7 @@ describe('TagFileMutations', () => {
     let app: App;
     let settings: NotebookNavigatorSettings;
     let fileMutations: TagFileMutations;
+    let processFrontMatter: ReturnType<typeof vi.fn>;
     let vaultProcess: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
@@ -49,10 +50,11 @@ describe('TagFileMutations', () => {
         settings = { ...DEFAULT_SETTINGS };
 
         app = new App();
-        app.fileManager.processFrontMatter = vi.fn((file: TFile, callback: (fm: Record<string, unknown>) => void) => {
+        processFrontMatter = vi.fn((file: TFile, callback: (fm: Record<string, unknown>) => void) => {
             callback((file as unknown as { frontmatter: Record<string, unknown> }).frontmatter);
             return Promise.resolve();
         });
+        app.fileManager.processFrontMatter = processFrontMatter;
 
         app.vault.read = vi.fn(async (file: TFile) => (file as unknown as { content: string }).content);
         app.vault.modify = vi.fn(async (file: TFile, data: string) => {
@@ -81,6 +83,23 @@ describe('TagFileMutations', () => {
         expect(fileMutations.isValidTagName('/leading')).toBe(false);
         expect(fileMutations.isValidTagName('trailing/')).toBe(false);
         expect(fileMutations.isValidTagName('')).toBe(false);
+        expect(fileMutations.isValidTagName('#__ALL_TAGS__')).toBe(false);
+        expect(fileMutations.isValidTagName('__all_tags__/child')).toBe(false);
+    });
+
+    it('never mutates frontmatter for normalized virtual collection paths', async () => {
+        const file = createFile('Notes/Reserved.md', { tags: ['project'] }, 'Body');
+
+        await fileMutations.addTagToFile(file, '#__ALL_TAGS__/child');
+        const removed = await fileMutations.removeTagFromFile(file, '#__ALL_TAGS__');
+        const descendantsRemoved = await fileMutations.removeDescendantTagsFromFile(file, '#__ALL_TAGS__');
+
+        expect(removed).toBe(false);
+        expect(descendantsRemoved).toBe(false);
+        expect(processFrontMatter).not.toHaveBeenCalled();
+        expect(vaultProcess).not.toHaveBeenCalled();
+        expect(file.frontmatter).toEqual({ tags: ['project'] });
+        expect(file.content).toBe('Body');
     });
 
     it('removes inline tag occurrences when removing tag from file', async () => {

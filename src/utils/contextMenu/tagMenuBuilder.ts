@@ -20,7 +20,7 @@ import { MenuItem, TFile } from 'obsidian';
 import { TagMenuBuilderParams } from './menuTypes';
 import { strings } from '../../i18n';
 import { cleanupTagPatterns, createHiddenTagMatcher, matchesHiddenTagPattern } from '../tagPrefixMatcher';
-import { ItemType, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../types';
+import { ItemType } from '../../types';
 import { normalizeTagPath } from '../tagUtils';
 import { setAsyncOnClick, tryCreateSubmenu } from './menuAsyncHelpers';
 import { addShortcutRenameMenuItem } from './shortcutRenameMenuItem';
@@ -51,7 +51,7 @@ export function buildTagMenu(params: TagMenuBuilderParams): void {
     }
 
     // Add rename/delete options only for real tags (not virtual aggregations)
-    const isVirtualTag = tagPath === UNTAGGED_TAG_ID || tagPath === TAGGED_TAG_ID;
+    const isVirtualTag = isVirtualTagCollectionId(tagPath);
 
     const ensureTagSelected = (): boolean => {
         return selectContextMenuTarget({
@@ -335,7 +335,7 @@ export function buildTagMenu(params: TagMenuBuilderParams): void {
         });
     }
 
-    const canHideTag = tagPath !== UNTAGGED_TAG_ID;
+    const canHideTag = !isVirtualTag;
     const activeProfile = getActiveVaultProfile(plugin.settings);
     const hiddenTags = getActiveHiddenTags(plugin.settings);
     const hasTrailingTagActions = canHideTag || !isVirtualTag;

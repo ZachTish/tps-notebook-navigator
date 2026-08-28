@@ -37,8 +37,9 @@ describe('ListAPI', () => {
 
         await expect(api.getSnapshot()).resolves.toBe(snapshot);
         await expect(api.setSearch({ query: 'work' })).resolves.toBe(true);
-        await expect(api.setPresentation({ groupBy: 'date' })).resolves.toBe(true);
+        await expect(api.setPresentation({ groupBy: 'tags' })).resolves.toBe(true);
         expect(view.whenReady).toHaveBeenCalledTimes(3);
+        expect(view.setListPresentation).toHaveBeenCalledWith({ groupBy: 'tags' });
     });
 
     it('rejects a stale primary view after readiness changes the leaf order', async () => {

@@ -25,7 +25,7 @@ import {
     isTpsNavigatorStructuralTypeId,
     type TpsNavigatorTypeId
 } from '../../types/navigatorTypes';
-import type { PropertySelectionNodeId } from '../../utils/propertyTree';
+import { parsePropertyNodeId, type PropertySelectionNodeId } from '../../utils/propertyTree';
 import { casefold, ensureRecord, sanitizeRecord } from '../../utils/recordUtils';
 import {
     areListSortOverridesEqual,
@@ -36,7 +36,11 @@ import {
     resolveListSort,
     resolveSourceBackedTypeListSort
 } from '../../utils/sortUtils';
-import { areListGroupingOptionsEqual, resolveListGroupingOverride } from '../../utils/listGrouping';
+import {
+    areListGroupingOptionsEqual,
+    resolveListGroupingOverride,
+    resolveNavigationSelectionDefaultGrouping
+} from '../../utils/listGrouping';
 
 export type NavigatorListPresentationTarget =
     | { readonly type: typeof ItemType.FOLDER; readonly key: string }
@@ -204,11 +208,17 @@ function normalizeRequestedGrouping(
     if (!normalized || (normalized === 'folder' && target.type !== ItemType.FOLDER)) {
         return null;
     }
+    if (normalized === 'tags' && target.type === ItemType.TYPE && !isTpsNavigatorFileTypeId(target.key)) {
+        return null;
+    }
     const propertyKey = getPropertyGroupingKey(normalized);
     if (propertyKey === null) {
         return normalized;
     }
-    const configuredKey = getConfiguredPropertyKey(settings, propertyKey, 'group');
+    const targetPropertyKey = target.type === ItemType.PROPERTY ? parsePropertyNodeId(target.key)?.key : undefined;
+    const configuredKey =
+        getConfiguredPropertyKey(settings, propertyKey, 'group') ??
+        (targetPropertyKey && casefold(targetPropertyKey) === casefold(propertyKey) ? targetPropertyKey : null);
     if (!configuredKey) {
         return null;
     }
@@ -283,10 +293,16 @@ export function createNavigatorListPresentationPlan(
 
     let plannedGrouping = requestedGrouping ?? undefined;
     if (groupingIncluded && plannedGrouping !== undefined) {
-        const groupingDefault = resolveListGroupingOverride({
+        const selectionDefault = resolveNavigationSelectionDefaultGrouping({
             noteGrouping: settings.noteGrouping,
+            selectionType: target.type,
+            tag: target.type === ItemType.TAG ? target.key : null,
+            propertyNodeId: target.type === ItemType.PROPERTY ? target.key : null
+        });
+        const groupingDefault = resolveListGroupingOverride({
+            noteGrouping: selectionDefault,
             selectionType: target.type
-        }).defaultGrouping;
+        }).effectiveGrouping;
         if (areListGroupingOptionsEqual(plannedGrouping, groupingDefault)) {
             plannedGrouping = undefined;
         }

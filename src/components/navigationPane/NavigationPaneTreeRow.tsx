@@ -23,6 +23,7 @@ import {
     PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
     RECENT_NOTES_VIRTUAL_FOLDER_ID,
     SHORTCUTS_VIRTUAL_FOLDER_ID,
+    ALL_TAGS_TAG_ID,
     TAGGED_TAG_ID,
     TAGS_ROOT_VIRTUAL_FOLDER_ID,
     TYPES_ROOT_VIRTUAL_FOLDER_ID,
@@ -235,7 +236,9 @@ export function NavigationPaneTreeRow({
                     icon={item.icon}
                     searchMatch={searchMatch}
                     inclusionOperator={inclusionOperator}
-                    isDraggable={!isMobile && tagNode.path !== UNTAGGED_TAG_ID && tagNode.path !== TAGGED_TAG_ID}
+                    isDraggable={
+                        !isMobile && tagNode.path !== ALL_TAGS_TAG_ID && tagNode.path !== UNTAGGED_TAG_ID && tagNode.path !== TAGGED_TAG_ID
+                    }
                     onResetSearchForNavigation={onResetSearchForNavigation}
                     onToggleAllSiblings={() => tree.handleTagToggleAllSiblings(tagNode.path)}
                     countInfo={item.noteCount ?? tagCounts.get(tagNode.path)}

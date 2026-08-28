@@ -31,10 +31,10 @@ import { useFileCache } from '../context/StorageContext';
 import { useCommandQueue } from '../context/ServicesContext';
 import { determineTagToReveal, findNearestVisibleTagAncestor, normalizeTagPath } from '../utils/tagUtils';
 import {
+    ALL_TAGS_TAG_ID,
     ItemType,
     NOTEBOOK_NAVIGATOR_VIEW,
     PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
-    TAGGED_TAG_ID,
     TAGS_ROOT_VIRTUAL_FOLDER_ID,
     UNTAGGED_TAG_ID
 } from '../types';
@@ -581,7 +581,7 @@ export function useNavigatorReveal({ app, navigationPaneRef, focusNavigationPane
                                     expansionDispatch({ type: 'SET_EXPANDED_VIRTUAL_FOLDERS', folders: nextExpandedVirtualFolders });
                                     targetTag = UNTAGGED_TAG_ID;
                                 } else {
-                                    targetTag = TAGGED_TAG_ID;
+                                    targetTag = ALL_TAGS_TAG_ID;
                                 }
                             } else {
                                 targetTag = findNearestVisibleTagAncestor(normalizedResolvedTag, expansionState.expandedTags);

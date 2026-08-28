@@ -34,7 +34,7 @@ import {
     normalizePropertyGroupingSourceForMenu
 } from '../settings/types';
 import type { ListNoteGroupingOption, ListSortOverrideValue, NotebookNavigatorSettings, PropertyGroupingOrder } from '../settings/types';
-import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
+import { ALL_TAGS_TAG_ID, ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
 import {
     areListSortOverridesEqual,
     buildSortOption,
@@ -80,6 +80,7 @@ import { getFilesForFolder } from '../utils/fileFinder';
 import { runAsyncAction } from '../utils/async';
 import {
     getDescendantVisibilityTarget,
+    isAggregateNavigationSelection,
     resolveSelectionIncludeDescendants,
     setSelectionIncludeDescendants
 } from '../utils/descendantVisibility';
@@ -399,8 +400,8 @@ function isTagDescendantSettingKey(selectedTagPath: string, candidatePath: strin
 
     // The "all tagged" virtual node does not live inside the tag hierarchy.
     // For settings-only scans, treat every real stored tag key as part of its descendant scope.
-    if (selectedTagPath === TAGGED_TAG_ID) {
-        return candidatePath !== TAGGED_TAG_ID && candidatePath !== UNTAGGED_TAG_ID;
+    if (selectedTagPath === ALL_TAGS_TAG_ID || selectedTagPath === TAGGED_TAG_ID) {
+        return candidatePath !== ALL_TAGS_TAG_ID && candidatePath !== TAGGED_TAG_ID && candidatePath !== UNTAGGED_TAG_ID;
     }
 
     return candidatePath.startsWith(`${selectedTagPath}/`);
@@ -489,6 +490,8 @@ function getGroupingIcon(option: ListNoteGroupingOption): string {
             return 'lucide-calendar';
         case 'folder':
             return 'lucide-folder';
+        case 'tags':
+            return 'lucide-tags';
         default:
             return 'lucide-heading';
     }
@@ -554,7 +557,10 @@ export function useListActions({
     const hasFolderSelection = selectionState.selectionType === ItemType.FOLDER && Boolean(selectionState.selectedFolder);
     const hasTagSelection = selectionState.selectionType === ItemType.TAG && Boolean(selectionState.selectedTag);
     const hasCreatableTagSelection =
-        hasTagSelection && selectionState.selectedTag !== TAGGED_TAG_ID && selectionState.selectedTag !== UNTAGGED_TAG_ID;
+        hasTagSelection &&
+        selectionState.selectedTag !== ALL_TAGS_TAG_ID &&
+        selectionState.selectedTag !== TAGGED_TAG_ID &&
+        selectionState.selectedTag !== UNTAGGED_TAG_ID;
     const hasPropertySelection = selectionState.selectionType === ItemType.PROPERTY && Boolean(selectionState.selectedProperty);
     const hasFileBackedTypeSelection =
         selectionState.selectionType === ItemType.TYPE && isTpsNavigatorFileTypeId(selectionState.selectedType);
@@ -835,7 +841,7 @@ export function useListActions({
         }
 
         if (selectionState.selectionType === ItemType.TAG && selectionState.selectedTag) {
-            if (selectionState.selectedTag === TAGGED_TAG_ID) {
+            if (selectionState.selectedTag === ALL_TAGS_TAG_ID || selectionState.selectedTag === TAGGED_TAG_ID) {
                 return Array.from(tagTreeService?.getAllTagPaths() ?? []);
             }
             return Array.from(tagTreeService?.collectDescendantTagPaths(selectionState.selectedTag) ?? []);
@@ -955,15 +961,17 @@ export function useListActions({
     );
     const selectionGroupOverride = groupingInfo.normalizedOverride;
     const hasSelectionGroupOverride = groupingInfo.hasCustomOverride;
-    const effectiveSelectionGroupOverride = isSelectionManualSortActive
-        ? 'custom'
-        : selectionGroupOverride === undefined
-          ? undefined
-          : resolveEffectiveListGroupingForSort({
-                groupBy: selectionGroupOverride,
-                sortOption: selectionSortSpec.option,
-                selectionType: selectionState.selectionType
-            });
+    const preserveAggregateGrouping = isAggregateNavigationSelection(selectionState);
+    const effectiveSelectionGroupOverride =
+        selectionGroupOverride === undefined
+            ? undefined
+            : resolveEffectiveListGroupingForSort({
+                  groupBy: selectionGroupOverride,
+                  sortOption: selectionSortSpec.option,
+                  selectionType: selectionState.selectionType,
+                  isManualSortActive: isSelectionManualSortActive,
+                  preserveGroupingDuringManualSort: preserveAggregateGrouping
+              });
     const selectionDescendantLabel = useMemo(() => getSelectionDescendantLabel(), [getSelectionDescendantLabel]);
     const [folderTreeVersion, setFolderTreeVersion] = useState(0);
     const [tagTreeVersion, setTagTreeVersion] = useState(0);
@@ -1050,7 +1058,7 @@ export function useListActions({
         }
 
         if (selectionState.selectionType === ItemType.TAG && selectionState.selectedTag) {
-            if (selectionState.selectedTag === TAGGED_TAG_ID) {
+            if (selectionState.selectedTag === ALL_TAGS_TAG_ID || selectionState.selectedTag === TAGGED_TAG_ID) {
                 return tagTreeService?.getAllTagPaths().length ?? 0;
             }
 
@@ -1080,7 +1088,8 @@ export function useListActions({
     // Keep the action available for selections that conceptually own descendants.
     // The actual disabled state is derived later from descendantCount plus saved settings.
     const canApplyToDescendants =
-        hasFolderSelection || (hasTagSelection && selectionState.selectedTag !== UNTAGGED_TAG_ID) || hasPropertySelection;
+        !isAggregateNavigationSelection(selectionState) &&
+        (hasFolderSelection || (hasTagSelection && selectionState.selectedTag !== UNTAGGED_TAG_ID) || hasPropertySelection);
 
     const removeSelectionSortOverride = useCallback(async () => {
         const target = getSelectionSortTarget();
@@ -2039,7 +2048,8 @@ export function useListActions({
                 groupBy: groupingInfo.effectiveGrouping,
                 sortOption: currentSort,
                 selectionType: selectionState.selectionType,
-                isManualSortActive
+                isManualSortActive,
+                preserveGroupingDuringManualSort: preserveAggregateGrouping
             });
             const effectiveMenuGroup = normalizePropertyGroupingSourceForMenu(effectiveCurrentGroup, canChooseLinePropertySource);
             const isGroupOptionDisabled = (option: ListNoteGroupingOption): boolean =>
@@ -2094,25 +2104,36 @@ export function useListActions({
                 );
             }
 
+            if (!hasLineBackedTypeSelection) {
+                addGroupOptionItem('tags', strings.tagList.tags, getGroupingIcon('tags'), isManualSortActive && !preserveAggregateGrouping);
+            }
+
             // The configured grouping properties provide the grouping choices, mirroring the sort field list above.
             // Switching the grouping property keeps the current group order, matching Obsidian Bases.
             const effectiveGroupPropertyKey = getPropertyGroupingKey(effectiveMenuGroup);
             const effectiveGroupOrder = getPropertyGroupingOrder(effectiveMenuGroup) ?? 'follow';
             const defaultNewPropertySource = canChooseLinePropertySource ? 'line' : 'note';
+            const selectedPropertyKey =
+                hasPropertySelection && selectionState.selectedProperty
+                    ? (parsePropertyNodeId(selectionState.selectedProperty)?.key ?? null)
+                    : null;
             const propertyGroupKeys = getAvailablePropertyGroupKeys(settings);
+            if (selectedPropertyKey && !propertyGroupKeys.some(propertyKey => casefold(propertyKey) === casefold(selectedPropertyKey))) {
+                propertyGroupKeys.push(selectedPropertyKey);
+            }
             propertyGroupKeys.forEach(propertyKey => {
                 addGroupOptionItem(
                     createPropertyGroupingOption(propertyKey, effectiveGroupOrder, 'value', defaultNewPropertySource),
                     getSortFieldLabel('property', propertyKey),
                     getSortFieldMenuIcon('property', propertyKey),
-                    isManualSortActive
+                    isManualSortActive && !preserveAggregateGrouping
                 );
                 if (canChooseDayPropertyGrouping) {
                     addGroupOptionItem(
                         createPropertyGroupingOption(propertyKey, effectiveGroupOrder, 'day', defaultNewPropertySource),
                         `${getSortFieldLabel('property', propertyKey)} · ${strings.settings.items.defaultGrouping.options.date}`,
                         'lucide-calendar-days',
-                        isManualSortActive
+                        isManualSortActive && !preserveAggregateGrouping
                     );
                 }
             });
@@ -2166,6 +2187,11 @@ export function useListActions({
                             });
                     });
                 });
+            }
+
+            // Property and tag grouping can both fan one note into multiple groups and
+            // both retain a distinct bucket for notes without a visible value.
+            if (effectiveGroupPropertyKey !== null || effectiveMenuGroup === 'tags') {
                 menu.addSeparator();
                 menu.addItem(item => item.setTitle('Multi-value grouping').setIcon('lucide-layers-3').setDisabled(true));
                 const currentMultiValueGrouping = resolveMultiValueGrouping(
@@ -2201,7 +2227,7 @@ export function useListActions({
                 menu.addItem(item =>
                     item.setTitle('No value group position').setIcon('lucide-align-vertical-space-around').setDisabled(true)
                 );
-                const currentNoValueGroupPosition = resolveNoValueGroupPosition(
+                const selectedNoValueGroupPosition =
                     selectionState.selectionType === ItemType.FOLDER
                         ? settings.folderAppearances?.[selectionState.selectedFolder?.path ?? '']?.noValueGroupPosition
                         : selectionState.selectionType === ItemType.TAG
@@ -2210,8 +2236,15 @@ export function useListActions({
                             ? settings.propertyAppearances?.[selectionState.selectedProperty ?? '']?.noValueGroupPosition
                             : selectionState.selectedType && isTpsNavigatorStructuralTypeId(selectionState.selectedType)
                               ? settings.typeAppearances?.[selectionState.selectedType]?.noValueGroupPosition
-                              : undefined
-                );
+                              : undefined;
+                const currentNoValueGroupPosition =
+                    selectedNoValueGroupPosition !== undefined
+                        ? resolveNoValueGroupPosition(selectedNoValueGroupPosition)
+                        : isAggregateNavigationSelection(selectionState)
+                          ? settings.showCurrentFolderFilesAtBottom
+                              ? 'bottom'
+                              : 'top'
+                          : resolveNoValueGroupPosition(undefined);
                 (['top', 'bottom'] as const).forEach(position => {
                     menu.addItem(item =>
                         item
@@ -2314,6 +2347,7 @@ export function useListActions({
             hasAppearanceOrSortSelection,
             hasFolderSelection,
             hasLineBackedTypeSelection,
+            hasPropertySelection,
             hasSelectionGroupOverride,
             app,
             applyManualSortMode,
@@ -2324,16 +2358,13 @@ export function useListActions({
             openDefaultListSettings,
             promptApplySortAndGroupToDescendants,
             promptRemoveManualSortProperty,
+            preserveAggregateGrouping,
             removeSelectionSortOverride,
             resolvePropertySortIcon,
             selectionDescendantLabel,
             selectionSortTarget,
             selectionSortOverride,
-            selectionState.selectedFolder?.path,
-            selectionState.selectedProperty,
-            selectionState.selectedTag,
-            selectionState.selectedType,
-            selectionState.selectionType,
+            selectionState,
             setSelectionGroupOverride,
             setMultiValueGrouping,
             setNoValueGroupPosition,

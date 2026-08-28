@@ -45,7 +45,12 @@ import {
     filterSearchNeedsPropertyLookup,
     filterSearchNeedsTagLookup
 } from '../utils/filterSearch';
-import { getPropertyGroupingKey, type ListNoteGroupingOption, type NotebookNavigatorSettings } from '../settings/types';
+import {
+    getPropertyGroupingGranularity,
+    getPropertyGroupingKey,
+    type ListNoteGroupingOption,
+    type NotebookNavigatorSettings
+} from '../settings/types';
 import type { FilterSearchTokens } from '../utils/filterSearch';
 import type { SearchResultMeta } from '../types/search';
 import type { ActiveProfileState } from '../context/SettingsContext';
@@ -60,6 +65,8 @@ import {
     resolveListSort,
     resolveSourceBackedTypeListSort
 } from '../utils/sortUtils';
+import { resolvePropertyGroupingDirection } from '../utils/listGrouping';
+import { buildListGroupCollapseKey } from '../utils/listGroupCollapse';
 import { applyManualSortMarkdownOrder, getManualSortGroupHeaderPropertyKey } from '../utils/manualSort';
 import { getPropertyFieldsFromPropertyKeys } from '../utils/vaultProfiles';
 import {
@@ -85,7 +92,11 @@ import { useGcmEntityTypes } from '../integrations/gcm/useGcmEntityTypes';
 import { filterTpsNavigatorTypesSnapshot, isTpsNavigatorGcmLineTypeId, isTpsNavigatorStructuralTypeId } from '../types/navigatorTypes';
 import { showNotice } from '../utils/noticeUtils';
 import { buildTypeProviderRows } from '../services/rows/typeProviderRows';
-import { collectTypeScopeVisibleFilePaths, resolveNavigatorRowScope } from '../services/rows/providerScope';
+import {
+    collectListProviderScopeVisibleFilePaths,
+    collectTypeScopeVisibleFilePaths,
+    resolveNavigatorRowScope
+} from '../services/rows/providerScope';
 import { useNavigatorTypes } from './useNavigatorTypes';
 import { useNavigatorTypeRows } from './useNavigatorTypeRows';
 import {
@@ -111,6 +122,7 @@ import {
     isMixedStructuralSearchActive,
     shouldUseGlobalTypeSearch
 } from './listPaneData/structuralTypeSearch';
+import { createHiddenTagVisibility, normalizeTagPathValue } from '../utils/tagPrefixMatcher';
 
 const EMPTY_SEARCH_META = new Map<string, SearchResultMeta>();
 const EMPTY_HIDDEN_FILE_STATE = new Map<string, boolean>();
@@ -692,7 +704,7 @@ export function useListPaneData({
             getDB,
             getFileTimestamps,
             hiddenFileState: EMPTY_HIDDEN_FILE_STATE,
-            hiddenTags: [],
+            hiddenTags,
             listConfig,
             collapsedListGroups,
             searchMetaMap: EMPTY_SEARCH_META,
@@ -701,7 +713,7 @@ export function useListPaneData({
             selectedProperty,
             selectedType,
             selectionType,
-            showHiddenItems: false,
+            showHiddenItems,
             sortOption,
             propertySortKey: sortSpec.propertyKey,
             isManualSortActive,
@@ -715,6 +727,7 @@ export function useListPaneData({
         getDB,
         getFileTimestamps,
         groupCountFiles,
+        hiddenTags,
         isManualSortActive,
         listConfig,
         manualSortGroupHeaderPropertyKey,
@@ -723,6 +736,7 @@ export function useListPaneData({
         selectedType,
         selectedTag,
         selectionType,
+        showHiddenItems,
         sortOption,
         sortSpec.propertyKey
     ]);
@@ -893,15 +907,8 @@ export function useListPaneData({
             if (isTypeSelection && !isFileBackedTypeSelection) {
                 visibleFilePaths = collectTypeScopeVisibleFilePaths(typeRows, visibleTypeSourcePaths);
             } else {
-                const seen = new Set<string>();
-                visibleFilePaths = [];
-                coreListItems.forEach(item => {
-                    if (item.type !== ListPaneItemType.FILE || !(item.data instanceof TFile) || seen.has(item.data.path)) {
-                        return;
-                    }
-                    seen.add(item.data.path);
-                    visibleFilePaths.push(item.data.path);
-                });
+                const providerRowsOwnGrouping = groupBy === 'tags' || getPropertyGroupingKey(groupBy) !== null;
+                visibleFilePaths = collectListProviderScopeVisibleFilePaths(coreListItems, providerRowsOwnGrouping);
             }
 
             return {
@@ -915,6 +922,7 @@ export function useListPaneData({
         });
     }, [
         coreListItems,
+        groupBy,
         isFileBackedTypeSelection,
         isTypeSelection,
         selectedFolder,
@@ -1027,21 +1035,71 @@ export function useListPaneData({
             globalTypeSearch: useGlobalTypeSearch,
             providerPropertyGrouping: (() => {
                 const propertyKey = getPropertyGroupingKey(groupBy);
+                const getCollapseKey = (groupId: string) =>
+                    buildListGroupCollapseKey({
+                        selectionType,
+                        selectedFolderPath: selectedFolder?.path ?? null,
+                        selectedTag,
+                        selectedProperty,
+                        selectedType,
+                        groupingMode: groupBy,
+                        groupId
+                    });
+                const sharedGrouping = {
+                    noValuePosition: noValueGroupPosition,
+                    multiValueGrouping,
+                    getCollapseKey,
+                    isCollapsed: (collapseKey: string) => collapsedListGroups.has(collapseKey)
+                };
+                if (groupBy === 'tags') {
+                    const tagVisibility = createHiddenTagVisibility(hiddenTags, showHiddenItems);
+                    return {
+                        ...sharedGrouping,
+                        propertyKey: 'tags',
+                        noValueLabel: strings.common.untagged,
+                        valueGroupIdPrefix: 'tags-value:',
+                        noValueGroupId: 'tags-no-value',
+                        formatLabel: (label: string) => label.replace(/^#/, ''),
+                        isLabelVisible: (label: string) => {
+                            const normalized = normalizeTagPathValue(label);
+                            return normalized.length > 0 && tagVisibility.isTagVisible(normalized);
+                        },
+                        getLabelKey: (label: string) => normalizeTagPathValue(label),
+                        compareLabelKeys: (left: string, right: string) => left.localeCompare(right),
+                        direction: 'asc' as const
+                    };
+                }
+                const propertyGroupingDirection = resolvePropertyGroupingDirection(groupBy, sortSpec.option);
+                const propertyGroupingGranularity = getPropertyGroupingGranularity(groupBy) ?? 'value';
                 return propertyKey
                     ? {
+                          ...sharedGrouping,
                           propertyKey,
                           noValueLabel: strings.listPane.propertyGroupNoValue,
-                          noValuePosition: noValueGroupPosition
+                          valueGroupIdPrefix: `property-${propertyGroupingGranularity}:`,
+                          noValueGroupId: 'property-none',
+                          granularity: propertyGroupingGranularity,
+                          direction: propertyGroupingDirection
                       }
                     : undefined;
             })()
         });
     }, [
+        collapsedListGroups,
         coreListItems,
         groupBy,
+        hiddenTags,
+        multiValueGrouping,
         noValueGroupPosition,
         parsedSearchTokens,
         presentedTypeListItems,
+        selectedFolder,
+        selectedProperty,
+        selectedTag,
+        selectedType,
+        selectionType,
+        showHiddenItems,
+        sortSpec.option,
         structuralTypeGroups,
         typeListMode,
         typeRows,

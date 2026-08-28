@@ -27,7 +27,7 @@ import {
     resolveSearchShortcutStartFolderPath,
     resolveSearchShortcutStartTarget
 } from '../../src/hooks/useListPaneSearch';
-import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../src/types';
+import { ALL_TAGS_TAG_ID, ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../../src/types';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { updateFilterQueryWithTag, updateFilterQueryWithType } from '../../src/utils/filterSearch';
 import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
@@ -86,6 +86,10 @@ describe('resolveSearchShortcutStartTarget', () => {
         expect(resolveSearchShortcutStartTarget(app, { type: ShortcutStartType.TAG, tagPath: TAGGED_TAG_ID }, lookup)).toEqual({
             type: ShortcutStartType.TAG,
             tagPath: TAGGED_TAG_ID
+        });
+        expect(resolveSearchShortcutStartTarget(app, { type: ShortcutStartType.TAG, tagPath: ALL_TAGS_TAG_ID }, lookup)).toEqual({
+            type: ShortcutStartType.TAG,
+            tagPath: ALL_TAGS_TAG_ID
         });
         expect(
             resolveSearchShortcutStartTarget(app, { type: ShortcutStartType.PROPERTY, nodeId: PROPERTIES_ROOT_VIRTUAL_FOLDER_ID }, lookup)
@@ -150,7 +154,7 @@ describe('search-bar navigation source of truth', () => {
         ).toBe(query);
     });
 
-    it('materializes a selected property key as an explicit empty-value filter', () => {
+    it('materializes a selected property key as a key-presence filter', () => {
         const selection = {
             selectionType: ItemType.PROPERTY,
             selectedTag: null,
@@ -158,9 +162,21 @@ describe('search-bar navigation source of truth', () => {
             selectedType: null
         } as const;
 
-        expect(includeNavigationSelectionInSearchQuery('', selection)).toBe('.status=');
-        expect(includeNavigationSelectionInSearchQuery('.status=', selection)).toBe('.status=');
-        expect(getSearchActivationQuery('', selection)).toBe('.status=');
+        expect(includeNavigationSelectionInSearchQuery('', selection)).toBe('.status');
+        expect(includeNavigationSelectionInSearchQuery('.status', selection)).toBe('.status');
+        expect(getSearchActivationQuery('', selection)).toBe('.status');
+    });
+
+    it('does not narrow Search when the aggregate Tags root is selected', () => {
+        const selection = {
+            selectionType: ItemType.TAG,
+            selectedTag: ALL_TAGS_TAG_ID,
+            selectedProperty: null,
+            selectedType: null
+        } as const;
+
+        expect(includeNavigationSelectionInSearchQuery('meeting', selection)).toBe('meeting');
+        expect(getSearchActivationQuery('', selection)).toBe('');
     });
 
     it('represents the selected Untagged collection explicitly and idempotently', () => {

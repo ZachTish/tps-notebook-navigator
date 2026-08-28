@@ -37,7 +37,7 @@ const { mockLocalStorageStore, localStorageInit, localStorageGet, localStorageSe
 vi.mock('../../src/utils/localStorage', () => {
     return {
         LEGACY_STORAGE_KEYS: ['notebook-navigator-file-cache'],
-        LOCALSTORAGE_VERSION: 3,
+        LOCALSTORAGE_VERSION: 4,
         localStorage: {
             init: localStorageInit,
             get: localStorageGet,

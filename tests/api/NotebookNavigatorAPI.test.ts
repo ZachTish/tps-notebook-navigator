@@ -127,8 +127,10 @@ describe('NotebookNavigatorAPI', () => {
             } as never
         );
 
+        expect(api.tagCollections.allId).toBe('__all_tags__');
         expect(api.tagCollections.taggedId).toBe('__tagged__');
         expect(api.tagCollections.untaggedId).toBe('__untagged__');
+        expect(api.tagCollections.isCollection('__all_tags__')).toBe(true);
         expect(api.tagCollections.isCollection('__tagged__')).toBe(true);
         expect(api.tagCollections.isCollection('work')).toBe(false);
         expect(typeof api.tagCollections.getLabel(api.tagCollections.taggedId)).toBe('string');
