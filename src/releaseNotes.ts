@@ -107,6 +107,17 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.22.0',
+        date: '2026-08-28',
+        new: ['Exact tag activations from Obsidian now reveal TPS Notebook Navigator and select that tag instead of opening Core Search.'],
+        improved: [
+            'Tag routing clears an active Navigator Filter Search, follows popout and Core Search instance changes, and preserves ordinary or compound searches.'
+        ],
+        fixed: [
+            'Failed, stale, synthetic, or unloading routes now fail open to the original Core Search behavior without leaving a dead click or overwriting another wrapper.'
+        ]
+    },
+    {
         version: '5.21.0',
         date: '2026-08-27',
         new: [

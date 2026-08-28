@@ -94,6 +94,7 @@ import { buildFilePathInFolder, generateUniqueFilename } from './utils/fileCreat
 import { showNotice } from './utils/noticeUtils';
 import { strings } from './i18n';
 import { TpsNotebookNavigatorApiLifecycle } from './integrations/TpsNotebookNavigatorApiLifecycle';
+import { CoreTagSearchRouter } from './services/CoreTagSearchRouter';
 
 interface ObsidianSettingsModal {
     open(): void;
@@ -172,6 +173,8 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
     private folderNoteSidebarService: FolderNoteSidebarService | null = null;
     private settingTab: LazyNotebookNavigatorSettingTab | null = null;
     private apiLifecycle: TpsNotebookNavigatorApiLifecycle | null = null;
+    private coreTagSearchRouter: CoreTagSearchRouter | null = null;
+    private coreTagRouteRequestId = 0;
     private pendingUpdateNotice: ReleaseUpdateNotice | null = null;
     private hasWorkspaceLayoutReady = false;
     private lastCalendarPlacement: CalendarPlacement | null = null;
@@ -821,6 +824,16 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
         // Register editor context menu
         registerWorkspaceEvents(this);
 
+        // Core tag controls normally open Obsidian Search. Route only exact tag
+        // activations into this Navigator; the guarded adapter fails open when
+        // the private Core Search capability is unavailable or navigation fails.
+        this.coreTagSearchRouter = new CoreTagSearchRouter({
+            app: this.app,
+            mainDocument: this.app.workspace.containerEl.ownerDocument,
+            routeTag: tagPath => this.routeCoreTagSearchToNavigator(tagPath)
+        });
+        this.coreTagSearchRouter.start();
+
         // Post-layout initialization
         // Only auto-create the navigator view on first launch; upgrades restore existing leaves themselves
         const shouldActivateOnStartup = isFirstLaunch;
@@ -1368,6 +1381,9 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
         }
 
         this.isUnloading = true;
+        this.coreTagRouteRequestId += 1;
+        this.coreTagSearchRouter?.dispose();
+        this.coreTagSearchRouter = null;
         this.startupSettingsAbortController?.abort();
         this.startupSettingsAbortController = null;
         this.missingSettingsAwaitingUserEnable = false;
@@ -1858,6 +1874,46 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
      */
     async activateView() {
         return this.workspaceCoordinator?.activateNavigatorView() ?? null;
+    }
+
+    /**
+     * Reveals the primary Navigator and applies one Core tag activation.
+     * A newer activation supersedes every older async route before it can
+     * clear or replace the current Navigator selection.
+     */
+    private async routeCoreTagSearchToNavigator(tagPath: string): Promise<boolean> {
+        const requestId = ++this.coreTagRouteRequestId;
+        if (this.isUnloading) {
+            return false;
+        }
+
+        const leaf = await this.activateView();
+        if (!this.isCurrentCoreTagRoute(requestId, leaf)) {
+            return false;
+        }
+
+        const view = leaf.view;
+        if (!isNotebookNavigatorView(view) || !(await view.whenReady()) || !this.isCurrentCoreTagRoute(requestId, leaf)) {
+            return false;
+        }
+
+        const canonicalTagPath = view.navigateToTag(tagPath, { preserveNavigationFocus: false });
+        if (canonicalTagPath === null || !this.isCurrentCoreTagRoute(requestId, leaf)) {
+            return false;
+        }
+
+        // Match every existing tag-navigation surface: a failed selection must not
+        // disturb Filter Search, while a successful one dismisses it immediately.
+        return (await view.setListSearch(null)) && this.isCurrentCoreTagRoute(requestId, leaf);
+    }
+
+    private isCurrentCoreTagRoute(requestId: number, leaf: WorkspaceLeaf | null): leaf is WorkspaceLeaf {
+        return (
+            !this.isUnloading &&
+            requestId === this.coreTagRouteRequestId &&
+            leaf !== null &&
+            this.app.workspace.getLeavesOfType(NOTEBOOK_NAVIGATOR_VIEW).includes(leaf)
+        );
     }
 
     /**

@@ -1,5 +1,14 @@
 # TPS Notebook Navigator
 
+## 5.22.0
+
+- Exact single-tag activations emitted by Obsidian Core now open that tag in TPS Notebook Navigator instead of replacing the current Core Search. This covers the shared Core route used by rendered Markdown, Properties tag pills, Bases tag cells, Live Preview, Graph tag nodes, and the Core Tags pane on supported Obsidian builds.
+- The route reveals an existing Navigator or creates it in the left sidebar, selects the exact canonical tag, and dismisses an active Navigator Filter Search only after the tag selection succeeds. A newer tag activation supersedes any older route that is still waiting for the view.
+- Ordinary free-text, compound-tag, malformed, non-string, synthetic, editable-input, and unactivated programmatic searches remain in Obsidian Search. If Navigator cannot reveal, become ready, or resolve the tag, the captured Core Search method is invoked once with its original receiver and arguments.
+- The bridge capability-detects and reversibly shadows Obsidian's internal Core Search method. It follows Core instance replacements, covers already-open and newly opened popout documents, and restores only its own wrapper during unload so other plugins' wrappers are not overwritten.
+- This backward-compatible feature adds no setting, public TPS API, note change, or data migration. Minimum supported Obsidian remains 1.11.0. Core Search must remain enabled because Obsidian's own tag controls do not dispatch this route while it is disabled; an exact single-tag saved Search activated by pointer or keyboard is also treated as a tag activation.
+- Validation passed 255/255 test files and 2,928/2,928 tests, including 5 focused Core-routing, lifecycle, API, release-note, and artifact files with 38/38 tests. Every touched file passed Prettier and ESLint; stylelint, TPS namespace/artifact/identity checks, TypeScript, `git diff --check`, and the mandatory separate production build passed. The repository-wide checks still report the same seven historical formatting files and two unrelated baseline ESLint errors documented in 5.21.0. Obsidian 1.13.7 loaded the exact candidate in the isolated test vault: clicking a real Reading View tag selected the exact TPS tag scope, cleared an active Filter Search, kept the existing Core Search query unchanged, and never switched to the co-installed upstream Navigator. The synthetic note was moved directly to `_archive`, runtime settings were restored to their pre-QA bytes, and production was not accessed.
+
 ## 5.21.0
 
 - Selecting the top-level **Tags** row now shows every visible Markdown note, including untagged notes, and automatically groups the list by each note's visible tags. Multi-tag notes follow the scope's separate/combine setting, hidden-tag rules remain authoritative, and attached provider/task rows use their own tags instead of inheriting the first tag group of their source note.

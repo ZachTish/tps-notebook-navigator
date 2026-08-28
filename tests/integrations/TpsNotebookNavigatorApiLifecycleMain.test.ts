@@ -30,6 +30,8 @@ describe('TPS Notebook Navigator API lifecycle main integration', () => {
             'this.registerView(NOTEBOOK_NAVIGATOR_VIEW',
             'registerNavigatorCommands(this);',
             'registerWorkspaceEvents(this);',
+            'this.coreTagSearchRouter = new CoreTagSearchRouter',
+            'this.coreTagSearchRouter.start();',
             'this.hasStartedWithSettings = true;',
             'this.apiLifecycle?.publishAvailable(this.api);'
         ]);
@@ -45,6 +47,29 @@ describe('TPS Notebook Navigator API lifecycle main integration', () => {
             'this.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].types.dispose();',
             'this.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].rows.dispose();',
             'this.api = null;'
+        ]);
+    });
+
+    it('routes Core tag activations through one reveal-ready-reset-select sequence and disposes it during shutdown', async () => {
+        const main = await readFile(mainPath, 'utf8');
+        const route = main.slice(
+            main.indexOf('private async routeCoreTagSearchToNavigator'),
+            main.indexOf('private isCurrentCoreTagRoute')
+        );
+        const shutdown = main.slice(main.indexOf('private initiateShutdown()'), main.indexOf('private stopNavigatorContentProcessing'));
+
+        expectOrdered(route, [
+            'const requestId = ++this.coreTagRouteRequestId;',
+            'const leaf = await this.activateView();',
+            'await view.whenReady()',
+            'view.navigateToTag(tagPath, { preserveNavigationFocus: false })',
+            'await view.setListSearch(null)'
+        ]);
+        expectOrdered(shutdown, [
+            'this.isUnloading = true;',
+            'this.coreTagRouteRequestId += 1;',
+            'this.coreTagSearchRouter?.dispose();',
+            'this.coreTagSearchRouter = null;'
         ]);
     });
 
