@@ -717,6 +717,7 @@ export function useListPaneData({
             sortOption,
             propertySortKey: sortSpec.propertyKey,
             isManualSortActive,
+            manualSortPropertyKey: settings.manualSortPropertyKey,
             manualSortGroupHeaderPropertyKey
         });
     }, [
@@ -731,6 +732,7 @@ export function useListPaneData({
         isManualSortActive,
         listConfig,
         manualSortGroupHeaderPropertyKey,
+        settings.manualSortPropertyKey,
         selectedFolder,
         selectedProperty,
         selectedType,
@@ -778,6 +780,7 @@ export function useListPaneData({
             sortOption,
             propertySortKey: sortSpec.propertyKey,
             isManualSortActive,
+            manualSortPropertyKey: settings.manualSortPropertyKey,
             manualSortGroupHeaderPropertyKey,
             wordCountTargetProperty: settings.wordCountTargetProperty,
             groupItemCountData
@@ -805,6 +808,7 @@ export function useListPaneData({
         sortOption,
         sortSpec.propertyKey,
         isManualSortActive,
+        settings.manualSortPropertyKey,
         manualSortGroupHeaderPropertyKey,
         settings.wordCountTargetProperty,
         groupItemCountData

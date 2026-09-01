@@ -1,11 +1,12 @@
 # Notebook Navigator metadata pipeline
 
-Updated: July 9, 2026
+Updated: August 31, 2026
 
 ## Table of contents
 
 - [Overview](#overview)
 - [Data model](#data-model)
+- [Transient GCM presentation overlay](#transient-gcm-presentation-overlay)
 - [Pipeline components](#pipeline-components)
 - [Triggers](#triggers)
 - [Vault sync](#vault-sync)
@@ -83,6 +84,35 @@ The dedicated stores are cleared alongside the main file store during a full reb
 
 - Preview text store: keyed by file path (`previewStatus` tracks presence)
 - Feature image blob store: keyed by file path (`featureImageStatus`/`featureImageKey` track presence and source)
+
+## Transient GCM presentation overlay
+
+TPS Global Context Menu can expose a structurally optional top-level `notebookNavigatorPresentation` capability:
+
+```ts
+interface NotebookNavigatorPresentationV1 {
+    readonly version: 1;
+    ensure(files: readonly (TFile | string)[] | TFile | string): Promise<void>;
+    get(file: TFile | string): { filePath: string; values: Readonly<Record<string, string>> } | null | undefined;
+    getRevision(): number;
+    onChanged(listener: (revision: number) => void): () => void;
+}
+```
+
+`undefined` means that GCM has not prepared the requested file, so Navigator queues it into one microtask-batched `ensure(files)` call. `null` means preparation completed with no generated values. Prepared results are synchronous so file rendering, property sorting, and grouping do not introduce asynchronous state into their established hot paths. Provider revisions, API load/replacement/unload announcements, and successful ensure completion invalidate the current presentation callback; stale ensure results from a replaced API are ignored.
+
+The adapter validates the exact v1 shape, revision, requested `filePath`, and string-only `values` record, copies the values into a frozen null-prototype record, and catches provider lookup, read, subscription, ensure, and disposal failures. It has no compile-time or runtime import from GCM. If discovery or validation fails, the projection contributes nothing.
+
+The overlay is consumed only at these presentation boundaries:
+
+- `MetadataService.getFileIcon()`: while frontmatter metadata is enabled, usable cached authored frontmatter, then an explicit Navigator per-file icon, then the generated value for the configured icon field. Generated icons use the authored-frontmatter compatibility decoder; disabling frontmatter metadata also disables this projected fallback but retains explicit Navigator appearances.
+- `MetadataService.getFileColor()`: while frontmatter metadata is enabled, usable cached authored frontmatter, then an explicit Navigator per-file color, then the generated value for the configured color field. Disabling frontmatter metadata preserves the same boundary as authored colors.
+- `sortNavigationFiles()`: usable live authored frontmatter for the selected property sort key, then the generated value for that same key.
+- `buildListItems()`: usable live authored frontmatter for the selected property grouping key, then the generated value for that same key.
+
+The manual-sort property key is excluded defensively from both generated sort and group fallback. Manual order, custom group headers, and their ranks remain YAML-backed Navigator operations.
+
+No projection is passed to a content provider or stored in `FileData`. In particular, generated values never enter `metadata`, `properties`, tag/property tree construction, property selection, property pills, Filter Search evidence, IndexedDB, frontmatter, or settings. Configured property keys and authored values continue through the ordinary property pipeline unchanged; a projection-only value can affect the current sort/group presentation but cannot create a property row, scope membership, pill, or search match.
 
 ## Pipeline components
 

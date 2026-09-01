@@ -26,6 +26,7 @@ import type { ITagTreeProvider } from '../../src/interfaces/ITagTreeProvider';
 import type { CollapsedPinnedContexts } from '../../src/types';
 import type { FileData } from '../../src/storage/IndexedDBStorage';
 import { createDefaultFileData } from '../../src/storage/indexeddb/fileData';
+import { TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID } from '../../src/constants/tpsIdentity';
 
 const dbState = vi.hoisted(() => ({
     files: [] as { path: string; data: FileData }[]
@@ -34,6 +35,7 @@ const dbState = vi.hoisted(() => ({
 vi.mock('../../src/storage/fileOperations', () => ({
     getDBInstance: () => ({
         getAllFiles: () => dbState.files,
+        getFile: (path: string) => dbState.files.find(file => file.path === path)?.data ?? null,
         forEachFile: (callback: (path: string, data: FileData) => void) => {
             dbState.files.forEach(({ path, data }) => callback(path, data));
         }
@@ -138,6 +140,22 @@ function createFilteredTagProvider(): ITagTreeProvider {
     };
 }
 
+function installPresentationApi(app: App, values: Readonly<Record<string, string>>): void {
+    const api = {
+        version: 1,
+        ensure: vi.fn().mockResolvedValue(undefined),
+        get: (file: TFile | string) => ({ filePath: typeof file === 'string' ? file : file.path, values }),
+        getRevision: () => 0,
+        onChanged: () => () => undefined
+    };
+    const plugin = { api: { notebookNavigatorPresentation: api } };
+    (app as App & { plugins: unknown }).plugins = {
+        enabledPlugins: new Set([TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]),
+        getPlugin: () => plugin,
+        plugins: { [TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]: plugin }
+    };
+}
+
 describe('MetadataService cleanup', () => {
     beforeEach(() => {
         dbState.files = [];
@@ -202,5 +220,56 @@ describe('MetadataService cleanup', () => {
 
         expect(changes).toEqual({ settingsChanged: false, localChanged: true });
         expect(provider.collapsedPinnedContexts).toEqual({});
+    });
+});
+
+describe('MetadataService GCM presentation fallbacks', () => {
+    beforeEach(() => {
+        dbState.files = [];
+    });
+
+    it('keeps authored metadata and explicit Navigator appearances above generated icon and color values', () => {
+        const path = 'Notes/Task.md';
+        const app = new App();
+        installPresentationApi(app, { Icon: 'ph-apple-logo', COLOR: '#123456' });
+        const data = createDefaultFileData({ path, mtime: 1 });
+        dbState.files = [{ path, data }];
+        const settings = createSettings();
+        settings.useFrontmatterMetadata = true;
+        settings.frontmatterIconField = 'icon';
+        settings.frontmatterColorField = 'color';
+        const provider = new TestSettingsProvider(settings);
+        const service = new MetadataService(app, provider, () => createFilteredTagProvider());
+
+        expect(service.getFileIcon(path)).toBe('phosphor:apple-logo');
+        expect(service.getFileColor(path)).toBe('#123456');
+
+        settings.fileIcons[path] = 'sun';
+        settings.fileColors[path] = '#abcdef';
+        expect(service.getFileIcon(path)).toBe('sun');
+        expect(service.getFileColor(path)).toBe('#abcdef');
+
+        data.metadata = { icon: 'phosphor:receipt', color: '#fedcba' };
+        expect(service.getFileIcon(path)).toBe('phosphor:receipt');
+        expect(service.getFileColor(path)).toBe('#fedcba');
+        expect(data.properties).toBeNull();
+    });
+
+    it('retains the existing frontmatter-metadata setting boundary', () => {
+        const path = 'Notes/Task.md';
+        const app = new App();
+        installPresentationApi(app, { icon: 'ph-apple-logo', color: '#123456' });
+        const settings = createSettings();
+        settings.useFrontmatterMetadata = false;
+        const provider = new TestSettingsProvider(settings);
+        const service = new MetadataService(app, provider, () => createFilteredTagProvider());
+
+        expect(service.getFileIcon(path)).toBeUndefined();
+        expect(service.getFileColor(path)).toBeUndefined();
+
+        settings.fileIcons[path] = 'sun';
+        settings.fileColors[path] = '#abcdef';
+        expect(service.getFileIcon(path)).toBe('sun');
+        expect(service.getFileColor(path)).toBe('#abcdef');
     });
 });

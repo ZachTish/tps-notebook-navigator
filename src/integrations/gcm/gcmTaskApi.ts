@@ -117,6 +117,26 @@ export interface GcmNativeRecordsApiLike {
     inspect(frontmatter: unknown): GcmNativeRecordInspectionLike | null;
 }
 
+export interface GcmNotebookNavigatorPresentationProjectionLike {
+    readonly filePath: string;
+    readonly values: Readonly<Record<string, string>>;
+}
+
+/**
+ * Optional transient presentation overlay supplied by GCM.
+ *
+ * `undefined` means the requested file has not been prepared yet, while `null`
+ * means it was prepared and no generated values apply. Navigator never stores
+ * projections returned by this capability in its metadata or property caches.
+ */
+export interface GcmNotebookNavigatorPresentationApiLike {
+    readonly version: 1;
+    ensure(files: readonly (TFile | string)[] | TFile | string): Promise<void>;
+    get(file: TFile | string): GcmNotebookNavigatorPresentationProjectionLike | null | undefined;
+    getRevision(): number;
+    onChanged(listener: (revision: number) => void): () => void;
+}
+
 /** Small synchronous menu surface used instead of exposing Obsidian's Menu object. */
 export interface GcmTaskMenuLike {
     addItem(callback: (item: MenuItem) => void): unknown;
@@ -200,6 +220,17 @@ export function isGcmNativeRecordsApiLike(value: unknown): value is GcmNativeRec
     );
 }
 
+export function isGcmNotebookNavigatorPresentationApiLike(value: unknown): value is GcmNotebookNavigatorPresentationApiLike {
+    return (
+        isRecord(value) &&
+        value.version === 1 &&
+        typeof value.ensure === 'function' &&
+        typeof value.get === 'function' &&
+        typeof value.getRevision === 'function' &&
+        typeof value.onChanged === 'function'
+    );
+}
+
 function resolveGcmPluginApi(app: App): Record<string, unknown> | null {
     const manager = (app as App & { plugins?: PluginManagerLike }).plugins;
     if (!manager || isExplicitlyDisabled(manager, TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID)) return null;
@@ -239,6 +270,11 @@ export function resolveGcmFilePropertiesApi(app: App): GcmFilePropertiesApiLike 
 export function resolveGcmNativeRecordsApi(app: App): GcmNativeRecordsApiLike | null {
     const value = resolveGcmPluginApi(app)?.nativeRecords;
     return isGcmNativeRecordsApiLike(value) ? value : null;
+}
+
+export function resolveGcmNotebookNavigatorPresentationApi(app: App): GcmNotebookNavigatorPresentationApiLike | null {
+    const value = resolveGcmPluginApi(app)?.notebookNavigatorPresentation;
+    return isGcmNotebookNavigatorPresentationApiLike(value) ? value : null;
 }
 
 /** Resolves task capabilities from one public GCM plugin API payload. */

@@ -41,6 +41,8 @@ import type { NavigationSeparatorTarget } from '../utils/navigationSeparators';
 import { buildPropertyKeyNodeId } from '../utils/propertyTree';
 import { casefold, getCollapsedPinnedContextTarget } from '../utils/recordUtils';
 import { buildTagTreeFromDatabase } from '../utils/tagTree';
+import { getGcmNotebookNavigatorPresentationValue } from '../integrations/gcm/gcmNotebookNavigatorPresentation';
+import { deserializeIconFromFrontmatterCompat } from '../utils/iconizeFormat';
 
 /**
  * Validators object containing all data needed for cleanup operations
@@ -453,8 +455,21 @@ export class MetadataService {
                 return frontmatterIcon;
             }
         }
-        // Fall back to settings-based storage
-        return this.fileService.getFileIcon(filePath);
+        // An explicit Navigator appearance remains authoritative over generated presentation.
+        const configuredIcon = this.fileService.getFileIcon(filePath);
+        if (configuredIcon) {
+            return configuredIcon;
+        }
+
+        if (!settings.useFrontmatterMetadata) {
+            return undefined;
+        }
+        const iconField = settings.frontmatterIconField.trim();
+        if (!iconField) {
+            return undefined;
+        }
+        const generatedIcon = getGcmNotebookNavigatorPresentationValue(this.app, filePath, iconField)?.trim();
+        return generatedIcon ? (deserializeIconFromFrontmatterCompat(generatedIcon) ?? undefined) : undefined;
     }
 
     async setFileColor(filePath: string, color: string): Promise<void> {
@@ -489,8 +504,21 @@ export class MetadataService {
                 return frontmatterColor;
             }
         }
-        // Fall back to settings-based storage
-        return this.fileService.getFileColor(filePath);
+        // An explicit Navigator appearance remains authoritative over generated presentation.
+        const configuredColor = this.fileService.getFileColor(filePath);
+        if (configuredColor) {
+            return configuredColor;
+        }
+
+        if (!settings.useFrontmatterMetadata) {
+            return undefined;
+        }
+        const colorField = settings.frontmatterColorField.trim();
+        if (!colorField) {
+            return undefined;
+        }
+        const generatedColor = getGcmNotebookNavigatorPresentationValue(this.app, filePath, colorField)?.trim();
+        return generatedColor || undefined;
     }
 
     /**

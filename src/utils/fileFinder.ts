@@ -32,7 +32,15 @@ import {
     isFolderInExcludedFolder
 } from './fileFilters';
 import { shouldDisplayFile, FILE_VISIBILITY } from './fileTypeUtils';
-import { getEffectiveListSort, getPropertySortValueFromRecord, isPropertySortOption, sortFiles, type EffectiveListSort } from './sortUtils';
+import {
+    getEffectiveListSort,
+    getPropertySortValue,
+    getPropertySortValueFromRecord,
+    isManualSortPropertyKey,
+    isPropertySortOption,
+    sortFiles,
+    type EffectiveListSort
+} from './sortUtils';
 import { getDBInstanceOrNull } from '../storage/fileOperations';
 import { extractMetadata, type ProcessedMetadata } from '../utils/metadataExtractor';
 import { extractCurrentFrontmatterMetadataFromFileData } from './frontmatterMetadataCache';
@@ -64,6 +72,7 @@ import {
 import type { IPropertyTreeProvider } from '../interfaces/IPropertyTreeProvider';
 import type { ITagTreeProvider } from '../interfaces/ITagTreeProvider';
 import { shouldHideDrawingCompanionImageFile } from './drawingFeatureImages';
+import { getGcmNotebookNavigatorPresentationValue } from '../integrations/gcm/gcmNotebookNavigatorPresentation';
 
 interface PinnedDisplayScope {
     restrictToFolderPath?: string;
@@ -176,8 +185,13 @@ function collectVisibleMarkdownFilesFromPaths(paths: Iterable<string>, app: App,
     return files;
 }
 
-function createPropertySortValueGetter(app: App, propertySortKey: string): (file: TFile) => string | null {
+function createPropertySortValueGetter(
+    app: App,
+    settings: Pick<NotebookNavigatorSettings, 'manualSortPropertyKey'>,
+    propertySortKey: string
+): (file: TFile) => string | null {
     const trimmedKey = propertySortKey.trim();
+    const allowGeneratedFallback = !isManualSortPropertyKey(settings, trimmedKey);
     const cache = new Map<string, string | null>();
 
     return (file: TFile): string | null => {
@@ -193,7 +207,10 @@ function createPropertySortValueGetter(app: App, propertySortKey: string): (file
         }
 
         const fileCache = app.metadataCache.getFileCache(file);
-        const extracted = getPropertySortValueFromRecord(fileCache?.frontmatter, trimmedKey);
+        const authoredValue = getPropertySortValueFromRecord(fileCache?.frontmatter, trimmedKey);
+        const extracted =
+            authoredValue ??
+            (allowGeneratedFallback ? getPropertySortValue(getGcmNotebookNavigatorPresentationValue(app, file, trimmedKey)) : null);
         cache.set(file.path, extracted);
         return extracted;
     };
@@ -210,7 +227,7 @@ export function sortNavigationFiles(
     const isPropertySort = isPropertySortOption(sortOption);
     const propertySortKey = sortSpec.propertyKey.trim();
     const getPropertySortValue =
-        isPropertySort && propertySortKey.length > 0 ? createPropertySortValueGetter(app, propertySortKey) : undefined;
+        isPropertySort && propertySortKey.length > 0 ? createPropertySortValueGetter(app, settings, propertySortKey) : undefined;
     const displayNameCache = new Map<string, string>();
     const getTitle = (file: TFile, cachedData?: { fn?: string }): string => {
         let displayName = displayNameCache.get(file.path);

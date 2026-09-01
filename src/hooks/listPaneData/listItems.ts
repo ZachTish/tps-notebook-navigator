@@ -26,11 +26,12 @@ import { FILE_VISIBILITY, type FileVisibility } from '../../utils/fileTypeUtils'
 import {
     compareByAlphaSortOrder,
     getDateField,
-    getPropertyDayGroupingValueFromRecord,
+    getPropertyDayGroupingValue,
     getPropertyDayGroupingValues,
-    getPropertyGroupingValueFromRecord,
+    getPropertyGroupingValue,
     getPropertyGroupingValues,
     isDateSortOption,
+    isManualSortPropertyKey,
     isPropertySortOption
 } from '../../utils/sortUtils';
 import { getPropertyGroupingGranularity, getPropertyGroupingKey } from '../../settings/types';
@@ -56,6 +57,7 @@ import type { ListPaneFolderPathSegment } from '../../types/virtualization';
 import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { getNavigatorPinContext } from '../../utils/selectionUtils';
 import { getMatchingRecordValue } from '../../utils/recordUtils';
+import { getGcmNotebookNavigatorPresentationValue } from '../../integrations/gcm/gcmNotebookNavigatorPresentation';
 
 export interface ListPaneConfig {
     filterPinnedByFolder: boolean;
@@ -94,6 +96,7 @@ interface BuildListItemsArgs {
     sortOption: SortOption;
     propertySortKey?: string;
     isManualSortActive?: boolean;
+    manualSortPropertyKey?: string;
     manualSortGroupHeaderPropertyKey?: string | null;
     wordCountTargetProperty?: string;
     groupItemCountData?: ListGroupItemCountData;
@@ -188,6 +191,7 @@ function buildListItemsInternal(
         sortOption,
         propertySortKey = '',
         isManualSortActive = false,
+        manualSortPropertyKey = '',
         manualSortGroupHeaderPropertyKey = null,
         wordCountTargetProperty = '',
         groupItemCountData
@@ -627,30 +631,25 @@ function buildListItemsInternal(
             { label: string; numericValue: number | null; daySortValue: number | null; files: TFile[] }
         >();
         const ungroupedFiles: TFile[] = [];
+        const allowGeneratedFallback = !isManualSortPropertyKey({ manualSortPropertyKey }, propertyGroupingKey);
+        const getGroupingValues = (rawValue: unknown) => {
+            if (listConfig.multiValueGrouping !== 'combine') {
+                return propertyGroupingGranularity === 'day' ? getPropertyDayGroupingValues(rawValue) : getPropertyGroupingValues(rawValue);
+            }
+            const value =
+                propertyGroupingGranularity === 'day' ? getPropertyDayGroupingValue(rawValue) : getPropertyGroupingValue(rawValue);
+            return value ? [value] : [];
+        };
 
         unpinnedFiles.forEach(file => {
             const rawValue =
                 file.extension === 'md'
                     ? getMatchingRecordValue(app.metadataCache.getFileCache(file)?.frontmatter, propertyGroupingKey)
                     : undefined;
-            const groupingValues =
-                listConfig.multiValueGrouping !== 'combine'
-                    ? propertyGroupingGranularity === 'day'
-                        ? getPropertyDayGroupingValues(rawValue)
-                        : getPropertyGroupingValues(rawValue)
-                    : [
-                          file.extension === 'md'
-                              ? propertyGroupingGranularity === 'day'
-                                  ? getPropertyDayGroupingValueFromRecord(
-                                        app.metadataCache.getFileCache(file)?.frontmatter,
-                                        propertyGroupingKey
-                                    )
-                                  : getPropertyGroupingValueFromRecord(
-                                        app.metadataCache.getFileCache(file)?.frontmatter,
-                                        propertyGroupingKey
-                                    )
-                              : null
-                      ].filter(value => value !== null);
+            let groupingValues = getGroupingValues(rawValue);
+            if (groupingValues.length === 0 && file.extension === 'md' && allowGeneratedFallback) {
+                groupingValues = getGroupingValues(getGcmNotebookNavigatorPresentationValue(app, file, propertyGroupingKey));
+            }
             if (groupingValues.length === 0) {
                 ungroupedFiles.push(file);
                 return;
