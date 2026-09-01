@@ -1,5 +1,12 @@
 # TPS Notebook Navigator
 
+## 5.23.1
+
+- In **Daily notes** calendar mode, existing Daily Notes no longer remain missing after a cold Obsidian start when the calendar mounts before metadata indexing finishes.
+- The calendar now registers for Obsidian's metadata-ready signal and immediately rechecks once after registration, closing both the before-listener and after-listener startup races. Existing vault, GCM API, and content-change refreshes remain debounced through the same calendar cache invalidation path.
+- This backward-compatible fix changes no setting, note, database schema, or public API. It applies on desktop and mobile, and minimum supported Obsidian remains 1.11.0.
+- Validation passed 256/256 test files and 2,936/2,936 tests, followed by the mandatory separate production build. After a cold reload of Obsidian 1.13.7 in the isolated test vault, the calendar immediately opened both a zero-byte and populated configured Daily Note without a creation prompt; all 11 Daily Note files and both tested file hashes were unchanged. Source artifacts byte-match the deployed test runtime. Production was not accessed.
+
 ## 5.23.0
 
 - TPS Global Context Menu's generated note icon, color, and sort value are now a transient presentation overlay. Navigator consumes the version-1 presentation capability directly and never inserts those generated values into MetadataCache, the property tree, search evidence, pills, or Markdown frontmatter.

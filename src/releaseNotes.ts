@@ -107,6 +107,13 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.23.1',
+        date: '2026-09-01',
+        fixed: [
+            'Existing Daily Notes now appear automatically in the calendar after Obsidian finishes startup indexing instead of remaining missing until another file changes.'
+        ]
+    },
+    {
         version: '5.22.0',
         date: '2026-08-28',
         new: ['Exact tag activations from Obsidian now reveal TPS Notebook Navigator and select that tag instead of opening Core Search.'],

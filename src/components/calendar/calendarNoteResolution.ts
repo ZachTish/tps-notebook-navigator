@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { normalizePath, type App, type TFile } from 'obsidian';
+import { normalizePath, type App, type MetadataCache, type TFile } from 'obsidian';
 import type { NotebookNavigatorSettings } from '../../settings/types';
 import { escapeMomentLiteralPath } from '../../utils/calendarCustomNotePatterns';
 import { isPathInExcludedFolder } from '../../utils/fileFilters';
@@ -43,6 +43,24 @@ export interface ResolvedCalendarNotePath {
 
 export interface CalendarNoteRootFolderSettings {
     calendarCustomRootFolder: string;
+}
+
+/**
+ * Refreshes Core Daily Note lookups after Obsidian finishes resolving metadata.
+ *
+ * The immediate refresh closes the window where metadata became ready between
+ * the calendar's first render and this listener being registered. The caller's
+ * existing scheduler coalesces it with a nearby `resolved` event.
+ */
+export function registerCalendarDailyNoteReadinessRefresh(
+    metadataCache: Pick<MetadataCache, 'on' | 'offref'>,
+    onRefresh: () => void
+): () => void {
+    const ref = metadataCache.on('resolved', onRefresh);
+    onRefresh();
+    return () => {
+        metadataCache.offref(ref);
+    };
 }
 
 interface ResolveCoreDailyNoteDateFromFileOptions {

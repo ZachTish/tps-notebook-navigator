@@ -57,6 +57,7 @@ import { CalendarYearPanel } from './CalendarYearPanel';
 import {
     createCalendarNotePathResolverContext,
     parseCalendarNoteDateFromPath,
+    registerCalendarDailyNoteReadinessRefresh,
     resolveCalendarNotePath,
     resolveCalendarNoteTarget,
     resolveCoreDailyNoteDateFromFile
@@ -442,6 +443,14 @@ export function Calendar({
             }
         };
     }, [app.vault, scheduleVaultVersionUpdate, shouldTrackCalendarVaultChange]);
+
+    useEffect(() => {
+        if (settings.calendarIntegrationMode !== 'daily-notes') {
+            return;
+        }
+
+        return registerCalendarDailyNoteReadinessRefresh(app.metadataCache, scheduleVaultVersionUpdate);
+    }, [app.metadataCache, scheduleVaultVersionUpdate, settings.calendarIntegrationMode]);
 
     useEffect(() => {
         const eventSource = app.workspace as unknown as {

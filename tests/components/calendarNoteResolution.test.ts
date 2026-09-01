@@ -21,6 +21,7 @@ import { describe, expect, test, vi } from 'vitest';
 import {
     createCalendarNotePathResolverContext,
     parseCalendarNoteDateFromPath,
+    registerCalendarDailyNoteReadinessRefresh,
     resolveCalendarNoteTarget,
     resolveCoreDailyNoteDateFromFile
 } from '../../src/components/calendar/calendarNoteResolution';
@@ -112,6 +113,41 @@ function createGcmDailyNotes(overrides: Readonly<Record<string, unknown>> = {}):
 }
 
 describe('calendar note resolution', () => {
+    test('refreshes cached Daily Note misses across startup metadata readiness and unregisters cleanly', () => {
+        const eventRef = { id: 'calendar-daily-note-readiness' };
+        const listeners = new Map<object, () => void>();
+        const metadataCache = {
+            on: vi.fn((name: string, listener: () => void) => {
+                expect(name).toBe('resolved');
+                listeners.set(eventRef, listener);
+                return eventRef;
+            }),
+            offref: vi.fn((ref: object) => {
+                listeners.delete(ref);
+            })
+        };
+        const cachedMisses = new Map([['2026-08-03', null]]);
+        const onRefresh = vi.fn(() => {
+            cachedMisses.clear();
+        });
+
+        const cleanup = registerCalendarDailyNoteReadinessRefresh(metadataCache, onRefresh);
+
+        expect(onRefresh).toHaveBeenCalledTimes(1);
+        expect(cachedMisses.size).toBe(0);
+
+        cachedMisses.set('2026-08-03', null);
+        listeners.forEach(listener => listener());
+        expect(onRefresh).toHaveBeenCalledTimes(2);
+        expect(cachedMisses.size).toBe(0);
+
+        cleanup();
+        expect(metadataCache.offref).toHaveBeenCalledOnce();
+        expect(metadataCache.offref).toHaveBeenCalledWith(eventRef);
+        listeners.forEach(listener => listener());
+        expect(onRefresh).toHaveBeenCalledTimes(2);
+    });
+
     test('uses GCM v3 reverse identity for an active legacy Daily Note path', () => {
         const app = new App();
         const existingFile = createTestTFile('Legacy/Mon, Aug 03 2026.md');
