@@ -181,7 +181,7 @@ describe('useNavigationPaneShortcutActions search reset', () => {
         testVault.registerFile(note);
         const harness = createHarness({
             app,
-            settings: { ...DEFAULT_SETTINGS, enableFolderNotes: true, enableFolderNoteLinks: true, folderNoteName: 'index' }
+            settings: { ...DEFAULT_SETTINGS, enableFolderNotes: true, enableFolderNoteLinks: true, folderNoteNamePattern: 'index' }
         });
         const preventDefault = vi.fn();
         const stopPropagation = vi.fn();

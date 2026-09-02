@@ -67,12 +67,14 @@ describe('TPS template identity integration', () => {
                 !Array.isArray(frontmatter.tags) || !frontmatter.tags.includes('template'),
             prepareInstanceSource: (value: string) => value.replace('template, ', '')
         });
-        (app as unknown as { vault: { process: typeof app.vault.process } }).vault = {
-            process: async (_file, processor) => {
-                source = processor(source);
-                return source;
+        Object.assign(app, {
+            vault: {
+                process: async (_file: TFile, processor: (value: string) => string) => {
+                    source = processor(source);
+                    return source;
+                }
             }
-        } as unknown as typeof app.vault;
+        });
 
         await expect(canTpsAutomaticallyMutateFile(app, file)).resolves.toBe(false);
         expect(canTpsAutomaticallyMutateSource(app, source)).toBe(false);

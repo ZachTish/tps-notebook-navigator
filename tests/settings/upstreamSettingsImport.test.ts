@@ -67,9 +67,13 @@ describe('prepareUpstreamSettingsImport', () => {
     it('accepts a schema-compatible partial record and deeply preserves omitted TPS values', async () => {
         const current = structuredClone(DEFAULT_SETTINGS);
         current.recentNotesCount = 37;
+        current.tpsDataArchitectureMode = 'native-records';
         current.tpsTypesNavigationEnabled = false;
         current.tpsTypesPauseMigrationVersion = 1;
+        current.tpsLinePropertyInheritanceVersion = 1;
         current.typeNavigationSortOrder = 'manual';
+        current.typeAppearances = { 'entity:note': { mode: 'compact' } };
+        current.typeSortOverrides = { 'file:base': 'title-desc' };
         current.rootTypeOrder = ['structural:table', 'entity:note'];
         current.tpsResourceCreationTarget = 'specific-note';
         current.tpsResourceCreationSpecificFile = 'Inbox/Capture.md';
@@ -83,9 +87,13 @@ describe('prepareUpstreamSettingsImport', () => {
             contents: JSON.stringify({
                 folderSortOrder: 'alpha-desc',
                 toolbarVisibility: { list: { search: false } },
+                tpsDataArchitectureMode: 'legacy',
                 tpsTypesNavigationEnabled: true,
                 tpsTypesPauseMigrationVersion: 99,
+                tpsLinePropertyInheritanceVersion: 99,
                 typeNavigationSortOrder: 'alpha-desc',
+                typeAppearances: { 'entity:note': { mode: 'standard' } },
+                typeSortOverrides: { 'file:base': 'title-asc' },
                 rootTypeOrder: ['entity:note'],
                 tpsResourceCreationTarget: 'active-note',
                 tpsResourceCreationSpecificFile: 'Upstream.md',
@@ -105,9 +113,13 @@ describe('prepareUpstreamSettingsImport', () => {
         }
         expect(result.settingsRecord.folderSortOrder).toBe('alpha-desc');
         expect(result.settingsRecord.recentNotesCount).toBe(37);
+        expect(result.settingsRecord.tpsDataArchitectureMode).toBe('native-records');
         expect(result.settingsRecord.tpsTypesNavigationEnabled).toBe(false);
         expect(result.settingsRecord.tpsTypesPauseMigrationVersion).toBe(1);
+        expect(result.settingsRecord.tpsLinePropertyInheritanceVersion).toBe(1);
         expect(result.settingsRecord.typeNavigationSortOrder).toBe('manual');
+        expect(result.settingsRecord.typeAppearances).toEqual({ 'entity:note': { mode: 'compact' } });
+        expect(result.settingsRecord.typeSortOverrides).toEqual({ 'file:base': 'title-desc' });
         expect(result.settingsRecord.rootTypeOrder).toEqual(['structural:table', 'entity:note']);
         expect(result.settingsRecord.tpsResourceCreationTarget).toBe('specific-note');
         expect(result.settingsRecord.tpsResourceCreationSpecificFile).toBe('Inbox/Capture.md');

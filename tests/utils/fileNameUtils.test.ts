@@ -44,9 +44,7 @@ describe('getFileDisplayName', () => {
         const file = createTestTFile('Daily Note Template.md');
         const settings = { useFrontmatterMetadata: true } as never;
 
-        expect(getFileDisplayName(file, { fn: '<% moment(tp.file.title).format("YYYY-MM-DD") %>' }, settings)).toBe(
-            'Daily Note Template'
-        );
+        expect(getFileDisplayName(file, { fn: '<% moment(tp.file.title).format("YYYY-MM-DD") %>' }, settings)).toBe('Daily Note Template');
         expect(getFileDisplayName(file, { fn: '{{title}}' }, settings)).toBe('Daily Note Template');
         expect(getFileDisplayName(file, { fn: 'Rendered title' }, settings)).toBe('Rendered title');
     });

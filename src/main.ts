@@ -95,6 +95,7 @@ import { showNotice } from './utils/noticeUtils';
 import { strings } from './i18n';
 import { TpsNotebookNavigatorApiLifecycle } from './integrations/TpsNotebookNavigatorApiLifecycle';
 import { CoreTagSearchRouter } from './services/CoreTagSearchRouter';
+import { refreshMarkdownWordCountConsumerSettings } from './utils/markdownPipelineContentTypes';
 
 interface ObsidianSettingsModal {
     open(): void;
@@ -1842,6 +1843,10 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
     public onSettingsUpdate() {
         if (this.isUnloading) return;
 
+        // Settings controls mutate the plugin settings object in place, so rebuild identity-based
+        // consumer caches before any settings or view listener reads the newly published values.
+        refreshMarkdownWordCountConsumerSettings(this.app, this.settings);
+
         // Update API caches with new settings
         if (this.api) {
             this.api[INTERNAL_NOTEBOOK_NAVIGATOR_API].metadata.updateFromSettings(this.settings);
@@ -2069,6 +2074,13 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
                 return;
             }
 
+            // Disabled dialogs still advance the marker so re-enabling them starts with
+            // the next update instead of replaying every release skipped meanwhile.
+            if (!this.settings.showReleaseNotes) {
+                await this.advanceLastShownVersion(currentVersion);
+                return;
+            }
+
             const { getLatestReleaseNotes, isReleaseAutoDisplayEnabled } = await import('./releaseNotes');
 
             if (!isReleaseAutoDisplayEnabled(currentVersion)) {
@@ -2093,13 +2105,22 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
 
         // A newer shared marker can come from a device running a newer plugin version. Downgrades
         // never auto-display because recording the older version would reopen the dialog elsewhere.
-        const { getReleaseNotesBetweenVersions, compareVersions, shouldAutoDisplayReleaseNotesForUpdate } = await import('./releaseNotes');
+        const { getReleaseNotesBetweenVersions, compareVersions, isReleaseAutoDisplayEnabled } = await import('./releaseNotes');
         if (compareVersions(currentVersion, lastShownVersion) <= 0) {
             return;
         }
 
-        // Auto-display when any release in the upgrade path opts in.
-        if (!shouldAutoDisplayReleaseNotesForUpdate(lastShownVersion, currentVersion)) {
+        if (!this.settings.showReleaseNotes) {
+            // Keep the high-water marker current while dialogs are disabled, otherwise
+            // re-enabling them would replay release notes from every skipped update.
+            await this.advanceLastShownVersion(currentVersion);
+            return;
+        }
+
+        // Only the current release decides whether startup should open the dialog. Advance the
+        // marker when it opts out so the skipped dialog is not reconsidered on the next startup.
+        if (!isReleaseAutoDisplayEnabled(currentVersion)) {
+            await this.advanceLastShownVersion(currentVersion);
             return;
         }
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { NavigationRootReorderPanel } from '../../src/components/NavigationRootReorderPanel';
+import { TooltipProvider } from '../../src/context/TooltipContext';
 import type { RootReorderRenderItem, SectionReorderRenderItem } from '../../src/hooks/useNavigationRootReorder';
 import { NavigationSectionId } from '../../src/types';
 import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
@@ -56,42 +57,46 @@ const typeItems: RootReorderRenderItem[] = [
 
 function renderPanel(sortOrder: 'catalog' | 'count-desc' = 'catalog'): string {
     return renderToStaticMarkup(
-        React.createElement(NavigationRootReorderPanel, {
-            sectionItems,
-            folderItems: [],
-            tagItems: [],
-            propertyItems: [],
-            typeItems,
-            isMobile: true,
-            showRootFolderSection: false,
-            showRootTagSection: false,
-            showRootPropertySection: false,
-            showRootTypeSection: true,
-            foldersSectionExpanded: false,
-            tagsSectionExpanded: false,
-            propertiesSectionExpanded: false,
-            typesSectionExpanded: true,
-            showRootFolderReset: false,
-            showRootTagReset: false,
-            showRootPropertyReset: false,
-            typeNavigationSortOrder: sortOrder,
-            resetRootTagOrderLabel: 'Reset tags',
-            resetRootPropertyOrderLabel: 'Reset properties',
-            onResetRootFolderOrder: vi.fn(),
-            onResetRootTagOrder: vi.fn(),
-            onResetRootPropertyOrder: vi.fn(),
-            onReorderSections: vi.fn(),
-            onReorderFolders: vi.fn(),
-            onReorderTags: vi.fn(),
-            onReorderProperties: vi.fn(),
-            onReorderTypes: vi.fn(),
-            onTypeNavigationSortOrderChange: vi.fn(),
-            canReorderSections: false,
-            canReorderFolders: false,
-            canReorderTags: false,
-            canReorderProperties: false,
-            canReorderTypes: true
-        })
+        React.createElement(
+            TooltipProvider,
+            null,
+            React.createElement(NavigationRootReorderPanel, {
+                sectionItems,
+                folderItems: [],
+                tagItems: [],
+                propertyItems: [],
+                typeItems,
+                isMobile: true,
+                showRootFolderSection: false,
+                showRootTagSection: false,
+                showRootPropertySection: false,
+                showRootTypeSection: true,
+                foldersSectionExpanded: false,
+                tagsSectionExpanded: false,
+                propertiesSectionExpanded: false,
+                typesSectionExpanded: true,
+                showRootFolderReset: false,
+                showRootTagReset: false,
+                showRootPropertyReset: false,
+                typeNavigationSortOrder: sortOrder,
+                resetRootTagOrderLabel: 'Reset tags',
+                resetRootPropertyOrderLabel: 'Reset properties',
+                onResetRootFolderOrder: vi.fn(),
+                onResetRootTagOrder: vi.fn(),
+                onResetRootPropertyOrder: vi.fn(),
+                onReorderSections: vi.fn(),
+                onReorderFolders: vi.fn(),
+                onReorderTags: vi.fn(),
+                onReorderProperties: vi.fn(),
+                onReorderTypes: vi.fn(),
+                onTypeNavigationSortOrderChange: vi.fn(),
+                canReorderSections: false,
+                canReorderFolders: false,
+                canReorderTags: false,
+                canReorderProperties: false,
+                canReorderTypes: true
+            })
+        )
     );
 }
 

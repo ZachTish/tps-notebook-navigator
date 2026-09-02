@@ -315,6 +315,7 @@ export interface NavigatorListSortSpec {
 }
 
 export type NavigatorListGrouping =
+    | 'none'
     | 'custom'
     | 'date'
     | 'folder'

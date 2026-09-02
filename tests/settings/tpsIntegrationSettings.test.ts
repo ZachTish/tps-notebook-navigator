@@ -165,6 +165,8 @@ describe('TPS integration settings', () => {
 
     it('switches to native records and shuts down virtual row preferences', async () => {
         const context = createContext();
+        const saveSettingsAndUpdate = vi.fn().mockResolvedValue(undefined);
+        context.plugin.saveSettingsAndUpdate = saveSettingsAndUpdate;
         context.plugin.settings.tpsTypesNavigationEnabled = true;
         context.plugin.settings.tpsGcmTaskRowsEnabled = true;
         let handleChange: ((value: string) => Promise<void>) | undefined;
@@ -192,7 +194,7 @@ describe('TPS integration settings', () => {
             tpsTypesNavigationEnabled: false,
             tpsGcmTaskRowsEnabled: false
         });
-        expect(context.plugin.saveSettingsAndUpdate).toHaveBeenCalledOnce();
+        expect(saveSettingsAndUpdate).toHaveBeenCalledOnce();
     });
 
     it('uses the namespaced visibility class for dependent rows in the pre-1.13 renderer', () => {

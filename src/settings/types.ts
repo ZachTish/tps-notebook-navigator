@@ -444,7 +444,7 @@ export function isUnfinishedTaskIconMode(value: unknown): value is UnfinishedTas
 }
 
 /** Built-in grouping modes for list pane notes */
-export type ListNoteGroupingBaseOption = 'custom' | 'date' | 'folder' | 'tags';
+export type ListNoteGroupingBaseOption = 'none' | 'custom' | 'date' | 'folder' | 'tags';
 
 /** Resolved direction applied when arranging property groups */
 export type PropertyGroupingDirection = 'asc' | 'desc';
@@ -495,6 +495,8 @@ export interface ListPaneAppearance {
     showTags?: boolean;
     showProperties?: boolean;
     showTaskProgress?: boolean;
+    showDate?: boolean;
+    showParentFolder?: boolean;
     /** Undefined inherits the global count type; `none` explicitly hides counts for this selection. */
     textCount?: TextCountDisplay;
     /** Whether a multi-valued property creates one group per value or one combined group. */
@@ -530,7 +532,7 @@ const LINE_PROPERTY_DAY_GROUPING_DESC_PREFIX = 'line-property-day-desc:';
 const LINE_PROPERTY_DAY_GROUPING_FOLLOW_PREFIX = 'line-property-day-follow:';
 
 function isListNoteGroupingBaseOption(value: unknown): value is ListNoteGroupingBaseOption {
-    return value === 'custom' || value === 'date' || value === 'folder' || value === 'tags';
+    return value === 'none' || value === 'custom' || value === 'date' || value === 'folder' || value === 'tags';
 }
 
 function parsePropertyGroupingOption(value: unknown): {
@@ -650,10 +652,6 @@ export function normalizePropertyGroupingSourceForMenu(
 }
 
 export function normalizeListNoteGroupingBaseOption(value: unknown): ListNoteGroupingBaseOption | null {
-    if (value === 'none') {
-        return 'custom';
-    }
-
     return isListNoteGroupingBaseOption(value) ? value : null;
 }
 
@@ -819,6 +817,7 @@ export interface NotebookNavigatorSettings {
     narrowSidebarCustomWidth: number;
     showTooltips: boolean;
     showTooltipPath: boolean;
+    showTooltipTags: boolean;
     showTooltipWordCount: boolean;
     desktopBackground: BackgroundMode;
     desktopScale: number;
@@ -846,6 +845,9 @@ export interface NotebookNavigatorSettings {
 
     // Icon packs tab
     externalIconProviders: Record<string, boolean>;
+
+    // About
+    showReleaseNotes: boolean;
 
     // Advanced tab
     checkForUpdatesOnStart: boolean;
@@ -889,7 +891,6 @@ export interface NotebookNavigatorSettings {
     folderSortOrder: AlphaSortOrder;
     enableFolderNotes: boolean;
     folderNoteType: FolderNoteCreationPreference;
-    folderNoteName: string;
     folderNoteNamePattern: string;
     folderNoteTemplate: string | null;
     enableFolderNoteLinks: boolean;

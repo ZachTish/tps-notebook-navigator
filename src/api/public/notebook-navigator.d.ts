@@ -18,7 +18,7 @@
 
 /**
  * Notebook Navigator Plugin API Type Definitions
- * Version: 3.5.0
+ * Version: 3.6.0
  *
  * Download this file to your Obsidian plugin project to get TypeScript support
  * for the Notebook Navigator API.
@@ -283,6 +283,7 @@ export interface NavigatorListSortSpec {
     readonly propertyKey?: string;
 }
 export type NavigatorListGrouping =
+    | 'none'
     | 'custom'
     | 'date'
     | 'folder'
@@ -640,7 +641,7 @@ export interface NotebookNavigatorEvents {
 
 /**
  * Main Notebook Navigator API interface
- * @version 3.5.0
+ * @version 3.6.0
  */
 export interface NotebookNavigatorAPI {
     /** Get the API version string */

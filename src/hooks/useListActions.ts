@@ -484,6 +484,8 @@ function getGroupingIcon(option: ListNoteGroupingOption): string {
         return 'lucide-list-tree';
     }
     switch (option) {
+        case 'none':
+            return 'lucide-x';
         case 'custom':
             return 'lucide-heading';
         case 'date':
@@ -2082,9 +2084,8 @@ export function useListActions({
                 });
             };
 
-            // Custom and Date annotate the sorted list with headers; the separator below splits
-            // them from the entries that partition the list into ordered groups.
-            (['custom', 'date'] as const).forEach(option => {
+            // None keeps the sorted list flat, while Custom and Date annotate it with headers.
+            (['none', 'custom', 'date'] as const).forEach(option => {
                 addGroupOptionItem(
                     option,
                     strings.settings.items.defaultGrouping.options[option],
@@ -2092,8 +2093,6 @@ export function useListActions({
                     isGroupOptionDisabled(option)
                 );
             });
-
-            menu.addSeparator();
 
             if (hasFolderSelection) {
                 addGroupOptionItem(

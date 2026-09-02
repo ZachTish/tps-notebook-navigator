@@ -31,6 +31,7 @@ import {
     getCachedManualSortGroupHeader,
     getCachedManualSortGroupHeaderValue,
     getCachedManualSortRank,
+    getManualSortGroupHeaderWordCountConsumerPaths,
     getFolderPlanningInsertionIndex,
     getManualSortGroupHeaderPropertyKey,
     isManualSortValueEqual,
@@ -42,7 +43,10 @@ import {
     partitionManualSortFiles,
     parseManualSortGroupHeaderTargetWordCount,
     parseManualSortRank,
+    removeManualSortGroupHeaderWordCountConsumersInFolder,
     removeManualSortProperty,
+    renameManualSortGroupHeaderWordCountConsumersInFolder,
+    refreshManualSortGroupHeaderWordCountConsumer,
     shouldShowManualSortGroupHeaderProgress,
     writeManualSortGroupHeader,
     writeManualSortAssignments,
@@ -57,10 +61,12 @@ function createFile(path: string, frontmatter: Record<string, unknown>): TFile &
 }
 
 function createApp(files: readonly (TFile & { frontmatter: Record<string, unknown> })[], processFrontMatter: ReturnType<typeof vi.fn>) {
-    const frontmatterByPath = new Map(files.map(file => [file.path, file.frontmatter]));
     return {
         metadataCache: {
-            getFileCache: (file: TFile) => ({ frontmatter: frontmatterByPath.get(file.path) })
+            getFileCache: (file: TFile) => ({ frontmatter: files.find(candidate => candidate === file)?.frontmatter })
+        },
+        vault: {
+            getMarkdownFiles: () => [...files]
         },
         fileManager: { processFrontMatter }
     } as unknown as App;
@@ -99,6 +105,49 @@ describe('manual sort helpers', () => {
         expect(canUseManualSortKeyboardReorder({ ...common, groupingMode: 'tags' })).toBe(false);
         expect(canUseManualSortKeyboardReorder({ ...common, groupingMode: 'property:asc:value:note:status' })).toBe(false);
         expect(canUseManualSortKeyboardReorder({ ...common, groupingMode: 'custom', isSearchActive: true })).toBe(false);
+    });
+
+    it('tracks only group headers that request word counts', () => {
+        const first = createFile('notes/first.md', {
+            group_header: { title: 'First', show_word_count: true }
+        });
+        const second = createFile('notes/second.md', {
+            group_header: { title: 'Second', show_word_count: false }
+        });
+        const app = createApp([first, second], vi.fn());
+        const settings = structuredClone(DEFAULT_SETTINGS);
+
+        expect(getManualSortGroupHeaderWordCountConsumerPaths(app, settings)).toEqual(['notes/first.md']);
+
+        first.frontmatter.group_header = { title: 'First', show_word_count: false };
+        expect(refreshManualSortGroupHeaderWordCountConsumer(app, first, settings)).toEqual({ changed: true, active: false });
+
+        second.frontmatter.group_header = { title: 'Second', show_word_count: true };
+        expect(refreshManualSortGroupHeaderWordCountConsumer(app, second, settings)).toEqual({ changed: true, active: true });
+        expect(getManualSortGroupHeaderWordCountConsumerPaths(app, settings)).toEqual(['notes/second.md']);
+    });
+
+    it('updates consumer paths after a containing folder is renamed or deleted without rescanning the vault', () => {
+        const header = createFile('Projects/Header.md', {
+            group_header: { title: 'Projects', show_word_count: true }
+        });
+        const files = [header];
+        const app = createApp(files, vi.fn());
+        const getMarkdownFiles = vi.spyOn(app.vault, 'getMarkdownFiles');
+        const settings = structuredClone(DEFAULT_SETTINGS);
+
+        expect(getManualSortGroupHeaderWordCountConsumerPaths(app, settings)).toEqual(['Projects/Header.md']);
+        expect(getMarkdownFiles).toHaveBeenCalledTimes(1);
+
+        header.path = 'Archive/Header.md';
+        expect(renameManualSortGroupHeaderWordCountConsumersInFolder(app, 'Projects', 'Archive', settings)).toBe(true);
+        expect(getManualSortGroupHeaderWordCountConsumerPaths(app, settings)).toEqual(['Archive/Header.md']);
+        expect(getMarkdownFiles).toHaveBeenCalledTimes(1);
+
+        files.splice(0, 1);
+        expect(removeManualSortGroupHeaderWordCountConsumersInFolder(app, 'Archive', settings)).toBe(true);
+        expect(getManualSortGroupHeaderWordCountConsumerPaths(app, settings)).toEqual([]);
+        expect(getMarkdownFiles).toHaveBeenCalledTimes(1);
     });
 
     it('builds numeric assignments for markdown files only', () => {

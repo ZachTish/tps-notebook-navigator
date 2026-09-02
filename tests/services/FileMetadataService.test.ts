@@ -217,7 +217,7 @@ describe('FileMetadataService frontmatter integration', () => {
 
     it('does not rewrite a protected template when a vault SVG icon is renamed', async () => {
         frontmatter = { tags: ['template'], icon: 'vault:Icons/Old.svg' };
-        forEachFile.mockImplementation(callback => {
+        forEachFile.mockImplementation((callback: (path: string, data: { metadata: { icon: string } }) => void) => {
             callback(file.path, { metadata: { icon: 'vault:Icons/Old.svg' } });
         });
         Object.assign(app, {
@@ -247,7 +247,7 @@ describe('FileMetadataService frontmatter integration', () => {
 
     it('rechecks template identity inside the vault-icon frontmatter mutation', async () => {
         frontmatter = { tags: ['template'], icon: 'vault:Icons/Old.svg' };
-        forEachFile.mockImplementation(callback => {
+        forEachFile.mockImplementation((callback: (path: string, data: { metadata: { icon: string } }) => void) => {
             callback(file.path, { metadata: { icon: 'vault:Icons/Old.svg' } });
         });
         Object.assign(app, {

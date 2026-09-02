@@ -53,7 +53,7 @@ export function getTpsTemplateIdentityApi(app: App): TpsTemplateIdentityApi | nu
         ...(typeof prepareInstanceSource === 'function'
             ? {
                   prepareInstanceSource: (source: string) => {
-                      const prepared = prepareInstanceSource.call(templates, source);
+                      const prepared: unknown = prepareInstanceSource.call(templates, source);
                       return typeof prepared === 'string' ? prepared : null;
                   }
               }

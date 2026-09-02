@@ -41,15 +41,13 @@ export class CalendarTemplateModal extends BaseSuggestModal<TFile> {
     /** Returns markdown files from the template folder, sorted by path. */
     getItems(): TFile[] {
         const folderPrefix = this.templateFolder ? `${this.templateFolder}/` : '';
-        const files = this.app.vault
-            .getFiles()
-            .filter(file => {
-                if (file.extension !== 'md') {
-                    return false;
-                }
-                const tpsMatch = isTpsTemplateFile(this.app, file);
-                return tpsMatch ?? (folderPrefix === '' || file.path.startsWith(folderPrefix));
-            });
+        const files = this.app.vault.getFiles().filter(file => {
+            if (file.extension !== 'md') {
+                return false;
+            }
+            const tpsMatch = isTpsTemplateFile(this.app, file);
+            return tpsMatch ?? (folderPrefix === '' || file.path.startsWith(folderPrefix));
+        });
         files.sort((a, b) => naturalCompare(a.path, b.path));
         return files;
     }

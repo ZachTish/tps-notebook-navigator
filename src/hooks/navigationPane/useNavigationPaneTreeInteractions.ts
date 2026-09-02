@@ -38,7 +38,7 @@ import {
 } from '../../types';
 import type { PropertyTreeNode, TagTreeNode } from '../../types/storage';
 import type { InclusionOperator } from '../../utils/filterSearch';
-import { getFolderNote, openFolderNoteFile, type FolderNoteOpenContext } from '../../utils/folderNotes';
+import { getFolderNote, openFolderNoteFile, revealFolderNoteInNavigator, type FolderNoteOpenContext } from '../../utils/folderNotes';
 import { runAsyncAction } from '../../utils/async';
 import { resolveFolderNoteClickOpenContext, resolveFolderNoteDefaultOpenContext } from '../../utils/keyboardOpenContext';
 import { findTagNode } from '../../utils/tagTree';
@@ -257,6 +257,7 @@ export function useNavigationPaneTreeInteractions({
                 ? resolveFolderNoteClickOpenContext(event, settings.folderNoteOpenLocation, settings.multiSelectModifier)
                 : resolveFolderNoteDefaultOpenContext(settings.folderNoteOpenLocation);
             focusListPaneAfterRightSidebarFolderNoteSelection(openContext);
+            revealFolderNoteInNavigator(selectionDispatch, folderNote);
 
             if (openContext === 'right-sidebar' && settings.showNearestFolderNoteInSidebar && !wasSelectedFolder) {
                 return;
@@ -305,8 +306,17 @@ export function useNavigationPaneTreeInteractions({
 
             onResetSearchForNavigation();
             selectionDispatch({ type: 'SET_SELECTED_FOLDER', folder, autoSelectedFile: null });
+            revealFolderNoteInNavigator(selectionDispatch, folderNote);
 
-            runAsyncAction(() => openFolderNoteFile({ app, commandQueue, folder, folderNote, context: 'tab' }));
+            runAsyncAction(() =>
+                openFolderNoteFile({
+                    app,
+                    commandQueue,
+                    folder,
+                    folderNote,
+                    context: 'tab'
+                })
+            );
         },
         [app, commandQueue, onResetSearchForNavigation, selectionDispatch, settings]
     );

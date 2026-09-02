@@ -175,7 +175,9 @@ export function renderTpsDataArchitectureSetting(setting: Setting, context: Sett
         .setName(DATA_ARCHITECTURE_COPY.name)
         .setDesc(DATA_ARCHITECTURE_COPY.desc)
         .addDropdown(dropdown => {
-            Object.entries(DATA_ARCHITECTURE_COPY.options).forEach(([value, label]) => dropdown.addOption(value, label));
+            Object.entries(DATA_ARCHITECTURE_COPY.options).forEach(([value, label]) => {
+                dropdown.addOption(value, label);
+            });
             dropdown.setValue(plugin.settings.tpsDataArchitectureMode).onChange(async value => {
                 if (!isTpsDataArchitectureMode(value)) return;
                 plugin.settings.tpsDataArchitectureMode = value;
@@ -267,13 +269,16 @@ export function renderTpsTypesNavigationEnabledSetting(setting: Setting, context
         .setName(TYPES_NAVIGATION_COPY.name)
         .setDesc(TYPES_NAVIGATION_COPY.desc)
         .addToggle(toggle =>
-            toggle.setDisabled(plugin.settings.tpsDataArchitectureMode === 'native-records').setValue(plugin.settings.tpsTypesNavigationEnabled).onChange(async value => {
-                if (plugin.settings.tpsDataArchitectureMode === 'native-records') return;
-                plugin.settings.tpsTypesNavigationEnabled = value;
-                await plugin.saveSettingsAndUpdate();
-                context.refreshSettingsDomState();
-                onAfterUpdate?.();
-            })
+            toggle
+                .setDisabled(plugin.settings.tpsDataArchitectureMode === 'native-records')
+                .setValue(plugin.settings.tpsTypesNavigationEnabled)
+                .onChange(async value => {
+                    if (plugin.settings.tpsDataArchitectureMode === 'native-records') return;
+                    plugin.settings.tpsTypesNavigationEnabled = value;
+                    await plugin.saveSettingsAndUpdate();
+                    context.refreshSettingsDomState();
+                    onAfterUpdate?.();
+                })
         );
 }
 
@@ -284,13 +289,16 @@ export function renderGcmTaskRowsEnabledSetting(setting: Setting, context: Setti
         .setName(TASK_ROWS_COPY.enabledName)
         .setDesc(TASK_ROWS_COPY.enabledDesc)
         .addToggle(toggle =>
-            toggle.setDisabled(plugin.settings.tpsDataArchitectureMode === 'native-records').setValue(plugin.settings.tpsGcmTaskRowsEnabled).onChange(async value => {
-                if (plugin.settings.tpsDataArchitectureMode === 'native-records') return;
-                plugin.settings.tpsGcmTaskRowsEnabled = value;
-                await plugin.saveSettingsAndUpdate();
-                context.refreshSettingsDomState();
-                onAfterUpdate?.();
-            })
+            toggle
+                .setDisabled(plugin.settings.tpsDataArchitectureMode === 'native-records')
+                .setValue(plugin.settings.tpsGcmTaskRowsEnabled)
+                .onChange(async value => {
+                    if (plugin.settings.tpsDataArchitectureMode === 'native-records') return;
+                    plugin.settings.tpsGcmTaskRowsEnabled = value;
+                    await plugin.saveSettingsAndUpdate();
+                    context.refreshSettingsDomState();
+                    onAfterUpdate?.();
+                })
         );
 }
 

@@ -1,10 +1,10 @@
 # TPS Notebook Navigator API Reference
 
-Updated: August 27, 2026
+Updated: September 2, 2026
 
 TPS Notebook Navigator exposes a public API for other plugins and scripts to interact with navigator features and register transient provider rows.
 
-**Current API Version:** 3.5.0
+**Current API Version:** 3.6.0
 
 ## Table of Contents
 
@@ -562,8 +562,8 @@ instead select line-only grouping for GCM Checkboxes, Bullets, and Headings—or
 `line-property:<key>` / `line-property-desc:<key>` or calendar-day `line-property-day:<key>` /
 `line-property-day-desc:<key>`; append `-follow` to either prefix when group order should follow the active sort. Line-only grouping never falls back to the owning note, so an absent or blank inline field
 lands in No value; Navigator-owned ranges have no inline-property contract and also remain in No value. Native file rows
-always group from frontmatter. `custom` is the ungrouped source-row presentation because custom header
-ownership is file-based. Manual sort, folder/manual grouping, and display-mode/appearance editing remain unsupported.
+always group from frontmatter. `none` is the explicit ungrouped presentation. `custom` also renders source-backed rows flat
+because custom-header ownership is file-based. Manual sort, folder/manual grouping, and display-mode/appearance editing remain unsupported.
 External provider Types keep their existing provider-owned presentation.
 
 Internal Filter Search accepts canonical `type:<fixed-id>` and `-type:<fixed-id>` facets, for example
@@ -791,7 +791,8 @@ result contract.
 
 `setPresentation(update)` validates every supplied field before one settings transaction. It works for folder, tag,
 property, and every fixed built-in Type scope. Fixed source-backed Types accept title, filename, configured created/modified,
-and configured non-manual property sort plus compatible date/property/ungrouped (`custom`) grouping. `groupBy: 'tags'`
+and configured non-manual property sort plus compatible date/property/ungrouped (`none`) grouping. `groupBy: 'custom'`
+continues to select manual frontmatter group headers, while `groupBy: 'tags'`
 groups note files by their visible tags and keeps notes without a visible tag in a separate group. Property grouping may
 request owning-note values with `property:` / `property-desc:` and `property-day:` / `property-day-desc:`; each also has a
 `-follow` form that tracks sort direction. Line-only `line-property:` / `line-property-desc:` and `line-property-day:` /
@@ -1196,6 +1197,12 @@ The type definitions provide:
 Behavior sections for each API).
 
 ## Changelog
+
+### Version 3.6.0 (2026-09-02)
+
+- Added `groupBy: 'none'` to List API presentation updates and snapshots for an explicitly ungrouped note list
+- Preserved every existing grouping encoding and TPS aggregate Tags/property-key default
+- Kept the rest of the API 3.x surface unchanged
 
 ### Version 3.5.0 (2026-08-27)
 

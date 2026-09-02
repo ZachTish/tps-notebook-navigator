@@ -125,6 +125,7 @@ export function validateListPresentationUpdate(value: unknown): PublicListInputR
         const groupBy = value.groupBy;
         if (
             groupBy !== null &&
+            groupBy !== 'none' &&
             groupBy !== 'custom' &&
             groupBy !== 'date' &&
             groupBy !== 'folder' &&

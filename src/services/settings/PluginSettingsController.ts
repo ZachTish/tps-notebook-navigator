@@ -29,7 +29,7 @@ import {
     extractLegacyPeriodicNotesFolder,
     extractLegacyShortcuts,
     extractLegacyVisibilitySettings,
-    migrateFolderNoteTemplateSetting,
+    migrateFolderNoteSettings,
     migrateLegacySyncedSettings,
     migrateSearchShortcutNegationSyntax
 } from '../../settings/migrations/syncedSettings';
@@ -209,28 +209,6 @@ const LEGACY_LOCAL_SYNC_MODE_SETTING_IDS = new Set<SyncModeSettingId>([
     'compactItemHeightScaleText',
     'uiScale'
 ]);
-
-function hasLegacyNoneGroupingInAppearanceMap(value: unknown): boolean {
-    if (!isRecord(value)) {
-        return false;
-    }
-
-    return Object.values(value).some(appearance => isRecord(appearance) && appearance.groupBy === 'none');
-}
-
-function containsLegacyNoneGroupingInStoredData(storedData: Record<string, unknown> | null): boolean {
-    if (!storedData) {
-        return false;
-    }
-
-    return (
-        storedData.noteGrouping === 'none' ||
-        hasLegacyNoneGroupingInAppearanceMap(storedData.folderAppearances) ||
-        hasLegacyNoneGroupingInAppearanceMap(storedData.tagAppearances) ||
-        hasLegacyNoneGroupingInAppearanceMap(storedData.propertyAppearances) ||
-        hasLegacyNoneGroupingInAppearanceMap(storedData.typeAppearances)
-    );
-}
 
 export class PluginSettingsController {
     private currentSettings: NotebookNavigatorSettings = structuredClone(DEFAULT_SETTINGS);
@@ -549,7 +527,6 @@ export class PluginSettingsController {
         const hadMissingPropertyGroupKeyInStoredData = Boolean(
             storedData && !Object.prototype.hasOwnProperty.call(storedData, 'propertyGroupKey')
         );
-        const hadLegacyNoneGroupingInStoredData = containsLegacyNoneGroupingInStoredData(storedData);
         const hadLegacyOpenFolderNotesInNewTabInStoredData = Boolean(
             storedData && Object.prototype.hasOwnProperty.call(storedData, 'openFolderNotesInNewTab')
         );
@@ -847,7 +824,11 @@ export class PluginSettingsController {
             })
         );
 
-        migrateFolderNoteTemplateSetting({ settings: this.currentSettings, defaultSettings: DEFAULT_SETTINGS });
+        const migratedFolderNoteSettings = migrateFolderNoteSettings({
+            settings: this.currentSettings,
+            storedData,
+            defaultSettings: DEFAULT_SETTINGS
+        });
         applyExistingUserDefaults({ settings: this.currentSettings });
 
         const legacyVisibility = extractLegacyVisibilitySettings({ settings: this.currentSettings, storedData });
@@ -902,7 +883,6 @@ export class PluginSettingsController {
             hadMissingPropertyGroupKeyInStoredData ||
             reconciledDefaultFolderSort.changed ||
             reconciledDefaultNoteGrouping.changed ||
-            hadLegacyNoneGroupingInStoredData ||
             hadLegacyOpenFolderNotesInNewTabInStoredData ||
             hadInvalidShiftEnterOpenContextInStoredData ||
             hadInvalidCmdCtrlEnterOpenContextInStoredData ||
@@ -911,6 +891,7 @@ export class PluginSettingsController {
             prunedUnavailablePropertyGroupingOverrides ||
             uiScaleMigrated ||
             migratedMomentFormats ||
+            migratedFolderNoteSettings ||
             migratedShortcutNegationSyntax;
 
         // A local marker newer than data.json repairs the shared high-water mark so other devices

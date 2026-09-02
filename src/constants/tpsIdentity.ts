@@ -15,6 +15,7 @@ export const TPS_NOTEBOOK_NAVIGATOR_CALENDAR_VIEW = 'tps-notebook-navigator-cale
 export const TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW = 'tps-notebook-navigator-folder-note-sidebar';
 
 export const TPS_NOTEBOOK_NAVIGATOR_ICON_ID = TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID;
+export const TPS_NOTEBOOK_NAVIGATOR_BETTER_PASTE_ICON_ID = `${TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID}-better-paste`;
 export const TPS_NOTEBOOK_NAVIGATOR_ROOT_CLASS = TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID;
 export const TPS_NOTEBOOK_NAVIGATOR_MOBILE_CLASS = 'tps-notebook-navigator-mobile';
 export const TPS_NOTEBOOK_NAVIGATOR_ANDROID_CLASS = 'tps-notebook-navigator-android';

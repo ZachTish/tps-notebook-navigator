@@ -29,7 +29,7 @@ import {
     shouldExcludeFolderFromDescendants
 } from '../../utils/fileFilters';
 import { ItemType } from '../../types';
-import { addCopySubmenu, setAsyncOnClick, tryCreateSubmenu } from './menuAsyncHelpers';
+import { addCopySubmenu, setAsyncOnClick, setSubmenuOnClick, tryCreateSubmenu } from './menuAsyncHelpers';
 import { addShortcutRenameMenuItem } from './shortcutRenameMenuItem';
 import { resolveNavigationFolderIcon, resolveUXIconForMenu } from '../uxIcons';
 import {
@@ -127,13 +127,16 @@ export function buildFolderCreationMenu(params: FolderMenuBuilderParams, folderD
         });
     });
 
-    menu.addItem((item: MenuItem) => {
-        setAsyncOnClick(item.setTitle(strings.contextMenu.folder.newCanvas).setIcon('lucide-layout-grid'), async () => {
-            ensureFolderSelected();
-            const createdCanvas = await fileSystemOps.createCanvas(folder);
-            handleFileCreation(createdCanvas);
+    const canvasPlugin = getInternalPlugin(app, 'canvas');
+    if (canvasPlugin?.enabled) {
+        menu.addItem((item: MenuItem) => {
+            setAsyncOnClick(item.setTitle(strings.contextMenu.folder.newCanvas).setIcon('lucide-layout-grid'), async () => {
+                ensureFolderSelected();
+                const createdCanvas = await fileSystemOps.createCanvas(folder);
+                handleFileCreation(createdCanvas);
+            });
         });
-    });
+    }
 
     const basesPlugin = getInternalPlugin(app, 'bases');
     if (basesPlugin?.enabled) {
@@ -210,7 +213,6 @@ export function buildFolderCreationMenu(params: FolderMenuBuilderParams, folderD
                         folder,
                         {
                             folderNoteType: settings.folderNoteType,
-                            folderNoteName: settings.folderNoteName,
                             folderNoteNamePattern: settings.folderNoteNamePattern,
                             folderNoteTemplate: settings.folderNoteTemplate
                         },
@@ -318,7 +320,7 @@ export function buildFolderMenu(params: FolderMenuBuilderParams): void {
 
             sortOrderSubmenu.addItem(subItem => {
                 subItem.setTitle(`${strings.folderAppearance.defaultLabel} (${globalDefaultLabel})`).setChecked(!currentOverride);
-                setAsyncOnClick(subItem, async () => {
+                setSubmenuOnClick(menu, subItem, async () => {
                     await metadataService.removeFolderChildSortOrderOverride(folder.path);
                     app.workspace.requestSaveLayout();
                 });
@@ -328,7 +330,7 @@ export function buildFolderMenu(params: FolderMenuBuilderParams): void {
 
             sortOrderSubmenu.addItem(subItem => {
                 subItem.setTitle(strings.settings.items.folderSortOrder.options.alphaAsc).setChecked(currentOverride === 'alpha-asc');
-                setAsyncOnClick(subItem, async () => {
+                setSubmenuOnClick(menu, subItem, async () => {
                     await metadataService.setFolderChildSortOrderOverride(folder.path, 'alpha-asc');
                     app.workspace.requestSaveLayout();
                 });
@@ -336,7 +338,7 @@ export function buildFolderMenu(params: FolderMenuBuilderParams): void {
 
             sortOrderSubmenu.addItem(subItem => {
                 subItem.setTitle(strings.settings.items.folderSortOrder.options.alphaDesc).setChecked(currentOverride === 'alpha-desc');
-                setAsyncOnClick(subItem, async () => {
+                setSubmenuOnClick(menu, subItem, async () => {
                     await metadataService.setFolderChildSortOrderOverride(folder.path, 'alpha-desc');
                     app.workspace.requestSaveLayout();
                 });

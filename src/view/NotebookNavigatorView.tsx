@@ -40,6 +40,7 @@ import { UIStateProvider } from '../context/UIStateContext';
 import { ShortcutsProvider } from '../context/ShortcutsContext';
 import { RecentDataProvider } from '../context/RecentDataContext';
 import { InternalDragSessionProvider } from '../context/InternalDragContext';
+import { TooltipProvider } from '../context/TooltipContext';
 import type NotebookNavigatorPlugin from '../main';
 import { NOTEBOOK_NAVIGATOR_ICON_ID } from '../constants/notebookNavigatorIcon';
 import { NOTEBOOK_NAVIGATOR_VIEW } from '../types';
@@ -221,7 +222,9 @@ export class NotebookNavigatorView extends ItemView {
                                             >
                                                 <UIStateProvider>
                                                     <InternalDragSessionProvider>
-                                                        <NotebookNavigatorContainer ref={this.setComponentHandle} />
+                                                        <TooltipProvider>
+                                                            <NotebookNavigatorContainer ref={this.setComponentHandle} />
+                                                        </TooltipProvider>
                                                     </InternalDragSessionProvider>
                                                 </UIStateProvider>
                                             </SelectionProvider>

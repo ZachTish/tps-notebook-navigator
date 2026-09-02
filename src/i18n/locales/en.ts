@@ -441,6 +441,8 @@ export const STRINGS_EN = {
         tags: 'Tags',
         properties: 'Properties',
         tasks: 'Tasks',
+        date: 'Date',
+        parentFolder: 'Parent folder',
         textCount: {
             label: 'Text count',
             options: {
@@ -491,7 +493,7 @@ export const STRINGS_EN = {
             wordCountTarget: 'Target word count',
             wordCountTargetPlaceholder: '10,000',
             wordCountTargetDescription:
-                'When this field is empty, the group goal uses the target property set in Settings > Notes > Word and character count. Override it by setting a target value for this group.',
+                'When this field is empty, the group goal uses the target property set in Settings > File display > Word and character count. Override it by setting a target value for this group.',
             description: 'Customize the group header for this note. Leave the title empty to remove the header.'
         },
         mergeNotes: {
@@ -1012,7 +1014,7 @@ export const STRINGS_EN = {
             label: 'General',
             description: 'Release notes, support, vault profile, file types, and property keys.',
             groups: {
-                vaultSetup: 'Vault setup'
+                about: 'About'
             }
         },
         pageGroups: {
@@ -1277,12 +1279,13 @@ export const STRINGS_EN = {
             },
             defaultGrouping: {
                 name: 'Default grouping',
-                desc: '**Headers** annotate the sorted list without changing its order: Custom shows headers defined in frontmatter, and Date inserts date headers. **Groups** reorder the list: folder and property groups are ordered on their own, and notes inside each group follow the sort order.',
+                desc: 'None keeps the sorted list flat. **Headers** annotate it without changing its order: Custom shows headers defined in frontmatter, and Date inserts date headers. **Groups** reorder the list: folder and property groups are ordered on their own, and notes inside each group follow the sort order.',
                 families: {
                     headers: 'Headers',
                     groups: 'Groups'
                 },
                 options: {
+                    none: 'None',
                     custom: 'Custom',
                     date: 'Date',
                     folder: 'Folder'
@@ -1470,8 +1473,8 @@ export const STRINGS_EN = {
                 desc: 'Applies only on iOS.'
             },
             defaultStartupView: {
-                name: 'Default startup view',
-                desc: 'Choose which pane is active when Notebook Navigator opens. Single-pane layout shows this pane first; dual-pane layout gives it keyboard focus.',
+                name: 'Single-pane startup view',
+                desc: 'Choose which pane is shown when Notebook Navigator opens in single-pane layout.',
                 options: {
                     navigation: 'Navigation pane',
                     listPane: 'List pane'
@@ -1754,9 +1757,13 @@ export const STRINGS_EN = {
                 name: 'Show path in tooltips',
                 desc: 'Display the folder path below note names in tooltips.'
             },
+            showTooltipTags: {
+                name: 'Show tags in tooltips',
+                desc: 'Display note tags in tooltips when the tags section is enabled.'
+            },
             showTooltipWordCount: {
                 name: 'Show word count in tooltips',
-                desc: 'Display note word counts in tooltips.'
+                desc: 'Display word counts in tooltips when word counts are enabled.'
             },
             resetPaneSeparator: {
                 name: 'Reset pane separator position',
@@ -2026,6 +2033,20 @@ export const STRINGS_EN = {
             showTargetPercentage: {
                 name: 'Show target percentage',
                 desc: 'Display only the progress percentage when a target word count is available.'
+            },
+            textCountActiveNotice: {
+                title: 'Counting is still on',
+                summary: 'Word or character counts are still calculated for all notes because they are used by the following:',
+                more: 'and {count} more',
+                reasons: {
+                    appearance: 'File appearance',
+                    'group-header': 'Group header'
+                },
+                scopes: {
+                    folder: 'Folder: {name}',
+                    tag: 'Tag: #{name}',
+                    property: 'Property: {name}'
+                }
             },
             dateFormat: {
                 name: 'Date format',
@@ -2362,7 +2383,7 @@ export const STRINGS_EN = {
                 name: 'Show properties',
                 desc: 'Display properties section in the navigator.',
                 propertyKeysInfoPrefix: 'Configure properties in ',
-                propertyKeysInfoLinkText: 'Start > Property keys',
+                propertyKeysInfoLinkText: 'General > Property keys',
                 propertyKeysInfoSuffix: ''
             },
             showPropertyIcons: {
@@ -2418,12 +2439,7 @@ export const STRINGS_EN = {
             },
             folderNoteName: {
                 name: 'Folder note name',
-                desc: 'Name of the folder note without extension. Leave empty to use the same name as the folder.',
-                placeholder: 'index'
-            },
-            folderNoteNamePattern: {
-                name: 'Folder note name pattern',
-                desc: 'Name pattern for folder notes without extension. Use {{folder}} to insert the folder name. When set, Folder note name does not apply.'
+                desc: 'Name of the folder note without extension. {{folder}} inserts the folder name; omit it for a fixed name such as index.'
             },
             folderNoteTemplate: {
                 name: 'Folder note template',
@@ -2563,6 +2579,11 @@ export const STRINGS_EN = {
                 buttonText: '❤️ Sponsor',
                 coffeeButton: '☕️ Buy me a coffee'
             },
+            otherPlugins: {
+                name: 'Check out my other plugins',
+                betterPaste: 'Clean up pasted text, links and images',
+                pixelPerfectImage: 'Exact image resizing and more'
+            },
             checkForNewVersionOnStart: {
                 name: 'Check for new version on start',
                 desc: 'Checks for new plugin releases on startup and shows a notification when an update is available. Checks occur at most once per day.',
@@ -2576,6 +2597,10 @@ export const STRINGS_EN = {
                 name: "What's new in Notebook Navigator {version}",
                 desc: 'See recent updates and improvements',
                 buttonText: 'View recent updates'
+            },
+            showReleaseNotes: {
+                name: 'Show release notes after updating',
+                desc: "Disable to stop the What's new dialog from opening automatically after updates."
             },
             masteringVideo: {
                 name: 'Mastering Notebook Navigator (video)',

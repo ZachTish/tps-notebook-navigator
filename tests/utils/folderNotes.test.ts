@@ -127,7 +127,6 @@ describe('root folder notes', () => {
 
         expect(
             resolveFolderNoteNameForFolder(root, {
-                folderNoteName: '',
                 folderNoteNamePattern: ''
             })
         ).toBe('Shared Scratch');
@@ -139,7 +138,6 @@ describe('root folder notes', () => {
 
         expect(
             resolveFolderNoteNameForFolder(root, {
-                folderNoteName: '',
                 folderNoteNamePattern: '_{{folder}}'
             })
         ).toBe('_Shared Scratch');
@@ -153,7 +151,6 @@ describe('root folder notes', () => {
         expect(
             getFolderNote(root, {
                 enableFolderNotes: true,
-                folderNoteName: '',
                 folderNoteNamePattern: ''
             })
         ).toBe(folderNote);
@@ -167,7 +164,6 @@ describe('root folder notes', () => {
         expect(
             isFolderNote(folderNote, root, {
                 enableFolderNotes: true,
-                folderNoteName: '',
                 folderNoteNamePattern: ''
             })
         ).toBe(true);
@@ -181,8 +177,7 @@ describe('root folder notes', () => {
         expect(
             getFolderNote(root, {
                 enableFolderNotes: true,
-                folderNoteName: 'index',
-                folderNoteNamePattern: ''
+                folderNoteNamePattern: 'index'
             })
         ).toBe(folderNote);
     });
@@ -210,7 +205,6 @@ describe('root folder notes', () => {
             root,
             {
                 folderNoteType: 'markdown',
-                folderNoteName: '',
                 folderNoteNamePattern: '',
                 folderNoteTemplate: DEFAULT_SETTINGS.folderNoteTemplate
             },
@@ -246,7 +240,6 @@ describe('root folder notes', () => {
             root,
             {
                 folderNoteType: 'markdown',
-                folderNoteName: '',
                 folderNoteNamePattern: '',
                 folderNoteTemplate: DEFAULT_SETTINGS.folderNoteTemplate
             },
@@ -283,7 +276,6 @@ describe('root folder notes', () => {
             root,
             {
                 folderNoteType: 'markdown',
-                folderNoteName: '',
                 folderNoteNamePattern: '',
                 folderNoteTemplate: templateFile.path
             },
@@ -322,7 +314,6 @@ describe('root folder notes', () => {
             root,
             {
                 folderNoteType: 'markdown',
-                folderNoteName: '',
                 folderNoteNamePattern: '',
                 folderNoteTemplate: templateFile.path
             },
@@ -391,7 +382,6 @@ describe('root folder notes', () => {
             root,
             {
                 folderNoteType: 'canvas',
-                folderNoteName: '',
                 folderNoteNamePattern: '',
                 folderNoteTemplate: templateFile.path
             },
@@ -432,7 +422,6 @@ describe('root folder notes', () => {
             root,
             {
                 folderNoteType: 'base',
-                folderNoteName: '',
                 folderNoteNamePattern: '',
                 folderNoteTemplate: templateFile.path
             },
@@ -468,7 +457,6 @@ describe('root folder notes', () => {
             root,
             {
                 folderNoteType: 'canvas',
-                folderNoteName: '',
                 folderNoteNamePattern: '',
                 folderNoteTemplate: templateFile.path
             },

@@ -82,14 +82,14 @@ interface ResolveListGroupingParams {
     typeId?: TpsNavigatorTypeId | null;
 }
 
-const effectiveCustomListGroupingCache = new WeakMap<NotebookNavigatorSettings, boolean>();
-
 export interface ListGroupingResolution {
     defaultGrouping: ListNoteGroupingOption;
     effectiveGrouping: ListNoteGroupingOption;
     normalizedOverride: ListNoteGroupingOption | undefined;
     hasCustomOverride: boolean;
 }
+
+const effectiveCustomListGroupingCache = new WeakMap<NotebookNavigatorSettings, boolean>();
 
 /** Resolves the implicit grouping owned by aggregate navigation rows. */
 export function resolveNavigationSelectionDefaultGrouping({
@@ -146,12 +146,17 @@ export function resolveEffectiveListGroupingForSort({
         return groupBy;
     }
 
+    // Sort-incompatible grouping modes fall back to None because falling back to Custom would
+    // activate frontmatter headers that the user did not select.
     if (getSortField(sortOption) === 'property') {
-        return selectionType === ItemType.FOLDER && groupBy === 'folder' ? 'folder' : 'custom';
+        if (selectionType === ItemType.FOLDER && groupBy === 'folder') {
+            return 'folder';
+        }
+        return groupBy === 'custom' ? 'custom' : 'none';
     }
 
     if (groupBy === 'date' && !isDateSortOption(sortOption)) {
-        return 'custom';
+        return 'none';
     }
 
     return groupBy;
@@ -374,7 +379,7 @@ export function resolveListGroupingOverride({
     selectionType?: ItemType | null;
     groupBy?: ListNoteGroupingOption;
 }): ListGroupingResolution {
-    const globalDefault: ListNoteGroupingOption = noteGrouping ?? 'custom';
+    const globalDefault: ListNoteGroupingOption = noteGrouping ?? 'none';
 
     if (selectionType === ItemType.FOLDER) {
         return {
@@ -413,7 +418,52 @@ export function resolveListGroupingOverride({
     };
 }
 
-function hasEffectiveCustomGroupingForSelection(params: {
+/** Returns whether one folder, tag, or property selection resolves to custom grouping after its sort override is applied. */
+export function hasEffectiveCustomListGroupingForSelection(
+    settings: NotebookNavigatorSettings,
+    selectionType: ItemType,
+    key: string | null
+): boolean {
+    let sortOverride: ListSortOverrideValue | undefined;
+    if (key !== null) {
+        switch (selectionType) {
+            case ItemType.FOLDER:
+                sortOverride = settings.folderSortOverrides[key];
+                break;
+            case ItemType.TAG:
+                sortOverride = settings.tagSortOverrides[key];
+                break;
+            case ItemType.PROPERTY:
+                sortOverride = settings.propertySortOverrides[key];
+                break;
+            case ItemType.TYPE:
+                if (isTpsNavigatorStructuralTypeId(key)) {
+                    sortOverride = settings.typeSortOverrides?.[key];
+                }
+                break;
+        }
+    }
+
+    const grouping = resolveListGrouping({
+        settings,
+        selectionType,
+        folderPath: selectionType === ItemType.FOLDER ? key : null,
+        tag: selectionType === ItemType.TAG ? key : null,
+        propertyNodeId: selectionType === ItemType.PROPERTY ? key : null,
+        typeId: selectionType === ItemType.TYPE && key !== null ? (key as TpsNavigatorTypeId) : null
+    }).effectiveGrouping;
+    const sort = resolveListSort(settings, sortOverride);
+    return (
+        resolveEffectiveListGroupingForSort({
+            groupBy: grouping,
+            sortOption: sort.option,
+            selectionType,
+            isManualSortActive: isManualSortPropertyKey(settings, sort.propertyKey)
+        }) === 'custom'
+    );
+}
+
+function hasEffectiveCustomGroupingInMap(params: {
     settings: NotebookNavigatorSettings;
     selectionType: ItemType;
     appearances: Record<string, { groupBy?: ListNoteGroupingOption }>;
@@ -421,43 +471,13 @@ function hasEffectiveCustomGroupingForSelection(params: {
     includeKey?: (key: string) => boolean;
 }): boolean {
     const { settings, selectionType, appearances, sortOverrides, includeKey = () => true } = params;
-    const usesCustomGrouping = (groupBy: ListNoteGroupingOption | undefined, sortOverride?: ListSortOverrideValue): boolean => {
-        const grouping = resolveListGroupingOverride({
-            noteGrouping: settings.noteGrouping,
-            selectionType,
-            groupBy
-        }).effectiveGrouping;
-        const sort = resolveListSort(settings, sortOverride);
-
-        return (
-            resolveEffectiveListGroupingForSort({
-                groupBy: grouping,
-                sortOption: sort.option,
-                selectionType,
-                isManualSortActive: isManualSortPropertyKey(settings, sort.propertyKey)
-            }) === 'custom'
-        );
-    };
-
-    if (usesCustomGrouping(undefined)) {
+    if (hasEffectiveCustomListGroupingForSelection(settings, selectionType, null)) {
         return true;
     }
 
-    for (const key of Object.keys(appearances)) {
-        if (!includeKey(key)) {
-            continue;
-        }
-        if (usesCustomGrouping(appearances[key]?.groupBy, sortOverrides[key])) {
-            return true;
-        }
-    }
-
-    for (const key of Object.keys(sortOverrides)) {
-        if (
-            includeKey(key) &&
-            !Object.prototype.hasOwnProperty.call(appearances, key) &&
-            usesCustomGrouping(undefined, sortOverrides[key])
-        ) {
+    const configuredKeys = new Set([...Object.keys(appearances), ...Object.keys(sortOverrides)]);
+    for (const key of configuredKeys) {
+        if (includeKey(key) && hasEffectiveCustomListGroupingForSelection(settings, selectionType, key)) {
             return true;
         }
     }
@@ -475,27 +495,26 @@ export function hasEffectiveCustomListGrouping(settings: NotebookNavigatorSettin
         return cached;
     }
 
-    // Published settings snapshots keep their identity for the full pipeline pass, so cache the vault-wide scan per snapshot.
     const hasEffectiveCustomGrouping =
-        hasEffectiveCustomGroupingForSelection({
+        hasEffectiveCustomGroupingInMap({
             settings,
             selectionType: ItemType.FOLDER,
             appearances: settings.folderAppearances,
             sortOverrides: settings.folderSortOverrides
         }) ||
-        hasEffectiveCustomGroupingForSelection({
+        hasEffectiveCustomGroupingInMap({
             settings,
             selectionType: ItemType.TAG,
             appearances: settings.tagAppearances,
             sortOverrides: settings.tagSortOverrides
         }) ||
-        hasEffectiveCustomGroupingForSelection({
+        hasEffectiveCustomGroupingInMap({
             settings,
             selectionType: ItemType.PROPERTY,
             appearances: settings.propertyAppearances,
             sortOverrides: settings.propertySortOverrides
         }) ||
-        hasEffectiveCustomGroupingForSelection({
+        hasEffectiveCustomGroupingInMap({
             settings,
             selectionType: ItemType.TYPE,
             appearances: settings.typeAppearances ?? {},
@@ -521,7 +540,7 @@ export function resolveListGrouping({
     propertyNodeId,
     typeId
 }: ResolveListGroupingParams): ListGroupingResolution {
-    const globalDefault: ListNoteGroupingOption = settings.noteGrouping ?? 'custom';
+    const globalDefault: ListNoteGroupingOption = settings.noteGrouping ?? 'none';
     const selectionDefault = resolveNavigationSelectionDefaultGrouping({
         noteGrouping: globalDefault,
         selectionType,

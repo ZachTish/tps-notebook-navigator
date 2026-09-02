@@ -19,11 +19,12 @@
 import React, { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { App, Menu, Platform, TFile, TFolder } from 'obsidian';
 import { Virtualizer } from '@tanstack/react-virtual';
+import { useSelectionDispatch } from '../../context/SelectionContext';
 import { useFileSystemOps, useMetadataService, useServices } from '../../context/ServicesContext';
 import { strings } from '../../i18n';
 import { ItemType, ListPaneItemType, PINNED_SECTION_HEADER_KEY, type NavigationItemType } from '../../types';
 import { runAsyncAction } from '../../utils/async';
-import { getFolderNote, openFolderNoteFile } from '../../utils/folderNotes';
+import { getFolderNote, openFolderNoteFile, revealFolderNoteInNavigator } from '../../utils/folderNotes';
 import { resolveFolderNoteClickOpenContext } from '../../utils/keyboardOpenContext';
 import type { ListPaneItem } from '../../types/virtualization';
 import type { NotebookNavigatorSettings, SortOption } from '../../settings/types';
@@ -802,6 +803,7 @@ export function ListPaneVirtualContent({
             appendExtensions: (target, controls) => rowMenus.applyRowMenuExtensions({ target, ...controls })
         };
     }, [app.vault, providerTypeIdByRowKey, rowMenuRevision, rowMenuTypeId, rowMenus]);
+    const selectionDispatch = useSelectionDispatch();
     const fileSystemOps = useFileSystemOps();
     const metadataService = useMetadataService();
     const collapseChevronIcons = useMemo(
@@ -838,7 +840,6 @@ export function ListPaneVirtualContent({
                 settings.enableFolderNotes && settings.enableFolderNoteLinks
                     ? getFolderNote(folder, {
                           enableFolderNotes: settings.enableFolderNotes,
-                          folderNoteName: settings.folderNoteName,
                           folderNoteNamePattern: settings.folderNoteNamePattern
                       })
                     : null;
@@ -858,14 +859,7 @@ export function ListPaneVirtualContent({
         });
 
         return targets;
-    }, [
-        app.vault,
-        listItems,
-        settings.enableFolderNoteLinks,
-        settings.enableFolderNotes,
-        settings.folderNoteName,
-        settings.folderNoteNamePattern
-    ]);
+    }, [app.vault, listItems, settings.enableFolderNoteLinks, settings.enableFolderNotes, settings.folderNoteNamePattern]);
 
     const { headerModels, headerModelByIndex } = useMemo<HeaderRenderModels>(() => {
         const models: HeaderRenderModel[] = [];
@@ -989,6 +983,7 @@ export function ListPaneVirtualContent({
             }
 
             const openContext = resolveFolderNoteClickOpenContext(event, settings.folderNoteOpenLocation, settings.multiSelectModifier);
+            revealFolderNoteInNavigator(selectionDispatch, folderNote);
 
             if (
                 openContext === 'right-sidebar' &&
@@ -1015,6 +1010,7 @@ export function ListPaneVirtualContent({
             onNavigateToFolder,
             onResetSearchForNavigation,
             plugin,
+            selectionDispatch,
             selectedFolderPath,
             selectionType,
             settings.folderNoteOpenLocation,
@@ -1038,6 +1034,7 @@ export function ListPaneVirtualContent({
                 onNavigateToFolder,
                 onResetSearchForNavigation
             });
+            revealFolderNoteInNavigator(selectionDispatch, folderNote);
 
             runAsyncAction(() =>
                 openFolderNoteFile({
@@ -1049,7 +1046,7 @@ export function ListPaneVirtualContent({
                 })
             );
         },
-        [app, commandQueue, onNavigateToFolder, onResetSearchForNavigation]
+        [app, commandQueue, onNavigateToFolder, onResetSearchForNavigation, selectionDispatch]
     );
 
     const handleGroupHeaderContextMenu = useCallback(

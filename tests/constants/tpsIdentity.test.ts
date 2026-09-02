@@ -25,6 +25,7 @@ import {
     TPS_NOTEBOOK_NAVIGATOR_ANDROID_CLASS,
     TPS_NOTEBOOK_NAVIGATOR_API_CHANGED_EVENT,
     TPS_NOTEBOOK_NAVIGATOR_API_REQUEST_EVENT,
+    TPS_NOTEBOOK_NAVIGATOR_BETTER_PASTE_ICON_ID,
     TPS_NOTEBOOK_NAVIGATOR_CALENDAR_VIEW,
     TPS_NOTEBOOK_NAVIGATOR_COLOR_DRAG_MIME,
     TPS_NOTEBOOK_NAVIGATOR_DATABASE_NAMESPACE,
@@ -58,6 +59,7 @@ const repoRoot = path.resolve(dirname, '../..');
 
 const upstreamGlobalIdentifiers = new Set([
     'notebook-navigator',
+    'notebook-navigator-better-paste',
     'notebook-navigator-calendar',
     'notebook-navigator-folder-note-sidebar',
     'notebook-navigator-mobile',
@@ -81,6 +83,7 @@ const tpsGlobalIdentifiers = [
     TPS_NOTEBOOK_NAVIGATOR_CALENDAR_VIEW,
     TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW,
     TPS_NOTEBOOK_NAVIGATOR_ICON_ID,
+    TPS_NOTEBOOK_NAVIGATOR_BETTER_PASTE_ICON_ID,
     TPS_NOTEBOOK_NAVIGATOR_ROOT_CLASS,
     TPS_NOTEBOOK_NAVIGATOR_MOBILE_CLASS,
     TPS_NOTEBOOK_NAVIGATOR_ANDROID_CLASS,
@@ -171,7 +174,7 @@ describe('TPS Notebook Navigator identity isolation', () => {
         ]);
         const version = API_VERSION.toString();
 
-        expect(version).toBe('3.5.0');
+        expect(version).toBe('3.6.0');
         expect(publicApi).toContain(`Version: ${version}`);
         expect(publicApiReadme).toContain(`Current API Version: **${version}**`);
         expect(apiReference).toContain(`**Current API Version:** ${version}`);

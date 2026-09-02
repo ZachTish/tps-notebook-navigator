@@ -57,7 +57,8 @@ Complete TypeScript type definitions for the Notebook Navigator API.
     `setPresentation(...)` act on that same view, never open one, and return `false` for stale, unsupported, or invalid
     requests. Presentation updates are atomic. Fixed file-backed Types support the ordinary file controls; fixed
     source-backed Types support their bounded sort/group subset and reject display mode, manual sort, and folder grouping.
-    `groupBy: 'tags'` is available for note lists. The `nn.tagCollections.allId` scope inherits tag grouping, while a
+    `groupBy: 'none'` is available to render an ungrouped note list, and `groupBy: 'tags'` is available for note lists. The
+    `nn.tagCollections.allId` scope inherits tag grouping, while a
     top-level property-key scope inherits grouping by its own key even when that key is not in the global grouping list;
     setting a different grouping stores a per-scope override.
     `nn.tagCollections.taggedId` remains a tagged-only compatibility scope for existing shortcuts and does not represent a
@@ -100,7 +101,7 @@ target shapes and fail-closed behavior are documented in the [Menus API](../../.
 
 ## Version
 
-Current API Version: **3.5.0**
+Current API Version: **3.6.0**
 
 ## Documentation
 
