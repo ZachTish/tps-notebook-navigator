@@ -461,9 +461,8 @@ export class MetadataService {
             return configuredIcon;
         }
 
-        if (!settings.useFrontmatterMetadata) {
-            return undefined;
-        }
+        // GCM presentation is transient and does not depend on Navigator reading
+        // authored frontmatter. Keep this fallback live when that storage toggle is off.
         const iconField = settings.frontmatterIconField.trim();
         if (!iconField) {
             return undefined;
@@ -510,9 +509,7 @@ export class MetadataService {
             return configuredColor;
         }
 
-        if (!settings.useFrontmatterMetadata) {
-            return undefined;
-        }
+        // Generated presentation stays independent from authored frontmatter storage.
         const colorField = settings.frontmatterColorField.trim();
         if (!colorField) {
             return undefined;

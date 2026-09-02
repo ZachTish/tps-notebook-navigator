@@ -35,6 +35,8 @@ import {
 import { createMarkdownFileFromTemplatePreferTemplater } from './fileCreationUtils';
 import { getConfiguredDailyNoteTemplate, renderDailyNoteTemplate } from './dailyNotes';
 import type { MomentApi, MomentInstance } from './moment';
+import { getTemplaterAutoFileCreationProcessor } from './templaterIntegration';
+import { prepareTpsTemplateInstanceSource, sanitizeTpsTemplateInstanceFile } from './tpsTemplateIdentity';
 
 export type CalendarNoteKind = 'day' | 'week' | 'month' | 'quarter' | 'year';
 
@@ -236,7 +238,11 @@ export async function createCalendarMarkdownFile(
             throw new Error('Inherited Daily Notes template is missing its date context');
         }
         const rawTemplate = await app.vault.read(templateFile);
-        inheritedDailyContent = renderDailyNoteTemplate(rawTemplate, templateDate, baseName, selection.dateFormat);
+        const preparedTemplate = prepareTpsTemplateInstanceSource(app, rawTemplate);
+        if (preparedTemplate === null) {
+            throw new Error(`Inherited Daily Notes template could not be prepared safely: ${templateFile.path}`);
+        }
+        inheritedDailyContent = renderDailyNoteTemplate(preparedTemplate ?? rawTemplate, templateDate, baseName, selection.dateFormat);
     }
 
     const folder = await ensureCalendarFolderExists(app, folderPath);
@@ -246,7 +252,15 @@ export async function createCalendarMarkdownFile(
 
     if (inheritedDailyContent !== null) {
         const targetPath = normalizePath(folder.path === '/' ? `${baseName}.md` : `${folder.path}/${baseName}.md`);
-        return app.vault.create(targetPath, inheritedDailyContent);
+        const templaterProcessor = getTemplaterAutoFileCreationProcessor(app, targetPath);
+        const created = await app.vault.create(targetPath, inheritedDailyContent);
+        if (templaterProcessor) {
+            await templaterProcessor.finish(created, Date.now());
+        }
+        if (!(await sanitizeTpsTemplateInstanceFile(app, created))) {
+            throw new Error(`Calendar note could not be verified as a non-template instance: ${created.path}`);
+        }
+        return created;
     }
 
     return createMarkdownFileFromTemplatePreferTemplater({

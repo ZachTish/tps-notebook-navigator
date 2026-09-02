@@ -26,6 +26,7 @@ import { getDBInstance } from '../../storage/fileOperations';
 import { deserializeIconFromFrontmatterCompat, normalizeCanonicalIconId, serializeIconForFrontmatter } from '../../utils/iconizeFormat';
 import { findMatchingRecordKey, normalizePinnedNoteContext } from '../../utils/recordUtils';
 import { createShortcutTargetPathEventMatcher } from '../../utils/shortcutPathResolver';
+import { canTpsAutomaticallyMutateFile, canTpsAutomaticallyMutateFrontmatter } from '../../utils/tpsTemplateIdentity';
 
 /**
  * Service for managing file-specific metadata operations
@@ -215,9 +216,17 @@ export class FileMetadataService extends BaseMetadataService {
                 continue;
             }
 
+            const templateMutationPermission = await canTpsAutomaticallyMutateFile(this.app, file);
+            if (templateMutationPermission === false) {
+                continue;
+            }
+
             let didUpdate = false;
             try {
                 await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+                    if (canTpsAutomaticallyMutateFrontmatter(this.app, frontmatter) === false) {
+                        return;
+                    }
                     const targetField = findMatchingRecordKey(frontmatter, iconField);
                     if (!targetField) {
                         return;

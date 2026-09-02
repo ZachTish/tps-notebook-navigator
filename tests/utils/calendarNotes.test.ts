@@ -73,6 +73,25 @@ function registerTemplater(app: App, createNoteFromTemplate: TestTemplaterCreate
     };
 }
 
+function registerTemplateLifecycle(app: App, prepareInstanceSource: (source: string) => string | null): void {
+    const appWithPlugins = app as App & { plugins: { plugins: Record<string, unknown> } };
+    appWithPlugins.plugins = {
+        plugins: {
+            ...(appWithPlugins.plugins?.plugins ?? {}),
+            'tps-global-context-menu': {
+                api: {
+                    templates: {
+                        version: 1,
+                        getMode: () => 'tag',
+                        matches: () => false,
+                        prepareInstanceSource
+                    }
+                }
+            }
+        }
+    };
+}
+
 function createTemplateMoment(): MomentInstance {
     const localeData: MomentLocaleData = {
         firstDayOfWeek: () => 0,
@@ -228,6 +247,22 @@ describe('calendar note creation', () => {
         expect(modify).toHaveBeenCalledWith(createdFile, templateContent);
     });
 
+    it('fails closed before creating a calendar note when template preparation is rejected', async () => {
+        const app = new App();
+        const templateFile = createTestTFile('Templates/Daily.md');
+        const createNewMarkdownFile = vi.fn();
+
+        getTestVault(app).registerFile(templateFile);
+        registerTemplateLifecycle(app, () => null);
+        app.fileManager.createNewMarkdownFile = createNewMarkdownFile;
+        app.vault.read = vi.fn(async () => '---\ntags: [template]\n---\n');
+
+        await expect(createCalendarMarkdownFile(app, '/', '2026-06-06.md', templateFile.path)).rejects.toThrow(
+            'Template source could not be prepared safely'
+        );
+        expect(createNewMarkdownFile).not.toHaveBeenCalled();
+    });
+
     it('resolves an explicit extensionless template path before creating', async () => {
         const app = new App();
         const templateFile = createTestTFile('Templates/Daily.md');
@@ -251,12 +286,20 @@ describe('calendar note creation', () => {
         const app = new App();
         const templateFile = createTestTFile('Templates/Daily.md');
         const createdFile = createTestTFile('20260810.md');
-        const create = vi.fn(async () => createdFile);
+        let createdContent = '';
+        const create = vi.fn(async (_path: string, content: string) => {
+            createdContent = content;
+            return createdFile;
+        });
         const templateContent = [
+            '---',
+            'tags: [template, keep]',
+            '---',
             'scheduled: "{{date}} 00:00:00"',
             'title: "{{title}}"',
             'formatted: "{{date:YYYY/MM/DD}}"',
-            '<% tp.file.creation_date() %>'
+            '<% tp.file.creation_date() %>',
+            '#template'
         ].join('\n');
         const selection: CalendarTemplateSelection = {
             path: 'Templates/Daily',
@@ -266,13 +309,31 @@ describe('calendar note creation', () => {
         const targetDate = createTemplateMoment();
         installTemplateMoment();
         getTestVault(app).registerFile(templateFile);
-        Object.assign(app.vault, { read: vi.fn(async () => templateContent), create });
+        registerTemplateLifecycle(app, source => source.replace('template, ', ''));
+        Object.assign(app.vault, {
+            read: vi.fn(async () => templateContent),
+            create,
+            process: vi.fn(async (_file: TFile, processor: (source: string) => string) => {
+                createdContent = processor(createdContent);
+                return createdContent;
+            })
+        });
 
         await expect(createCalendarMarkdownFile(app, '/', '20260810.md', selection, targetDate)).resolves.toBe(createdFile);
         expect(create).toHaveBeenCalledWith(
             '20260810.md',
-            ['scheduled: "2026-08-10 00:00:00"', 'title: "20260810"', 'formatted: "2026/08/10"', '<% tp.file.creation_date() %>'].join('\n')
+            [
+                '---',
+                'tags: [keep]',
+                '---',
+                'scheduled: "2026-08-10 00:00:00"',
+                'title: "20260810"',
+                'formatted: "2026/08/10"',
+                '<% tp.file.creation_date() %>',
+                '#template'
+            ].join('\n')
         );
+        expect(createdContent).not.toContain('template, ');
     });
 
     it('does not render Daily Notes tokens in an explicit periodic template', async () => {

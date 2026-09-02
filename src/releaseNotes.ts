@@ -107,6 +107,18 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.23.2',
+        date: '2026-09-02',
+        fixed: [
+            'Generated GCM note icons and colors now remain live on fresh and user-device installations where authored frontmatter metadata is disabled.',
+            'Template-derived folder notes, Daily Notes, and calendar notes now remove the shared exact template marker without changing their source template.'
+        ],
+        improved: [
+            'Authored frontmatter and explicit Navigator appearances keep their existing precedence while transient GCM presentation refreshes independently of frontmatter storage.',
+            'Protected template sources are skipped by automatic Navigator icon-reference repair while explicit user edits remain available.'
+        ]
+    },
+    {
         version: '5.23.1',
         date: '2026-09-01',
         fixed: [

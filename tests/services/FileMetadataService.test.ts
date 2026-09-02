@@ -26,10 +26,12 @@ import { ShortcutType } from '../../src/types/shortcuts';
 import type { CollapsedPinnedContexts } from '../../src/types';
 
 const updateFileMetadata = vi.fn();
+const forEachFile = vi.fn();
 
 vi.mock('../../src/storage/fileOperations', () => ({
     getDBInstance: () => ({
-        updateFileMetadata
+        updateFileMetadata,
+        forEachFile
     })
 }));
 
@@ -91,6 +93,7 @@ describe('FileMetadataService frontmatter integration', () => {
     beforeEach(() => {
         updateFileMetadata.mockReset();
         updateFileMetadata.mockResolvedValue(undefined);
+        forEachFile.mockReset();
         processFrontMatter.mockReset();
         getAbstractFileByPath.mockReset();
 
@@ -210,5 +213,65 @@ describe('FileMetadataService frontmatter integration', () => {
         const pinnedCount = await service.pinNotes(['Vault/Legacy.md'], 'property');
 
         expect(pinnedCount).toBe(0);
+    });
+
+    it('does not rewrite a protected template when a vault SVG icon is renamed', async () => {
+        frontmatter = { tags: ['template'], icon: 'vault:Icons/Old.svg' };
+        forEachFile.mockImplementation(callback => {
+            callback(file.path, { metadata: { icon: 'vault:Icons/Old.svg' } });
+        });
+        Object.assign(app, {
+            plugins: {
+                plugins: {
+                    'tps-global-context-menu': {
+                        api: {
+                            templates: {
+                                version: 1,
+                                getMode: () => 'tag',
+                                matches: () => true,
+                                canAutomaticallyMutate: async () => false,
+                                canAutomaticallyMutateFrontmatter: () => false
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        await service.handleFileRename('Icons/Old.svg', 'Icons/New.svg');
+
+        expect(processFrontMatter).not.toHaveBeenCalled();
+        expect(frontmatter.icon).toBe('vault:Icons/Old.svg');
+        expect(updateFileMetadata).not.toHaveBeenCalled();
+    });
+
+    it('rechecks template identity inside the vault-icon frontmatter mutation', async () => {
+        frontmatter = { tags: ['template'], icon: 'vault:Icons/Old.svg' };
+        forEachFile.mockImplementation(callback => {
+            callback(file.path, { metadata: { icon: 'vault:Icons/Old.svg' } });
+        });
+        Object.assign(app, {
+            plugins: {
+                plugins: {
+                    'tps-global-context-menu': {
+                        api: {
+                            templates: {
+                                version: 1,
+                                getMode: () => 'tag',
+                                matches: () => true,
+                                canAutomaticallyMutate: async () => true,
+                                canAutomaticallyMutateFrontmatter: () => false
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        await service.handleFileRename('Icons/Old.svg', 'Icons/New.svg');
+
+        expect(processFrontMatter).toHaveBeenCalledTimes(1);
+        expect(frontmatter.icon).toBe('vault:Icons/Old.svg');
+        expect(updateFileMetadata).not.toHaveBeenCalled();
     });
 });

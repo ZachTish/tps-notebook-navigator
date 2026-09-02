@@ -49,21 +49,43 @@ function installMomentApi(): void {
 }
 
 function registerGcmDailyNotes(app: App, dailyNotes: Record<string, unknown>): void {
+    const existingPlugins = (app as unknown as { plugins?: { plugins?: Record<string, unknown> } }).plugins?.plugins ?? {};
     Object.assign(app, {
         plugins: {
             enabledPlugins: new Set([TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]),
             plugins: {
+                ...existingPlugins,
                 [TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]: { api: { dailyNotes } }
             }
         }
     });
 }
 
-function registerTemplater(app: App, templater: Record<string, unknown>, settings: Record<string, unknown> = {}): void {
+function registerGcmTemplates(app: App, templates: Record<string, unknown>): void {
+    const appWithPlugins = app as unknown as { plugins?: { enabledPlugins?: Set<string>; plugins?: Record<string, unknown> } };
+    const existingPlugins = appWithPlugins.plugins?.plugins ?? {};
+    const existingGcm = existingPlugins[TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID] as { api?: Record<string, unknown> } | undefined;
     Object.assign(app, {
         plugins: {
-            enabledPlugins: new Set([TEMPLATER_PLUGIN_ID]),
+            enabledPlugins: new Set(appWithPlugins.plugins?.enabledPlugins ?? []),
             plugins: {
+                ...existingPlugins,
+                [TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]: {
+                    ...existingGcm,
+                    api: { ...(existingGcm?.api ?? {}), templates }
+                }
+            }
+        }
+    });
+}
+
+function registerTemplater(app: App, templater: Record<string, unknown>, settings: Record<string, unknown> = {}): void {
+    const appWithPlugins = app as unknown as { plugins?: { enabledPlugins?: Set<string>; plugins?: Record<string, unknown> } };
+    Object.assign(app, {
+        plugins: {
+            enabledPlugins: new Set([...(appWithPlugins.plugins?.enabledPlugins ?? []), TEMPLATER_PLUGIN_ID]),
+            plugins: {
+                ...(appWithPlugins.plugins?.plugins ?? {}),
                 [TEMPLATER_PLUGIN_ID]: { templater, settings }
             }
         }
@@ -798,6 +820,44 @@ describe('daily note template safety', () => {
         expect(modify).not.toHaveBeenCalled();
     });
 
+    it('removes only the shared template marker before and after Daily Note Templater execution', async () => {
+        const app = new App();
+        const template = new TFile('Templates/Daily.md');
+        const created = new TFile('2026-08-03.md');
+        let content = '---\ntags: [template, keep]\n---\n<% tp.user.render() %>\n#template\n';
+        const prepareInstanceSource = vi.fn((source: string) => source.replace('template, ', ''));
+        const overwriteFileCommands = vi.fn(async () => {
+            content = content.replace('tags: [keep]', 'tags: [template, keep]').replace('<% tp.user.render() %>', 'Rendered');
+        });
+        Object.assign(app.vault, {
+            create: vi.fn(async (_path: string, initialContents: string) => {
+                content = initialContents;
+                return created;
+            }),
+            cachedRead: vi.fn(async () => content),
+            read: vi.fn(async () => content),
+            process: vi.fn(async (_file: TFile, processor: (source: string) => string) => {
+                content = processor(content);
+                return content;
+            }),
+            modify: vi.fn(async () => undefined)
+        });
+        Object.assign(app.metadataCache, { getFirstLinkpathDest: vi.fn(() => template) });
+        Object.assign(app, { loadLocalStorage: vi.fn(() => ({ trigger_on_file_creation: false })) });
+        registerGcmTemplates(app, {
+            version: 1,
+            getMode: () => 'tag',
+            matches: () => false,
+            prepareInstanceSource
+        });
+        registerTemplater(app, { overwrite_file_commands: overwriteFileCommands });
+        registerCoreDailyNotes(app, SETTINGS);
+
+        await expect(createDailyNote(app, createDate())).resolves.toBe(created);
+        expect(content).toBe('---\ntags: [keep]\n---\nRendered\n#template\n');
+        expect(prepareInstanceSource).toHaveBeenCalledTimes(2);
+    });
+
     it('waits for the device auto-create hook without executing Templater twice', async () => {
         vi.useFakeTimers();
         try {
@@ -1336,26 +1396,42 @@ describe('daily note template safety', () => {
         const template = new TFile('Templates/Daily.md');
         const winner = new TFile('2026-08-03.md');
         winner.stat = { ctime: Date.now(), mtime: Date.now() };
-        let content = '<% tp.date.now() %>\n';
+        const templateContent = '---\ntags: [template, keep]\n---\n<% tp.date.now() %>\n#template\n';
+        let content = templateContent;
+        const prepareInstanceSource = vi.fn((source: string) => source.replace('template, ', ''));
         const overwriteFileCommands = vi.fn(async () => {
-            content = '2026-08-03\n';
+            content = content.replace('tags: [keep]', 'tags: [template, keep]').replace('<% tp.date.now() %>', '2026-08-03');
         });
         const create = vi.fn();
         const lookup = vi.fn().mockReturnValueOnce(null).mockReturnValueOnce(winner);
         Object.assign(app.vault, {
             getAbstractFileByPath: lookup,
             create,
-            cachedRead: vi.fn(async () => '<% tp.date.now() %>\n'),
+            cachedRead: vi.fn(async () => templateContent),
             read: vi.fn(async () => content),
-            modify: vi.fn(async () => undefined)
+            modify: vi.fn(async (_file: TFile, next: string) => {
+                content = next;
+            }),
+            process: vi.fn(async (_file: TFile, processor: (source: string) => string) => {
+                content = processor(content);
+                return content;
+            })
         });
         Object.assign(app.metadataCache, { getFirstLinkpathDest: vi.fn(() => template) });
         Object.assign(app, { loadLocalStorage: vi.fn(() => ({ trigger_on_file_creation: false })) });
+        registerGcmTemplates(app, {
+            version: 1,
+            getMode: () => 'tag',
+            matches: () => false,
+            prepareInstanceSource
+        });
         registerTemplater(app, { overwrite_file_commands: overwriteFileCommands });
         registerCoreDailyNotes(app, SETTINGS);
 
         await expect(createDailyNote(app, createDate())).resolves.toBe(winner);
         expect(overwriteFileCommands).toHaveBeenCalledTimes(1);
+        expect(prepareInstanceSource).toHaveBeenCalledTimes(3);
+        expect(content).toBe('---\ntags: [keep]\n---\n2026-08-03\n#template\n');
         expect(create).not.toHaveBeenCalled();
     });
 

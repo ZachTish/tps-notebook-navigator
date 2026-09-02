@@ -29,6 +29,7 @@ import {
     isTemplaterFileCreationPending,
     type TemplaterFileCreationProcessor
 } from './templaterIntegration';
+import { prepareTpsTemplateInstanceSource, sanitizeTpsTemplateInstanceFile } from './tpsTemplateIdentity';
 
 const DAILY_NOTES_PLUGIN_ID = 'daily-notes';
 const DEFAULT_DAILY_NOTE_FORMAT = 'YYYY-MM-DD';
@@ -540,6 +541,10 @@ async function markFailedOwnedDailyNote(app: App, file: TFile, path: string, pre
 
 type ExistingDailyNoteSettlement = 'settled' | 'unchanged' | 'failed';
 
+async function sanitizeSettledDailyNote(app: App, file: TFile): Promise<ExistingDailyNoteSettlement> {
+    return (await sanitizeTpsTemplateInstanceFile(app, file)) ? 'settled' : 'failed';
+}
+
 async function settleExistingDailyNoteIfNeeded(
     app: App,
     file: TFile,
@@ -568,11 +573,11 @@ async function settleExistingDailyNoteIfNeeded(
             ? getTemplaterFileCreationProcessor(app, file.path)
             : getTemplaterAutoFileCreationProcessor(app, file.path);
         if (!autoProcessor) {
-            return isPending ? 'failed' : 'settled';
+            return isPending ? 'failed' : await sanitizeSettledDailyNote(app, file);
         }
         try {
             await finishCreatedDailyNoteContent(app, file, autoProcessor, createdAt || Date.now());
-            return 'settled';
+            return await sanitizeSettledDailyNote(app, file);
         } catch {
             return 'failed';
         }
@@ -595,13 +600,13 @@ async function settleExistingDailyNoteIfNeeded(
                 createdAt || Date.now(),
                 TEMPLATER_COMMAND_PATTERN.test(currentContents) ? currentContents : undefined
             );
-            return 'settled';
+            return await sanitizeSettledDailyNote(app, file);
         } catch {
             return 'failed';
         }
     }
     if (!TEMPLATER_COMMAND_PATTERN.test(currentContents)) {
-        return 'settled';
+        return await sanitizeSettledDailyNote(app, file);
     }
     const templateInfo = await readTemplateInfo(app, settings.template);
     if (!templateInfo || !TEMPLATER_COMMAND_PATTERN.test(templateInfo.contents)) {
@@ -609,14 +614,24 @@ async function settleExistingDailyNoteIfNeeded(
     }
 
     const noteTitle = formatDailyNoteTitle(date, settings.format);
-    const coreRenderedTemplate = renderDailyNoteTemplate(templateInfo.contents, date, noteTitle, settings.format);
-    const matchesRawTemplate = currentContents === templateInfo.contents || currentContents === coreRenderedTemplate;
+    const sanitizedTemplateContents = prepareTpsTemplateInstanceSource(app, templateInfo.contents);
+    if (sanitizedTemplateContents === null) {
+        return 'failed';
+    }
+    const templateInstanceContents = sanitizedTemplateContents ?? templateInfo.contents;
+    const originalCoreRenderedTemplate = renderDailyNoteTemplate(templateInfo.contents, date, noteTitle, settings.format);
+    const coreRenderedTemplate = renderDailyNoteTemplate(templateInstanceContents, date, noteTitle, settings.format);
+    const matchesRawTemplate =
+        currentContents === templateInfo.contents ||
+        currentContents === originalCoreRenderedTemplate ||
+        currentContents === templateInstanceContents ||
+        currentContents === coreRenderedTemplate;
     if (!matchesRawTemplate) {
         // A mature pre-existing note remains untouched. For an external
         // collision, changed bytes with no pending hook are positive evidence
         // that the winning creator already completed its pass, even if that
         // pass intentionally emitted a literal delimiter.
-        return externalCollision ? 'settled' : 'unchanged';
+        return externalCollision ? await sanitizeSettledDailyNote(app, file) : 'unchanged';
     }
     if (!isRecent) {
         return externalCollision ? 'failed' : 'unchanged';
@@ -627,11 +642,11 @@ async function settleExistingDailyNoteIfNeeded(
         return 'failed';
     }
     try {
-        if (currentContents === templateInfo.contents && currentContents !== coreRenderedTemplate) {
+        if (currentContents !== coreRenderedTemplate) {
             await app.vault.modify(file, coreRenderedTemplate);
         }
         await finishCreatedDailyNoteContent(app, file, processor, createdAt || Date.now(), coreRenderedTemplate);
-        return 'settled';
+        return await sanitizeSettledDailyNote(app, file);
     } catch {
         return 'failed';
     }
@@ -938,8 +953,18 @@ async function createDailyNoteForIsoDate(
             }
             const { file: templateFile, contents: templateContents, foldInfo } = templateInfo;
             const noteTitle = formatDailyNoteTitle(date, configuredSettings.format);
-            const hasTemplaterCommands = TEMPLATER_COMMAND_PATTERN.test(templateContents);
-            const preparedTemplateContents = renderDailyNoteTemplate(templateContents, date, noteTitle, configuredSettings.format);
+            const sanitizedTemplateContents = prepareTpsTemplateInstanceSource(app, templateContents);
+            if (sanitizedTemplateContents === null) {
+                console.warn('[TPS Notebook Navigator] Daily Note template could not be prepared safely', {
+                    path,
+                    template: templateFile?.path ?? configuredSettings.template
+                });
+                showNotice(strings.dailyNotes.createFailed);
+                return null;
+            }
+            const templateInstanceContents = sanitizedTemplateContents ?? templateContents;
+            const hasTemplaterCommands = TEMPLATER_COMMAND_PATTERN.test(templateInstanceContents);
+            const preparedTemplateContents = renderDailyNoteTemplate(templateInstanceContents, date, noteTitle, configuredSettings.format);
             const templaterProcessor = hasTemplaterCommands
                 ? getTemplaterFileCreationProcessor(app, path)
                 : getTemplaterAutoFileCreationProcessor(app, path);
@@ -1010,6 +1035,10 @@ async function createDailyNoteForIsoDate(
                     await markFailedOwnedDailyNote(app, createdFile, path, preparedTemplateContents);
                     throw error;
                 }
+            }
+            if (!(await sanitizeTpsTemplateInstanceFile(app, createdFile))) {
+                await markFailedOwnedDailyNote(app, createdFile, path, preparedTemplateContents);
+                throw new Error('Daily Note output could not be verified as a non-template instance');
             }
             forgetFailedOwnedDailyNote(app, path, createdFile);
             if (foldInfo) {

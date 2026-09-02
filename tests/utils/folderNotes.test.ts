@@ -76,6 +76,25 @@ function registerTemplater(app: App, createNoteFromTemplate: TestTemplaterCreate
     };
 }
 
+function registerTemplateLifecycle(app: App, prepareInstanceSource: (source: string) => string | null): void {
+    const appWithPlugins = app as App & { plugins: { plugins: Record<string, unknown> } };
+    appWithPlugins.plugins = {
+        plugins: {
+            ...(appWithPlugins.plugins?.plugins ?? {}),
+            'tps-global-context-menu': {
+                api: {
+                    templates: {
+                        version: 1,
+                        getMode: () => 'tag',
+                        matches: () => false,
+                        prepareInstanceSource
+                    }
+                }
+            }
+        }
+    };
+}
+
 function createRootFolder(app: App, vaultName: string): TFolder {
     Object.defineProperty(app.vault, 'getName', {
         configurable: true,
@@ -282,13 +301,15 @@ describe('root folder notes', () => {
         const root = createRootFolder(app, 'Shared Scratch');
         const templateFile = createTestTFile('Templates/Folder.md');
         const createdFile = createTestTFile('Shared Scratch.md');
-        const templateContent = '---\ncreated: <% tp.file.creation_date("YYYY-MM-DD") %>\n---\n';
+        const templateContent = '---\ntags: [template, keep]\ncreated: <% tp.file.creation_date("YYYY-MM-DD") %>\n---\n#template\n';
+        const preparedContent = templateContent.replace('template, ', '');
         const openFile = vi.fn().mockResolvedValue(undefined);
         const createNewMarkdownFile = vi.fn(async () => createdFile);
         const read = vi.fn(async () => templateContent);
         const modify = vi.fn(async () => undefined);
 
         getTestVault(app).registerFile(templateFile);
+        registerTemplateLifecycle(app, source => source.replace('template, ', ''));
         app.fileManager.createNewMarkdownFile = createNewMarkdownFile;
         app.vault.read = read;
         app.vault.modify = modify;
@@ -311,8 +332,35 @@ describe('root folder notes', () => {
         expect(created).toBe(createdFile);
         expect(createNewMarkdownFile).toHaveBeenCalledWith(root, 'Shared Scratch');
         expect(read).toHaveBeenCalledWith(templateFile);
-        expect(modify).toHaveBeenCalledWith(createdFile, templateContent);
+        expect(modify).toHaveBeenCalledWith(createdFile, preparedContent);
         expect(openFile).toHaveBeenCalledWith(createdFile, { active: true });
+    });
+
+    it('fails closed before creating a folder note when template preparation is rejected', async () => {
+        const app = new App();
+        const root = createRootFolder(app, 'Shared Scratch');
+        const templateFile = createTestTFile('Templates/Folder.md');
+        const createNewMarkdownFile = vi.fn();
+
+        getTestVault(app).registerFile(templateFile);
+        registerTemplateLifecycle(app, () => null);
+        app.fileManager.createNewMarkdownFile = createNewMarkdownFile;
+        app.vault.read = vi.fn(async () => '---\ntags: [template]\n---\n');
+
+        await expect(
+            createFolderNote(
+                app,
+                root,
+                {
+                    folderNoteType: 'markdown',
+                    folderNoteName: '',
+                    folderNoteNamePattern: '',
+                    folderNoteTemplate: templateFile.path
+                },
+                null
+            )
+        ).resolves.toBeNull();
+        expect(createNewMarkdownFile).not.toHaveBeenCalled();
     });
 
     it('copies canvas folder note template content', async () => {

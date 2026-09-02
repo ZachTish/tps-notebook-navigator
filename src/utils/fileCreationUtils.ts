@@ -23,6 +23,7 @@ import { executeCommand } from './typeGuards';
 import { showNotice } from './noticeUtils';
 import { normalizeOptionalVaultFilePath } from './pathUtils';
 import { getTemplaterCreateNoteFromTemplate } from './templaterIntegration';
+import { prepareTpsTemplateInstanceSource, sanitizeTpsTemplateInstanceFile } from './tpsTemplateIdentity';
 
 /**
  * Options for creating a new file
@@ -192,26 +193,38 @@ async function createMarkdownFileFromTemplate({
     templatePath,
     templateErrorContext
 }: CreateMarkdownFileFromTemplateOptions): Promise<TFile> {
-    const created = await app.fileManager.createNewMarkdownFile(folder, baseName);
-
-    // Create the note first (fires Obsidian vault "create"), then apply template content.
-    // Some plugins read or modify created files asynchronously after creation.
+    let preparedTemplateContent: string | null = null;
+    let normalizedTemplatePath: string | null = null;
     if (templatePath) {
-        const normalizedTemplatePath = normalizeOptionalVaultFilePath(templatePath);
+        normalizedTemplatePath = normalizeOptionalVaultFilePath(templatePath);
         if (!normalizedTemplatePath) {
             console.warn(`[${templateErrorContext} template] Invalid template path`, templatePath);
-            return created;
-        }
-
-        try {
+        } else {
             const entry = app.vault.getAbstractFileByPath(normalizedTemplatePath);
             if (!(entry instanceof TFile) || entry.extension !== 'md') {
                 console.warn(`[${templateErrorContext} template] Template file not found`, normalizedTemplatePath);
-                return created;
+            } else {
+                try {
+                    const content = await app.vault.read(entry);
+                    const prepared = prepareTpsTemplateInstanceSource(app, content);
+                    if (prepared === null) {
+                        throw new Error(`Template source could not be prepared safely: ${entry.path}`);
+                    }
+                    preparedTemplateContent = prepared ?? content;
+                } catch (error) {
+                    console.error(`Failed to prepare ${templateErrorContext} template`, normalizedTemplatePath, error);
+                    throw error;
+                }
             }
+        }
+    }
 
-            const content = await app.vault.read(entry);
-            await app.vault.modify(created, content);
+    // Validate and prepare first, then create the destination. This prevents a
+    // rejected template from leaving behind a successful-looking blank note.
+    const created = await app.fileManager.createNewMarkdownFile(folder, baseName);
+    if (preparedTemplateContent !== null) {
+        try {
+            await app.vault.modify(created, preparedTemplateContent);
         } catch (error) {
             console.error(`Failed to apply ${templateErrorContext} template`, normalizedTemplatePath, error);
         }
@@ -244,6 +257,9 @@ export async function createMarkdownFileFromTemplatePreferTemplater({
         if (createFromTemplater && templateFile) {
             const created = await createFromTemplater(templateFile, folder, baseName, false);
             if (created instanceof TFile) {
+                if (!(await sanitizeTpsTemplateInstanceFile(app, created))) {
+                    throw new Error(`Templater output could not be verified as a non-template instance: ${created.path}`);
+                }
                 return created;
             }
 
