@@ -74,8 +74,8 @@ const EXPECTED_PANES: Array<{ id: SettingsPaneId; label: string; description: st
     },
     {
         id: 'folders',
-        label: 'Folders & folder notes',
-        description: 'Folder display, folder notes, folder note templates, and folder note behavior.',
+        label: 'Folders & navigation notes',
+        description: 'Folder display, matching folder and tag notes, templates, and note-link behavior.',
         native: true
     },
     {

@@ -106,6 +106,21 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '5.25.0',
+        date: '2026-09-03',
+        new: [
+            'A unique Markdown note whose name matches a tag segment and whose frontmatter or inline tags contain that exact full tag can now act as its tag note.',
+            'Tag notes open from tag labels, shortcuts, list headers, and keyboard activation, and a missing tag note can be created explicitly from the tag menu.'
+        ],
+        improved: [
+            'Navigation notes reuse the existing folder-note enablement, link, and open-location settings without adding a tag-note ID, mapping, property, or public API.'
+        ],
+        fixed: [
+            'The vault root now prefers Vault for the {{folder}} naming token while continuing to recognize pre-existing vault-name root notes; fixed names remain unchanged.',
+            'Ambiguous tag-note matches and occupied creation paths now fail closed instead of opening or creating an arbitrary note.'
+        ]
+    },
+    {
         version: '5.24.0',
         date: '2026-09-02',
         new: [

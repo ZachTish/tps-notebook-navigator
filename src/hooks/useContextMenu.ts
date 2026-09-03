@@ -48,6 +48,7 @@ import {
     routeProviderRowContextMenu
 } from '../utils/contextMenu';
 import { getFolderNote } from '../utils/folderNoteLookup';
+import { getTagNote } from '../utils/tagNotes';
 import { getResetAwareFileMenuOptions } from '../utils/contextMenu/resetAwareFileMenuOptions';
 
 // Tracks the currently open navigator context menu so it can be closed before opening another
@@ -157,6 +158,24 @@ export function useContextMenu(elementRef: React.RefObject<HTMLElement | null>, 
                     menuConfig = {
                         type: ItemType.FILE,
                         item: folderNote,
+                        options: getResetAwareFileMenuOptions(menuConfig.options)
+                    };
+                }
+            }
+
+            // A uniquely resolved tag-note label represents its file; the rest of the tag
+            // row keeps the ordinary tag context menu.
+            if (
+                settings.enableFolderNotes &&
+                settings.enableFolderNoteLinks &&
+                menuConfig.type === ItemType.TAG &&
+                targetElement?.closest('.nn-navitem-name')
+            ) {
+                const tagNote = getTagNote(app, menuConfig.item);
+                if (tagNote) {
+                    menuConfig = {
+                        type: ItemType.FILE,
+                        item: tagNote,
                         options: getResetAwareFileMenuOptions(menuConfig.options)
                     };
                 }

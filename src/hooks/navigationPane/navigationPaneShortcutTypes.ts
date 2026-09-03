@@ -23,6 +23,7 @@ import type { NoteCountInfo } from '../../types/noteCounts';
 import type { SearchShortcut } from '../../types/shortcuts';
 import type { ListReorderHandlers } from '../../types/listReorder';
 import type { VirtualFolderTrailingAction } from '../../components/VirtualFolderItem';
+import type { NavigationNoteActivationEvent } from '../../components/NavigationNoteLink';
 
 export type ShortcutContextMenuTarget =
     | { type: 'folder'; key: string; folder: TFolder }
@@ -42,13 +43,15 @@ export interface NavigationPaneShortcutRenderState {
     shouldShowShortcutCounts: boolean;
     removeShortcut: (key: string) => Promise<boolean>;
     handleShortcutFolderActivate: (folder: TFolder, shortcutKey: string) => void;
-    handleShortcutFolderNoteClick: (folder: TFolder, shortcutKey: string, event: React.MouseEvent<HTMLSpanElement>) => void;
+    handleShortcutFolderNoteClick: (folder: TFolder, shortcutKey: string, event: NavigationNoteActivationEvent) => void;
     handleShortcutFolderNoteMouseDown: (folder: TFolder, event: React.MouseEvent<HTMLSpanElement>) => void;
     handleShortcutNoteActivate: (note: TFile, shortcutKey: string, event?: React.MouseEvent<HTMLDivElement>) => void;
     handleShortcutNoteMouseDown: (event: React.MouseEvent<HTMLDivElement>, note: TFile) => void;
     handleRecentNoteActivate: (note: TFile, event?: React.MouseEvent<HTMLDivElement>) => void;
     handleShortcutSearchActivate: (shortcutKey: string, searchShortcut: SearchShortcut) => void;
     handleShortcutTagActivate: (tagPath: string, shortcutKey: string) => void;
+    handleShortcutTagNoteClick: (tagPath: string, shortcutKey: string, event: NavigationNoteActivationEvent) => void;
+    handleShortcutTagNoteMouseDown: (tagPath: string, event: React.MouseEvent<HTMLSpanElement>) => void;
     handleShortcutPropertyActivate: (propertyNodeId: string, shortcutKey: string) => boolean;
     handleShortcutContextMenu: (event: React.MouseEvent<HTMLDivElement>, target: ShortcutContextMenuTarget) => void;
     handleRecentFileContextMenu: (event: React.MouseEvent<HTMLDivElement>, file: TFile) => void;

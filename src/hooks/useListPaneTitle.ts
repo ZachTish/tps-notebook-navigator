@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { TAbstractFile, TFile } from 'obsidian';
+import { TAbstractFile, TFile, type TFolder } from 'obsidian';
 import { useServices, useMetadataService } from '../context/ServicesContext';
 import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferences } from '../context/UXPreferencesContext';
@@ -36,7 +36,7 @@ import { getActiveHiddenFolders } from '../utils/vaultProfiles';
 import { resolveUXIcon } from '../utils/uxIcons';
 import { buildPropertyKeyNodeId, parsePropertyNodeId, type PropertySelectionNodeId } from '../utils/propertyTree';
 import { resolveFolderDisplayName, resolveFolderDisplayPathSegments } from '../utils/folderDisplayName';
-import { resolveRootFolderNoteSourceName } from '../utils/folderNoteLookup';
+import { resolveRootFolderNoteSourceNames } from '../utils/folderNoteLookup';
 import { TPS_NAVIGATOR_STRUCTURAL_TYPES, type TpsNavigatorTypeDescriptor, type TpsNavigatorTypeId } from '../types/navigatorTypes';
 import { useNavigatorTypes } from './useNavigatorTypes';
 import { isFolderEffectivelyExpanded } from '../utils/navigationExpansion';
@@ -62,6 +62,19 @@ function addFolderNoteCandidatePaths(
     }
 
     target.add(`${prefix}${expectedName}${EXCALIDRAW_BASENAME_SUFFIX}.md`);
+}
+
+export function getRootFolderNoteCandidatePaths(
+    rootFolder: TFolder,
+    settings: {
+        folderNoteNamePattern: string;
+    }
+): Set<string> {
+    const targets = new Set<string>();
+    for (const sourceName of resolveRootFolderNoteSourceNames(rootFolder)) {
+        addFolderNoteCandidatePaths(targets, '/', sourceName, settings);
+    }
+    return targets;
 }
 
 export type BreadcrumbSegment =
@@ -134,7 +147,6 @@ export function useListPaneTitle(): UseListPaneTitleResult {
     const hiddenFolders = useMemo(() => getActiveHiddenFolders(settings), [settings]);
     const selectionState = useSelectionState();
     const selectedFolderPath = selectionState.selectedFolder?.path ?? null;
-    const selectedFolderName = selectionState.selectedFolder?.name ?? null;
     const { getTagDisplayPath, getPropertyTree } = useFileCache();
     const expansionState = useExpansionState();
     const metadataService = useMetadataService();
@@ -153,11 +165,7 @@ export function useListPaneTitle(): UseListPaneTitleResult {
 
         if (selectedFolderPath === '/') {
             const rootFolder = selectionState.selectedFolder;
-            const rootFolderNoteSourceName = rootFolder
-                ? resolveRootFolderNoteSourceName(rootFolder, app.vault)
-                : (selectedFolderName ?? '');
-            addFolderNoteCandidatePaths(targets, '/', rootFolderNoteSourceName, folderNoteNameSettings);
-            return targets;
+            return rootFolder ? getRootFolderNoteCandidatePaths(rootFolder, folderNoteNameSettings) : targets;
         }
 
         const segments = selectedFolderPath.split('/').filter(Boolean);
@@ -169,9 +177,7 @@ export function useListPaneTitle(): UseListPaneTitleResult {
 
         return targets;
     }, [
-        selectedFolderName,
         selectedFolderPath,
-        app.vault,
         selectionState.selectedFolder,
         selectionState.selectionType,
         settings.enableFolderNotes,

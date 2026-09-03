@@ -23,12 +23,7 @@ import type { FileContentChange } from '../../../storage/IndexedDBStorage';
 import { normalizeCanonicalIconId, serializeIconForFrontmatter } from '../../../utils/iconizeFormat';
 import { getParentFolderPath } from '../../../utils/pathUtils';
 import { findMatchingRecordKey } from '../../../utils/recordUtils';
-import {
-    getFolderNote,
-    getFolderNoteDetectionSettings,
-    resolveFolderNoteNameForFolder,
-    resolveRootFolderNoteSourceName
-} from '../../../utils/folderNoteLookup';
+import { getFolderNote, getFolderNoteDetectionSettings, resolveFolderNoteNamesForFolder } from '../../../utils/folderNoteLookup';
 import { resolveFolderNoteName } from '../../../utils/folderNoteName';
 import type { FolderFrontmatterFields, FolderNoteMetadata, FolderStyleUpdate, FolderStyleValues, FolderStyleWriteResult } from './types';
 
@@ -239,9 +234,8 @@ export class FolderNoteMetadataAdapter {
             return false;
         }
 
-        const folderNoteSettings = getFolderNoteDetectionSettings(settings);
         const checkedCandidatePaths = new Set<string>();
-        const expectedFolderNoteNameByFolderPath = new Map<string, string>();
+        const expectedFolderNoteNamesByFolderPath = new Map<string, string[]>();
 
         for (const change of changes) {
             if (change.changes.metadata === undefined || change.metadataNameChanged !== true) {
@@ -262,14 +256,13 @@ export class FolderNoteMetadataAdapter {
             checkedCandidatePaths.add(change.path);
 
             const parentFolderPath = getParentFolderPath(change.path);
-            let expectedFolderNoteName = expectedFolderNoteNameByFolderPath.get(parentFolderPath);
-            if (expectedFolderNoteName === undefined) {
-                const folderName = this.getFolderNoteSourceNameFromPath(parentFolderPath);
-                expectedFolderNoteName = resolveFolderNoteName(folderName, folderNoteSettings);
-                expectedFolderNoteNameByFolderPath.set(parentFolderPath, expectedFolderNoteName);
+            let expectedNames = expectedFolderNoteNamesByFolderPath.get(parentFolderPath);
+            if (!expectedNames) {
+                expectedNames = this.getFolderNoteExpectedNamesFromPath(parentFolderPath);
+                expectedFolderNoteNamesByFolderPath.set(parentFolderPath, expectedNames);
             }
 
-            if (this.isFolderNotePathForExpectedName(change.path, expectedFolderNoteName)) {
+            if (expectedNames.some(expectedName => this.isFolderNotePathForExpectedName(change.path, expectedName))) {
                 return true;
             }
         }
@@ -283,8 +276,10 @@ export class FolderNoteMetadataAdapter {
             return false;
         }
 
-        const expectedName = resolveFolderNoteNameForFolder(folder, getFolderNoteDetectionSettings(this.settingsProvider.settings));
-        return this.isFolderNotePathForExpectedName(path, expectedName);
+        const settings = getFolderNoteDetectionSettings(this.settingsProvider.settings);
+        return resolveFolderNoteNamesForFolder(folder, settings).some(expectedName =>
+            this.isFolderNotePathForExpectedName(path, expectedName)
+        );
     }
 
     private updateFrontmatterField(frontmatter: Record<string, unknown>, field: string, value: string | null): void {
@@ -305,17 +300,15 @@ export class FolderNoteMetadataAdapter {
         return folderPath === '/' ? this.app.vault.getRoot() : this.app.vault.getFolderByPath(folderPath);
     }
 
-    private getFolderNoteSourceNameFromPath(folderPath: string): string {
+    private getFolderNoteExpectedNamesFromPath(folderPath: string): string[] {
+        const settings = getFolderNoteDetectionSettings(this.settingsProvider.settings);
         if (folderPath === '/') {
-            return resolveRootFolderNoteSourceName(this.app.vault.getRoot(), this.app.vault);
+            return resolveFolderNoteNamesForFolder(this.app.vault.getRoot(), settings);
         }
 
         const separatorIndex = folderPath.lastIndexOf('/');
-        if (separatorIndex === -1) {
-            return folderPath;
-        }
-
-        return folderPath.slice(separatorIndex + 1);
+        const folderName = separatorIndex === -1 ? folderPath : folderPath.slice(separatorIndex + 1);
+        return [resolveFolderNoteName(folderName, settings)];
     }
 
     private getPathExtension(path: string): string {

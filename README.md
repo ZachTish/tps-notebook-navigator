@@ -1,5 +1,16 @@
 # TPS Notebook Navigator
 
+## 5.25.0
+
+- Folder notes now work at the vault root. The preferred root folder-name source is the literal `Vault`, so the default `{{folder}}` pattern resolves to `Vault.md`, `_{{folder}}` resolves to `_Vault.md`, and a fixed pattern such as `index` remains `index.md`. An existing root note derived from the actual vault name remains a backward-compatible fallback.
+- A tag note is derived entirely from normal note data: it can be any Markdown note anywhere in the vault whose basename case-insensitively matches the tag's final authored segment and whose tag metadata—frontmatter or inline—contains that exact full tag. No tag-note ID, mapping, or hidden frontmatter property is created.
+- A unique tag note opens from the tag label, a tag shortcut, the list header, or Enter activation, with the configured navigation-note open location and new-tab behavior. Linked labels are keyboard-focusable, the surrounding tag row keeps its existing select/expand behavior, and links refresh after qualifying notes are created, renamed, deleted, or retagged anywhere in the vault.
+- The tag menu can explicitly create a missing tag note in the configured default new-note folder. Creation uses the exact tag-segment filename and exact full YAML tag and never silently adds a numeric suffix; a conflicting filename or multiple matching notes fails closed instead of guessing.
+- The existing folder-note master switch, link switch, and open-location setting govern both folder and tag navigation notes. Folder-only template, Type assignment, hide, pin, and nearest-folder-note behavior remain folder-only, with no new persisted setting or public API change.
+- Renaming a tag does not automatically rename or rewrite its tag note. The association becomes active again only when one note matches the renamed tag's full path and final segment under the same derived rule. Right-sidebar navigation-note tabs are marked only in Obsidian's workspace state so the plugin-owned tab can be reused after restart; no marker is written to the note.
+- This backward-compatible feature requires no note, settings, IndexedDB, or API migration. Public API remains 3.6.0, and minimum supported Obsidian remains 1.11.0.
+- Validation passes 265/265 test files and 3,038/3,038 tests, plus TypeScript, Prettier, stylelint, TPS namespace/artifact/operational-identity/string gates, ESLint with no errors, and the separate production-mode build. Obsidian 1.13.7 loaded 5.25.0 in the isolated test vault: a root `Vault.md` and a convention-matching tag note were recognized, and the tag link appeared and disappeared live as its matching note was added and moved away. The synthetic notes were moved directly to `_archive`, their QA tag was removed, the runtime setting returned to its exact pre-QA hash, and production was not accessed. Final hashes are recorded in `release-notes/5.25.0.md`.
+
 ## 5.24.0
 
 - Integrates Notebook Navigator 3.3.4 through 3.3.6 from the exact annotated upstream `3.3.6` tag (`748f02c9`) while preserving TPS's independent plugin/view/icon/event/drag/DOM/CSS/storage/database/settings-transfer identities and its optional GCM, Types, aggregate Tags/property, and Core tag-routing behavior.
@@ -988,7 +999,7 @@ Notebook Navigator runs locally, but some features make documented HTTP requests
 | Tab                                 | In navigation pane: switch to list pane<br>In list pane: switch to editor<br>In search field: switch to list pane                                                                         |
 | Shift+Tab                           | In list pane: switch to navigation pane<br>In search field: switch to navigation pane                                                                                                     |
 | Enter (macOS)<br>F2 (Windows/Linux) | Rename item inline in navigation pane or list pane                                                                                                                                        |
-| Enter                               | In navigation pane: open folder note on Windows/Linux by default (when enabled)<br>In list pane: open selected file on all systems (when enabled)<br>In search field: switch to list pane |
+| Enter                               | In navigation pane: open linked folder/tag note on Windows/Linux (when enabled)<br>In list pane: open selected file on all systems (when enabled)<br>In search field: switch to list pane |
 | Escape                              | In search field: close search and focus list pane                                                                                                                                         |
 | PageUp/PageDown                     | Scroll up/down in navigation pane and list pane                                                                                                                                           |
 | Home/End                            | Jump to first/last item in current pane                                                                                                                                                   |
@@ -1374,7 +1385,7 @@ Set custom hotkeys for these commands in Obsidian's Hotkeys settings:
 ### 10.3 Organization
 
 - **Pin notes** - Keep important notes at the top of folders and tags
-- **Folder notes** - Set/detach folder notes, pin folder notes, open in new tab option
+- **Folder and tag notes** - Open derived navigation notes from folders, the vault root, and tags; create a missing tag note from its tag menu; set/detach and pin folder notes
 - **Tag operations** - Add/remove/clear tags, rename/delete tags, create note in tag, drag-and-drop tag hierarchy
 - **Custom sort and grouping** - Override sort/group settings per folder, tag, property, or supported Type; None is explicitly ungrouped while Custom uses manual frontmatter group headers
 - **Per-scope appearances** - Title rows, preview rows, compact mode, descendants where meaningful, plus independent Date and Parent folder visibility

@@ -23,19 +23,25 @@ import { useCommandQueue, useServices } from '../context/ServicesContext';
 import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferences } from '../context/UXPreferencesContext';
 import { useUIState, useUIDispatch } from '../context/UIStateContext';
+import { useFileCache } from '../context/StorageContext';
 import { strings } from '../i18n';
 import { getIconService, useIconServiceVersion } from '../services/icons';
 import { ServiceIcon } from './ServiceIcon';
+import { NavigationNoteLink, type NavigationNoteActivationEvent } from './NavigationNoteLink';
 import { useListActions } from '../hooks/useListActions';
 import type { BreadcrumbSegment } from '../hooks/useListPaneTitle';
 import type { RevealFileOptions } from '../hooks/useNavigatorReveal';
 import { useSelectedFolderFileVersion } from '../hooks/useSelectedFolderFileVersion';
+import { useTagNoteIndex } from '../hooks/useTagNoteIndex';
 import { ItemType } from '../types';
 import { getFolderNote, openFolderNoteFile, revealFolderNoteInNavigator } from '../utils/folderNotes';
 import { resolveFolderNoteClickOpenContext } from '../utils/keyboardOpenContext';
 import { usesMobileChrome } from '../utils/paneLayout';
 import { normalizeTagPath } from '../utils/tagUtils';
 import { runAsyncAction } from '../utils/async';
+import { findTagNode } from '../utils/tagTree';
+import { getTagNote, resolveTagNoteFromIndex } from '../utils/tagNotes';
+import { openTagNoteFile, revealTagNoteInNavigator } from '../utils/tagNoteNavigation';
 import { isAggregateNavigationSelection, resolveSelectionIncludeDescendants } from '../utils/descendantVisibility';
 import { resolveUXIcon } from '../utils/uxIcons';
 import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
@@ -134,6 +140,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     const selectionState = useSelectionState();
     const includeDescendantNotes = resolveSelectionIncludeDescendants(settings, selectionState, uxPreferences.includeDescendantNotes);
     const selectionDispatch = useSelectionDispatch();
+    const { fileData } = useFileCache();
     const uiState = useUIState();
     const uiDispatch = useUIDispatch();
     const listPaneTitlePreference = settings.listPaneTitle ?? 'header';
@@ -248,9 +255,23 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         shouldResolveSelectedFolderNote,
         selectedFolderFileVersion
     ]);
+    const selectedTag = selectionState.selectionType === ItemType.TAG ? selectionState.selectedTag : null;
+    const selectedTagNode = selectedTag ? findTagNode(fileData.tagTree, selectedTag) : null;
+    const selectedTagDisplayPath = selectedTagNode?.displayPath ?? selectedTag;
+    const tagNoteIndex = useTagNoteIndex(
+        app,
+        Boolean(selectedTag && settings.enableFolderNotes && settings.enableFolderNoteLinks && shouldResolveSelectedFolderNote)
+    );
+    const selectedTagNote = useMemo(() => {
+        if (!selectedTag || !selectedTagDisplayPath || !tagNoteIndex) {
+            return null;
+        }
+
+        return resolveTagNoteFromIndex(tagNoteIndex, selectedTag, selectedTagDisplayPath).file;
+    }, [selectedTag, selectedTagDisplayPath, tagNoteIndex]);
 
     const handleSelectedFolderNoteClick = React.useCallback(
-        (event: React.MouseEvent<HTMLElement>) => {
+        (event: NavigationNoteActivationEvent) => {
             if (!selectedFolder || !selectedFolderNote) {
                 return;
             }
@@ -285,7 +306,7 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     );
 
     const handleSelectedFolderNoteMouseDown = React.useCallback(
-        (event: React.MouseEvent<HTMLElement>) => {
+        (event: React.MouseEvent<HTMLSpanElement>) => {
             if (event.button !== 1 || !selectedFolder || !selectedFolderNote) {
                 return;
             }
@@ -308,21 +329,78 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         [selectedFolder, selectedFolderNote, app, commandQueue, selectionDispatch]
     );
 
+    const handleSelectedTagNoteClick = React.useCallback(
+        (event: NavigationNoteActivationEvent) => {
+            if (!selectedTag || !selectedTagDisplayPath) {
+                return;
+            }
+            const currentTagNote = getTagNote(app, selectedTag, selectedTagDisplayPath);
+            if (!currentTagNote) {
+                return;
+            }
+
+            event.stopPropagation();
+            const openContext = resolveFolderNoteClickOpenContext(event, settings.folderNoteOpenLocation, settings.multiSelectModifier);
+            revealTagNoteInNavigator(selectionDispatch, currentTagNote, selectedTag);
+            runAsyncAction(() =>
+                openTagNoteFile({
+                    app,
+                    commandQueue,
+                    tagNote: currentTagNote,
+                    context: openContext,
+                    openInRightSidebar: tagNote => plugin.openFolderNoteInRightSidebar(tagNote)
+                })
+            );
+        },
+        [
+            app,
+            commandQueue,
+            plugin,
+            selectedTag,
+            selectedTagDisplayPath,
+            selectionDispatch,
+            settings.folderNoteOpenLocation,
+            settings.multiSelectModifier
+        ]
+    );
+
+    const handleSelectedTagNoteMouseDown = React.useCallback(
+        (event: React.MouseEvent<HTMLSpanElement>) => {
+            if (event.button !== 1 || !selectedTag || !selectedTagDisplayPath) {
+                return;
+            }
+            const currentTagNote = getTagNote(app, selectedTag, selectedTagDisplayPath);
+            if (!currentTagNote) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            revealTagNoteInNavigator(selectionDispatch, currentTagNote, selectedTag);
+            runAsyncAction(() => openTagNoteFile({ app, commandQueue, tagNote: currentTagNote, context: 'tab' }));
+        },
+        [app, commandQueue, selectedTag, selectedTagDisplayPath, selectionDispatch]
+    );
+
+    const selectedNavigationNote = selectedFolderNote ?? selectedTagNote;
+    const handleSelectedNavigationNoteClick = selectedFolderNote ? handleSelectedFolderNoteClick : handleSelectedTagNoteClick;
+    const handleSelectedNavigationNoteMouseDown = selectedFolderNote ? handleSelectedFolderNoteMouseDown : handleSelectedTagNoteMouseDown;
+
     const breadcrumbContent = useMemo((): React.ReactNode => {
         if (!shouldRenderBreadcrumbSegments) {
-            if (!selectedFolderNote) {
+            if (!selectedNavigationNote) {
                 return desktopTitle;
             }
 
             // Desktop header title becomes clickable when a folder note exists.
             return (
-                <span
+                <NavigationNoteLink
                     className="nn-pane-header-folder-note"
-                    onClick={handleSelectedFolderNoteClick}
-                    onMouseDown={handleSelectedFolderNoteMouseDown}
+                    onActivate={handleSelectedNavigationNoteClick}
+                    onMouseDown={handleSelectedNavigationNoteMouseDown}
                 >
                     {desktopTitle}
-                </span>
+                </NavigationNoteLink>
             );
         }
 
@@ -330,18 +408,24 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         breadcrumbSegments.forEach((segment, index) => {
             const key = `${segment.label}-${index}`;
             // The last breadcrumb segment maps to the active selection.
-            const isCurrentFolderNoteSegment = segment.isLast && Boolean(selectedFolderNote);
+            const isCurrentNavigationNoteSegment = segment.isLast && Boolean(selectedNavigationNote);
 
             if (segment.isLast || segment.targetType === 'none' || !segment.targetPath) {
                 parts.push(
-                    <span
-                        key={key}
-                        className={`nn-path-current${isCurrentFolderNoteSegment ? ' nn-pane-header-folder-note' : ''}`}
-                        onClick={isCurrentFolderNoteSegment ? handleSelectedFolderNoteClick : undefined}
-                        onMouseDown={isCurrentFolderNoteSegment ? handleSelectedFolderNoteMouseDown : undefined}
-                    >
-                        {segment.label}
-                    </span>
+                    isCurrentNavigationNoteSegment ? (
+                        <NavigationNoteLink
+                            key={key}
+                            className="nn-path-current nn-pane-header-folder-note"
+                            onActivate={handleSelectedNavigationNoteClick}
+                            onMouseDown={handleSelectedNavigationNoteMouseDown}
+                        >
+                            {segment.label}
+                        </NavigationNoteLink>
+                    ) : (
+                        <span key={key} className="nn-path-current">
+                            {segment.label}
+                        </span>
+                    )
                 );
             } else {
                 const handleClick = (e: React.MouseEvent) => {
@@ -377,9 +461,9 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
         selectionDispatch,
         onResetSearchForNavigation,
         shouldRenderBreadcrumbSegments,
-        selectedFolderNote,
-        handleSelectedFolderNoteClick,
-        handleSelectedFolderNoteMouseDown
+        selectedNavigationNote,
+        handleSelectedNavigationNoteClick,
+        handleSelectedNavigationNoteMouseDown
     ]);
 
     const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);

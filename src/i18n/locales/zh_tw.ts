@@ -378,6 +378,7 @@ export const STRINGS_ZH_TW = {
             deleteFolder: '刪除資料夾'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: '變更圖示',
             changeColor: '變更顏色',
             changeBackground: '變更背景',

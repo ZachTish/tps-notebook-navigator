@@ -167,6 +167,32 @@ describe('useNavigationPaneShortcutActions search reset', () => {
         expect(harness.onResetSearchForNavigation).not.toHaveBeenCalled();
     });
 
+    it('opens a tag-note shortcut label without leaving the tag scope', () => {
+        const app = new App();
+        const tagNote = new TFile('Topics/Work.md');
+        (app.vault as App['vault'] & TestVaultMethods).registerFile(tagNote);
+        app.metadataCache.getFileCache = file => (file === tagNote ? { tags: [{ tag: '#Work' }] } : null);
+        const harness = createHarness({
+            app,
+            settings: { ...DEFAULT_SETTINGS, enableFolderNotes: true, enableFolderNoteLinks: true }
+        });
+
+        harness.result.handleShortcutTagNoteClick('work', 'tag:work', {
+            altKey: false,
+            ctrlKey: false,
+            metaKey: false
+        } as React.MouseEvent<HTMLSpanElement>);
+
+        expect(harness.onResetSearchForNavigation).toHaveBeenCalledOnce();
+        expect(harness.selectionDispatch).toHaveBeenCalledWith({
+            type: 'REVEAL_FILE',
+            file: tagNote,
+            targetTag: 'work',
+            source: 'manual'
+        });
+        expect(harness.selectionDispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_SELECTED_TAG' }));
+    });
+
     it('resets before a middle-click folder-note selection', () => {
         const app = new App();
         const folder = new TFolder('Projects') as TFolder & { children: Array<TFile>; name: string; vault: App['vault'] };

@@ -377,6 +377,7 @@ export const STRINGS_ZH_CN = {
             deleteFolder: '删除文件夹'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: '更改图标',
             changeColor: '更改颜色',
             changeBackground: '更改背景',

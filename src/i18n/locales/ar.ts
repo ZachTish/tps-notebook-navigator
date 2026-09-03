@@ -378,6 +378,7 @@ export const STRINGS_AR = {
             deleteFolder: 'حذف المجلد'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'تغيير الأيقونة',
             changeColor: 'تغيير اللون',
             changeBackground: 'تغيير الخلفية',

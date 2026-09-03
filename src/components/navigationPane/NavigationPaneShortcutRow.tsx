@@ -29,9 +29,11 @@ import { getExtensionSuffix, shouldShowExtensionSuffix } from '../../utils/fileT
 import { shouldExcludeFolderFromDescendants } from '../../utils/fileFilters';
 import { getPathBaseName } from '../../utils/pathUtils';
 import { buildFolderTooltip } from '../../utils/navigationTooltipUtils';
+import { getTagNote, resolveTagNoteFromIndex } from '../../utils/tagNotes';
 import { FileTooltipContent, FileTooltipTagRow } from '../FileTooltipContent';
 import { ShortcutItem } from '../ShortcutItem';
 import type { NavigationPaneRowProps } from './NavigationPaneItemRenderer.types';
+import type { NavigationNoteActivationEvent } from '../NavigationNoteLink';
 
 interface SortableShortcutItemProps extends React.ComponentProps<typeof ShortcutItem> {
     sortableId: string;
@@ -147,7 +149,7 @@ export function NavigationPaneShortcutRow({ item, context, adjacentFilledClassNa
                 hasFolderNote: !isMissing && Boolean(folderNote),
                 onLabelClick:
                     folder && folderNote
-                        ? (event: React.MouseEvent<HTMLSpanElement>) => {
+                        ? (event: NavigationNoteActivationEvent) => {
                               shortcuts.handleShortcutFolderNoteClick(folder, item.key, event);
                           }
                         : undefined,
@@ -301,6 +303,13 @@ export function NavigationPaneShortcutRow({ item, context, adjacentFilledClassNa
         case NavigationPaneItemType.SHORTCUT_TAG: {
             const isMissing = Boolean(item.isMissing);
             const tagPath = isTagShortcut(item.shortcut) ? item.shortcut.tagPath : item.tagPath;
+            void context.vaultChangeVersion;
+            const tagNote =
+                !isMissing && settings.enableFolderNotes && settings.enableFolderNoteLinks
+                    ? context.tagNoteIndex
+                        ? resolveTagNoteFromIndex(context.tagNoteIndex, tagPath, item.displayName).file
+                        : getTagNote(app, tagPath, item.displayName)
+                    : null;
             const tagCountInfo =
                 !isMissing && shortcutUiState.shouldShowShortcutCounts ? shortcuts.getTagShortcutCount(tagPath) : undefined;
             const tagAlias = isTagShortcut(item.shortcut) ? item.shortcut.alias : undefined;
@@ -339,7 +348,14 @@ export function NavigationPaneShortcutRow({ item, context, adjacentFilledClassNa
                 },
                 onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => shortcuts.handleShortcutContextMenu(event, contextTarget),
                 dragHandlers: shortcuts.buildShortcutExternalHandlers(item.key),
-                dragHandleConfig: shortcutUiState.shortcutDragHandleConfig
+                dragHandleConfig: shortcutUiState.shortcutDragHandleConfig,
+                hasFolderNote: Boolean(tagNote),
+                onLabelClick: tagNote
+                    ? (event: NavigationNoteActivationEvent) => shortcuts.handleShortcutTagNoteClick(tagPath, item.key, event)
+                    : undefined,
+                onLabelMouseDown: tagNote
+                    ? (event: React.MouseEvent<HTMLSpanElement>) => shortcuts.handleShortcutTagNoteMouseDown(tagPath, event)
+                    : undefined
             };
 
             if (shortcutUiState.shouldUseShortcutDnd) {

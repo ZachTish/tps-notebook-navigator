@@ -61,7 +61,7 @@ describe('selected folder file watch paths', () => {
         expect(Array.from(paths)).toEqual(['Projects/Feature', 'Projects', '/']);
         expect(isWatchedFolderFileChange(createTestTFile('Projects/Feature/index.md'), paths)).toBe(true);
         expect(isWatchedFolderFileChange(createTestTFile('Projects/index.md'), paths)).toBe(true);
-        expect(isWatchedFolderFileChange(createTestTFile('Shared Scratch.md'), paths)).toBe(true);
+        expect(isWatchedFolderFileChange(createTestTFile('Vault.md'), paths)).toBe(true);
         expect(isWatchedFolderFileChange(createTestTFile('Projects/Other/index.md'), paths)).toBe(false);
         expect(isWatchedFolderFileChange(createTestTFile('Archive/index.md'), paths, 'Projects/index.md')).toBe(true);
     });

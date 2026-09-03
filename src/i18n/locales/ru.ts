@@ -379,6 +379,7 @@ export const STRINGS_RU = {
             deleteFolder: 'Удалить папку'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'Изменить иконку',
             changeColor: 'Изменить цвет',
             changeBackground: 'Изменить фон',

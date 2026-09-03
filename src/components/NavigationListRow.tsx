@@ -26,6 +26,7 @@ import type { ListReorderHandlers } from '../types/listReorder';
 import { ObsidianIcon } from './ObsidianIcon';
 import { Platform, setIcon } from 'obsidian';
 import { isInsideNativeTooltipTarget, useTooltip } from '../context/TooltipContext';
+import { NavigationNoteLink, type NavigationNoteActivationEvent } from './NavigationNoteLink';
 
 /**
  * Configuration for the drag handle element that appears in reorderable rows
@@ -82,7 +83,7 @@ interface NavigationListRowProps {
     className?: string;
     chevronIcon?: string;
     labelClassName?: string;
-    onLabelClick?: (event: React.MouseEvent<HTMLSpanElement>) => void;
+    onLabelClick?: (event: NavigationNoteActivationEvent) => void;
     onLabelMouseDown?: (event: React.MouseEvent<HTMLSpanElement>) => void;
     trailingAccessory?: React.ReactNode;
     showIcon?: boolean;
@@ -235,7 +236,7 @@ export function NavigationListRow({
 
     // Handles click events on the label element, preventing event propagation to parent row
     const handleLabelClick = useCallback(
-        (event: React.MouseEvent<HTMLSpanElement>) => {
+        (event: NavigationNoteActivationEvent) => {
             if (!onLabelClick) {
                 return;
             }
@@ -406,16 +407,21 @@ export function NavigationListRow({
                         style={color ? { color } : undefined}
                     />
                 ) : null}
-                <span
-                    className={labelClasses}
-                    onClick={onLabelClick ? handleLabelClick : undefined}
-                    onMouseDown={onLabelMouseDown ? handleLabelMouseDown : undefined}
-                >
-                    <span className="nn-shortcut-label" data-has-color={applyColorToLabel ? 'true' : undefined} style={labelStyle}>
-                        {label}
+                {onLabelClick ? (
+                    <NavigationNoteLink className={labelClasses} onActivate={handleLabelClick} onMouseDown={handleLabelMouseDown}>
+                        <span className="nn-shortcut-label" data-has-color={applyColorToLabel ? 'true' : undefined} style={labelStyle}>
+                            {label}
+                        </span>
+                        {description ? <span className="nn-shortcut-description">{description}</span> : null}
+                    </NavigationNoteLink>
+                ) : (
+                    <span className={labelClasses}>
+                        <span className="nn-shortcut-label" data-has-color={applyColorToLabel ? 'true' : undefined} style={labelStyle}>
+                            {label}
+                        </span>
+                        {description ? <span className="nn-shortcut-description">{description}</span> : null}
                     </span>
-                    {description ? <span className="nn-shortcut-description">{description}</span> : null}
-                </span>
+                )}
                 <span className={`nn-navitem-spacer${shouldShowCountLeader ? ' nn-navitem-spacer--leader' : ''}`} />
                 {shouldShowCount ? (countSlot ?? <span className="nn-navitem-count">{count}</span>) : null}
                 {trailingAccessory ? <div className="nn-navitem-accessory">{trailingAccessory}</div> : null}

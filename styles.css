@@ -988,6 +988,13 @@ body {
     text-decoration: var(--tps-nn-theme-navitem-folder-note-name-hover-decoration);
 }
 
+.tps-nn-pane-header .tps-nn-pane-header-folder-note:focus-visible {
+    outline: 1px solid var(--interactive-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+    text-decoration: var(--tps-nn-theme-navitem-folder-note-name-hover-decoration);
+}
+
 /* ========================================================================
    Mobile Headers + Breadcrumb
    ======================================================================== */
@@ -2224,6 +2231,13 @@ button.tps-nn-icon-button.tps-nn-icon-button-active svg:not(.tps-nn-vault-icon-s
     text-decoration: var(--tps-nn-theme-navitem-folder-note-name-hover-decoration);
 }
 
+.tps-nn-navitem-name.tps-nn-has-folder-note:focus-visible {
+    outline: 1px solid var(--interactive-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+    text-decoration: var(--tps-nn-theme-navitem-folder-note-name-hover-decoration);
+}
+
 /* Spacer element to push count to the end */
 .tps-nn-navitem-spacer {
     --tps-nn-nav-leader-color: var(--tps-nn-theme-nav-leader-color);
@@ -2408,7 +2422,8 @@ button.tps-nn-icon-button.tps-nn-navitem-hover-action-button {
 }
 
 /* Pointer cursor on hover for clickable folder note shortcuts */
-.tps-nn-shortcut-item .tps-nn-navitem-name.tps-nn-has-folder-note:hover .tps-nn-shortcut-label {
+.tps-nn-shortcut-item .tps-nn-navitem-name.tps-nn-has-folder-note:hover .tps-nn-shortcut-label,
+.tps-nn-shortcut-item .tps-nn-navitem-name.tps-nn-has-folder-note:focus-visible .tps-nn-shortcut-label {
     cursor: pointer;
     text-decoration: var(--tps-nn-theme-navitem-folder-note-name-hover-decoration);
 }
@@ -3922,6 +3937,13 @@ button.tps-nn-navigation-calendar-day {
 
 .tps-nn-list-title-label--folder-note:hover {
     cursor: pointer;
+    text-decoration: var(--tps-nn-theme-navitem-folder-note-name-hover-decoration);
+}
+
+.tps-nn-list-title-label--folder-note:focus-visible {
+    outline: 1px solid var(--interactive-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
     text-decoration: var(--tps-nn-theme-navitem-folder-note-name-hover-decoration);
 }
 

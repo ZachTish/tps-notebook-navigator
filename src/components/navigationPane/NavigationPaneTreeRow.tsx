@@ -37,6 +37,7 @@ import type { NavigationPaneRowProps } from './NavigationPaneItemRenderer.types'
 import { getNavigationItemSearchMatch } from './navigationPaneItemState';
 import { getNavigationItemRenderKey } from '../../utils/navigationIndex';
 import { strings } from '../../i18n';
+import { getTagNoteForNode } from '../../utils/tagNotes';
 
 export function NavigationPaneTreeRow({
     item,
@@ -216,6 +217,13 @@ export function NavigationPaneTreeRow({
         case NavigationPaneItemType.TAG:
         case NavigationPaneItemType.UNTAGGED: {
             const tagNode = item.data;
+            // TagTreeNode.notesWithTag makes this lookup proportional to one tag's exact
+            // memberships instead of scanning every Markdown file for every rendered row.
+            void vaultChangeVersion;
+            const tagNote =
+                item.type === NavigationPaneItemType.TAG && settings.enableFolderNotes && settings.enableFolderNoteLinks
+                    ? getTagNoteForNode(context.app, tagNode, context.tagNoteIndex)
+                    : null;
             const indentGuideLevels = indentGuideLevelsByKey.get(getNavigationItemRenderKey(item));
             const searchMatch = getNavigationItemSearchMatch(item, searchHighlights);
             const inclusionOperator = searchMatch === 'include' ? searchHighlights.getTagInclusionOperator(tagNode.path) : undefined;
@@ -230,6 +238,9 @@ export function NavigationPaneTreeRow({
                     isHidden={'isHidden' in item ? item.isHidden : false}
                     onToggle={() => tree.handleTagToggle(tagNode.path)}
                     onClick={event => tree.handleTagClick(tagNode.path, event)}
+                    hasTagNote={Boolean(tagNote)}
+                    onNameClick={tagNote ? event => tree.handleTagNameClick(tagNode, event) : undefined}
+                    onNameMouseDown={tagNote ? event => tree.handleTagNameMouseDown(tagNode, event) : undefined}
                     color={item.color}
                     backgroundColor={getSolidBackground(item.backgroundColor)}
                     adjacentFilledClassName={adjacentFilledClassName}

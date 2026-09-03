@@ -8,8 +8,9 @@
  * (at your option) any later version.
  */
 
+import { TFolder } from 'obsidian';
 import { describe, expect, it } from 'vitest';
-import { getTpsNavigatorTypeTitleData } from '../../src/hooks/useListPaneTitle';
+import { getRootFolderNoteCandidatePaths, getTpsNavigatorTypeTitleData } from '../../src/hooks/useListPaneTitle';
 import { createTpsNavigatorProviderTypeId } from '../../src/types/navigatorTypes';
 
 describe('getTpsNavigatorTypeTitleData', () => {
@@ -45,5 +46,41 @@ describe('getTpsNavigatorTypeTitleData', () => {
                 }
             ])
         ).toEqual({ label: 'Active projects', icon: 'lucide-folder-kanban' });
+    });
+});
+
+describe('root folder note title watchers', () => {
+    it('watches stable Vault candidates and the legacy root folder name', () => {
+        const root = new TFolder('/') as TFolder & { name: string };
+        root.name = 'Shared Scratch';
+
+        expect(
+            Array.from(
+                getRootFolderNoteCandidatePaths(root, {
+                    folderNoteNamePattern: ''
+                })
+            )
+        ).toEqual([
+            'Vault.md',
+            'Vault.canvas',
+            'Vault.base',
+            'Vault.excalidraw.md',
+            'Shared Scratch.md',
+            'Shared Scratch.canvas',
+            'Shared Scratch.base',
+            'Shared Scratch.excalidraw.md'
+        ]);
+    });
+
+    it('applies the configured folder token pattern to Vault candidates', () => {
+        const root = new TFolder('/');
+
+        expect(
+            Array.from(
+                getRootFolderNoteCandidatePaths(root, {
+                    folderNoteNamePattern: '_{{folder}}'
+                })
+            )
+        ).toEqual(['_Vault.md', '_Vault.canvas', '_Vault.base', '_Vault.excalidraw.md']);
     });
 });

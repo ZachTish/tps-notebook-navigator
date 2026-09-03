@@ -47,23 +47,39 @@ interface RootFolderNoteVault {
     getName?: () => string;
 }
 
-export function resolveRootFolderNoteSourceName(folder: TFolder, vaultOverride?: RootFolderNoteVault): string {
-    const vault = vaultOverride ?? (folder as TFolder & { vault?: RootFolderNoteVault }).vault;
-    const vaultName = typeof vault?.getName === 'function' ? vault.getName() : '';
-    if (typeof vaultName === 'string' && vaultName.trim().length > 0) {
-        return vaultName;
-    }
-
-    const folderName = typeof folder.name === 'string' ? folder.name : '';
-    if (folderName.trim().length > 0 && folderName !== '/') {
-        return folderName;
-    }
-
+export function resolveRootFolderNoteSourceName(_folder: TFolder, _vaultOverride?: RootFolderNoteVault): string {
+    // Keep the root convention stable across vault renames and custom display names.
+    // The arguments remain part of the public helper signature for existing callers.
     return 'Vault';
 }
 
+/**
+ * Returns the preferred root source name followed by the pre-5.25 vault-name
+ * convention when it differs. New notes use `Vault`; lookup keeps existing
+ * root folder notes working without a rename migration.
+ */
+export function resolveRootFolderNoteSourceNames(folder: TFolder, vaultOverride?: RootFolderNoteVault): string[] {
+    const sourceNames = [resolveRootFolderNoteSourceName(folder, vaultOverride)];
+    const vault = vaultOverride ?? (folder as TFolder & { vault?: RootFolderNoteVault }).vault;
+    const vaultName = typeof vault?.getName === 'function' ? vault.getName().trim() : '';
+    const folderName = typeof folder.name === 'string' ? folder.name.trim() : '';
+    const legacyName = vaultName || (folderName !== '/' ? folderName : '');
+
+    if (legacyName && !sourceNames.includes(legacyName)) {
+        sourceNames.push(legacyName);
+    }
+
+    return sourceNames;
+}
+
+/** Preferred and backward-compatible candidate names for one folder. */
+export function resolveFolderNoteNamesForFolder(folder: TFolder, settings: FolderNoteNameSettings): string[] {
+    const sourceNames = folder.path === '/' ? resolveRootFolderNoteSourceNames(folder) : [folder.name];
+    return [...new Set(sourceNames.map(sourceName => resolveFolderNoteName(sourceName, settings)))];
+}
+
 export function resolveFolderNoteNameForFolder(folder: TFolder, settings: FolderNoteNameSettings): string {
-    return resolveFolderNoteName(folder.path === '/' ? resolveRootFolderNoteSourceName(folder) : folder.name, settings);
+    return resolveFolderNoteNamesForFolder(folder, settings)[0] ?? resolveFolderNoteName('Vault', settings);
 }
 
 /**
@@ -81,12 +97,7 @@ export function isSupportedFolderNoteExtension(extension: string): boolean {
  * @param settings - Settings for folder note detection
  * @returns The folder note file or null if not found
  */
-export function getFolderNote(folder: TFolder, settings: FolderNoteDetectionSettings): TFile | null {
-    if (!settings.enableFolderNotes) {
-        return null;
-    }
-
-    const expectedName = resolveFolderNoteNameForFolder(folder, settings);
+function getFolderNoteForExpectedName(folder: TFolder, expectedName: string): TFile | null {
     const prefix = folder.path === '/' ? '' : `${folder.path}/`;
     const exactCandidates: TFile[] = [];
 
@@ -144,6 +155,21 @@ export function getFolderNote(folder: TFolder, settings: FolderNoteDetectionSett
     return excalidrawCandidate;
 }
 
+export function getFolderNote(folder: TFolder, settings: FolderNoteDetectionSettings): TFile | null {
+    if (!settings.enableFolderNotes) {
+        return null;
+    }
+
+    for (const expectedName of resolveFolderNoteNamesForFolder(folder, settings)) {
+        const folderNote = getFolderNoteForExpectedName(folder, expectedName);
+        if (folderNote) {
+            return folderNote;
+        }
+    }
+
+    return null;
+}
+
 /**
  * Checks if a file is a folder note for a given folder
  * @param file - The file to check
@@ -164,16 +190,8 @@ export function isFolderNote(file: TFile, folder: TFolder, settings: FolderNoteD
         return false;
     }
 
-    const expectedName = resolveFolderNoteNameForFolder(folder, settings);
-    if (file.basename === expectedName) {
-        return true;
-    }
-
-    if (!isExcalidrawFile(file) || stripExcalidrawSuffix(file.basename) !== expectedName) {
-        return false;
-    }
-
-    // Use preferred folder note selection so plain notes win over Excalidraw variants.
-    const preferred = getFolderNote(folder, settings);
-    return preferred?.path === file.path;
+    // A folder has one active folder note. This keeps the preferred root `Vault`
+    // convention exclusive when a legacy vault-name note is also present and
+    // preserves the normal extension/Excalidraw precedence from getFolderNote().
+    return getFolderNote(folder, settings)?.path === file.path;
 }

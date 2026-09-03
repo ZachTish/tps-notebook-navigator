@@ -380,6 +380,7 @@ export const STRINGS_UK = {
             deleteFolder: 'Видалити теку'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'Змінити іконку',
             changeColor: 'Змінити колір',
             changeBackground: 'Змінити фон',

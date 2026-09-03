@@ -22,6 +22,7 @@ import type NotebookNavigatorPlugin from '../../src/main';
 import type { CommandQueueService } from '../../src/services/CommandQueueService';
 import { FolderNoteSidebarService } from '../../src/services/workspace/FolderNoteSidebarService';
 import { NOTEBOOK_NAVIGATOR_CALENDAR_VIEW, NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW } from '../../src/types';
+import { TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY } from '../../src/constants/tpsIdentity';
 import { createTestTFile } from '../utils/createTestTFile';
 
 interface MutableFolderNoteSidebarService {
@@ -50,14 +51,25 @@ function createRightSidebarLeaf(
     rightSplit: object,
     options?: CreateRightSidebarLeafOptions
 ): TestWorkspaceLeaf {
-    const openFile = vi.fn().mockResolvedValue(undefined);
+    let currentViewState = viewState;
+    const openFile = vi.fn(async (file: ReturnType<typeof createTestTFile>) => {
+        const currentType = currentViewState.type;
+        const documentType = ['markdown', 'canvas', 'base', 'excalidraw'].includes(currentType)
+            ? currentType
+            : file.extension === 'canvas' || file.extension === 'base'
+              ? file.extension
+              : 'markdown';
+        currentViewState = { type: documentType, state: { file: file.path } };
+    });
     const detach = vi.fn();
-    const setViewState = vi.fn().mockResolvedValue(undefined);
+    const setViewState = vi.fn(async (nextViewState: { type: string; state?: Record<string, unknown> }) => {
+        currentViewState = nextViewState;
+    });
     const leaf = {
         parent: rightSplit,
         view: options?.view ?? {},
         detach,
-        getViewState: vi.fn(() => viewState),
+        getViewState: vi.fn(() => currentViewState),
         openFile,
         setViewState
     } as unknown as WorkspaceLeaf;
@@ -226,7 +238,7 @@ describe('FolderNoteSidebarService', () => {
         expect(companionLeaf.detach).not.toHaveBeenCalled();
         expect(companionLeaf.setViewState).toHaveBeenCalledWith({
             type: NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW,
-            state: {}
+            state: { [TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY]: 'placeholder' }
         });
     });
 
@@ -339,7 +351,13 @@ describe('FolderNoteSidebarService', () => {
         const projects = createTestFolder(app, 'Projects', root);
         const folderNote = addFileToFolder(app, projects, 'Projects/index.excalidraw.md');
         const rightSplit = {};
-        const restoredExcalidrawLeaf = createRightSidebarLeaf({ type: 'excalidraw', state: { file: folderNote.path } }, rightSplit);
+        const restoredExcalidrawLeaf = createRightSidebarLeaf(
+            {
+                type: 'excalidraw',
+                state: { file: folderNote.path, [TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY]: folderNote.path }
+            },
+            rightSplit
+        );
         const workspace = {
             rootSplit: {},
             leftSplit: {},
@@ -369,6 +387,149 @@ describe('FolderNoteSidebarService', () => {
         expect(workspace.getRightLeaf).not.toHaveBeenCalled();
         expect(restoredExcalidrawLeaf.openFile).toHaveBeenCalledWith(folderNote, { active: false });
         expect(workspace.revealLeaf).toHaveBeenCalledWith(restoredExcalidrawLeaf.leaf);
+    });
+
+    it('reuses a marked tag-note companion after restart without claiming an unmarked document leaf', async () => {
+        const app = new App();
+        const tagNote = createTestTFile('Topics/Work.md');
+        getTestVault(app).registerFile(tagNote);
+        const rightSplit = {};
+        const restoredTagNoteLeaf = createRightSidebarLeaf(
+            {
+                type: 'markdown',
+                state: { file: tagNote.path, [TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY]: tagNote.path }
+            },
+            rightSplit
+        );
+        const unrelatedLeaf = createRightSidebarLeaf({ type: 'markdown', state: { file: 'Notes/Reference.md' } }, rightSplit);
+        const workspace = {
+            rootSplit: {},
+            leftSplit: {},
+            rightSplit,
+            activeLeaf: null,
+            getRightLeaf: vi.fn(),
+            iterateAllLeaves: vi.fn((callback: (leaf: WorkspaceLeaf) => void) => {
+                callback(unrelatedLeaf.leaf);
+                callback(restoredTagNoteLeaf.leaf);
+            }),
+            revealLeaf: vi.fn().mockResolvedValue(undefined),
+            setActiveLeaf: vi.fn()
+        };
+        app.workspace = workspace as unknown as App['workspace'];
+        const plugin = {
+            app,
+            settings: { enableFolderNotes: true, folderNoteOpenLocation: 'right-sidebar' },
+            isShuttingDown: () => false
+        } as unknown as NotebookNavigatorPlugin;
+
+        await new FolderNoteSidebarService(plugin).openFolderNote(tagNote);
+
+        expect(workspace.getRightLeaf).not.toHaveBeenCalled();
+        expect(restoredTagNoteLeaf.openFile).toHaveBeenCalledWith(tagNote, { active: false });
+        expect(unrelatedLeaf.openFile).not.toHaveBeenCalled();
+        expect(unrelatedLeaf.detach).not.toHaveBeenCalled();
+        expect(restoredTagNoteLeaf.leaf.getViewState().state).toMatchObject({
+            file: tagNote.path,
+            [TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY]: tagNote.path
+        });
+    });
+
+    it('keeps the marker when the companion switches between tag notes', async () => {
+        const app = new App();
+        const firstTagNote = createTestTFile('Topics/Work.md');
+        const secondTagNote = createTestTFile('Topics/Home.md');
+        const rightSplit = {};
+        const companionLeaf = createRightSidebarLeaf({ type: 'empty', state: {} }, rightSplit);
+        const workspace = {
+            rootSplit: {},
+            leftSplit: {},
+            rightSplit,
+            activeLeaf: null,
+            getRightLeaf: vi.fn(() => companionLeaf.leaf),
+            iterateAllLeaves: vi.fn(),
+            revealLeaf: vi.fn().mockResolvedValue(undefined),
+            setActiveLeaf: vi.fn()
+        };
+        app.workspace = workspace as unknown as App['workspace'];
+        const plugin = {
+            app,
+            settings: { enableFolderNotes: true, folderNoteOpenLocation: 'right-sidebar' },
+            isShuttingDown: () => false
+        } as unknown as NotebookNavigatorPlugin;
+        const service = new FolderNoteSidebarService(plugin);
+
+        await service.openFolderNote(firstTagNote);
+        await service.openFolderNote(secondTagNote);
+
+        expect(workspace.getRightLeaf).toHaveBeenCalledTimes(1);
+        expect(companionLeaf.openFile).toHaveBeenNthCalledWith(1, firstTagNote, { active: false });
+        expect(companionLeaf.openFile).toHaveBeenNthCalledWith(2, secondTagNote, { active: false });
+        expect(companionLeaf.leaf.getViewState().state).toMatchObject({
+            file: secondTagNote.path,
+            [TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY]: secondTagNote.path
+        });
+    });
+
+    it('prunes only duplicate marked companion leaves and preserves arbitrary sidebar documents', async () => {
+        const app = new App();
+        const targetTagNote = createTestTFile('Topics/Work.md');
+        const staleTagNote = createTestTFile('Topics/Home.md');
+        const rightSplit = {};
+        const targetLeaf = createRightSidebarLeaf(
+            {
+                type: 'markdown',
+                state: {
+                    file: targetTagNote.path,
+                    [TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY]: targetTagNote.path
+                }
+            },
+            rightSplit
+        );
+        const duplicateLeaf = createRightSidebarLeaf(
+            {
+                type: 'markdown',
+                state: { file: staleTagNote.path, [TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY]: staleTagNote.path }
+            },
+            rightSplit
+        );
+        const unrelatedLeaf = createRightSidebarLeaf(
+            {
+                type: 'markdown',
+                state: {
+                    file: targetTagNote.path,
+                    [TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY]: 'Topics/Previously-Owned.md'
+                }
+            },
+            rightSplit
+        );
+        const workspace = {
+            rootSplit: {},
+            leftSplit: {},
+            rightSplit,
+            activeLeaf: null,
+            getRightLeaf: vi.fn(),
+            iterateAllLeaves: vi.fn((callback: (leaf: WorkspaceLeaf) => void) => {
+                callback(unrelatedLeaf.leaf);
+                callback(duplicateLeaf.leaf);
+                callback(targetLeaf.leaf);
+            }),
+            revealLeaf: vi.fn().mockResolvedValue(undefined),
+            setActiveLeaf: vi.fn()
+        };
+        app.workspace = workspace as unknown as App['workspace'];
+        const plugin = {
+            app,
+            settings: { enableFolderNotes: true, folderNoteOpenLocation: 'right-sidebar' },
+            isShuttingDown: () => false
+        } as unknown as NotebookNavigatorPlugin;
+
+        await new FolderNoteSidebarService(plugin).openFolderNote(targetTagNote);
+
+        expect(workspace.getRightLeaf).not.toHaveBeenCalled();
+        expect(targetLeaf.openFile).toHaveBeenCalledWith(targetTagNote, { active: false });
+        expect(duplicateLeaf.detach).toHaveBeenCalledOnce();
+        expect(unrelatedLeaf.detach).not.toHaveBeenCalled();
+        expect(unrelatedLeaf.openFile).not.toHaveBeenCalled();
     });
 
     it('preserves unrelated right sidebar panels that expose a file state before opening a folder note', async () => {

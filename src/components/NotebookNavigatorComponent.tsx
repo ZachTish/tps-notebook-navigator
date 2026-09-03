@@ -258,9 +258,16 @@ export const NotebookNavigatorComponent = React.memo(
         );
         useEffect(() => {
             void selectedFolderFileVersionForFolderNoteSidebar;
+            // Auto-follow belongs only to folder selections. A directly opened tag note can
+            // share the companion sidebar leaf and must not be cleared just because the active
+            // navigator selection is a tag.
+            if (selectionState.selectionType !== ItemType.FOLDER) {
+                return;
+            }
             runAsyncAction(() => plugin.syncFolderNoteSidebarToFolder(selectedFolderForFolderNoteSidebar));
         }, [
             plugin,
+            selectionState.selectionType,
             selectedFolderFileVersionForFolderNoteSidebar,
             selectedFolderForFolderNoteSidebar,
             settings.enableFolderNotes,

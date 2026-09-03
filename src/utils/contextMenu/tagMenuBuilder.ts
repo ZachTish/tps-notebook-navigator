@@ -31,6 +31,10 @@ import { getActiveHiddenTags, getActiveVaultProfile } from '../vaultProfiles';
 import { resolveDisplayTagPath } from '../../services/tagOperations/TagOperationUtils';
 import { INTERNAL_NOTEBOOK_NAVIGATOR_API } from '../../api/NotebookNavigatorAPI';
 import { selectContextMenuTarget } from './contextMenuSelection';
+import { resolveTagNote } from '../tagNotes';
+import { openTagNoteFile, revealTagNoteInNavigator } from '../tagNoteNavigation';
+import { resolveFolderNoteDefaultOpenContext } from '../keyboardOpenContext';
+import { showNotice } from '../noticeUtils';
 
 /**
  * Builds the context menu for a tag
@@ -70,6 +74,26 @@ export function buildTagMenu(params: TagMenuBuilderParams): void {
         uiDispatch({ type: 'ACTIVATE_PANE', target: 'files' });
     };
 
+    const displayTagPath = isVirtualTag ? tagPath : resolveDisplayTagPath(tagPath, services.tagTreeService);
+    const initialTagNoteResolution = !isVirtualTag && settings.enableFolderNotes ? resolveTagNote(app, tagPath, displayTagPath) : null;
+
+    const revealAndOpenTagNote = async (tagNote: TFile): Promise<void> => {
+        const normalizedTagPath = normalizeTagPath(tagPath) ?? tagPath;
+        revealTagNoteInNavigator(selectionDispatch, tagNote, normalizedTagPath);
+        uiDispatch({ type: 'ACTIVATE_PANE', target: 'files' });
+        await openTagNoteFile({
+            app,
+            commandQueue: services.commandQueue,
+            tagNote,
+            context: resolveFolderNoteDefaultOpenContext(settings.folderNoteOpenLocation),
+            openInRightSidebar: note => plugin.openFolderNoteInRightSidebar(note)
+        });
+    };
+
+    const showTagNoteCreationWarning = (reason: string): void => {
+        showNotice(strings.fileSystem.errors.createFile.replace('{error}', reason), { variant: 'warning' });
+    };
+
     if (!isVirtualTag) {
         menu.addItem((item: MenuItem) => {
             setAsyncOnClick(item.setTitle(strings.contextMenu.folder.newNote).setIcon('lucide-pen-box'), async () => {
@@ -90,6 +114,53 @@ export function buildTagMenu(params: TagMenuBuilderParams): void {
                 handleFileCreation(createdFile);
             });
         });
+
+        if (settings.enableFolderNotes && initialTagNoteResolution?.status !== 'found') {
+            menu.addItem((item: MenuItem) => {
+                setAsyncOnClick(item.setTitle(strings.contextMenu.tag.createTagNote).setIcon('lucide-file-tag'), async () => {
+                    ensureTagSelected();
+
+                    // Metadata can change while a native menu is open. Re-resolve before creating
+                    // so stale menus never create a duplicate or choose between ambiguous notes.
+                    const currentDisplayTagPath = resolveDisplayTagPath(tagPath, services.tagTreeService);
+                    const currentResolution = resolveTagNote(app, tagPath, currentDisplayTagPath);
+                    if (currentResolution.status === 'found' && currentResolution.file) {
+                        await revealAndOpenTagNote(currentResolution.file);
+                        return;
+                    }
+                    if (currentResolution.status === 'ambiguous') {
+                        const noteName = currentResolution.basename ? `${currentResolution.basename}.md` : currentDisplayTagPath;
+                        showTagNoteCreationWarning(
+                            `multiple notes named "${noteName}" use #${currentDisplayTagPath}; rename or retag duplicates first`
+                        );
+                        return;
+                    }
+                    if (currentResolution.status === 'invalid') {
+                        showNotice(strings.modals.tagOperation.invalidTagName, { variant: 'warning' });
+                        return;
+                    }
+
+                    const sourcePath = selectionState.selectedFile?.path ?? app.workspace.getActiveFile()?.path ?? '';
+                    const result = await fileSystemOps.createTagNote(tagPath, sourcePath, { openAfterCreate: false });
+                    if (result.status === 'created') {
+                        await revealAndOpenTagNote(result.file);
+                        return;
+                    }
+                    if (result.status === 'invalid') {
+                        showNotice(strings.modals.tagOperation.invalidTagName, { variant: 'warning' });
+                        return;
+                    }
+                    if (result.status === 'conflict') {
+                        const conflictName = result.path ?? `${currentResolution.basename ?? currentDisplayTagPath}.md`;
+                        showNotice(strings.dragDrop.errors.itemAlreadyExists.replace('{name}', conflictName), { variant: 'warning' });
+                        return;
+                    }
+
+                    const failedPath = result.path ? ` at "${result.path}"` : '';
+                    showTagNoteCreationWarning(`the tag note could not be created${failedPath}`);
+                });
+            });
+        }
         menu.addSeparator();
     }
 

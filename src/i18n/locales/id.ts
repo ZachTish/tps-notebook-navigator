@@ -379,6 +379,7 @@ export const STRINGS_ID = {
             deleteFolder: 'Hapus folder'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'Ubah ikon',
             changeColor: 'Ubah warna',
             changeBackground: 'Ubah latar belakang',

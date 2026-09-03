@@ -267,6 +267,13 @@
     text-decoration: var(--nn-theme-navitem-folder-note-name-hover-decoration);
 }
 
+.nn-navitem-name.nn-has-folder-note:focus-visible {
+    outline: 1px solid var(--interactive-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+    text-decoration: var(--nn-theme-navitem-folder-note-name-hover-decoration);
+}
+
 /* Spacer element to push count to the end */
 .nn-navitem-spacer {
     --nn-nav-leader-color: var(--nn-theme-nav-leader-color);
@@ -451,7 +458,8 @@ button.nn-icon-button.nn-navitem-hover-action-button {
 }
 
 /* Pointer cursor on hover for clickable folder note shortcuts */
-.nn-shortcut-item .nn-navitem-name.nn-has-folder-note:hover .nn-shortcut-label {
+.nn-shortcut-item .nn-navitem-name.nn-has-folder-note:hover .nn-shortcut-label,
+.nn-shortcut-item .nn-navitem-name.nn-has-folder-note:focus-visible .nn-shortcut-label {
     cursor: pointer;
     text-decoration: var(--nn-theme-navitem-folder-note-name-hover-decoration);
 }

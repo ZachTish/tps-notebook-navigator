@@ -37,12 +37,15 @@ import {
     UNTAGGED_TAG_ID
 } from '../../types';
 import type { PropertyTreeNode, TagTreeNode } from '../../types/storage';
+import type { NavigationNoteActivationEvent } from '../../components/NavigationNoteLink';
 import type { InclusionOperator } from '../../utils/filterSearch';
 import { getFolderNote, openFolderNoteFile, revealFolderNoteInNavigator, type FolderNoteOpenContext } from '../../utils/folderNotes';
 import { runAsyncAction } from '../../utils/async';
 import { resolveFolderNoteClickOpenContext, resolveFolderNoteDefaultOpenContext } from '../../utils/keyboardOpenContext';
 import { findTagNode } from '../../utils/tagTree';
 import { getNavigationSearchModifierOperator, resolveCanonicalTagPath } from '../../utils/tagUtils';
+import { getTagNote } from '../../utils/tagNotes';
+import { openTagNoteFile, revealTagNoteInNavigator } from '../../utils/tagNoteNavigation';
 import { isVirtualTagCollectionId } from '../../utils/virtualTagCollections';
 import {
     getFolderAncestorPaths,
@@ -100,6 +103,8 @@ export interface NavigationPaneTreeInteractionsResult {
     handleFolderToggleAllSiblings: (folder: TFolder) => void;
     handleTagToggle: (path: string) => void;
     handleTagToggleAllSiblings: (tagPath: string) => void;
+    handleTagNameClick: (tagNode: TagTreeNode, event?: NavigationNoteActivationEvent) => void;
+    handleTagNameMouseDown: (tagNode: TagTreeNode, event: React.MouseEvent<HTMLSpanElement>) => void;
     handlePropertyToggle: (nodeId: string) => void;
     handlePropertyToggleAllSiblings: (propertyNode: PropertyTreeNode) => void;
     handleVirtualFolderToggle: (folderId: string) => void;
@@ -135,7 +140,7 @@ export function useNavigationPaneTreeInteractions({
     onModifySearchWithType,
     onResetSearchForNavigation
 }: UseNavigationPaneTreeInteractionsProps): NavigationPaneTreeInteractionsResult {
-    const focusListPaneAfterRightSidebarFolderNoteSelection = useCallback(
+    const focusListPaneAfterRightSidebarNoteSelection = useCallback(
         (openContext: FolderNoteOpenContext) => {
             if (!uiState.singlePane || openContext !== 'right-sidebar') {
                 return;
@@ -256,7 +261,7 @@ export function useNavigationPaneTreeInteractions({
             const openContext = event
                 ? resolveFolderNoteClickOpenContext(event, settings.folderNoteOpenLocation, settings.multiSelectModifier)
                 : resolveFolderNoteDefaultOpenContext(settings.folderNoteOpenLocation);
-            focusListPaneAfterRightSidebarFolderNoteSelection(openContext);
+            focusListPaneAfterRightSidebarNoteSelection(openContext);
             revealFolderNoteInNavigator(selectionDispatch, folderNote);
 
             if (openContext === 'right-sidebar' && settings.showNearestFolderNoteInSidebar && !wasSelectedFolder) {
@@ -278,7 +283,7 @@ export function useNavigationPaneTreeInteractions({
             app,
             commandQueue,
             expansionState.expandedFolders,
-            focusListPaneAfterRightSidebarFolderNoteSelection,
+            focusListPaneAfterRightSidebarNoteSelection,
             handleFolderClick,
             handleFolderToggle,
             openFolderNoteInRightSidebar,
@@ -611,6 +616,78 @@ export function useNavigationPaneTreeInteractions({
         ]
     );
 
+    const handleTagNameClick = useCallback(
+        (tagNode: TagTreeNode, event?: NavigationNoteActivationEvent) => {
+            const rowClickEvent = event && 'button' in event ? event : undefined;
+            if (!settings.enableFolderNotes || !settings.enableFolderNoteLinks) {
+                handleTagClick(tagNode.path, rowClickEvent);
+                return;
+            }
+
+            const tagNote = getTagNote(app, tagNode.path, tagNode.displayPath);
+            if (!tagNote) {
+                handleTagClick(tagNode.path, rowClickEvent);
+                return;
+            }
+
+            onResetSearchForNavigation();
+            clearActiveShortcut();
+
+            if (settings.autoExpandNavItems && tagNode.children.size > 0 && !expansionState.expandedTags.has(tagNode.path)) {
+                handleTagToggle(tagNode.path);
+            }
+
+            const openContext = event
+                ? resolveFolderNoteClickOpenContext(event, settings.folderNoteOpenLocation, settings.multiSelectModifier)
+                : resolveFolderNoteDefaultOpenContext(settings.folderNoteOpenLocation);
+            focusListPaneAfterRightSidebarNoteSelection(openContext);
+            revealTagNoteInNavigator(selectionDispatch, tagNote, tagNode.path);
+            runAsyncAction(() =>
+                openTagNoteFile({
+                    app,
+                    commandQueue,
+                    tagNote,
+                    context: openContext,
+                    openInRightSidebar: openFolderNoteInRightSidebar
+                })
+            );
+        },
+        [
+            app,
+            clearActiveShortcut,
+            commandQueue,
+            expansionState.expandedTags,
+            focusListPaneAfterRightSidebarNoteSelection,
+            handleTagClick,
+            handleTagToggle,
+            openFolderNoteInRightSidebar,
+            onResetSearchForNavigation,
+            selectionDispatch,
+            settings
+        ]
+    );
+
+    const handleTagNameMouseDown = useCallback(
+        (tagNode: TagTreeNode, event: React.MouseEvent<HTMLSpanElement>) => {
+            if (event.button !== 1 || !settings.enableFolderNotes || !settings.enableFolderNoteLinks) {
+                return;
+            }
+
+            const tagNote = getTagNote(app, tagNode.path, tagNode.displayPath);
+            if (!tagNote) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            onResetSearchForNavigation();
+            clearActiveShortcut();
+            revealTagNoteInNavigator(selectionDispatch, tagNote, tagNode.path);
+            runAsyncAction(() => openTagNoteFile({ app, commandQueue, tagNote, context: 'tab' }));
+        },
+        [app, clearActiveShortcut, commandQueue, onResetSearchForNavigation, selectionDispatch, settings]
+    );
+
     const handleTagCollectionClick = useCallback(
         (tagCollectionId: string, event: React.MouseEvent<HTMLDivElement>) => {
             handleTagClick(tagCollectionId, event);
@@ -811,6 +888,8 @@ export function useNavigationPaneTreeInteractions({
         handleFolderToggleAllSiblings,
         handleTagToggle,
         handleTagToggleAllSiblings,
+        handleTagNameClick,
+        handleTagNameMouseDown,
         handlePropertyToggle,
         handlePropertyToggleAllSiblings,
         handleVirtualFolderToggle,
@@ -831,6 +910,8 @@ export function useNavigationPaneTreeInteractions({
         'handleFolderToggleAllSiblings',
         'handleTagToggle',
         'handleTagToggleAllSiblings',
+        'handleTagNameClick',
+        'handleTagNameMouseDown',
         'handlePropertyToggle',
         'handlePropertyToggleAllSiblings',
         'handleVirtualFolderToggle',

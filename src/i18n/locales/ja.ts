@@ -378,6 +378,7 @@ export const STRINGS_JA = {
             deleteFolder: 'フォルダを削除'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'アイコンを変更',
             changeColor: '色を変更',
             changeBackground: '背景色を変更',

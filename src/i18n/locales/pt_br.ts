@@ -380,6 +380,7 @@ export const STRINGS_PT_BR = {
             deleteFolder: 'Excluir pasta'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'Alterar ícone',
             changeColor: 'Alterar cor',
             changeBackground: 'Alterar plano de fundo',

@@ -33,6 +33,7 @@ import type { NavigationSearchHighlightsResult } from '../../hooks/navigationPan
 import type { RevealFileOptions } from '../../hooks/useNavigatorReveal';
 import type { FileItemPillDecorationModel } from '../../utils/fileItemPillDecoration';
 import type { FileItemPillOrderModel } from '../../utils/fileItemPillOrder';
+import type { TagNoteIndex } from '../../utils/tagNotes';
 export type NavigationInlineRenameTarget =
     | { type: 'folder'; id: string; initialValue: string }
     | { type: 'tag'; id: string; initialValue: string; displayPath: string }
@@ -66,6 +67,8 @@ export interface NavigationPaneRowContext {
     tagCounts: Map<string, NoteCountInfo>;
     propertyCounts: Map<string, NoteCountInfo>;
     vaultChangeVersion: number;
+    /** One transient all-vault tag-note scan shared by every rendered tag row. */
+    tagNoteIndex?: TagNoteIndex;
     fileVisibility: FileVisibility;
     hiddenFolders: string[];
     descendantExcludedFolders: string[];

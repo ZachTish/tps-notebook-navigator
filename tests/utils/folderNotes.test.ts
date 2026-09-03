@@ -121,7 +121,7 @@ function registerRootFile(app: App, root: TFolder, path: string): TFile {
 }
 
 describe('root folder notes', () => {
-    it('resolves root folder note names from the vault name when no fixed name is configured', () => {
+    it('uses the stable Vault name instead of the vault display name', () => {
         const app = new App();
         const root = createRootFolder(app, 'Shared Scratch');
 
@@ -129,10 +129,10 @@ describe('root folder notes', () => {
             resolveFolderNoteNameForFolder(root, {
                 folderNoteNamePattern: ''
             })
-        ).toBe('Shared Scratch');
+        ).toBe('Vault');
     });
 
-    it('applies folder note name patterns to the vault root', () => {
+    it('uses Vault for the folder token at the vault root', () => {
         const app = new App();
         const root = createRootFolder(app, 'Shared Scratch');
 
@@ -140,13 +140,13 @@ describe('root folder notes', () => {
             resolveFolderNoteNameForFolder(root, {
                 folderNoteNamePattern: '_{{folder}}'
             })
-        ).toBe('_Shared Scratch');
+        ).toBe('_Vault');
     });
 
     it('detects a root folder note at the vault root', () => {
         const app = new App();
         const root = createRootFolder(app, 'Shared Scratch');
-        const folderNote = registerRootFile(app, root, 'Shared Scratch.md');
+        const folderNote = registerRootFile(app, root, 'Vault.md');
 
         expect(
             getFolderNote(root, {
@@ -156,10 +156,44 @@ describe('root folder notes', () => {
         ).toBe(folderNote);
     });
 
-    it('matches root folder note files using the vault name', () => {
+    it('keeps detecting a legacy vault-name root folder note', () => {
         const app = new App();
         const root = createRootFolder(app, 'Shared Scratch');
-        const folderNote = registerRootFile(app, root, 'Shared Scratch.md');
+        const legacyFolderNote = registerRootFile(app, root, 'Shared Scratch.md');
+
+        expect(
+            getFolderNote(root, {
+                enableFolderNotes: true,
+                folderNoteNamePattern: '{{folder}}'
+            })
+        ).toBe(legacyFolderNote);
+        expect(
+            isFolderNote(legacyFolderNote, root, {
+                enableFolderNotes: true,
+                folderNoteNamePattern: '{{folder}}'
+            })
+        ).toBe(true);
+    });
+
+    it('prefers Vault when both current and legacy root folder notes exist', () => {
+        const app = new App();
+        const root = createRootFolder(app, 'Shared Scratch');
+        const preferredFolderNote = registerRootFile(app, root, 'Vault.md');
+        const legacyFolderNote = registerRootFile(app, root, 'Shared Scratch.md');
+        const settings = {
+            enableFolderNotes: true,
+            folderNoteNamePattern: '{{folder}}'
+        };
+
+        expect(getFolderNote(root, settings)).toBe(preferredFolderNote);
+        expect(isFolderNote(preferredFolderNote, root, settings)).toBe(true);
+        expect(isFolderNote(legacyFolderNote, root, settings)).toBe(false);
+    });
+
+    it('matches root folder note files using the stable Vault name', () => {
+        const app = new App();
+        const root = createRootFolder(app, 'Shared Scratch');
+        const folderNote = registerRootFile(app, root, 'Vault.md');
 
         expect(
             isFolderNote(folderNote, root, {
@@ -186,7 +220,7 @@ describe('root folder notes', () => {
         const app = new App();
         const root = createRootFolder(app, 'Shared Scratch');
         const openFile = vi.fn().mockResolvedValue(undefined);
-        const createdFile = createTestTFile('Shared Scratch.md');
+        const createdFile = createTestTFile('Vault.md');
         createdFile.parent = root;
         createdFile.vault = app.vault;
 
@@ -211,7 +245,7 @@ describe('root folder notes', () => {
             null
         );
 
-        expect(createNewMarkdownFile).toHaveBeenCalledWith(root, 'Shared Scratch');
+        expect(createNewMarkdownFile).toHaveBeenCalledWith(root, 'Vault');
         expect(created).toBe(createdFile);
         expect(openFile).toHaveBeenCalledWith(createdFile, { active: true });
     });
@@ -221,7 +255,7 @@ describe('root folder notes', () => {
         const root = createRootFolder(app, 'Shared Scratch');
         const openFile = vi.fn().mockResolvedValue(undefined);
         const openInRightSidebar = vi.fn().mockResolvedValue(undefined);
-        const createdFile = createTestTFile('Shared Scratch.md');
+        const createdFile = createTestTFile('Vault.md');
         createdFile.parent = root;
         createdFile.vault = app.vault;
 
@@ -259,7 +293,7 @@ describe('root folder notes', () => {
         const app = new App();
         const root = createRootFolder(app, 'Shared Scratch');
         const templateFile = createTestTFile('Templates/Folder.md');
-        const createdFile = createTestTFile('Shared Scratch.md');
+        const createdFile = createTestTFile('Vault.md');
         const openFile = vi.fn().mockResolvedValue(undefined);
         const createNewMarkdownFile = vi.fn();
         const createNoteFromTemplate = vi.fn(async () => createdFile);
@@ -283,7 +317,7 @@ describe('root folder notes', () => {
         );
 
         expect(created).toBe(createdFile);
-        expect(createNoteFromTemplate).toHaveBeenCalledWith(templateFile, root, 'Shared Scratch', false);
+        expect(createNoteFromTemplate).toHaveBeenCalledWith(templateFile, root, 'Vault', false);
         expect(createNewMarkdownFile).not.toHaveBeenCalled();
         expect(openFile).toHaveBeenCalledWith(createdFile, { active: true });
     });
@@ -292,7 +326,7 @@ describe('root folder notes', () => {
         const app = new App();
         const root = createRootFolder(app, 'Shared Scratch');
         const templateFile = createTestTFile('Templates/Folder.md');
-        const createdFile = createTestTFile('Shared Scratch.md');
+        const createdFile = createTestTFile('Vault.md');
         const templateContent = '---\ntags: [template, keep]\ncreated: <% tp.file.creation_date("YYYY-MM-DD") %>\n---\n#template\n';
         const preparedContent = templateContent.replace('template, ', '');
         const openFile = vi.fn().mockResolvedValue(undefined);
@@ -321,7 +355,7 @@ describe('root folder notes', () => {
         );
 
         expect(created).toBe(createdFile);
-        expect(createNewMarkdownFile).toHaveBeenCalledWith(root, 'Shared Scratch');
+        expect(createNewMarkdownFile).toHaveBeenCalledWith(root, 'Vault');
         expect(read).toHaveBeenCalledWith(templateFile);
         expect(modify).toHaveBeenCalledWith(createdFile, preparedContent);
         expect(openFile).toHaveBeenCalledWith(createdFile, { active: true });
@@ -359,7 +393,7 @@ describe('root folder notes', () => {
         const root = createRootFolder(app, 'Shared Scratch');
         const templateFile = createTestTFile('Templates/Folder.canvas');
         const templateContent = '{"nodes":[{"id":"folder-note"}],"edges":[]}';
-        const createdFile = createTestTFile('Shared Scratch.canvas');
+        const createdFile = createTestTFile('Vault.canvas');
         createdFile.parent = root;
         createdFile.vault = app.vault;
         const openFile = vi.fn().mockResolvedValue(undefined);
@@ -390,7 +424,7 @@ describe('root folder notes', () => {
 
         expect(created).toBe(createdFile);
         expect(read).toHaveBeenCalledWith(templateFile);
-        expect(create).toHaveBeenCalledWith('Shared Scratch.canvas', templateContent);
+        expect(create).toHaveBeenCalledWith('Vault.canvas', templateContent);
         expect(openFile).toHaveBeenCalledWith(createdFile, { active: true });
     });
 
@@ -399,7 +433,7 @@ describe('root folder notes', () => {
         const root = createRootFolder(app, 'Shared Scratch');
         const templateFile = createTestTFile('Templates/Folder.base');
         const templateContent = '{"model":{"version":1,"kind":"Table","columns":[{"name":"Status"}]},"pluginVersion":"1.0.0"}';
-        const createdFile = createTestTFile('Shared Scratch.base');
+        const createdFile = createTestTFile('Vault.base');
         createdFile.parent = root;
         createdFile.vault = app.vault;
         const openFile = vi.fn().mockResolvedValue(undefined);
@@ -430,7 +464,7 @@ describe('root folder notes', () => {
 
         expect(created).toBe(createdFile);
         expect(read).toHaveBeenCalledWith(templateFile);
-        expect(create).toHaveBeenCalledWith('Shared Scratch.base', templateContent);
+        expect(create).toHaveBeenCalledWith('Vault.base', templateContent);
         expect(openFile).toHaveBeenCalledWith(createdFile, { active: true });
     });
 
@@ -438,7 +472,7 @@ describe('root folder notes', () => {
         const app = new App();
         const root = createRootFolder(app, 'Shared Scratch');
         const templateFile = createTestTFile('Templates/Folder.md');
-        const createdFile = createTestTFile('Shared Scratch.canvas');
+        const createdFile = createTestTFile('Vault.canvas');
         createdFile.parent = root;
         createdFile.vault = app.vault;
         const openFile = vi.fn().mockResolvedValue(undefined);
@@ -465,7 +499,7 @@ describe('root folder notes', () => {
 
         expect(created).toBe(createdFile);
         expect(read).not.toHaveBeenCalled();
-        expect(create).toHaveBeenCalledWith('Shared Scratch.canvas', '{}');
+        expect(create).toHaveBeenCalledWith('Vault.canvas', '{}');
     });
 });
 

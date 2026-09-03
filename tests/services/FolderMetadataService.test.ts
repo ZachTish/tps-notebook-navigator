@@ -44,7 +44,7 @@ const {
     getFolderNoteMock,
     getFolderNoteDetectionSettingsMock,
     resolveFolderNoteNameForFolderMock,
-    resolveRootFolderNoteSourceNameMock,
+    resolveFolderNoteNamesForFolderMock,
     onContentChangeMock,
     getDBInstanceOrNullMock
 } = vi.hoisted(() => ({
@@ -62,13 +62,12 @@ const {
             ? folder.name
             : settings.folderNoteNamePattern.replace(/\{\{\s*folder\s*\}\}/giu, folder.name)
     ),
-    resolveRootFolderNoteSourceNameMock: vi.fn((folder: TFolder, vault?: { getName?: () => string }) => {
-        const vaultName = typeof vault?.getName === 'function' ? vault.getName() : '';
-        if (typeof vaultName === 'string' && vaultName.trim().length > 0) {
-            return vaultName;
-        }
-
-        return folder.name && folder.name !== '/' ? folder.name : 'Vault';
+    resolveFolderNoteNamesForFolderMock: vi.fn((folder: TFolder, settings: NotebookNavigatorSettings) => {
+        const resolveName = (sourceName: string) =>
+            settings.folderNoteNamePattern.length === 0
+                ? sourceName
+                : settings.folderNoteNamePattern.replace(/\{\{\s*folder\s*\}\}/giu, sourceName);
+        return folder.path === '/' ? [resolveName('Vault'), resolveName('Shared Scratch')] : [resolveName(folder.name)];
     })
 }));
 
@@ -85,7 +84,7 @@ vi.mock('../../src/utils/folderNoteLookup', () => ({
     getFolderNote: getFolderNoteMock,
     getFolderNoteDetectionSettings: getFolderNoteDetectionSettingsMock,
     resolveFolderNoteNameForFolder: resolveFolderNoteNameForFolderMock,
-    resolveRootFolderNoteSourceName: resolveRootFolderNoteSourceNameMock
+    resolveFolderNoteNamesForFolder: resolveFolderNoteNamesForFolderMock
 }));
 
 class TestSettingsProvider implements ISettingsProvider {
@@ -174,7 +173,7 @@ describe('FolderMetadataService folder note frontmatter integration', () => {
         }));
         getFolderNoteMock.mockReset();
         getFolderNoteDetectionSettingsMock.mockClear();
-        resolveRootFolderNoteSourceNameMock.mockClear();
+        resolveFolderNoteNamesForFolderMock.mockClear();
         processFrontMatter.mockReset();
         getFolderByPath.mockReset();
 
@@ -346,7 +345,7 @@ describe('FolderMetadataService folder note frontmatter integration', () => {
     });
 
     it('prefers root folder note metadata at the vault root', () => {
-        folderNoteFile.path = 'Shared Scratch.md';
+        folderNoteFile.path = 'Vault.md';
         getFileMock.mockImplementation((path: string) => {
             if (path !== folderNoteFile.path) {
                 return null;
@@ -374,7 +373,7 @@ describe('FolderMetadataService folder note frontmatter integration', () => {
     });
 
     it('writes root folder style to the root folder note', async () => {
-        folderNoteFile.path = 'Shared Scratch.md';
+        folderNoteFile.path = 'Vault.md';
 
         await service.setFolderColor('/', '#112233');
 
@@ -1245,7 +1244,7 @@ describe('FolderMetadataService folder note frontmatter integration', () => {
         expect(getFolderByPath).not.toHaveBeenCalled();
     });
 
-    it('detects root folder display-name metadata changes using the vault name', () => {
+    it('detects root folder display-name metadata changes using the stable Vault name', () => {
         Object.defineProperty(app.vault, 'getName', {
             configurable: true,
             value: () => 'Shared Scratch'
@@ -1254,7 +1253,7 @@ describe('FolderMetadataService folder note frontmatter integration', () => {
 
         const rootFolderNoteChanges: MetadataChangeEvent[] = [
             {
-                path: 'Shared Scratch.md',
+                path: 'Vault.md',
                 changes: { metadata: { name: 'Vault home' } },
                 metadataNameChanged: true
             }
@@ -1263,16 +1262,28 @@ describe('FolderMetadataService folder note frontmatter integration', () => {
         expect(service.hasFolderDisplayNameMetadataChanges(rootFolderNoteChanges)).toBe(true);
     });
 
-    it('falls back to the root folder name when the vault name is unavailable', () => {
+    it('keeps detecting legacy vault-name root folder metadata changes', () => {
+        const rootFolderNoteChanges: MetadataChangeEvent[] = [
+            {
+                path: 'Shared Scratch.md',
+                changes: { metadata: { name: 'Legacy vault home' } },
+                metadataNameChanged: true
+            }
+        ];
+
+        expect(service.hasFolderDisplayNameMetadataChanges(rootFolderNoteChanges)).toBe(true);
+    });
+
+    it('ignores the root folder object name for folder-note matching', () => {
         Object.defineProperty(app.vault, 'getRoot', {
             configurable: true,
-            value: () => ({ name: 'VaultRoot' })
+            value: () => ({ name: 'VaultRoot', path: '/' })
         });
         settingsProvider.settings.folderNoteNamePattern = '';
 
         const rootFolderNoteChanges: MetadataChangeEvent[] = [
             {
-                path: 'VaultRoot.md',
+                path: 'Vault.md',
                 changes: { metadata: { name: 'Vault home' } },
                 metadataNameChanged: true
             }

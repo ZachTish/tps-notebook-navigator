@@ -378,6 +378,7 @@ export const STRINGS_VI = {
             deleteFolder: 'Xóa thư mục'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'Đổi biểu tượng',
             changeColor: 'Đổi màu',
             changeBackground: 'Đổi nền',

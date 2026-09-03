@@ -379,6 +379,7 @@ export const STRINGS_DE = {
             deleteFolder: 'Ordner löschen'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'Symbol ändern',
             changeColor: 'Farbe ändern',
             changeBackground: 'Hintergrund ändern',

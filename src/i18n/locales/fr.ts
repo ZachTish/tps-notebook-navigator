@@ -380,6 +380,7 @@ export const STRINGS_FR = {
             deleteFolder: 'Supprimer le dossier'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: "Changer l'icône",
             changeColor: 'Changer la couleur',
             changeBackground: 'Changer l’arrière-plan',

@@ -377,6 +377,7 @@ export const STRINGS_KO = {
             deleteFolder: '폴더 삭제'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: '아이콘 변경',
             changeColor: '색상 변경',
             changeBackground: '배경색 변경',

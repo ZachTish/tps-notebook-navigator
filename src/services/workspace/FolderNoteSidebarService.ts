@@ -19,13 +19,17 @@
 import { FileView, Platform, TFile, TFolder, type ViewState, type WorkspaceLeaf } from 'obsidian';
 import type NotebookNavigatorPlugin from '../../main';
 import { NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW } from '../../types';
+import { TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY } from '../../constants/tpsIdentity';
 import { runAsyncAction } from '../../utils/async';
 import { getFolderNote } from '../../utils/folderNoteLookup';
 import { getLeafSplitLocation } from '../../utils/workspaceSplit';
 
 const SETTINGS_LISTENER_ID = 'folder-note-sidebar-service';
 const SIDEBAR_OPEN_SUPPRESSION_MS = 1000;
-const PLACEHOLDER_VIEW_STATE: ViewState = { type: NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW, state: {} };
+const PLACEHOLDER_VIEW_STATE: ViewState = {
+    type: NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW,
+    state: { [TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY]: 'placeholder' }
+};
 const FOLDER_NOTE_DOCUMENT_VIEW_TYPES = new Set(['markdown', 'canvas', 'base', 'excalidraw']);
 
 interface WorkspaceWithActiveLeaf {
@@ -145,6 +149,7 @@ export class FolderNoteSidebarService {
                 return;
             }
             await targetLeaf.openFile(folderNote, { active: false });
+            await this.markCompanionLeaf(targetLeaf, folderNote.path);
         };
         if (this.plugin.commandQueue) {
             const result = await this.plugin.commandQueue.executeBackgroundFileOpen(folderNote, openCompanionFile, { getLeaf: () => leaf });
@@ -220,7 +225,7 @@ export class FolderNoteSidebarService {
 
     private findRestoredCompanionLeaf(targetFolderNote: TFile | null): WorkspaceLeaf | null {
         let exactMatch: WorkspaceLeaf | null = null;
-        let folderNoteLeaf: WorkspaceLeaf | null = null;
+        let markedDocumentLeaf: WorkspaceLeaf | null = null;
         let placeholderLeaf: WorkspaceLeaf | null = null;
 
         this.plugin.app.workspace.iterateAllLeaves((leaf: WorkspaceLeaf) => {
@@ -230,6 +235,10 @@ export class FolderNoteSidebarService {
 
             if (!placeholderLeaf && this.isPlaceholderLeaf(leaf)) {
                 placeholderLeaf = leaf;
+            }
+
+            if (!this.isMarkedCompanionLeaf(leaf)) {
+                return;
             }
 
             const filePath = this.getFilePathFromLeaf(leaf);
@@ -242,36 +251,29 @@ export class FolderNoteSidebarService {
                 return;
             }
 
-            if (!folderNoteLeaf && this.isFolderNotePath(filePath)) {
-                folderNoteLeaf = leaf;
+            if (!markedDocumentLeaf) {
+                markedDocumentLeaf = leaf;
             }
         });
 
         if (targetFolderNote) {
-            return exactMatch ?? placeholderLeaf ?? folderNoteLeaf;
+            return exactMatch ?? placeholderLeaf ?? markedDocumentLeaf;
         }
 
-        return placeholderLeaf ?? folderNoteLeaf;
+        return placeholderLeaf ?? markedDocumentLeaf;
     }
 
-    private pruneRestoredCompanionLeafDuplicates(keepLeaf: WorkspaceLeaf | null, options: { includeDocumentLeaves?: boolean } = {}): void {
+    private pruneRestoredCompanionLeafDuplicates(keepLeaf: WorkspaceLeaf | null): void {
         const leavesToDetach: WorkspaceLeaf[] = [];
-        const includeDocumentLeaves = options.includeDocumentLeaves ?? true;
 
-        // The right sidebar folder-note views and placeholders form one companion slot.
-        // Document leaves are pruned only while right-sidebar folder notes are active.
+        // Only the namespaced placeholder and explicitly marked document leaves belong to
+        // this companion slot. Ordinary right-sidebar documents are never detached.
         this.plugin.app.workspace.iterateAllLeaves((leaf: WorkspaceLeaf) => {
             if (leaf === keepLeaf || getLeafSplitLocation(this.plugin.app, leaf) !== 'right-sidebar') {
                 return;
             }
 
-            const filePath = this.getFilePathFromLeaf(leaf);
-            if (includeDocumentLeaves && filePath && this.isFolderNotePath(filePath)) {
-                leavesToDetach.push(leaf);
-                return;
-            }
-
-            if (this.isPlaceholderLeaf(leaf)) {
+            if (this.isPlaceholderLeaf(leaf) || this.isMarkedCompanionLeaf(leaf)) {
                 leavesToDetach.push(leaf);
             }
         });
@@ -281,6 +283,30 @@ export class FolderNoteSidebarService {
 
     private isPlaceholderLeaf(leaf: WorkspaceLeaf): boolean {
         return leaf.getViewState().type === NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW;
+    }
+
+    private isMarkedCompanionLeaf(leaf: WorkspaceLeaf): boolean {
+        const markerPath = leaf.getViewState().state?.[TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY];
+        return typeof markerPath === 'string' && markerPath === this.getFilePathFromLeaf(leaf);
+    }
+
+    private async markCompanionLeaf(leaf: WorkspaceLeaf, expectedPath: string): Promise<void> {
+        const viewState = leaf.getViewState();
+        if (!FOLDER_NOTE_DOCUMENT_VIEW_TYPES.has(viewState.type) || this.getFilePathFromLeaf(leaf) !== expectedPath) {
+            return;
+        }
+
+        if (viewState.state?.[TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY] === expectedPath) {
+            return;
+        }
+
+        await leaf.setViewState({
+            ...viewState,
+            state: {
+                ...viewState.state,
+                [TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY]: expectedPath
+            }
+        });
     }
 
     private getFileFromLeaf(leaf: WorkspaceLeaf): TFile | null {
@@ -305,15 +331,6 @@ export class FolderNoteSidebarService {
 
         const filePath = viewState.state?.file;
         return typeof filePath === 'string' && filePath.length > 0 ? filePath : null;
-    }
-
-    private isFolderNotePath(path: string): boolean {
-        const file = this.plugin.app.vault.getAbstractFileByPath(path);
-        if (!(file instanceof TFile) || !(file.parent instanceof TFolder)) {
-            return false;
-        }
-
-        return getFolderNote(file.parent, this.plugin.settings)?.path === file.path;
     }
 
     private getActiveLeaf(): WorkspaceLeaf | null {
@@ -345,7 +362,7 @@ export class FolderNoteSidebarService {
             leaf.detach();
         }
 
-        this.pruneRestoredCompanionLeafDuplicates(leaf, { includeDocumentLeaves: false });
+        this.pruneRestoredCompanionLeafDuplicates(leaf);
     }
 
     private suppressSidebarOpen(path: string): void {

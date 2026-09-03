@@ -110,6 +110,7 @@ import { filterTpsNavigatorTypesSnapshot, type TpsNavigatorTypeId } from '../../
 import { getVisibleVaultFiles } from '../../utils/selectionUtils';
 import { createTypeSelectionFallbackAction, isTypeSelectionAuthoritativelyUnavailable } from '../../utils/navigationTypeHistory';
 import { orderTypeNavigationDescriptors } from '../../utils/typeNavigationOrder';
+import { useTagNoteIndex } from '../../hooks/useTagNoteIndex';
 
 const EMPTY_INDENT_GUIDE_MAP = new Map<string, number[]>();
 
@@ -426,6 +427,8 @@ export const NavigationPane = React.memo(
             'handleRecentNoteActivate',
             'handleShortcutSearchActivate',
             'handleShortcutTagActivate',
+            'handleShortcutTagNoteClick',
+            'handleShortcutTagNoteMouseDown',
             'handleShortcutPropertyActivate',
             'handleShortcutContextMenu',
             'handleRecentFileContextMenu',
@@ -581,6 +584,7 @@ export const NavigationPane = React.memo(
         folderCountsRef.current = folderCounts;
         tagCountsRef.current = tagCounts;
         propertyCountsRef.current = propertyCounts;
+        const tagNoteIndex = useTagNoteIndex(app, settings.enableFolderNotes && settings.enableFolderNoteLinks);
 
         const tree = useNavigationPaneTreeInteractions({
             app,
@@ -1157,6 +1161,7 @@ export const NavigationPane = React.memo(
                 tagCounts,
                 propertyCounts,
                 vaultChangeVersion,
+                tagNoteIndex,
                 fileVisibility: activeProfile.fileVisibility,
                 hiddenFolders: activeProfile.hiddenFolders,
                 descendantExcludedFolders: activeProfile.descendantExcludedFolders,
@@ -1211,6 +1216,7 @@ export const NavigationPane = React.memo(
                 shortcutUiState,
                 showHiddenItems,
                 tagCounts,
+                tagNoteIndex,
                 tree,
                 uiState.pinShortcuts,
                 restoreNavigationPaneFocus,

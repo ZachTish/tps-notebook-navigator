@@ -379,6 +379,7 @@ export const STRINGS_PT = {
             deleteFolder: 'Eliminar pasta'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'Alterar ícone',
             changeColor: 'Alterar cor',
             changeBackground: 'Alterar fundo',

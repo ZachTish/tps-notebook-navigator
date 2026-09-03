@@ -52,7 +52,7 @@
 import React, { forwardRef, useMemo, useCallback } from 'react';
 import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferences } from '../context/UXPreferencesContext';
-import { useContextMenu } from '../hooks/useContextMenu';
+import { hideNavigatorContextMenu, useContextMenu } from '../hooks/useContextMenu';
 import { getIconService, useIconServiceVersion } from '../services/icons';
 import { ItemType, type CSSPropertiesWithVars } from '../types';
 import { TagTreeNode } from '../types/storage';
@@ -65,6 +65,7 @@ import { resolveUXIcon } from '../utils/uxIcons';
 import { IndentGuideColumns } from './IndentGuideColumns';
 import { ObsidianIcon } from './ObsidianIcon';
 import { InlineRenameInput, type InlineRenameControl } from './InlineRenameInput';
+import { NavigationNoteLink, type NavigationNoteActivationEvent } from './NavigationNoteLink';
 
 /**
  * Props for the TagTreeItem component
@@ -84,6 +85,12 @@ interface TagTreeItemProps {
     onToggle: () => void;
     /** Callback when the tag name is clicked */
     onClick: (event: React.MouseEvent) => void;
+    /** Whether this tag has a uniquely resolved linked tag note */
+    hasTagNote?: boolean;
+    /** Opens the linked tag note when the tag label is clicked */
+    onNameClick?: (event: NavigationNoteActivationEvent) => void;
+    /** Opens the linked tag note in a new tab on middle-click */
+    onNameMouseDown?: (event: React.MouseEvent<HTMLSpanElement>) => void;
     /** Callback when all sibling tags should be toggled */
     onToggleAllSiblings?: () => void;
     /** Pre-computed note counts for this tag (current and descendants) */
@@ -126,6 +133,9 @@ export const TagTreeItem = React.memo(
             isHidden,
             onToggle,
             onClick,
+            hasTagNote,
+            onNameClick,
+            onNameMouseDown,
             onToggleAllSiblings,
             countInfo,
             showFileCount,
@@ -211,9 +221,10 @@ export const TagTreeItem = React.memo(
 
         const tagNameClassName = useMemo(() => {
             const classes = ['nn-navitem-name'];
+            if (hasTagNote) classes.push('nn-has-folder-note');
             if (applyColorToName) classes.push('nn-has-custom-color');
             return classes.join(' ');
-        }, [applyColorToName]);
+        }, [applyColorToName, hasTagNote]);
 
         // Apply search highlight classes when tag matches include or exclude filters
         const contentClassName = useMemo(() => buildSearchMatchContentClass(['nn-navitem-content'], searchMatch), [searchMatch]);
@@ -247,6 +258,29 @@ export const TagTreeItem = React.memo(
             e.stopPropagation();
             e.preventDefault();
         }, []);
+
+        const handleNameClick = useCallback(
+            (event: NavigationNoteActivationEvent) => {
+                if (!onNameClick) {
+                    return;
+                }
+                event.stopPropagation();
+                onNameClick(event);
+            },
+            [onNameClick]
+        );
+
+        const handleNameMouseDown = useCallback(
+            (event: React.MouseEvent<HTMLSpanElement>) => {
+                hideNavigatorContextMenu();
+                if (!onNameMouseDown) {
+                    return;
+                }
+                event.stopPropagation();
+                onNameMouseDown(event);
+            },
+            [onNameMouseDown]
+        );
 
         // Update chevron icon based on expanded state
         React.useEffect(() => {
@@ -334,6 +368,15 @@ export const TagTreeItem = React.memo(
                     )}
                     {inlineRename ? (
                         <InlineRenameInput {...inlineRename} className="nn-navitem-inline-rename" />
+                    ) : hasTagNote ? (
+                        <NavigationNoteLink
+                            className={tagNameClassName}
+                            style={applyColorToName ? { color: tagColor } : undefined}
+                            onActivate={handleNameClick}
+                            onMouseDown={handleNameMouseDown}
+                        >
+                            {tagNode.name}
+                        </NavigationNoteLink>
                     ) : (
                         <span className={tagNameClassName} style={applyColorToName ? { color: tagColor } : undefined}>
                             {tagNode.name}

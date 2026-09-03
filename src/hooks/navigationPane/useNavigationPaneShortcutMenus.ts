@@ -38,6 +38,7 @@ import {
 import { addShortcutRenameMenuItem } from '../../utils/contextMenu/shortcutRenameMenuItem';
 import type { ShortcutContextMenuTarget } from './navigationPaneShortcutTypes';
 import type { RevealFileOptions } from '../useNavigatorReveal';
+import { getTagNote } from '../../utils/tagNotes';
 
 interface ExpansionStateLike {
     expandedFolders: Set<string>;
@@ -144,7 +145,26 @@ export function useNavigationPaneShortcutMenus({
                 uiDispatch
             };
 
-            if (target.type === 'folder') {
+            const tagNote =
+                target.type === 'tag' &&
+                settings.enableFolderNotes &&
+                settings.enableFolderNoteLinks &&
+                targetElement instanceof HTMLElement &&
+                targetElement.closest('.nn-navitem-name')
+                    ? getTagNote(menuServices.app, target.tagPath)
+                    : null;
+
+            if (tagNote) {
+                buildFileMenu({
+                    file: tagNote,
+                    menu,
+                    services: menuServices,
+                    settings,
+                    state,
+                    dispatchers,
+                    options: { onRevealFileInActualFolder, onResetSearchForNavigation }
+                });
+            } else if (target.type === 'folder') {
                 buildFolderMenu({
                     folder: target.folder,
                     menu,

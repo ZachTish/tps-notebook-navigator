@@ -379,6 +379,7 @@ export const STRINGS_TR = {
             deleteFolder: 'Klasörü sil'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'Simgeyi değiştir',
             changeColor: 'Rengi değiştir',
             changeBackground: 'Arka planı değiştir',

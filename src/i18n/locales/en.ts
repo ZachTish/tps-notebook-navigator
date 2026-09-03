@@ -382,6 +382,7 @@ export const STRINGS_EN = {
             deleteFolder: 'Delete folder'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'Change icon',
             changeColor: 'Change color',
             changeBackground: 'Change background',
@@ -1063,11 +1064,11 @@ export const STRINGS_EN = {
                 }
             },
             foldersAndFolderNotes: {
-                label: 'Folders & folder notes',
-                description: 'Folder display, folder notes, folder note templates, and folder note behavior.',
+                label: 'Folders & navigation notes',
+                description: 'Folder display, matching folder and tag notes, templates, and note-link behavior.',
                 groups: {
                     folders: 'Folders',
-                    folderNotes: 'Folder notes',
+                    folderNotes: 'Folder and tag notes',
                     folderNoteFiles: 'Folder note files'
                 }
             },
@@ -1704,7 +1705,7 @@ export const STRINGS_EN = {
                 name: 'Template folder location',
                 desc: 'Template file picker shows notes from this folder.',
                 placeholder: 'Templates',
-                usage: 'Used by calendar notes and folder notes. Configure templates in Calendar > Calendar integration and Folders & folder notes > Folder note files.'
+                usage: 'Used by calendar notes and folder notes. Configure templates in Calendar > Calendar integration and Folders & navigation notes > Folder note files.'
             },
             calendarDailyNotePattern: {
                 name: 'Daily notes',
@@ -2424,8 +2425,8 @@ export const STRINGS_EN = {
                 placeholder: 'archive*, *draft, projects/*/old'
             },
             enableFolderNotes: {
-                name: 'Enable folder notes',
-                desc: 'Folders with a matching note file are displayed as clickable links.'
+                name: 'Enable folder and tag notes',
+                desc: 'Folders and tags with one matching note file are displayed as clickable links.'
             },
             folderNoteType: {
                 name: 'Default folder note type',
@@ -2439,7 +2440,7 @@ export const STRINGS_EN = {
             },
             folderNoteName: {
                 name: 'Folder note name',
-                desc: 'Name of the folder note without extension. {{folder}} inserts the folder name; omit it for a fixed name such as index.'
+                desc: 'Name of the folder note without extension. {{folder}} inserts the folder name, or Vault at the vault root; omit it for a fixed name such as index.'
             },
             folderNoteTemplate: {
                 name: 'Folder note template',
@@ -2447,8 +2448,8 @@ export const STRINGS_EN = {
                 formatWarning: 'Template format must match the selected folder note type: .md, .canvas, or .base.'
             },
             folderNamesOpenFolderNotes: {
-                name: 'Folder names open folder notes',
-                desc: 'Clicking a folder name opens its folder note. When off, folder notes only provide folder metadata such as name, icon, and color.'
+                name: 'Names open matching notes',
+                desc: 'Clicking a linked folder or tag name opens its matching note. When off, folder notes only provide folder metadata such as name, icon, and color.'
             },
             hideFolderNoteInList: {
                 name: 'Hide folder notes in list',
@@ -2459,8 +2460,8 @@ export const STRINGS_EN = {
                 desc: 'Pin folder notes when created from the context menu.'
             },
             folderNoteOpenLocation: {
-                name: 'Open folder notes in',
-                desc: 'Choose where folder notes open when clicking folder-note links.',
+                name: 'Open navigation notes in',
+                desc: 'Choose where matching folder and tag notes open.',
                 options: {
                     currentTab: 'Current tab',
                     newTab: 'New tab',

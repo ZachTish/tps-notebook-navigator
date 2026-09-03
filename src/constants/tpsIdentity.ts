@@ -13,6 +13,7 @@ export const TPS_NOTEBOOK_NAVIGATOR_REPOSITORY = 'ZachTish/tps-notebook-navigato
 export const TPS_NOTEBOOK_NAVIGATOR_VIEW = TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID;
 export const TPS_NOTEBOOK_NAVIGATOR_CALENDAR_VIEW = 'tps-notebook-navigator-calendar';
 export const TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_SIDEBAR_VIEW = 'tps-notebook-navigator-folder-note-sidebar';
+export const TPS_NOTEBOOK_NAVIGATOR_FOLDER_NOTE_COMPANION_STATE_KEY = 'tpsNotebookNavigatorFolderNoteCompanion';
 
 export const TPS_NOTEBOOK_NAVIGATOR_ICON_ID = TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID;
 export const TPS_NOTEBOOK_NAVIGATOR_BETTER_PASTE_ICON_ID = `${TPS_NOTEBOOK_NAVIGATOR_PLUGIN_ID}-better-paste`;

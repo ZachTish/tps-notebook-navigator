@@ -381,6 +381,7 @@ export const STRINGS_NL = {
             deleteFolder: 'Map verwijderen'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'Pictogram wijzigen',
             changeColor: 'Kleur wijzigen',
             changeBackground: 'Achtergrond wijzigen',

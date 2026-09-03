@@ -26,6 +26,7 @@ import type { NoteCountInfo } from '../types/noteCounts';
 import { buildNoteCountDisplay } from '../utils/noteCountFormatting';
 import { strings } from '../i18n';
 import { NavItemHoverActionSlot } from './NavItemHoverActionSlot';
+import type { NavigationNoteActivationEvent } from './NavigationNoteLink';
 
 /**
  * Props for a shortcut item component that can represent folders, notes, searches, or tags
@@ -56,7 +57,7 @@ interface ShortcutItemProps {
     dragHandleConfig?: DragHandleConfig;
     hasFolderNote?: boolean;
     tooltip?: React.ReactNode;
-    onLabelClick?: (event: React.MouseEvent<HTMLSpanElement>) => void;
+    onLabelClick?: (event: NavigationNoteActivationEvent) => void;
     onLabelMouseDown?: (event: React.MouseEvent<HTMLSpanElement>) => void;
     dragRef?: (node: HTMLDivElement | null) => void;
     dragHandleRef?: (node: HTMLSpanElement | null) => void;

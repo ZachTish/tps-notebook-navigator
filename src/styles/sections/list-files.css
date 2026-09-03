@@ -65,6 +65,13 @@
     text-decoration: var(--nn-theme-navitem-folder-note-name-hover-decoration);
 }
 
+.nn-list-title-label--folder-note:focus-visible {
+    outline: 1px solid var(--interactive-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+    text-decoration: var(--nn-theme-navitem-folder-note-name-hover-decoration);
+}
+
 /* File - container for each file in the list */
 .nn-file {
     --nn-file-item-border-radius: min(16px, var(--nn-theme-file-border-radius));

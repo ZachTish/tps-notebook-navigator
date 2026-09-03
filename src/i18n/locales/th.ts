@@ -378,6 +378,7 @@ export const STRINGS_TH = {
             deleteFolder: 'ลบโฟลเดอร์'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'เปลี่ยนไอคอน',
             changeColor: 'เปลี่ยนสี',
             changeBackground: 'เปลี่ยนพื้นหลัง',

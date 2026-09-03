@@ -120,6 +120,12 @@ function addFolderNote(app: App, folder: TFolder, path: string): void {
     getTestVault(app).registerFile(file);
 }
 
+function addTagNote(app: App, path: string): ReturnType<typeof createTestTFile> {
+    const file = createTestTFile(path);
+    getTestVault(app).registerFile(file);
+    return file;
+}
+
 function addChildFolder(app: App, folder: TFolder, path: string): TFolder {
     const childFolder = createTestFolder(app, path) as TFolder & { parent: TFolder };
     childFolder.parent = folder;
@@ -429,6 +435,44 @@ describe('useNavigationPaneTreeInteractions', () => {
         typeHarness.result.handleTypeClick(typeId);
         expect(typeHarness.onResetSearchForNavigation).toHaveBeenCalledOnce();
         expect(typeHarness.selectionDispatch).toHaveBeenCalledWith({ type: 'SET_SELECTED_TYPE', typeId, source: undefined });
+    });
+
+    it('opens a tag-note label while keeping the tag as the reveal scope', () => {
+        const app = new App();
+        Object.assign(app, {
+            workspace: {
+                getLeaf: vi.fn(() => ({ openFile: vi.fn(async () => undefined) }))
+            }
+        });
+        const tagNote = addTagNote(app, 'Topics/Work.md');
+        app.metadataCache.getFileCache = file => (file === tagNote ? { tags: [{ tag: '#Work' }] } : null);
+        const tagNode: TagTreeNode = {
+            name: 'Work',
+            path: 'work',
+            displayPath: 'Work',
+            children: new Map(),
+            notesWithTag: new Set([tagNote.path])
+        };
+        const harness = renderTreeInteractionHarness({
+            app,
+            settings: { ...DEFAULT_SETTINGS, enableFolderNotes: true, enableFolderNoteLinks: true },
+            tagTree: new Map([[tagNode.path, tagNode]])
+        });
+
+        harness.result.handleTagNameClick(tagNode, {
+            altKey: false,
+            ctrlKey: false,
+            metaKey: false
+        } as React.MouseEvent<HTMLSpanElement>);
+
+        expect(harness.onResetSearchForNavigation).toHaveBeenCalledOnce();
+        expect(harness.selectionDispatch).toHaveBeenCalledWith({
+            type: 'REVEAL_FILE',
+            file: tagNote,
+            targetTag: tagNode.path,
+            source: 'manual'
+        });
+        expect(harness.selectionDispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_SELECTED_TAG' }));
     });
 
     it('preserves search for modifier-added tag and file-backed Type facets', () => {

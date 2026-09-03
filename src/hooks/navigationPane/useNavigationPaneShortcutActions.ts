@@ -27,12 +27,16 @@ import type { SearchShortcut, ShortcutEntry } from '../../types/shortcuts';
 import { isFolderShortcut, isNoteShortcut, isPropertyShortcut, isSearchShortcut, isTagShortcut } from '../../types/shortcuts';
 import { resolvePropertyShortcutNodeId } from '../../utils/propertyTree';
 import { resolveCanonicalTagPath } from '../../utils/tagUtils';
+import { findTagNode } from '../../utils/tagTree';
+import { getTagNote } from '../../utils/tagNotes';
+import { openTagNoteFile, revealTagNoteInNavigator } from '../../utils/tagNoteNavigation';
 import { runAsyncAction } from '../../utils/async';
 import { openFileInContext } from '../../utils/openFileInContext';
 import { getFolderNote, openFolderNoteFile, revealFolderNoteInNavigator, type FolderNoteOpenContext } from '../../utils/folderNotes';
 import { resolveFolderNoteClickOpenContext, shouldOpenNoteClickInNewTab } from '../../utils/keyboardOpenContext';
 import { ItemType } from '../../types';
 import type { NavigateToFolderOptions, RevealPropertyOptions, RevealTagOptions } from '../useNavigatorReveal';
+import type { NavigationNoteActivationEvent } from '../../components/NavigationNoteLink';
 
 interface HydratedShortcutActionItem {
     key: string;
@@ -166,7 +170,7 @@ export function useNavigationPaneShortcutActions({
     );
 
     const handleShortcutFolderNoteClick = useCallback(
-        (folder: TFolder, shortcutKey: string, event: React.MouseEvent<HTMLSpanElement>) => {
+        (folder: TFolder, shortcutKey: string, event: NavigationNoteActivationEvent) => {
             setActiveShortcut(shortcutKey);
             if (!settings.enableFolderNotes || !settings.enableFolderNoteLinks) {
                 handleShortcutFolderActivate(folder, shortcutKey);
@@ -393,6 +397,74 @@ export function useNavigationPaneShortcutActions({
         ]
     );
 
+    const handleShortcutTagNoteClick = useCallback(
+        (tagPath: string, shortcutKey: string, event: NavigationNoteActivationEvent) => {
+            if (!settings.enableFolderNotes || !settings.enableFolderNoteLinks) {
+                handleShortcutTagActivate(tagPath, shortcutKey);
+                return;
+            }
+
+            const canonicalPath = resolveCanonicalTagPath(tagPath, tagTree);
+            const tagNode = canonicalPath ? findTagNode(tagTree, canonicalPath) : null;
+            const tagNote = canonicalPath ? getTagNote(app, canonicalPath, tagNode?.displayPath ?? canonicalPath) : null;
+            if (!canonicalPath || !tagNote) {
+                handleShortcutTagActivate(tagPath, shortcutKey);
+                return;
+            }
+
+            setActiveShortcut(shortcutKey);
+            onResetSearchForNavigation();
+            const openContext = resolveFolderNoteClickOpenContext(event, settings.folderNoteOpenLocation, settings.multiSelectModifier);
+            focusListPaneAfterRightSidebarFolderNoteSelection(openContext);
+            revealTagNoteInNavigator(selectionDispatch, tagNote, canonicalPath);
+            runAsyncAction(() =>
+                openTagNoteFile({
+                    app,
+                    commandQueue,
+                    tagNote,
+                    context: openContext,
+                    openInRightSidebar: openFolderNoteInRightSidebar
+                })
+            );
+            scheduleShortcutRelease();
+        },
+        [
+            app,
+            commandQueue,
+            focusListPaneAfterRightSidebarFolderNoteSelection,
+            handleShortcutTagActivate,
+            onResetSearchForNavigation,
+            openFolderNoteInRightSidebar,
+            scheduleShortcutRelease,
+            selectionDispatch,
+            setActiveShortcut,
+            settings,
+            tagTree
+        ]
+    );
+
+    const handleShortcutTagNoteMouseDown = useCallback(
+        (tagPath: string, event: React.MouseEvent<HTMLSpanElement>) => {
+            if (event.button !== 1 || !settings.enableFolderNotes || !settings.enableFolderNoteLinks) {
+                return;
+            }
+
+            const canonicalPath = resolveCanonicalTagPath(tagPath, tagTree);
+            const tagNode = canonicalPath ? findTagNode(tagTree, canonicalPath) : null;
+            const tagNote = canonicalPath ? getTagNote(app, canonicalPath, tagNode?.displayPath ?? canonicalPath) : null;
+            if (!canonicalPath || !tagNote) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            onResetSearchForNavigation();
+            revealTagNoteInNavigator(selectionDispatch, tagNote, canonicalPath);
+            runAsyncAction(() => openTagNoteFile({ app, commandQueue, tagNote, context: 'tab' }));
+        },
+        [app, commandQueue, onResetSearchForNavigation, selectionDispatch, settings, tagTree]
+    );
+
     const handleShortcutPropertyActivate = useCallback(
         (propertyNodeId: string, shortcutKey: string) => {
             setActiveShortcut(shortcutKey);
@@ -494,6 +566,8 @@ export function useNavigationPaneShortcutActions({
         handleRecentNoteActivate,
         handleShortcutSearchActivate,
         handleShortcutTagActivate,
+        handleShortcutTagNoteClick,
+        handleShortcutTagNoteMouseDown,
         handleShortcutPropertyActivate,
         openShortcutByNumber
     };

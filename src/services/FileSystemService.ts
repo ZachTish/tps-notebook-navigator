@@ -73,6 +73,7 @@ import { EXCALIDRAW_PLUGIN_ID, TLDRAW_PLUGIN_ID } from '../constants/pluginIds';
 import { createDrawingWithPlugin, DrawingType, getDrawingFilePath, getDrawingTemplate } from '../utils/drawingFileUtils';
 import { resolveFolderDisplayName } from '../utils/folderDisplayName';
 import { normalizeTagPath } from '../utils/tagUtils';
+import { resolveTagNote, resolveTagNoteBasename } from '../utils/tagNotes';
 import type { PropertyTreeNode } from '../types/storage';
 import { FolderPathSettingsSync } from './fileSystem/FolderPathSettingsSync';
 import { FileMoveService } from './fileSystem/FileMoveService';
@@ -102,6 +103,18 @@ import {
 export { FolderMoveError } from './fileSystem/FileMoveService';
 export type { FileTrashResult };
 export type { ManualSortNewFilePlacementContext };
+
+export type TagNoteCreationResult =
+    | { status: 'created'; file: TFile; path: string }
+    | { status: 'invalid' | 'conflict'; file: null; path: string | null }
+    | { status: 'failed'; file: TFile | null; path: string | null };
+
+export interface CreateTagNoteOptions {
+    /** Whether this method should open the note after creation (default: true). */
+    openAfterCreate?: boolean;
+    /** Whether automatic opening should use a new tab (default: false). */
+    openInNewTab?: boolean;
+}
 
 /**
  * Summary of property assignment results across a file batch.
@@ -843,6 +856,78 @@ export class FileSystemOperations {
         } catch (error) {
             this.notifyError(strings.fileSystem.errors.createFile, error);
             return null;
+        }
+    }
+
+    /**
+     * Creates the convention-based note for a real tag.
+     *
+     * The note uses the final display-tag segment as its exact Markdown basename,
+     * lives in the same configured default parent as an ordinary tag-created note,
+     * and stores the exact display tag in YAML. Existing names are never numbered.
+     */
+    async createTagNote(tagPath: string, sourcePath?: string, options: CreateTagNoteOptions = {}): Promise<TagNoteCreationResult> {
+        const normalizedTag = normalizeTagPath(tagPath);
+        if (!normalizedTag) {
+            return { status: 'invalid', file: null, path: null };
+        }
+
+        const tagTreeService = this.getTagTreeService();
+        const tagNode = tagTreeService?.findTagNode(normalizedTag);
+        const resolvedTagPath = tagNode?.displayPath ?? tagPath.trim().replace(/^#/u, '');
+        const resolution = resolveTagNote(this.app, normalizedTag, resolvedTagPath);
+        if (resolution.status === 'invalid') {
+            return { status: 'invalid', file: null, path: null };
+        }
+        if (resolution.status === 'found' || resolution.status === 'ambiguous') {
+            return { status: 'conflict', file: null, path: resolution.matches[0]?.path ?? null };
+        }
+
+        const basename = resolveTagNoteBasename(resolvedTagPath);
+        if (!basename) {
+            return { status: 'invalid', file: null, path: null };
+        }
+
+        const activeFilePath = this.app.workspace.getActiveFile()?.path ?? '';
+        const sourceFilePath = sourcePath?.trim().length ? sourcePath : activeFilePath;
+        const defaultParent = this.app.fileManager.getNewFileParent(sourceFilePath ?? '');
+        const targetFolder = defaultParent instanceof TFolder ? defaultParent : this.app.vault.getRoot();
+        const targetPath = buildFilePathInFolder(targetFolder.path, basename, 'md');
+        const normalizedTargetPath = casefold(targetPath);
+        const conflictingItem =
+            this.app.vault.getAbstractFileByPath(targetPath) ??
+            (targetFolder.children ?? []).find(child => casefold(child.path) === normalizedTargetPath);
+        if (conflictingItem) {
+            return { status: 'conflict', file: null, path: conflictingItem.path };
+        }
+
+        let file: TFile | null = null;
+        try {
+            // Vault.create uses the exact requested path and rejects a concurrent collision.
+            // Writing the tag in the initial payload avoids leaving an untagged partial note
+            // if a second frontmatter mutation were to fail.
+            const source = `---\ntags:\n  - ${JSON.stringify(resolvedTagPath)}\n---\n`;
+            file = await this.app.vault.create(targetPath, source);
+
+            if (options.openAfterCreate !== false) {
+                const leaf = this.app.workspace.getLeaf(options.openInNewTab ?? false);
+                await leaf.openFile(file, { state: { mode: 'source' }, active: true });
+            }
+            return { status: 'created', file, path: file.path };
+        } catch (error) {
+            const racedConflict =
+                this.app.vault.getAbstractFileByPath(targetPath) ??
+                (targetFolder.children ?? []).find(child => casefold(child.path) === normalizedTargetPath);
+            if (racedConflict) {
+                return { status: 'conflict', file: null, path: racedConflict.path };
+            }
+
+            console.error('[Notebook Navigator] Failed to create tag note', {
+                tag: normalizedTag,
+                path: file?.path ?? targetPath,
+                error
+            });
+            return { status: 'failed', file, path: file?.path ?? targetPath };
         }
     }
 

@@ -378,6 +378,7 @@ export const STRINGS_FA = {
             deleteFolder: 'حذف پوشه'
         },
         tag: {
+            createTagNote: 'Create tag note',
             changeIcon: 'تغییر آیکون',
             changeColor: 'تغییر رنگ',
             changeBackground: 'تغییر پس‌زمینه',

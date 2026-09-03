@@ -53,6 +53,8 @@ import { getNavigationIndex } from '../utils/navigationIndex';
 import { getFolderNote, openFolderNoteFile, revealFolderNoteInNavigator } from '../utils/folderNotes';
 import { isEnterKey, resolveFolderNoteDefaultOpenContext, resolveKeyboardEnterAction } from '../utils/keyboardOpenContext';
 import { buildPropertyKeyNodeId } from '../utils/propertyTree';
+import { getTagNote } from '../utils/tagNotes';
+import { openTagNoteFile, revealTagNoteInNavigator } from '../utils/tagNoteNavigation';
 import {
     getNavigationExpansionTargetForItem,
     isFolderEffectivelyExpanded,
@@ -397,6 +399,40 @@ export function useNavigationPaneKeyboard({
                             context: openContext,
                             active: false,
                             openInRightSidebar: folderNoteFile => plugin.openFolderNoteInRightSidebar(folderNoteFile)
+                        })
+                    );
+                    return;
+                }
+            }
+
+            if (
+                isEnterKey(e) &&
+                settings.enableFolderNotes &&
+                settings.enableFolderNoteLinks &&
+                selectionState.selectionType === ItemType.TAG &&
+                selectionState.selectedTag
+            ) {
+                const tagPath = selectionState.selectedTag;
+                const tagNote = getTagNote(app, tagPath);
+                if (tagNote) {
+                    e.preventDefault();
+
+                    const modifierAction = resolveKeyboardEnterAction(e, settings);
+                    if (modifierAction === 'rename') {
+                        onStartRename?.();
+                        return;
+                    }
+
+                    const openContext = modifierAction ?? resolveFolderNoteDefaultOpenContext(settings.folderNoteOpenLocation);
+                    revealTagNoteInNavigator(selectionDispatch, tagNote, tagPath);
+                    runAsyncAction(() =>
+                        openTagNoteFile({
+                            app,
+                            commandQueue,
+                            tagNote,
+                            context: openContext,
+                            active: false,
+                            openInRightSidebar: tagNoteFile => plugin.openFolderNoteInRightSidebar(tagNoteFile)
                         })
                     );
                     return;

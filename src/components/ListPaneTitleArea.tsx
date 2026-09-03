@@ -20,11 +20,17 @@ import React, { useCallback, useMemo } from 'react';
 import { useSelectionDispatch, useSelectionState } from '../context/SelectionContext';
 import { useCommandQueue, useServices } from '../context/ServicesContext';
 import { useSettingsState } from '../context/SettingsContext';
+import { useFileCache } from '../context/StorageContext';
 import { useSelectedFolderFileVersion } from '../hooks/useSelectedFolderFileVersion';
+import { useTagNoteIndex } from '../hooks/useTagNoteIndex';
 import { ItemType } from '../types';
 import { runAsyncAction } from '../utils/async';
 import { getFolderNote, openFolderNoteFile, revealFolderNoteInNavigator } from '../utils/folderNotes';
 import { resolveFolderNoteClickOpenContext } from '../utils/keyboardOpenContext';
+import { findTagNode } from '../utils/tagTree';
+import { getTagNote, resolveTagNoteFromIndex } from '../utils/tagNotes';
+import { openTagNoteFile, revealTagNoteInNavigator } from '../utils/tagNoteNavigation';
+import { NavigationNoteLink, type NavigationNoteActivationEvent } from './NavigationNoteLink';
 
 interface ListPaneTitleAreaProps {
     desktopTitle: string;
@@ -36,6 +42,7 @@ export const ListPaneTitleArea = React.memo(function ListPaneTitleArea({ desktop
     const settings = useSettingsState();
     const selectionState = useSelectionState();
     const selectionDispatch = useSelectionDispatch();
+    const { fileData } = useFileCache();
 
     // Folder note interactions only apply when a folder is selected.
     const selectedFolder = selectionState.selectionType === ItemType.FOLDER ? selectionState.selectedFolder : null;
@@ -64,9 +71,20 @@ export const ListPaneTitleArea = React.memo(function ListPaneTitleArea({ desktop
         settings.folderNoteNamePattern,
         selectedFolderFileVersion
     ]);
+    const selectedTag = selectionState.selectionType === ItemType.TAG ? selectionState.selectedTag : null;
+    const selectedTagNode = selectedTag ? findTagNode(fileData.tagTree, selectedTag) : null;
+    const selectedTagDisplayPath = selectedTagNode?.displayPath ?? selectedTag;
+    const tagNoteIndex = useTagNoteIndex(app, Boolean(selectedTag && settings.enableFolderNotes && settings.enableFolderNoteLinks));
+    const selectedTagNote = useMemo(() => {
+        if (!selectedTag || !selectedTagDisplayPath || !tagNoteIndex) {
+            return null;
+        }
+
+        return resolveTagNoteFromIndex(tagNoteIndex, selectedTag, selectedTagDisplayPath).file;
+    }, [selectedTag, selectedTagDisplayPath, tagNoteIndex]);
 
     const handleFolderNoteClick = useCallback(
-        (event: React.MouseEvent<HTMLSpanElement>) => {
+        (event: NavigationNoteActivationEvent) => {
             if (!selectedFolder || !selectedFolderNote) {
                 return;
             }
@@ -124,17 +142,78 @@ export const ListPaneTitleArea = React.memo(function ListPaneTitleArea({ desktop
         [selectedFolder, selectedFolderNote, app, commandQueue, selectionDispatch]
     );
 
+    const handleTagNoteClick = useCallback(
+        (event: NavigationNoteActivationEvent) => {
+            if (!selectedTag || !selectedTagDisplayPath) {
+                return;
+            }
+            const currentTagNote = getTagNote(app, selectedTag, selectedTagDisplayPath);
+            if (!currentTagNote) {
+                return;
+            }
+
+            event.stopPropagation();
+            const openContext = resolveFolderNoteClickOpenContext(event, settings.folderNoteOpenLocation, settings.multiSelectModifier);
+            revealTagNoteInNavigator(selectionDispatch, currentTagNote, selectedTag);
+            runAsyncAction(() =>
+                openTagNoteFile({
+                    app,
+                    commandQueue,
+                    tagNote: currentTagNote,
+                    context: openContext,
+                    openInRightSidebar: tagNote => plugin.openFolderNoteInRightSidebar(tagNote)
+                })
+            );
+        },
+        [
+            app,
+            commandQueue,
+            plugin,
+            selectedTag,
+            selectedTagDisplayPath,
+            selectionDispatch,
+            settings.folderNoteOpenLocation,
+            settings.multiSelectModifier
+        ]
+    );
+
+    const handleTagNoteMouseDown = useCallback(
+        (event: React.MouseEvent<HTMLSpanElement>) => {
+            if (event.button !== 1 || !selectedTag || !selectedTagDisplayPath) {
+                return;
+            }
+            const currentTagNote = getTagNote(app, selectedTag, selectedTagDisplayPath);
+            if (!currentTagNote) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            revealTagNoteInNavigator(selectionDispatch, currentTagNote, selectedTag);
+            runAsyncAction(() => openTagNoteFile({ app, commandQueue, tagNote: currentTagNote, context: 'tab' }));
+        },
+        [app, commandQueue, selectedTag, selectedTagDisplayPath, selectionDispatch]
+    );
+
+    const selectedNavigationNote = selectedFolderNote ?? selectedTagNote;
+    const handleNavigationNoteClick = selectedFolderNote ? handleFolderNoteClick : handleTagNoteClick;
+    const handleNavigationNoteMouseDown = selectedFolderNote ? handleFolderNoteMouseDown : handleTagNoteMouseDown;
+
     return (
         <div className="nn-list-title-area">
             <div className="nn-list-title-content">
                 <span className="nn-list-title-text">
-                    <span
-                        className={`nn-list-title-label${selectedFolderNote ? ' nn-list-title-label--folder-note' : ''}`}
-                        onClick={selectedFolderNote ? handleFolderNoteClick : undefined}
-                        onMouseDown={selectedFolderNote ? handleFolderNoteMouseDown : undefined}
-                    >
-                        {desktopTitle}
-                    </span>
+                    {selectedNavigationNote ? (
+                        <NavigationNoteLink
+                            className="nn-list-title-label nn-list-title-label--folder-note"
+                            onActivate={handleNavigationNoteClick}
+                            onMouseDown={handleNavigationNoteMouseDown}
+                        >
+                            {desktopTitle}
+                        </NavigationNoteLink>
+                    ) : (
+                        <span className="nn-list-title-label">{desktopTitle}</span>
+                    )}
                 </span>
             </div>
         </div>
