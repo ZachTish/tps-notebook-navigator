@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { App, type TFile } from 'obsidian';
 import { TPS_GCM_API_CHANGED_EVENT, TPS_GCM_API_REQUEST_EVENT, TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID } from '../../src/constants/tpsIdentity';
 import {
+    getGcmNotebookNavigatorAppearanceValue,
     getGcmNotebookNavigatorPresentation,
     getGcmNotebookNavigatorPresentationValue,
     subscribeGcmNotebookNavigatorPresentation
@@ -343,4 +344,84 @@ describe('GCM presentation consumers', () => {
         expect(result.files).toEqual([]);
         expect(fileData.properties).toEqual([{ fieldKey: 'Status', value: 'Authored', valueKind: 'string' }]);
     });
+});
+
+describe('appearance refresh stability', () => {
+    it('retains the last appearance during one pending refresh without virtualizing stale sort values', async () => {
+        const file = createTestTFile('Notes/Icon.md');
+        let value: { filePath: string; values: Record<string, string> } | null | undefined = {
+            filePath: file.path,
+            values: { icon: 'star' }
+        };
+        let finish: () => void = () => {};
+        const api = createPresentationApi(
+            () => value,
+            () =>
+                new Promise<void>(resolve => {
+                    finish = resolve;
+                })
+        );
+        const { app } = createApp([file], api);
+        const stop = subscribeGcmNotebookNavigatorPresentation(app, () => {});
+        expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'icon')).toBe('star');
+        value = undefined;
+        api.emit();
+        expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'icon')).toBe('star');
+        expect(getGcmNotebookNavigatorPresentationValue(app, file, 'icon')).toBeUndefined();
+        await Promise.resolve();
+        for (let i = 0; i < 10; i++) getGcmNotebookNavigatorAppearanceValue(app, file, 'icon');
+        await Promise.resolve();
+        expect(Reflect.get(api, 'ensure')).toHaveBeenCalledTimes(1);
+        value = { filePath: file.path, values: { icon: 'check' } };
+        finish();
+        await Promise.resolve();
+        expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'icon')).toBe('check');
+        value = null;
+        api.emit();
+        expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'icon')).toBeUndefined();
+        stop();
+    });
+
+    it('expires a hung refresh and clears retained appearance on provider removal', async () => {
+        vi.useFakeTimers();
+        try {
+            const file = createTestTFile('Notes/Icon.md');
+            let value: { filePath: string; values: Record<string, string> } | undefined = { filePath: file.path, values: { color: 'red' } };
+            const api = createPresentationApi(
+                () => value,
+                () => new Promise<void>(() => {})
+            );
+            const { app, workspace } = createApp([file], api);
+            const stop = subscribeGcmNotebookNavigatorPresentation(app, () => {});
+            expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'color')).toBe('red');
+            value = undefined;
+            api.emit();
+            expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'color')).toBe('red');
+            await vi.advanceTimersByTimeAsync(5001);
+            expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'color')).toBeUndefined();
+            value = { filePath: file.path, values: { color: 'blue' } };
+            expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'color')).toBe('blue');
+            installGcm(app, null, false);
+            workspace.trigger(TPS_GCM_API_CHANGED_EVENT, {});
+            expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'color')).toBeUndefined();
+            stop();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});
+
+it('does not drive a render/ensure loop when a bounded provider attempt leaves a file unprepared', async () => {
+    const file = createTestTFile('Notes/Pending.md');
+    const api = createPresentationApi(() => undefined);
+    const { app } = createApp([file], api);
+    let renders = 0;
+    const stop = subscribeGcmNotebookNavigatorPresentation(app, () => {
+        renders++;
+        if (renders < 10) getGcmNotebookNavigatorAppearanceValue(app, file, 'icon');
+    });
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(renders).toBe(1);
+    expect(Reflect.get(api, 'ensure')).toHaveBeenCalledTimes(1);
+    stop();
 });

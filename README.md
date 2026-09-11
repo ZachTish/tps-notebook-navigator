@@ -1,5 +1,13 @@
 # TPS Notebook Navigator
 
+## 5.25.1
+
+Icon and color display retains its last validated GCM appearance during a pending refresh instead of repeatedly flashing the default icon. Retention is display-only, capped at 512 files and five seconds, and cleared on provider removal, invalid values, failed preparation or a confirmed empty result. Pending preparation is deduplicated by file. An incomplete provider preparation no longer publishes a fresh render that immediately requests the same unfinished work. Sort and group values never reuse stale data. This changes no settings, IndexedDB schema, note data, appearance precedence, navigation or command. Initial cold preparation can still show the normal fallback once; no zero-flicker or startup-time benchmark is claimed.
+
+Validation on 2026-09-11: all 3,041 tests in 265 files passed, including pending retention, preparation deduplication, expiry/provider removal and an incomplete-preparation render-loop regression. TypeScript, formatting and TPS identity gates passed, followed by the separate production build and isolated test-vault deployment. Obsidian 1.14.1 loaded 5.25.1. With GCM 2.1.0 and a synthetic note, the saved and displayed icon/color agreed, and twelve projection invalidation/preparation cycles returned only `sparkles`, without a fallback value. Fixtures were archived and temporary rules restored. This patch requires Obsidian 1.11.0.
+
+Validation and artifact hashes are recorded in `release-notes/5.25.1.md`.
+
 ## 5.25.0
 
 - Folder notes now work at the vault root. The preferred root folder-name source is the literal `Vault`, so the default `{{folder}}` pattern resolves to `Vault.md`, `_{{folder}}` resolves to `_Vault.md`, and a fixed pattern such as `index` remains `index.md`. An existing root note derived from the actual vault name remains a backward-compatible fallback.

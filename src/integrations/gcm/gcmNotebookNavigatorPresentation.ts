@@ -76,6 +76,57 @@ class GcmNotebookNavigatorPresentationStore {
     private readonly queuedFiles = new Map<string, TFile | string>();
     private ensureFlushQueued = false;
     private generation = 0;
+    private readonly pendingFiles = new Set<string>();
+    private readonly appearances = new Map<string, { value: GcmNotebookNavigatorPresentationProjectionLike; expiresAt: number | null }>();
+    private appearanceTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
+
+    getAppearance(file: TFile | string): GcmNotebookNavigatorPresentationProjectionLike | null | undefined {
+        const projection = this.get(file);
+        const path = getProjectionPath(file);
+        if (projection !== undefined) {
+            this.appearances.delete(path);
+            if (projection) {
+                this.appearances.set(path, { value: projection, expiresAt: null });
+                if (this.appearances.size > 512) {
+                    const oldest = this.appearances.keys().next().value;
+                    if (oldest !== undefined) this.appearances.delete(oldest);
+                }
+            }
+            return projection;
+        }
+        const previous = this.appearances.get(path);
+        if (!previous) return undefined;
+        previous.expiresAt ??= Date.now() + 5000;
+        if (previous.expiresAt <= Date.now()) {
+            this.appearances.delete(path);
+            return undefined;
+        }
+        this.scheduleAppearanceExpiry();
+        return previous.value;
+    }
+
+    private scheduleAppearanceExpiry(): void {
+        if (this.appearanceTimer !== null) return;
+        const deadlines = [...this.appearances.values()].flatMap(entry => (entry.expiresAt === null ? [] : [entry.expiresAt]));
+        if (!deadlines.length) return;
+        this.appearanceTimer = globalThis.setTimeout(
+            () => {
+                this.appearanceTimer = null;
+                for (const [path, entry] of this.appearances) {
+                    if (entry.expiresAt !== null && entry.expiresAt <= Date.now()) this.appearances.delete(path);
+                }
+                this.publish();
+                this.scheduleAppearanceExpiry();
+            },
+            Math.max(0, Math.min(...deadlines) - Date.now())
+        );
+    }
+
+    private clearAppearances(): void {
+        this.appearances.clear();
+        if (this.appearanceTimer !== null) globalThis.clearTimeout(this.appearanceTimer);
+        this.appearanceTimer = null;
+    }
 
     constructor(private readonly app: App) {}
 
@@ -162,6 +213,7 @@ class GcmNotebookNavigatorPresentationStore {
         }
         this.workspaceRef = null;
         this.detachApiChanges();
+        this.clearAppearances();
     }
 
     private refreshApi(notifyOnSameApi: boolean): void {
@@ -200,6 +252,8 @@ class GcmNotebookNavigatorPresentationStore {
         this.detachApiChanges();
         this.generation += 1;
         this.queuedFiles.clear();
+        this.pendingFiles.clear();
+        this.clearAppearances();
         this.ensureFlushQueued = false;
         this.api = nextApi;
         this.apiRevision = nextApi ? readRevision(nextApi) : null;
@@ -245,6 +299,7 @@ class GcmNotebookNavigatorPresentationStore {
         if (api !== this.api) {
             return;
         }
+        if (this.pendingFiles.has(getProjectionPath(file))) return;
         this.queuedFiles.set(getProjectionPath(file), file);
         if (this.ensureFlushQueued) {
             return;
@@ -263,23 +318,46 @@ class GcmNotebookNavigatorPresentationStore {
                 return;
             }
 
+            for (const file of files) this.pendingFiles.add(getProjectionPath(file));
+            const settle = () => {
+                if (generation !== this.generation || api !== this.api) return;
+                for (const file of files) this.pendingFiles.delete(getProjectionPath(file));
+            };
             let task: Promise<void>;
             try {
                 task = Promise.resolve(api.ensure(files));
             } catch {
+                settle();
+                for (const file of files) this.appearances.delete(getProjectionPath(file));
                 return;
             }
             void task.then(
                 () => {
+                    settle();
                     if (generation === this.generation && api === this.api) {
                         const nextRevision = readRevision(api);
                         if (nextRevision !== null) {
                             this.apiRevision = nextRevision;
-                            this.publish();
+                            // A provider can finish its bounded attempt while still invalidated.
+                            // Publishing here would let render -> ensure -> render spin forever.
+                            const ready = files.some(file => {
+                                try {
+                                    return api.get(file) !== undefined;
+                                } catch {
+                                    return false;
+                                }
+                            });
+                            if (ready) this.publish();
                         }
                     }
                 },
-                () => undefined
+                () => {
+                    settle();
+                    if (generation !== this.generation || api !== this.api) return;
+                    let removed = false;
+                    for (const file of files) removed = this.appearances.delete(getProjectionPath(file)) || removed;
+                    if (removed) this.publish();
+                }
             );
         });
     }
@@ -325,4 +403,12 @@ export function getGcmNotebookNavigatorPresentationValue(app: App, file: TFile |
 
 export function subscribeGcmNotebookNavigatorPresentation(app: App, listener: PresentationListener): () => void {
     return getStore(app).subscribe(listener);
+}
+
+/** Display-only retention while refreshing; sorting and grouping always use fresh values. */
+export function getGcmNotebookNavigatorAppearanceValue(app: App, file: TFile | string, field: string): string | undefined {
+    const projection = getStore(app).getAppearance(file);
+    if (!projection) return undefined;
+    const value = getMatchingRecordValue(projection.values, field);
+    return typeof value === 'string' ? value : undefined;
 }

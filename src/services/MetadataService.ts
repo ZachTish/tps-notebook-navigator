@@ -41,7 +41,7 @@ import type { NavigationSeparatorTarget } from '../utils/navigationSeparators';
 import { buildPropertyKeyNodeId } from '../utils/propertyTree';
 import { casefold, getCollapsedPinnedContextTarget } from '../utils/recordUtils';
 import { buildTagTreeFromDatabase } from '../utils/tagTree';
-import { getGcmNotebookNavigatorPresentationValue } from '../integrations/gcm/gcmNotebookNavigatorPresentation';
+import { getGcmNotebookNavigatorAppearanceValue } from '../integrations/gcm/gcmNotebookNavigatorPresentation';
 import { deserializeIconFromFrontmatterCompat } from '../utils/iconizeFormat';
 
 /**
@@ -467,7 +467,7 @@ export class MetadataService {
         if (!iconField) {
             return undefined;
         }
-        const generatedIcon = getGcmNotebookNavigatorPresentationValue(this.app, filePath, iconField)?.trim();
+        const generatedIcon = getGcmNotebookNavigatorAppearanceValue(this.app, filePath, iconField)?.trim();
         return generatedIcon ? (deserializeIconFromFrontmatterCompat(generatedIcon) ?? undefined) : undefined;
     }
 
@@ -514,7 +514,7 @@ export class MetadataService {
         if (!colorField) {
             return undefined;
         }
-        const generatedColor = getGcmNotebookNavigatorPresentationValue(this.app, filePath, colorField)?.trim();
+        const generatedColor = getGcmNotebookNavigatorAppearanceValue(this.app, filePath, colorField)?.trim();
         return generatedColor || undefined;
     }
 
