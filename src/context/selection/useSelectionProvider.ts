@@ -141,7 +141,7 @@ export function loadInitialSelectionState({ app, settings }: LoadInitialSelectio
     const savedTag = loadStoredValue<string | null>(STORAGE_KEYS.selectedTagKey, null, 'Failed to load selected tag from localStorage:');
     const storedType = loadStoredValue<unknown>(STORAGE_KEYS.selectedTypeKey, null, 'Failed to load selected type from localStorage:');
     const selectedType: TpsNavigatorTypeId | null =
-        settings.tpsTypesNavigationEnabled !== false && isTpsNavigatorTypeId(storedType) ? storedType : null;
+        settings.tpsFileTypesNavigationEnabled !== false && isTpsNavigatorTypeId(storedType) ? storedType : null;
     const savedFilePath = loadStoredValue<string | null>(
         STORAGE_KEYS.selectedFileKey,
         null,

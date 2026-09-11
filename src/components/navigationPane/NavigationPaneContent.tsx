@@ -107,7 +107,7 @@ import {
     useNavigationPaneTypeSection
 } from '../../hooks/navigationPane/data/useNavigationPaneTypeSection';
 import { filterTpsNavigatorTypesSnapshot, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
-import { getVisibleVaultFiles } from '../../utils/selectionUtils';
+import { getVisibleFileTypeFiles } from '../../utils/selectionUtils';
 import { createTypeSelectionFallbackAction, isTypeSelectionAuthoritativelyUnavailable } from '../../utils/navigationTypeHistory';
 import { orderTypeNavigationDescriptors } from '../../utils/typeNavigationOrder';
 import { useTagNoteIndex } from '../../hooks/useTagNoteIndex';
@@ -467,10 +467,10 @@ export const NavigationPane = React.memo(
         const visibleTypeSourcePaths = useMemo(() => {
             // Source-state changes can alter the active visibility scope before the next index revision.
             void props.navigationSourceState;
-            if (!settings.tpsTypesNavigationEnabled) {
+            if (!settings.tpsFileTypesNavigationEnabled) {
                 return new Set<string>();
             }
-            return new Set(getVisibleVaultFiles(settings, showHiddenItems, app).map(file => file.path));
+            return new Set(getVisibleFileTypeFiles(settings, showHiddenItems, app).map(file => file.path));
         }, [app, props.navigationSourceState, settings, showHiddenItems]);
         const typeSnapshot = useMemo(
             () => filterTpsNavigatorTypesSnapshot(rawTypeSnapshot, visibleTypeSourcePaths),
@@ -490,16 +490,18 @@ export const NavigationPane = React.memo(
         const typeItems = useNavigationPaneTypeSection(
             orderedTypeSnapshot,
             expansionState.expandedVirtualFolders,
-            settings.tpsTypesNavigationEnabled
+            settings.tpsFileTypesNavigationEnabled
         );
         const typeReorderSourceItems = useMemo(
-            () => (settings.tpsTypesNavigationEnabled ? buildNavigationTypeReorderItems(orderedTypeSnapshot) : []),
-            [orderedTypeSnapshot, settings.tpsTypesNavigationEnabled]
+            () => (settings.tpsFileTypesNavigationEnabled ? buildNavigationTypeReorderItems(orderedTypeSnapshot) : []),
+            [orderedTypeSnapshot, settings.tpsFileTypesNavigationEnabled]
         );
         const revealedTypeSelectionRef = useRef<string | null>(null);
         useEffect(() => {
             const selectedType =
-                settings.tpsTypesNavigationEnabled && selectionState.selectionType === ItemType.TYPE ? selectionState.selectedType : null;
+                settings.tpsFileTypesNavigationEnabled && selectionState.selectionType === ItemType.TYPE
+                    ? selectionState.selectedType
+                    : null;
             if (!selectedType || isTypeSelectionAuthoritativelyUnavailable(typeSnapshot, selectedType)) {
                 revealedTypeSelectionRef.current = null;
                 return;
@@ -526,15 +528,15 @@ export const NavigationPane = React.memo(
             expansionState.expandedVirtualFolders,
             selectionState.selectedType,
             selectionState.selectionType,
-            settings.tpsTypesNavigationEnabled,
+            settings.tpsFileTypesNavigationEnabled,
             typeSnapshot
         ]);
         useEffect(() => {
-            if (settings.tpsTypesNavigationEnabled || selectionState.selectionType !== ItemType.TYPE) {
+            if (settings.tpsFileTypesNavigationEnabled || selectionState.selectionType !== ItemType.TYPE) {
                 return;
             }
             selectionDispatch(createTypeSelectionFallbackAction(app.vault.getRoot()));
-        }, [app.vault, selectionDispatch, selectionState.selectionType, settings.tpsTypesNavigationEnabled]);
+        }, [app.vault, selectionDispatch, selectionState.selectionType, settings.tpsFileTypesNavigationEnabled]);
         useEffect(() => {
             if (
                 selectionState.selectionType !== ItemType.TYPE ||

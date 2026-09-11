@@ -399,7 +399,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
                 return propertiesSectionActive;
             }
             if (identifier === NavigationSectionId.TYPES) {
-                return settings.tpsTypesNavigationEnabled;
+                return settings.tpsFileTypesNavigationEnabled;
             }
             return true;
         });
@@ -412,7 +412,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
         showRecentNotes,
         showShortcuts,
         showTags,
-        settings.tpsTypesNavigationEnabled
+        settings.tpsFileTypesNavigationEnabled
     ]);
 
     const canReorderSections = sectionDisplayOrder.length > 1;
@@ -841,7 +841,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
                 (identifier === NavigationSectionId.FOLDERS && rootFolderDescriptors.length === 0) ||
                 (identifier === NavigationSectionId.TAGS && !showTags) ||
                 (identifier === NavigationSectionId.PROPERTIES && !propertiesSectionActive) ||
-                (identifier === NavigationSectionId.TYPES && !settings.tpsTypesNavigationEnabled);
+                (identifier === NavigationSectionId.TYPES && !settings.tpsFileTypesNavigationEnabled);
             let icon = 'lucide-circle';
             let label = '';
             let chevronIcon: string | undefined;
@@ -888,7 +888,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
                 onClick = handleTogglePropertiesSection;
             } else if (identifier === NavigationSectionId.TYPES) {
                 icon = 'lucide-shapes';
-                label = 'Types';
+                label = 'File types';
                 if (showRootTypeSection) {
                     chevronIcon = typesSectionExpanded ? 'lucide-chevron-down' : 'lucide-chevron-right';
                     onClick = handleToggleTypesSection;
@@ -935,7 +935,7 @@ export function useNavigationRootReorder(options: UseNavigationRootReorderOption
         showRootTypeSection,
         typesSectionExpanded,
         handleToggleTypesSection,
-        settings.tpsTypesNavigationEnabled
+        settings.tpsFileTypesNavigationEnabled
     ]);
 
     const handleResetRootFolderOrder = useCallback(async () => {

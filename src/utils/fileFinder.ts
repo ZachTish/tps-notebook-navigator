@@ -656,13 +656,8 @@ export function getFilesForProperty(
     options?: NavigationFileQueryOptions
 ): TFile[] {
     const includesAnyProperty = propertyNodeId === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID;
-    // Root properties selection includes every configured key that is enabled in either
-    // navigation or list visibility modes.
+    // Child filters use configured keys; the Properties root includes all visible notes.
     const configuredPropertyKeys = getActivePropertyKeySet(settings, 'any');
-
-    if (includesAnyProperty && configuredPropertyKeys.size === 0) {
-        return [];
-    }
 
     const selectionNode = includesAnyProperty ? null : parsePropertyNodeId(propertyNodeId);
     if (!includesAnyProperty && !selectionNode) {
@@ -692,17 +687,10 @@ export function getFilesForProperty(
     const shouldFilterHiddenFileTags = hiddenFileTagVisibility.hasHiddenRules && !visibility.showHiddenItems;
     const db = getDBInstanceOrNull();
     const candidatePaths = (() => {
-        if (includesAnyProperty && !visibility.includeDescendantNotes) {
-            return new Set<string>();
-        }
+        if (includesAnyProperty) return null;
 
         if (!propertyTreeService || !propertyTreeService.hasNodes()) {
             return null;
-        }
-
-        if (includesAnyProperty) {
-            // Root properties selection aggregates across configured keys through the provider contract.
-            return propertyTreeService.collectFilesForKeys(configuredPropertyKeys);
         }
 
         if (normalizedValue === null) {
@@ -741,6 +729,8 @@ export function getFilesForProperty(
 
         const markdownFiles = getFilteredMarkdownFilesForSelection(app, settings, visibility.showHiddenItems, excludedFolderPatterns);
 
+        if (includesAnyProperty) return markdownFiles.filter(matchesCurrentVisibility);
+
         return markdownFiles.filter(file => {
             const fileData = db?.getFile(file.path) ?? null;
             const properties = fileData?.properties;
@@ -753,10 +743,6 @@ export function getFilesForProperty(
                 if (tags.some(tagValue => !hiddenFileTagVisibility.isTagVisible(tagValue))) {
                     return false;
                 }
-            }
-
-            if (includesAnyProperty) {
-                return properties.some(entry => configuredPropertyKeys.has(casefold(entry.fieldKey)));
             }
 
             for (const entry of properties) {

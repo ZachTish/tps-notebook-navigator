@@ -1,5 +1,17 @@
 # TPS Notebook Navigator
 
+## 6.0.0 — File types replace Types
+
+The Properties root now lists all visible Markdown notes, even without configured property fields or when descendant display is off. Hidden-file rules, sorting and pins still apply; property key/value children keep their existing filters. The root count uses the same all-notes scope.
+
+File types replaces the old Types section in the same navigation position. Its categories are Markdown, Bases, Canvas, Drawings, PDFs, Images, Audio and Video. Counts and lists respect hidden-file rules, while a folder-view format restriction cannot hide a requested file category. Whole files are the smallest items. The catalog uses file metadata and cached drawing classification; it reads no file bodies and starts no task, Markdown-structure, web-link or external Type-provider index. Create/delete/rename events are batched, and subscriptions/timers stop with their consumer.
+
+TPS integrations → File types → Show File types is enabled by default and works in native-record mode. The old Types switch stays retired, and sub-file creation settings are hidden; existing filenames, notes, tasks, recovery data and saved preferences are not rewritten to create this section. The new tpsFileTypesNavigationEnabled preference is independent of the old paused experimental switch. Existing section ordering/expansion state and file-backed Type IDs are reused. Old structural selections fall back when absent from the new catalog. Note-level task progress and the separately configured attached-task-row option are outside this replacement.
+
+This major version retires structural/provider Type collections. The optional public Types catalog now discovers files only; external Type-provider registration is unavailable in this host. Other Navigator APIs remain unchanged. The former implementations remain as isolated source/test utilities pending a separate removal review; they are not connected to this catalog.
+
+Validation on 2026-09-11: all 3,047 tests in 266 files passed, including a 10,000-file / 1,000-event coalescing regression and Markdown-only profile coverage. The separate production build, ESLint and TPS artifact/operational identity gates passed. Obsidian 1.14.1 loaded 6.0.0 in the isolated test vault in native-record mode. Native clicks confirmed one File types section, Base/Canvas counts and file lists, opening a Base, and opening a property-free note from Properties with descendants off. The Show File types toggle disabled and re-enabled its catalog without enabling legacy Types. Canvas editor activation was not validated because the test vault has the core Canvas plugin disabled. iOS was not tested in this change. Minimum Obsidian remains 1.11.0. Release verification and hashes are in `release-notes/6.0.0.md`.
+
 ## 5.25.1
 
 Icon and color display retains its last validated GCM appearance during a pending refresh instead of repeatedly flashing the default icon. Retention is display-only, capped at 512 files and five seconds, and cleared on provider removal, invalid values, failed preparation or a confirmed empty result. Pending preparation is deduplicated by file. An incomplete provider preparation no longer publishes a fresh render that immediately requests the same unfinished work. Sort and group values never reuse stale data. This changes no settings, IndexedDB schema, note data, appearance precedence, navigation or command. Initial cold preparation can still show the normal fallback once; no zero-flicker or startup-time benchmark is claimed.

@@ -144,7 +144,7 @@ export function createFileBackedTypeMoveSelectionGuard(
             return false;
         }
 
-        return getVisibleVaultFiles(settings, showHiddenItems, app).some(visibleFile => visibleFile.path === file.path);
+        return getVisibleFileTypeFiles(settings, showHiddenItems, app).some(visibleFile => visibleFile.path === file.path);
     };
 }
 
@@ -210,6 +210,15 @@ export function getVisibleVaultFiles(settings: NotebookNavigatorSettings, showHi
         null,
         null,
         { orderResults: false }
+    );
+}
+
+/** File-type filters keep hidden-file rules but bypass the folder pane's format restriction. */
+export function getVisibleFileTypeFiles(settings: NotebookNavigatorSettings, showHiddenItems: boolean, app: App): TFile[] {
+    return getVisibleVaultFiles(
+        { ...settings, vaultProfiles: settings.vaultProfiles.map(profile => ({ ...profile, fileVisibility: 'all' as const })) },
+        showHiddenItems,
+        app
     );
 }
 

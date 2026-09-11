@@ -55,7 +55,7 @@ describe('buildNavigationTypeItems', () => {
             hasChildren: true,
             data: {
                 id: TYPES_ROOT_VIRTUAL_FOLDER_ID,
-                name: 'Types',
+                name: 'File types',
                 icon: 'lucide-shapes'
             }
         });

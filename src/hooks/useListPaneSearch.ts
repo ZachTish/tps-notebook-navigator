@@ -335,10 +335,10 @@ export function useListPaneSearch({
     const debouncedSearchTokens = useMemo(
         () =>
             parseFilterSearchTokens(isSearchActive ? debouncedSearchQuery : '', {
-                typesNavigationEnabled: settings.tpsTypesNavigationEnabled,
+                typesNavigationEnabled: settings.tpsFileTypesNavigationEnabled,
                 referenceDate: searchReferenceDate
             }),
-        [debouncedSearchQuery, isSearchActive, searchReferenceDate, settings.tpsTypesNavigationEnabled]
+        [debouncedSearchQuery, isSearchActive, searchReferenceDate, settings.tpsFileTypesNavigationEnabled]
     );
     // Name highlighting uses parsed folded name tokens instead of the raw query so quoted literal
     // terms (for example `".F"`) highlight without their quotes and filter tokens such as
@@ -350,7 +350,7 @@ export function useListPaneSearch({
         }
 
         const tokens = parseFilterSearchTokens(searchQuery, {
-            typesNavigationEnabled: settings.tpsTypesNavigationEnabled,
+            typesNavigationEnabled: settings.tpsFileTypesNavigationEnabled,
             referenceDate: searchReferenceDate
         });
         if (tokens.mode === 'tag' || tokens.nameTokens.length === 0) {
@@ -358,7 +358,7 @@ export function useListPaneSearch({
         }
 
         return tokens.nameTokens;
-    }, [isSearchActive, searchQuery, searchReferenceDate, settings.tpsTypesNavigationEnabled]);
+    }, [isSearchActive, searchQuery, searchReferenceDate, settings.tpsFileTypesNavigationEnabled]);
 
     const activeSearchShortcut = useMemo(() => {
         const normalizedQuery = searchQuery.trim();
@@ -421,12 +421,12 @@ export function useListPaneSearch({
 
         const nextState = searchQuery.trim()
             ? buildSearchNavFilterState(searchQuery, {
-                  typesNavigationEnabled: settings.tpsTypesNavigationEnabled,
+                  typesNavigationEnabled: settings.tpsFileTypesNavigationEnabled,
                   referenceDate: searchReferenceDate
               })
             : EMPTY_SEARCH_NAV_FILTER_STATE;
         onSearchTokensChange(nextState);
-    }, [onSearchTokensChange, searchQuery, searchReferenceDate, settings.tpsTypesNavigationEnabled]);
+    }, [onSearchTokensChange, searchQuery, searchReferenceDate, settings.tpsFileTypesNavigationEnabled]);
 
     const activeSearchShortcutStartTarget = useMemo<ShortcutStartTarget | undefined>(() => {
         if (selectionState.selectionType === 'folder' && selectionState.selectedFolder) {
@@ -525,7 +525,7 @@ export function useListPaneSearch({
         if (
             isSavingSearchShortcut ||
             !canSaveSearchShortcutQuery(normalizedQuery, searchProvider, {
-                typesNavigationEnabled: settings.tpsTypesNavigationEnabled,
+                typesNavigationEnabled: settings.tpsFileTypesNavigationEnabled,
                 referenceDate: searchReferenceDate
             })
         ) {
@@ -585,7 +585,7 @@ export function useListPaneSearch({
         searchProvider,
         searchQuery,
         searchReferenceDate,
-        settings.tpsTypesNavigationEnabled
+        settings.tpsFileTypesNavigationEnabled
     ]);
 
     const handleRemoveSearchShortcut = useCallback(async () => {
@@ -624,8 +624,8 @@ export function useListPaneSearch({
     );
 
     const openSearchWithNavigationSelection = useCallback(() => {
-        updateSearchQuery(query => getSearchActivationQuery(query, selectionState, settings.tpsTypesNavigationEnabled));
-    }, [selectionState, settings.tpsTypesNavigationEnabled, updateSearchQuery]);
+        updateSearchQuery(query => getSearchActivationQuery(query, selectionState, settings.tpsFileTypesNavigationEnabled));
+    }, [selectionState, settings.tpsFileTypesNavigationEnabled, updateSearchQuery]);
 
     const handleSearchToggle = useCallback(() => {
         if (!isSearchActive) {
@@ -646,14 +646,14 @@ export function useListPaneSearch({
             updateSearchQuery(
                 query =>
                     updateFilterQueryWithTag(
-                        includeNavigationSelectionInSearchQuery(query, selectionState, settings.tpsTypesNavigationEnabled),
+                        includeNavigationSelectionInSearchQuery(query, selectionState, settings.tpsFileTypesNavigationEnabled),
                         normalizedTag,
                         operator
                     ).query,
                 options
             );
         },
-        [selectionState, settings.tpsTypesNavigationEnabled, updateSearchQuery]
+        [selectionState, settings.tpsFileTypesNavigationEnabled, updateSearchQuery]
     );
 
     const modifySearchWithProperty = useCallback(
@@ -666,7 +666,7 @@ export function useListPaneSearch({
             updateSearchQuery(
                 query =>
                     updateFilterQueryWithProperty(
-                        includeNavigationSelectionInSearchQuery(query, selectionState, settings.tpsTypesNavigationEnabled),
+                        includeNavigationSelectionInSearchQuery(query, selectionState, settings.tpsFileTypesNavigationEnabled),
                         normalizedKey,
                         value,
                         operator
@@ -674,12 +674,12 @@ export function useListPaneSearch({
                 options
             );
         },
-        [selectionState, settings.tpsTypesNavigationEnabled, updateSearchQuery]
+        [selectionState, settings.tpsFileTypesNavigationEnabled, updateSearchQuery]
     );
 
     const modifySearchWithType = useCallback(
         (typeId: TpsNavigatorTypeId, options?: SearchQueryUpdateOptions) => {
-            if (!settings.tpsTypesNavigationEnabled) {
+            if (!settings.tpsFileTypesNavigationEnabled) {
                 return;
             }
             if (searchProvider !== 'internal') {
@@ -690,13 +690,13 @@ export function useListPaneSearch({
                 const queryWithVisibleSelection = getTypeFacetQueryWithNavigationSelection(
                     query,
                     selectionState,
-                    settings.tpsTypesNavigationEnabled
+                    settings.tpsFileTypesNavigationEnabled
                 );
                 const selectedType = selectionState.selectionType === ItemType.TYPE ? selectionState.selectedType : null;
                 return updateFilterQueryWithTypeSelection(queryWithVisibleSelection, typeId, selectedType).query;
             }, options);
         },
-        [plugin, searchProvider, selectionState, settings.tpsTypesNavigationEnabled, updateSearchQuery]
+        [plugin, searchProvider, selectionState, settings.tpsFileTypesNavigationEnabled, updateSearchQuery]
     );
 
     const modifySearchWithDateToken = useCallback(
@@ -713,13 +713,13 @@ export function useListPaneSearch({
             updateSearchQuery(
                 query =>
                     updateFilterQueryWithDateToken(
-                        includeNavigationSelectionInSearchQuery(query, selectionState, settings.tpsTypesNavigationEnabled),
+                        includeNavigationSelectionInSearchQuery(query, selectionState, settings.tpsFileTypesNavigationEnabled),
                         normalizedToken
                     ).query,
                 options
             );
         },
-        [plugin, searchProvider, selectionState, settings.tpsTypesNavigationEnabled, updateSearchQuery]
+        [plugin, searchProvider, selectionState, settings.tpsFileTypesNavigationEnabled, updateSearchQuery]
     );
 
     const waitForNextFrame = useCallback(() => {

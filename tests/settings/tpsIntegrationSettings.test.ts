@@ -45,7 +45,7 @@ describe('TPS integration settings', () => {
         expect(definitions).toHaveLength(5);
         expect(definitions.map(group => group.heading)).toEqual([
             'Data architecture',
-            'Types collections (paused)',
+            'File types',
             'Type item creation',
             'Task rows',
             'One-way setup'
@@ -55,10 +55,10 @@ describe('TPS integration settings', () => {
         expect(architectureItems.map(item => item.name)).toEqual(['TPS data architecture']);
 
         const typeItems = definitions[1].items as Array<Record<string, unknown>>;
-        expect(typeItems.map(item => item.name)).toEqual(['Enable Types collections (experimental)']);
-        expect(typeItems[0].desc).toContain('stops exact-line, Markdown-structure, and Web-link Types indexing');
-        expect(typeItems[0].desc).toContain('Note task-progress bars and counts remain available');
-        expect(typeItems[0].aliases).toEqual(expect.arrayContaining(['code blocks', 'callouts', 'blockquotes', 'tables', 'web links']));
+        expect(typeItems.map(item => item.name)).toEqual(['Show File types']);
+        expect(typeItems[0].desc).toContain('file metadata only');
+        expect(typeItems[0].desc).toContain('not indexed');
+        expect(typeItems[0].aliases).toEqual(expect.arrayContaining(['Markdown', 'Bases', 'Canvas']));
 
         const resourceCreationItems = definitions[2].items as Array<Record<string, unknown>>;
         expect((definitions[2].visible as () => boolean)()).toBe(false);
@@ -68,7 +68,7 @@ describe('TPS integration settings', () => {
         context.plugin.settings.tpsResourceCreationTarget = 'specific-note';
         expect((resourceCreationItems[1].visible as () => boolean)()).toBe(true);
         context.plugin.settings.tpsTypesNavigationEnabled = true;
-        expect((definitions[2].visible as () => boolean)()).toBe(true);
+        expect((definitions[2].visible as () => boolean)()).toBe(false);
 
         const taskItems = definitions[3].items as Array<Record<string, unknown>>;
         expect(taskItems.map(item => item.name)).toEqual(['Show GCM tasks beneath notes', 'Include completed tasks', 'Tasks per note']);
@@ -156,9 +156,9 @@ describe('TPS integration settings', () => {
 
         renderTpsTypesNavigationEnabledSetting(setting as never, context);
 
-        expect(toggle.setValue).toHaveBeenCalledWith(false);
-        await handleChange?.(true);
-        expect(context.plugin.settings.tpsTypesNavigationEnabled).toBe(true);
+        expect(toggle.setValue).toHaveBeenCalledWith(true);
+        await handleChange?.(false);
+        expect(context.plugin.settings.tpsFileTypesNavigationEnabled).toBe(false);
         expect(saveSettingsAndUpdate).toHaveBeenCalledOnce();
         expect(refreshSettingsDomState).toHaveBeenCalledOnce();
     });

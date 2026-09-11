@@ -411,12 +411,12 @@ export const NotebookNavigatorComponent = React.memo(
 
         const handleModifySearchWithType = useCallback(
             (typeId: TpsNavigatorTypeId) => {
-                if (!settings.tpsTypesNavigationEnabled) {
+                if (!settings.tpsFileTypesNavigationEnabled) {
                     return;
                 }
                 listPaneRef.current?.modifySearchWithType(typeId, getNavigationSearchUpdateOptions());
             },
-            [getNavigationSearchUpdateOptions, settings.tpsTypesNavigationEnabled]
+            [getNavigationSearchUpdateOptions, settings.tpsFileTypesNavigationEnabled]
         );
 
         const handleModifySearchWithDateFilter = useCallback(
@@ -661,7 +661,7 @@ export const NotebookNavigatorComponent = React.memo(
             (typeId: string, options?: NavigateToTypeOptions) =>
                 navigateToTypeInternal(
                     {
-                        enabled: settings.tpsTypesNavigationEnabled,
+                        enabled: settings.tpsFileTypesNavigationEnabled,
                         snapshot: typeSnapshot,
                         expandedVirtualFolders: expansionState.expandedVirtualFolders,
                         expansionDispatch,
@@ -677,7 +677,7 @@ export const NotebookNavigatorComponent = React.memo(
                 expansionState.expandedVirtualFolders,
                 focusPane,
                 selectionDispatch,
-                settings.tpsTypesNavigationEnabled,
+                settings.tpsFileTypesNavigationEnabled,
                 typeSnapshot
             ]
         );
@@ -758,7 +758,7 @@ export const NotebookNavigatorComponent = React.memo(
                 }
 
                 if (entry.type === ItemType.TYPE) {
-                    return resolveTypeSelectionHistoryEntry(entry, settings.tpsTypesNavigationEnabled, typeSnapshot);
+                    return resolveTypeSelectionHistoryEntry(entry, settings.tpsFileTypesNavigationEnabled, typeSnapshot);
                 }
 
                 return null;
@@ -768,7 +768,7 @@ export const NotebookNavigatorComponent = React.memo(
                 propertyTreeService,
                 settings.showProperties,
                 settings.showTags,
-                settings.tpsTypesNavigationEnabled,
+                settings.tpsFileTypesNavigationEnabled,
                 tagTreeService,
                 typeSnapshot
             ]

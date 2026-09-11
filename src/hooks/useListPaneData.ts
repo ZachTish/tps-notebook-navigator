@@ -28,7 +28,7 @@
  * - Creating efficient lookup maps for file access
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { TFile, TFolder } from 'obsidian';
 import { strings } from '../i18n';
 import { useServices } from '../context/ServicesContext';
@@ -57,7 +57,7 @@ import type { ActiveProfileState } from '../context/SettingsContext';
 import type { SearchProvider } from '../types/search';
 import type { PropertySelectionNodeId } from '../utils/propertyTree';
 import { TPS_NAVIGATOR_TYPE_IDS, type TpsNavigatorTypeId } from '../types/navigatorTypes';
-import { getFilesForNavigationSelection, getVisibleVaultFiles } from '../utils/selectionUtils';
+import { getFilesForNavigationSelection, getVisibleFileTypeFiles } from '../utils/selectionUtils';
 import { sortNavigationFiles } from '../utils/fileFinder';
 import {
     getListSortOverrideForSelection,
@@ -88,7 +88,6 @@ import { useListPaneRefresh } from './listPaneData/useListPaneRefresh';
 import { useProviderRows } from './useProviderRows';
 import { navigatorRowProviderRegistry } from '../services/rows/defaultRegistry';
 import type { NavigatorRowProviderSelection, NavigatorRowScope } from '../services/rows/types';
-import { useGcmEntityTypes } from '../integrations/gcm/useGcmEntityTypes';
 import { filterTpsNavigatorTypesSnapshot, isTpsNavigatorGcmLineTypeId, isTpsNavigatorStructuralTypeId } from '../types/navigatorTypes';
 import { showNotice } from '../utils/noticeUtils';
 import { buildTypeProviderRows } from '../services/rows/typeProviderRows';
@@ -105,7 +104,6 @@ import {
     filterDuplicateRootProviderRows,
     getSelectedTypeSearchSourceScope,
     resolveMixedStructuralTypeCollections,
-    resolveTypeListSnapshot,
     resolveTypeListMode
 } from './listPaneData/typeListItems';
 import {
@@ -113,7 +111,6 @@ import {
     getEffectiveStandaloneStructuralTypeGrouping
 } from './listPaneData/standaloneTypePresentation';
 import { isTpsNavigatorLineTypeId } from '../types/navigatorTypes';
-import { isVaultRootResourceScope } from '../components/listPane/typeModeRuntime';
 import { GCM_TASK_ROW_PROVIDER_ID } from '../integrations/gcm/GcmTaskRowProvider';
 import {
     fileMatchesStructuralTypeSearch,
@@ -244,26 +241,19 @@ export function useListPaneData({
     const { isTypeSelection, isFileBackedTypeSelection, isLineBackedTypeSelection, isProviderOwnedTypeSelection } = typeListMode;
     const trimmedQuery = searchQuery?.trim() ?? '';
     const hasSearchQuery = trimmedQuery.length > 0;
-    const isVaultRootAggregate =
-        settings.tpsTypesNavigationEnabled &&
-        !hasSearchQuery &&
-        isVaultRootResourceScope(selectionType, selectionType === ItemType.FOLDER ? selectedFolder?.path : null);
+    const isVaultRootAggregate = false;
     const rawTypeSnapshot = useNavigatorTypes(plugin.api);
-    const {
-        snapshot: builtinTypeSnapshot,
-        activate: activateTypeRecord,
-        setTaskCheckbox: setTypeTaskCheckbox,
-        addTaskContextMenuItems: addTypeTaskContextMenuItems
-    } = useGcmEntityTypes(app, settings.tpsTypesNavigationEnabled);
-    // Built-in rows and their actions must come from the same direct store subscription.
-    // The aggregate API remains authoritative for externally provided Type collections.
-    const selectedRawTypeSnapshot = resolveTypeListSnapshot(typeListMode, builtinTypeSnapshot, rawTypeSnapshot);
+    const selectedRawTypeSnapshot = rawTypeSnapshot;
+    // File types never register or activate sub-file collections.
+    const activateTypeRecord = useCallback(async () => ({ ok: false, reason: 'invalid-record' }) as const, []);
+    const setTypeTaskCheckbox = useCallback(async () => ({ ok: false, reason: 'invalid-record' }) as const, []);
+    const addTypeTaskContextMenuItems = useCallback(() => false, []);
     const visibleTypeFiles = useMemo(() => {
         void updateKey;
-        if (!settings.tpsTypesNavigationEnabled || (!isTypeSelection && !hasSearchQuery && !isVaultRootAggregate)) {
+        if (!settings.tpsFileTypesNavigationEnabled || (!isTypeSelection && !hasSearchQuery && !isVaultRootAggregate)) {
             return [];
         }
-        return getVisibleVaultFiles(settings, showHiddenItems, app);
+        return getVisibleFileTypeFiles(settings, showHiddenItems, app);
     }, [app, hasSearchQuery, isTypeSelection, isVaultRootAggregate, settings, showHiddenItems, updateKey]);
     const visibleTypeSourcePaths = useMemo(() => new Set(visibleTypeFiles.map(file => file.path)), [visibleTypeFiles]);
     const typeSnapshot = useMemo(
@@ -274,7 +264,7 @@ export function useListPaneData({
     const allowedTypeSourcePaths = useMemo(() => Object.freeze([...visibleTypeSourcePaths]), [visibleTypeSourcePaths]);
     const providerOwnedTypeRowsResult = useNavigatorTypeRows({
         api: plugin.api,
-        selectedType: settings.tpsTypesNavigationEnabled && isTypeSelection ? selectedType : null,
+        selectedType: settings.tpsFileTypesNavigationEnabled && isTypeSelection ? selectedType : null,
         searchQuery: trimmedQuery,
         allowedVaultFilePaths: allowedTypeSourcePaths,
         catalogRevision: typeSnapshot.revision
@@ -308,11 +298,11 @@ export function useListPaneData({
         () =>
             hasSearchQuery
                 ? parseFilterSearchTokens(trimmedQuery, {
-                      typesNavigationEnabled: settings.tpsTypesNavigationEnabled,
+                      typesNavigationEnabled: settings.tpsFileTypesNavigationEnabled,
                       referenceDate: DateUtils.parseLocalDayKey(dayKey) ?? undefined
                   })
                 : null,
-        [dayKey, hasSearchQuery, settings.tpsTypesNavigationEnabled, trimmedQuery]
+        [dayKey, hasSearchQuery, settings.tpsFileTypesNavigationEnabled, trimmedQuery]
     );
     const hasTypeSearchFacets =
         parsedSearchTokens !== null && (parsedSearchTokens.typeTokens.length > 0 || parsedSearchTokens.excludeTypeTokens.length > 0);
@@ -320,7 +310,7 @@ export function useListPaneData({
     const useOmnisearch =
         !isTypeSelection && !hasTypeSearchFacets && searchProvider === 'omnisearch' && isOmnisearchAvailable && hasSearchQuery;
     const useGlobalTypeSearch = shouldUseGlobalTypeSearch({
-        enabled: settings.tpsTypesNavigationEnabled,
+        enabled: settings.tpsFileTypesNavigationEnabled,
         isTypeSelection,
         selectedType,
         hasSearchQuery,
@@ -328,7 +318,7 @@ export function useListPaneData({
         hasExplicitTypeFacets: hasTypeSearchFacets
     });
     const mixedStructuralSearchActive = isMixedStructuralSearchActive({
-        enabled: settings.tpsTypesNavigationEnabled,
+        enabled: settings.tpsFileTypesNavigationEnabled,
         isTypeSelection,
         useGlobalTypeSearch,
         useOmnisearch,

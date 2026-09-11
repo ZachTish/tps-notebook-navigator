@@ -25,7 +25,7 @@ describe('getTpsNavigatorTypeTitleData', () => {
         const typeId = createTpsNavigatorProviderTypeId('example/entities', 'missing')!;
 
         expect(getTpsNavigatorTypeTitleData(typeId)).toEqual({
-            label: 'Types',
+            label: 'File types',
             icon: 'lucide-box'
         });
     });

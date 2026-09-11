@@ -26,7 +26,7 @@ import type { SettingsTabContext } from '../SettingsTabContext';
 /** Legacy renderer for the fork-specific TPS integration destination. */
 export function renderTpsIntegrationTab(context: SettingsTabContext): void {
     const createGroup = createSettingGroupFactory(context.containerEl);
-    const typesGroup = createGroup('Types collections (paused)');
+    const typesGroup = createGroup('File types');
     const resourceCreationGroup = createGroup('Type item creation');
     const taskGroup = createGroup('Task rows');
     const setupGroup = createGroup('One-way setup');
@@ -44,7 +44,7 @@ export function renderTpsIntegrationTab(context: SettingsTabContext): void {
         );
     };
     const updateResourceCreationGroupVisibility = () => {
-        setTpsTypeCreationSettingVisibility(resourceCreationGroup.rootEl, context.plugin.settings.tpsTypesNavigationEnabled);
+        setTpsTypeCreationSettingVisibility(resourceCreationGroup.rootEl, false);
     };
 
     typesGroup.addSetting(setting => renderTpsTypesNavigationEnabledSetting(setting, context, updateResourceCreationGroupVisibility));

@@ -132,7 +132,7 @@ export function getTpsNavigatorTypeTitleData(
     }
 
     return {
-        label: 'Types',
+        label: 'File types',
         icon: 'lucide-box'
     };
 }
@@ -502,7 +502,7 @@ export function useListPaneTitle(): UseListPaneTitleResult {
             return {
                 desktopTitle: typeTitle.label,
                 breadcrumbSegments: [
-                    { label: 'Types', targetType: 'none', isLast: false },
+                    { label: 'File types', targetType: 'none', isLast: false },
                     { label: typeTitle.label, targetType: 'none', isLast: true }
                 ]
             };

@@ -684,9 +684,11 @@ export class PluginSettingsController {
         if (!isTpsDataArchitectureMode(this.currentSettings.tpsDataArchitectureMode)) {
             this.currentSettings.tpsDataArchitectureMode = DEFAULT_SETTINGS.tpsDataArchitectureMode;
         }
-        this.currentSettings.tpsTypesNavigationEnabled = this.sanitizeBooleanSetting(
-            this.currentSettings.tpsTypesNavigationEnabled,
-            DEFAULT_SETTINGS.tpsTypesNavigationEnabled
+        // Retired sub-file Types cannot restart through an older saved preference.
+        this.currentSettings.tpsTypesNavigationEnabled = false;
+        this.currentSettings.tpsFileTypesNavigationEnabled = this.sanitizeBooleanSetting(
+            this.currentSettings.tpsFileTypesNavigationEnabled,
+            DEFAULT_SETTINGS.tpsFileTypesNavigationEnabled
         );
         if (!isTypeNavigationSortOrder(this.currentSettings.typeNavigationSortOrder)) {
             this.currentSettings.typeNavigationSortOrder = DEFAULT_SETTINGS.typeNavigationSortOrder;

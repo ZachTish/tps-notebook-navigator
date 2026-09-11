@@ -75,7 +75,7 @@ describe('navigator command Types context', () => {
                 app,
                 api: null,
                 settings: {
-                    tpsTypesNavigationEnabled: true
+                    tpsFileTypesNavigationEnabled: true
                 },
                 getUXPreferences: () => ({
                     includeDescendantNotes: false,
@@ -96,7 +96,7 @@ describe('navigator command Types context', () => {
         const getNavigatorLeaves = vi.fn();
         const plugin = {
             settings: {
-                tpsTypesNavigationEnabled: true
+                tpsFileTypesNavigationEnabled: true
             },
             api: {
                 selection: {
@@ -122,7 +122,7 @@ describe('navigator command Types context', () => {
 
     it('ignores a stale mounted Type selection after Types navigation is disabled', () => {
         const plugin = {
-            settings: { tpsTypesNavigationEnabled: false },
+            settings: { tpsFileTypesNavigationEnabled: false },
             api: { selection: { getNavItem: createTypeNavItem } }
         };
 

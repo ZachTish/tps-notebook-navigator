@@ -1850,7 +1850,7 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
         // Update API caches with new settings
         if (this.api) {
             this.api[INTERNAL_NOTEBOOK_NAVIGATOR_API].metadata.updateFromSettings(this.settings);
-            this.api[INTERNAL_NOTEBOOK_NAVIGATOR_API].types.updateEnabled(this.settings.tpsTypesNavigationEnabled !== false);
+            this.api[INTERNAL_NOTEBOOK_NAVIGATOR_API].types.updateEnabled(this.settings.tpsFileTypesNavigationEnabled !== false);
         }
 
         // Create a copy of listeners to avoid issues if a callback modifies the map

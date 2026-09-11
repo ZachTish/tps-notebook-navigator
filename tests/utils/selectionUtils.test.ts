@@ -22,6 +22,7 @@ import {
     canAddShortcutForNavigationSelection,
     createFileBackedTypeMoveSelectionGuard,
     findNextFileAfterRemoval,
+    getVisibleFileTypeFiles,
     getNavigatorPinContext,
     getPinnedSectionCollapseKey,
     getSelectedPath,
@@ -149,5 +150,23 @@ describe('findNextFileAfterRemoval', () => {
         Object.assign(moved, createTestTFile('Archive/Moved.md'));
 
         expect(findNextFileAfterRemoval([first, moved, last], new Set(['Inbox/Moved.md']), originalPaths)).toBe(last);
+    });
+});
+
+describe('File category visibility', () => {
+    it('includes Base and Canvas with a Markdown-only profile without modifying the preference', () => {
+        const app = new App();
+        const root = app.vault.getRoot() as TFolder & { children: TFile[] };
+        const files = ['Note.md', 'Table.base', 'Board.canvas'].map(createTestTFile);
+        for (const file of files) (file as TFile & { parent: TFolder }).parent = root;
+        root.children = files;
+        const settings = structuredClone(DEFAULT_SETTINGS);
+        for (const profile of settings.vaultProfiles) profile.fileVisibility = 'markdown';
+        expect(
+            getVisibleFileTypeFiles(settings, false, app)
+                .map(file => file.path)
+                .sort()
+        ).toEqual(['Board.canvas', 'Note.md', 'Table.base']);
+        expect(settings.vaultProfiles.every(profile => profile.fileVisibility === 'markdown')).toBe(true);
     });
 });

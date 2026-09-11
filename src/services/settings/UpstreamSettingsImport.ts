@@ -52,6 +52,7 @@ const TPS_ONLY_SETTING_KEYS = new Set([
     'tpsTypesPauseMigrationVersion',
     'tpsLinePropertyInheritanceVersion',
     'tpsTypesNavigationEnabled',
+    'tpsFileTypesNavigationEnabled',
     'typeNavigationSortOrder',
     'typeAppearances',
     'typeSortOverrides',

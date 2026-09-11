@@ -30,8 +30,7 @@ import { RowsAPI } from './modules/RowsAPI';
 import { TypesAPI } from './modules/TypesAPI';
 import { ListAPI } from './modules/ListAPI';
 import { getVirtualTagCollection, isVirtualTagCollectionId, VIRTUAL_TAG_COLLECTION_IDS } from '../utils/virtualTagCollections';
-import { getNavigatorTypesStore } from '../integrations/gcm/useGcmEntityTypes';
-import { NavigatorTypeProviderRegistry } from '../services/types/NavigatorTypeProviderRegistry';
+import { FileTypesStore } from '../services/types/FileTypesStore';
 
 // Import versioning
 import { API_VERSION } from './version';
@@ -177,9 +176,9 @@ export class NotebookNavigatorAPI {
         this.propertyNodesController = new PropertyNodesAPI();
         this.rowsController = new RowsAPI();
         this.typesController = new TypesAPI(
-            getNavigatorTypesStore(this.app),
-            this.plugin.settings.tpsTypesNavigationEnabled !== false,
-            new NavigatorTypeProviderRegistry(this.app)
+            new FileTypesStore(this.app),
+            this.plugin.settings.tpsFileTypesNavigationEnabled !== false,
+            null
         );
         this.listController = new ListAPI({ app: this.app });
 

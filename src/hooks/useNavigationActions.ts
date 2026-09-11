@@ -301,7 +301,7 @@ export function useNavigationActions() {
     const shouldCollapseItems = useCallback(() => {
         const behavior = settings.collapseBehavior;
         const scope = getCollapseBehaviorScope(behavior);
-        const shouldManageTypes = scope.affectTypes && settings.tpsTypesNavigationEnabled;
+        const shouldManageTypes = scope.affectTypes && settings.tpsFileTypesNavigationEnabled;
 
         const hasFoldersExpanded =
             scope.affectFolders &&
@@ -366,7 +366,7 @@ export function useNavigationActions() {
         settings.showAllTagsFolder,
         settings.showRootFolder,
         settings.smartCollapse,
-        settings.tpsTypesNavigationEnabled,
+        settings.tpsFileTypesNavigationEnabled,
         expansionState.expandedFolders,
         expansionState.expandedProperties,
         expansionState.expandedTags,
@@ -382,7 +382,7 @@ export function useNavigationActions() {
         const rootFolder = app.vault.getRoot();
         const shouldCollapse = shouldCollapseItems();
         const scope = getCollapseBehaviorScope(behavior);
-        const shouldManageTypes = scope.affectTypes && settings.tpsTypesNavigationEnabled;
+        const shouldManageTypes = scope.affectTypes && settings.tpsFileTypesNavigationEnabled;
 
         if (shouldCollapse) {
             if (
@@ -503,7 +503,7 @@ export function useNavigationActions() {
         settings.showAllTagsFolder,
         settings.showRootFolder,
         settings.smartCollapse,
-        settings.tpsTypesNavigationEnabled,
+        settings.tpsFileTypesNavigationEnabled,
         selectionState.selectedFolder,
         selectionState.selectedProperty,
         selectionState.selectedTag,

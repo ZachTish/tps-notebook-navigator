@@ -320,6 +320,7 @@ describe('useNavigationPaneTreeSections', () => {
         ]);
 
         const app = new App();
+        app.vault.getFiles = () => [statusFile];
         let captured: NavigationPaneTreeSectionsResult | null = null;
 
         function Harness() {

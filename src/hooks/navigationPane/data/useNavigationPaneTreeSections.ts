@@ -784,16 +784,16 @@ export function useNavigationPaneTreeSections({
         const shouldComputeCollectionCount = settings.showNoteCount && (shouldShowRootFolder || sourceState.hasRootPropertyShortcut);
 
         if (shouldComputeCollectionCount) {
-            if (!includeDescendantNotes || keyNodes.length === 0) {
-                collectionCount = { current: 0, descendants: 0, total: 0 };
-            } else {
-                const propertyCollectionFiles = new Set<string>();
-                keyNodes.forEach(node => {
-                    node.notesWithValue.forEach(path => propertyCollectionFiles.add(path));
-                });
-                const total = propertyCollectionFiles.size;
-                collectionCount = { current: total, descendants: 0, total };
-            }
+            const total = getFilesForNavigationSelection(
+                { selectionType: ItemType.PROPERTY, selectedProperty: PROPERTIES_ROOT_VIRTUAL_FOLDER_ID },
+                settings,
+                { includeDescendantNotes: true, showHiddenItems },
+                app,
+                tagTreeService,
+                propertyTreeService,
+                { orderResults: false }
+            ).length;
+            collectionCount = { current: total, descendants: 0, total };
         }
 
         return {
@@ -802,6 +802,12 @@ export function useNavigationPaneTreeSections({
             collectionCount
         };
     }, [
+        app,
+        settings,
+        showHiddenItems,
+        tagTreeService,
+        propertyTreeService,
+        sourceState,
         includeDescendantNotes,
         renderRootPropertyOrdering,
         settings.showAllPropertiesFolder,

@@ -95,7 +95,7 @@ export class SelectionAPI {
         try {
             const settings = this.api.getPlugin().settings;
             const storedType = localStorage.get<unknown>(STORAGE_KEYS.selectedTypeKey);
-            if (settings.tpsTypesNavigationEnabled !== false && isTpsNavigatorTypeId(storedType)) {
+            if (settings.tpsFileTypesNavigationEnabled !== false && isTpsNavigatorTypeId(storedType)) {
                 this.selectionState.navigationType = storedType;
                 this.selectionState.navigationProperty = null;
                 this.selectionState.navigationTag = null;

@@ -138,7 +138,7 @@ export interface TpsNavigatorTypesSnapshot {
 export const TPS_NAVIGATOR_FILE_TYPES: readonly Omit<TpsNavigatorTypeDescriptor, 'count'>[] = Object.freeze([
     {
         id: TPS_NAVIGATOR_TYPE_IDS.NOTES,
-        label: 'Notes',
+        label: 'Markdown',
         icon: 'lucide-file-text',
         category: 'structure'
     },

@@ -16,16 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useSyncExternalStore,
-    type Dispatch,
-    type MutableRefObject,
-    type SetStateAction
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { App, TAbstractFile, TFile, TFolder } from 'obsidian';
 import type { PropertyTreeService } from '../../services/PropertyTreeService';
 import { getDBInstance } from '../../storage/fileOperations';
@@ -44,7 +35,6 @@ import {
 import { casefold } from '../../utils/recordUtils';
 import type { PropertyTreeNode } from '../../types/storage';
 import { clonePropertyKeys, getActivePropertyFields, getActivePropertyKeySet, getActiveVaultProfile } from '../../utils/vaultProfiles';
-import { getNavigatorTypesStore } from '../../integrations/gcm/useGcmEntityTypes';
 import type { TpsNavigatorTypesSnapshot } from '../../types/navigatorTypes';
 
 type SchedulePropertyTreeRebuildOptions = {
@@ -159,17 +149,8 @@ export function usePropertyTreeSync(params: {
     const isPropertyTreeEnabled = useMemo(() => shouldEnablePropertyTree(settings), [settings]);
     const propertyTreeRebuildReadyGateRef = useRef(false);
     const activePropertyFields = getActivePropertyFields(settings);
-    const navigatorTypesStore = useMemo(() => getNavigatorTypesStore(app), [app]);
-    const shouldSubscribeToLineProperties = isPropertyTreeEnabled && settings.tpsTypesNavigationEnabled;
-    const subscribeToLineProperties = useCallback(
-        (listener: () => void) => (shouldSubscribeToLineProperties ? navigatorTypesStore.subscribe(listener) : () => undefined),
-        [navigatorTypesStore, shouldSubscribeToLineProperties]
-    );
-    const getTypesSnapshot = useCallback(
-        () => (shouldSubscribeToLineProperties ? navigatorTypesStore.getSnapshot() : EMPTY_TYPES_SNAPSHOT),
-        [navigatorTypesStore, shouldSubscribeToLineProperties]
-    );
-    const typesSnapshot = useSyncExternalStore(subscribeToLineProperties, getTypesSnapshot, getTypesSnapshot);
+    // Properties indexes whole files; retired line collections never subscribe.
+    const typesSnapshot = EMPTY_TYPES_SNAPSHOT;
     const typesSnapshotRef = useRef(typesSnapshot);
     typesSnapshotRef.current = typesSnapshot;
 

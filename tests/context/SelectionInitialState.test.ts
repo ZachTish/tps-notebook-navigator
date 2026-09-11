@@ -150,7 +150,7 @@ describe('loadInitialSelectionState', () => {
         files.set(storedFile.path, storedFile);
         const state = loadInitialSelectionState({
             app,
-            settings: { ...DEFAULT_SETTINGS, tpsTypesNavigationEnabled: true }
+            settings: { ...DEFAULT_SETTINGS, tpsFileTypesNavigationEnabled: true }
         });
 
         expect(state.selectionType).toBe('type');
@@ -181,7 +181,7 @@ describe('loadInitialSelectionState', () => {
         const { app } = createAppWithRoot();
         const state = loadInitialSelectionState({
             app,
-            settings: { ...DEFAULT_SETTINGS, tpsTypesNavigationEnabled: false }
+            settings: { ...DEFAULT_SETTINGS, tpsFileTypesNavigationEnabled: false }
         });
 
         expect(state.selectionType).toBe('folder');

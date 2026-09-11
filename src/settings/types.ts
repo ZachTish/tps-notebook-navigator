@@ -778,6 +778,7 @@ export interface NotebookNavigatorSettings {
     // TPS integration
     tpsDataArchitectureMode: TpsDataArchitectureMode;
     tpsTypesNavigationEnabled: boolean;
+    tpsFileTypesNavigationEnabled: boolean;
     typeNavigationSortOrder: TypeNavigationSortOrder;
     tpsResourceCreationTarget: TpsResourceCreationTarget;
     tpsResourceCreationSpecificFile: string | null;

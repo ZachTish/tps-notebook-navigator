@@ -209,10 +209,10 @@ function getFilesForCommandSelection(plugin: NotebookNavigatorPlugin, selectionS
 export function hasActiveTypeCommandSelection(plugin: NotebookNavigatorPlugin): boolean {
     const api = plugin.api;
     if (api) {
-        return plugin.settings?.tpsTypesNavigationEnabled !== false && api.selection.getNavItem().type === ItemType.TYPE;
+        return plugin.settings?.tpsFileTypesNavigationEnabled !== false && api.selection.getNavItem().type === ItemType.TYPE;
     }
 
-    if (plugin.settings?.tpsTypesNavigationEnabled === false) {
+    if (plugin.settings?.tpsFileTypesNavigationEnabled === false) {
         return false;
     }
 

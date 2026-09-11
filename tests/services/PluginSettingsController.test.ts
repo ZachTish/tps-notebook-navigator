@@ -899,7 +899,7 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsPerNote);
     });
 
-    it('pauses existing Types and attached task rows exactly once while preserving later opt-in', () => {
+    it('keeps retired Types off while preserving the separate attached-row preference', () => {
         const { controller } = createController();
 
         const migrated = controller.applySettingsRecord(
@@ -921,7 +921,7 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         const afterExplicitOptIn = controller.applySettingsRecord(persistedAfterMigration, { isFirstLaunch: false });
 
         expect(afterExplicitOptIn).toBe(false);
-        expect(controller.settings.tpsTypesNavigationEnabled).toBe(true);
+        expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
         expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(true);
         expect(controller.settings.tpsTypesPauseMigrationVersion).toBe(1);
     });

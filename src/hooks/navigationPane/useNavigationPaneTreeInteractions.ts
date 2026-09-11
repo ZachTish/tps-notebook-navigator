@@ -850,7 +850,7 @@ export function useNavigationPaneTreeInteractions({
 
             const selectedType = navigateToTypeInternal(
                 {
-                    enabled: settings.tpsTypesNavigationEnabled,
+                    enabled: settings.tpsFileTypesNavigationEnabled,
                     snapshot: typeSnapshot,
                     expandedVirtualFolders: expansionState.expandedVirtualFolders,
                     expansionDispatch,
@@ -873,7 +873,7 @@ export function useNavigationPaneTreeInteractions({
             onResetSearchForNavigation,
             selectionDispatch,
             settings.multiSelectModifier,
-            settings.tpsTypesNavigationEnabled,
+            settings.tpsFileTypesNavigationEnabled,
             typeSnapshot,
             uiDispatch,
             uiState.singlePane

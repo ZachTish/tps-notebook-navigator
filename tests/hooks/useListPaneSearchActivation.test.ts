@@ -60,7 +60,7 @@ vi.mock('../../src/context/SettingsContext', () => ({
         paneTransitionDuration: 0,
         searchProvider: mocks.searchProvider,
         skipAutoScroll: false,
-        tpsTypesNavigationEnabled: true
+        tpsFileTypesNavigationEnabled: true
     })
 }));
 

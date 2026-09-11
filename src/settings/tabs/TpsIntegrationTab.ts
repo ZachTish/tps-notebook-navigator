@@ -45,9 +45,9 @@ const UPSTREAM_IMPORT_COPY = {
 } as const;
 
 const TYPES_NAVIGATION_COPY = {
-    group: 'Types collections (paused)',
-    name: 'Enable Types collections (experimental)',
-    desc: 'Off keeps the navigator note/file-focused and stops exact-line, Markdown-structure, and Web-link Types indexing. Note task-progress bars and counts remain available while Types are off.'
+    group: 'File types',
+    name: 'Show File types',
+    desc: 'Browse Markdown, Bases, Canvas and other whole-file categories. Uses file metadata only; tasks and other items inside notes are not indexed.'
 } as const;
 
 const RESOURCE_CREATION_COPY = {
@@ -99,18 +99,7 @@ export function createTpsIntegrationSettingDefinitions(context: SettingsTabConte
         createRenderDefinition({
             name: TYPES_NAVIGATION_COPY.name,
             desc: TYPES_NAVIGATION_COPY.desc,
-            aliases: [
-                'Types section',
-                'file types',
-                'checkboxes',
-                'bullets',
-                'headings',
-                'code blocks',
-                'callouts',
-                'blockquotes',
-                'tables',
-                'web links'
-            ],
+            aliases: ['File types', 'Markdown', 'Bases', 'Canvas', 'PDFs', 'Images', 'Audio', 'Video'],
             render: setting => renderTpsTypesNavigationEnabledSetting(setting, context)
         })
     ];
@@ -162,7 +151,7 @@ export function createTpsIntegrationSettingDefinitions(context: SettingsTabConte
         createGroupDefinition(DATA_ARCHITECTURE_COPY.group, architectureItems),
         createGroupDefinition(TYPES_NAVIGATION_COPY.group, typeItems),
         createGroupDefinition(RESOURCE_CREATION_COPY.group, resourceCreationItems, {
-            visible: () => context.plugin.settings.tpsTypesNavigationEnabled
+            visible: () => false
         }),
         createGroupDefinition(TASK_ROWS_COPY.group, taskItems),
         createGroupDefinition(UPSTREAM_IMPORT_COPY.group, setupItems)
@@ -269,16 +258,12 @@ export function renderTpsTypesNavigationEnabledSetting(setting: Setting, context
         .setName(TYPES_NAVIGATION_COPY.name)
         .setDesc(TYPES_NAVIGATION_COPY.desc)
         .addToggle(toggle =>
-            toggle
-                .setDisabled(plugin.settings.tpsDataArchitectureMode === 'native-records')
-                .setValue(plugin.settings.tpsTypesNavigationEnabled)
-                .onChange(async value => {
-                    if (plugin.settings.tpsDataArchitectureMode === 'native-records') return;
-                    plugin.settings.tpsTypesNavigationEnabled = value;
-                    await plugin.saveSettingsAndUpdate();
-                    context.refreshSettingsDomState();
-                    onAfterUpdate?.();
-                })
+            toggle.setValue(plugin.settings.tpsFileTypesNavigationEnabled).onChange(async value => {
+                plugin.settings.tpsFileTypesNavigationEnabled = value;
+                await plugin.saveSettingsAndUpdate();
+                context.refreshSettingsDomState();
+                onAfterUpdate?.();
+            })
         );
 }
 

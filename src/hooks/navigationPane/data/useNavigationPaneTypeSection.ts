@@ -44,7 +44,7 @@ export function buildNavigationTypeItems(
             type: NavigationPaneItemType.VIRTUAL_FOLDER,
             data: {
                 id: TYPES_ROOT_VIRTUAL_FOLDER_ID,
-                name: 'Types',
+                name: 'File types',
                 icon: 'lucide-shapes'
             },
             level: 0,

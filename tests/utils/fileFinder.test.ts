@@ -561,3 +561,23 @@ describe('fileFinder getFilesForProperty', () => {
         expect(files.map(file => file.path)).toEqual([keyOnlyFile.path, valueFile.path]);
     });
 });
+
+describe('Properties root is all visible Markdown notes', () => {
+    it.each([true, false])('does not require configured properties or descendants (%s)', includeDescendantNotes => {
+        const plain = createTestTFile('notes/plain.md');
+        const withProperty = createTestTFile('notes/tagged.md');
+        const canvas = createTestTFile('notes/board.canvas');
+        setFileProperties(withProperty, [{ fieldKey: 'status', value: 'ready' }]);
+        const settings = createSettings();
+        setActivePropertyFields(settings, '');
+        const files = getFilesForProperty(
+            PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
+            settings,
+            { includeDescendantNotes, showHiddenItems: false },
+            createAppWithFiles([plain, withProperty, canvas]),
+            null,
+            { orderResults: false }
+        );
+        expect(files.map(file => file.path)).toEqual([plain.path, withProperty.path]);
+    });
+});
