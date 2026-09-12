@@ -420,7 +420,7 @@ export class NotebookNavigatorSettingTab extends PluginSettingTab {
 
         const name = definition.getLabel();
         const setting = addSetting(setting => {
-            setting.setName(name).setDesc(definition.getDescription());
+            setting.setName(name);
             setting.addExtraButton(button => {
                 button.setIcon('lucide-chevron-right').onClick(() => this.openLegacySettingsPage(tabId));
                 button.extraSettingsEl.setAttr('aria-label', name);
@@ -598,7 +598,7 @@ export class NotebookNavigatorSettingTab extends PluginSettingTab {
     private createNativeSettingsPageDefinition(tabId: SettingsPaneId): SettingDefinitionPage {
         const definition = SETTINGS_PANE_DEFINITION_MAP.get(tabId);
         const name = definition?.getLabel() ?? tabId;
-        const desc = definition?.getDescription() ?? '';
+        const desc = '';
         const definitionItems = definition?.createDefinitions?.(this.createTabContext(this.containerEl));
         if (definitionItems) {
             let pageContainerEl: HTMLElement | null = null;
