@@ -1,3 +1,9 @@
+## 6.0.1 — stable sorting and icons during projection refresh
+
+Generated sort/group fallbacks and icon/color display now retain the same last validated GCM values while projections are temporarily unprepared. Metadata bursts no longer force ordering back to filename/stored fallbacks between preparations. Removed the five-second appearance expiry that caused flashing during longer startups; the in-memory cache is capped at 4,096 files and clears on provider replacement/removal, invalid/empty results, preparation failure, and subscriber teardown. Authored values keep their existing precedence. New confirmed values apply normally; a stalled provider may leave the last generated presentation visible until it returns or disconnects.
+
+No startup delay, persistence, IndexedDB change, note mutation, settings, commands, or namespace changes. Initial cold preparation can still cause one transition from the normal fallback; this does not promise zero motion or a sub-second startup benchmark. Regression coverage checks 40 invalidation cycles with stable property sorting, actual priority changes, 30-second pending appearance, and provider removal. Full tests, separate final build, test-vault reload/UI verification, and SHA-256 results are recorded in the release notes. Minimum Obsidian remains 1.11.0; BRAT installation is the user’s handoff.
+
 # TPS Notebook Navigator
 
 ## 6.0.0 — File types replace Types

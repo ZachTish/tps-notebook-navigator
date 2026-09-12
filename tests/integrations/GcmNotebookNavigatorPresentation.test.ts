@@ -138,7 +138,7 @@ describe('GCM Notebook Navigator transient presentation adapter', () => {
 
         projections.delete(first.path);
         api.emit();
-        expect(getGcmNotebookNavigatorPresentationValue(app, first, 'status')).toBeUndefined();
+        expect(getGcmNotebookNavigatorPresentationValue(app, first, 'status')).toBe('generated:First');
         await vi.waitFor(() => {
             expect(ensureCalls).toHaveLength(2);
             expect(getGcmNotebookNavigatorPresentationValue(app, first, 'status')).toBe('generated:First');
@@ -347,7 +347,7 @@ describe('GCM presentation consumers', () => {
 });
 
 describe('appearance refresh stability', () => {
-    it('retains the last appearance during one pending refresh without virtualizing stale sort values', async () => {
+    it('retains consistent appearance and ordering during pending refresh', async () => {
         const file = createTestTFile('Notes/Icon.md');
         let value: { filePath: string; values: Record<string, string> } | null | undefined = {
             filePath: file.path,
@@ -367,7 +367,7 @@ describe('appearance refresh stability', () => {
         value = undefined;
         api.emit();
         expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'icon')).toBe('star');
-        expect(getGcmNotebookNavigatorPresentationValue(app, file, 'icon')).toBeUndefined();
+        expect(getGcmNotebookNavigatorPresentationValue(app, file, 'icon')).toBe('star');
         await Promise.resolve();
         for (let i = 0; i < 10; i++) getGcmNotebookNavigatorAppearanceValue(app, file, 'icon');
         await Promise.resolve();
@@ -382,7 +382,7 @@ describe('appearance refresh stability', () => {
         stop();
     });
 
-    it('expires a hung refresh and clears retained appearance on provider removal', async () => {
+    it('retains appearance through a long refresh and clears it on provider removal', async () => {
         vi.useFakeTimers();
         try {
             const file = createTestTFile('Notes/Icon.md');
@@ -397,8 +397,8 @@ describe('appearance refresh stability', () => {
             value = undefined;
             api.emit();
             expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'color')).toBe('red');
-            await vi.advanceTimersByTimeAsync(5001);
-            expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'color')).toBeUndefined();
+            await vi.advanceTimersByTimeAsync(30000);
+            expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'color')).toBe('red');
             value = { filePath: file.path, values: { color: 'blue' } };
             expect(getGcmNotebookNavigatorAppearanceValue(app, file, 'color')).toBe('blue');
             installGcm(app, null, false);
@@ -423,5 +423,39 @@ it('does not drive a render/ensure loop when a bounded provider attempt leaves a
     await new Promise(resolve => setTimeout(resolve, 20));
     expect(renders).toBe(1);
     expect(Reflect.get(api, 'ensure')).toHaveBeenCalledTimes(1);
+    stop();
+});
+
+it('keeps property sort order through startup invalidation bursts and adopts completed values', async () => {
+    const alpha = createTestTFile('Notes/Alpha.md');
+    const beta = createTestTFile('Notes/Beta.md');
+    let pending = false;
+    let updated = false;
+    const api = createPresentationApi(file => {
+        if (pending) return undefined;
+        const path = typeof file === 'string' ? file : file.path;
+        return { filePath: path, values: { priority: path === alpha.path ? '2' : updated ? '3' : '1', icon: 'star' } };
+    });
+    const { app } = createApp([alpha, beta], api);
+    app.metadataCache.getFileCache = () => ({ frontmatter: {} });
+    const settings = structuredClone(DEFAULT_SETTINGS);
+    const sort = () => {
+        const files = [alpha, beta];
+        sortNavigationFiles(files, settings, app, { option: 'property-asc', propertyKey: 'priority', propertySortSecondary: 'filename' });
+        return files.map(file => file.path);
+    };
+    const stop = subscribeGcmNotebookNavigatorPresentation(app, () => {});
+    expect(sort()).toEqual([beta.path, alpha.path]);
+    pending = true;
+    for (let i = 0; i < 40; i++) {
+        api.emit();
+        expect(sort()).toEqual([beta.path, alpha.path]);
+        expect(getGcmNotebookNavigatorAppearanceValue(app, alpha, 'icon')).toBe('star');
+        await Promise.resolve();
+    }
+    pending = false;
+    updated = true;
+    api.emit();
+    expect(sort()).toEqual([alpha.path, beta.path]);
     stop();
 });

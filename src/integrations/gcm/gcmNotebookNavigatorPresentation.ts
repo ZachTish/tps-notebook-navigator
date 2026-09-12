@@ -77,8 +77,7 @@ class GcmNotebookNavigatorPresentationStore {
     private ensureFlushQueued = false;
     private generation = 0;
     private readonly pendingFiles = new Set<string>();
-    private readonly appearances = new Map<string, { value: GcmNotebookNavigatorPresentationProjectionLike; expiresAt: number | null }>();
-    private appearanceTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
+    private readonly appearances = new Map<string, GcmNotebookNavigatorPresentationProjectionLike>();
 
     getAppearance(file: TFile | string): GcmNotebookNavigatorPresentationProjectionLike | null | undefined {
         const projection = this.get(file);
@@ -86,46 +85,22 @@ class GcmNotebookNavigatorPresentationStore {
         if (projection !== undefined) {
             this.appearances.delete(path);
             if (projection) {
-                this.appearances.set(path, { value: projection, expiresAt: null });
-                if (this.appearances.size > 512) {
+                this.appearances.set(path, projection);
+                if (this.appearances.size > 4096) {
                     const oldest = this.appearances.keys().next().value;
                     if (oldest !== undefined) this.appearances.delete(oldest);
                 }
             }
             return projection;
         }
-        const previous = this.appearances.get(path);
-        if (!previous) return undefined;
-        previous.expiresAt ??= Date.now() + 5000;
-        if (previous.expiresAt <= Date.now()) {
-            this.appearances.delete(path);
-            return undefined;
-        }
-        this.scheduleAppearanceExpiry();
-        return previous.value;
-    }
-
-    private scheduleAppearanceExpiry(): void {
-        if (this.appearanceTimer !== null) return;
-        const deadlines = [...this.appearances.values()].flatMap(entry => (entry.expiresAt === null ? [] : [entry.expiresAt]));
-        if (!deadlines.length) return;
-        this.appearanceTimer = globalThis.setTimeout(
-            () => {
-                this.appearanceTimer = null;
-                for (const [path, entry] of this.appearances) {
-                    if (entry.expiresAt !== null && entry.expiresAt <= Date.now()) this.appearances.delete(path);
-                }
-                this.publish();
-                this.scheduleAppearanceExpiry();
-            },
-            Math.max(0, Math.min(...deadlines) - Date.now())
-        );
+        // Invalidation means refreshing, not "no rule matched". Keep the last
+        // validated values for both ordering and icons until a result arrives.
+        // A wall-clock expiry reintroduced fallback flashes during long startups.
+        return this.appearances.get(path);
     }
 
     private clearAppearances(): void {
         this.appearances.clear();
-        if (this.appearanceTimer !== null) globalThis.clearTimeout(this.appearanceTimer);
-        this.appearanceTimer = null;
     }
 
     constructor(private readonly app: App) {}
@@ -393,7 +368,7 @@ export function getGcmNotebookNavigatorPresentation(
 }
 
 export function getGcmNotebookNavigatorPresentationValue(app: App, file: TFile | string, field: string): string | undefined {
-    const projection = getGcmNotebookNavigatorPresentation(app, file);
+    const projection = getStore(app).getAppearance(file);
     if (!projection) {
         return undefined;
     }
@@ -405,7 +380,7 @@ export function subscribeGcmNotebookNavigatorPresentation(app: App, listener: Pr
     return getStore(app).subscribe(listener);
 }
 
-/** Display-only retention while refreshing; sorting and grouping always use fresh values. */
+/** Retain validated display and ordering values while the provider refreshes. */
 export function getGcmNotebookNavigatorAppearanceValue(app: App, file: TFile | string, field: string): string | undefined {
     const projection = getStore(app).getAppearance(file);
     if (!projection) return undefined;
