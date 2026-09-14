@@ -1,3 +1,11 @@
+## 6.0.3 — Stable list ordering while typing
+
+The visible list structure now holds its current order during an editor typing burst. After two seconds without another edit, it applies the latest indexed result once. Metadata/content indexing and row content continue updating; this is a transient presentation snapshot, not a pause in note saving. Folder/tag/property/type navigation, search, grouping, sort/settings changes, and file create/delete/rename operations release or bypass the snapshot immediately. Opening another file also releases it. Timers and subscriptions are removed on unmount.
+
+This prevents save-driven modified-time sorting and metadata/projection rebuilds from repeatedly moving rows and triggering scroll-to-selection while typing. A real change to sorting or group membership can still move the list after typing settles. No settings, defaults, data, provider contract, namespace, or persisted schema changes. Minimum Obsidian remains 1.11.0.
+
+Validation includes repeated typing/refresh snapshots, immediate context changes and structural releases, the full test suite, and a separate build/deployment and reload in the isolated test vault. Computer-use checks exercised continuous typing in synthetic notes with modified-time sorting: 30 presentation updates were held during the burst, with no early replacements, then the latest result applied after quiet. This patch is for the user's BRAT pull; production is untouched.
+
 ## 6.0.2 — cleaner settings copy
 
 Removed generic settings introductions and repeated navigation/page descriptions. Existing destinations, default route, optional disclosures, control labels/options, commands/actions, conditional visibility, focus behavior, and narrow-screen layout remain unchanged. Useful guidance about consequences, ownership, credentials, and non-obvious inputs stays beside its setting; dynamic status/counts remain. This presentation patch changes no settings schema, defaults, note data, provider behavior, or automation.

@@ -1,3 +1,4 @@
+import { useEditingStableList } from './useEditingStableList';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -1017,7 +1018,7 @@ export function useListPaneData({
             structuralTypeGroups.some(group => group.typeId === TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES && group.rows.length > 0);
         return filterDuplicateRootProviderRows(providerRows, rootHasCanonicalCheckboxRows, GCM_TASK_ROW_PROVIDER_ID);
     }, [isVaultRootAggregate, providerRows, structuralTypeGroups]);
-    const listItems = useMemo(() => {
+    const liveListItems = useMemo(() => {
         if (parsedSearchTokens?.invalidReason) {
             return [];
         }
@@ -1102,6 +1103,42 @@ export function useListPaneData({
         useGlobalTypeSearch,
         visibleProviderRows
     ]);
+
+    const editingContext = useMemo(
+        () => ({
+            selectionType,
+            selectedFolder,
+            selectedTag,
+            selectedProperty,
+            selectedType,
+            searchQuery,
+            settings,
+            activeProfile,
+            groupBy,
+            collapsedListGroups,
+            pinnedGroupExpanded,
+            showHiddenItems,
+            includeDescendantNotes,
+            propertySortOrderOverride
+        }),
+        [
+            selectionType,
+            selectedFolder,
+            selectedTag,
+            selectedProperty,
+            selectedType,
+            searchQuery,
+            settings,
+            activeProfile,
+            groupBy,
+            collapsedListGroups,
+            pinnedGroupExpanded,
+            showHiddenItems,
+            includeDescendantNotes,
+            propertySortOrderOverride
+        ]
+    );
+    const listItems = useEditingStableList(app, liveListItems, editingContext);
 
     const filePathToIndex = useMemo(() => {
         return buildFilePathToIndexMap(listItems);
