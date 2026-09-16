@@ -1,3 +1,9 @@
+## 6.1.0 — GCM property bridge
+
+When GCM 2.3.0 or later is available, defined GCM keys are added to every Navigator profile’s property configuration. New keys appear in Properties navigation and file menus, without flooding list rows. Existing ordering and explicit per-key visibility win. Import is additive and case-insensitive; removing a GCM field does not delete Navigator configuration or note data. Repeated notifications are no-ops. Upstream Notebook Navigator is untouched. No new settings destination or toggle; existing property controls remain available.
+
+Verified after test-vault reload: all 57 GCM definitions appeared in the profile property-key editor with navigation/list/file-menu controls; runtime comparison found no missing keys. Regression tests cover case-insensitive deduplication, idempotence, retained ordering/visibility, and invalid input. Existing settings routes and per-profile controls remain unchanged. Full declared npm test and a separate final npm run build are required for the versioned artifacts; the stable build deploys only shipped files to Obsidian Plugin Test Vault. Hot Reload plus explicit test-plugin reload was used for UI verification. Release notes record final validation and SHA-256 hashes. Production installation remains the user’s BRAT pull.
+
 ## 6.0.3 — Stable list ordering while typing
 
 The visible list structure now holds its current order during an editor typing burst. After two seconds without another edit, it applies the latest indexed result once. Metadata/content indexing and row content continue updating; this is a transient presentation snapshot, not a pause in note saving. Folder/tag/property/type navigation, search, grouping, sort/settings changes, and file create/delete/rename operations release or bypass the snapshot immediately. Opening another file also releases it. Timers and subscriptions are removed on unmount.

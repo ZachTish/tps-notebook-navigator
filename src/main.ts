@@ -1,3 +1,4 @@
+import { mergeGcmPropertyKeys } from "./integrations/gcm/gcmPropertyCatalog";
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -834,6 +835,20 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
             routeTag: tagPath => this.routeCoreTagSearchToNavigator(tagPath)
         });
         this.coreTagSearchRouter.start();
+
+        const importGcmProperties = async () => {
+            const provider = (this.app as any).plugins?.plugins?.['tps-global-context-menu']?.api?.propertyCatalog;
+            if (provider?.version !== 1 || typeof provider.list !== 'function') return;
+            const catalog = provider.list();
+            let changed = false;
+            for (const profile of this.settings.vaultProfiles) {
+                const next = mergeGcmPropertyKeys(profile.propertyKeys, catalog);
+                if (next !== profile.propertyKeys) { profile.propertyKeys = next; changed = true; }
+            }
+            if (changed) await this.saveSettingsAndUpdate();
+        };
+        this.registerEvent((this.app.workspace as any).on('tps:gcm-api-changed', () => runAsyncAction(importGcmProperties)));
+        this.app.workspace.onLayoutReady(() => runAsyncAction(importGcmProperties));
 
         // Post-layout initialization
         // Only auto-create the navigator view on first launch; upgrades restore existing leaves themselves
