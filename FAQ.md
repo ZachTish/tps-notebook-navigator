@@ -279,7 +279,7 @@ It is a sync toggle that switches a setting between synced and local storage:
   so each device keeps its own independent value
 
 Without a sync service the toggle has no practical effect, since `data.json` stays on one device. See
-[README section 6](README.md#6-synced-and-local-settings) for details.
+[the detailed synced/local settings reference](REFERENCE.md#6-synced-and-local-settings) for details.
 
 ### What does "(vault profile)" mean on a setting?
 
