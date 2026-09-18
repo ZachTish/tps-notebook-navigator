@@ -1,3 +1,4 @@
+import { usePropertyNoteIndex } from '../../utils/propertyNotes';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -429,6 +430,8 @@ export const NavigationPane = React.memo(
             'handleShortcutTagActivate',
             'handleShortcutTagNoteClick',
             'handleShortcutTagNoteMouseDown',
+            'handleShortcutPropertyNoteClick',
+            'handleShortcutPropertyNoteMouseDown',
             'handleShortcutPropertyActivate',
             'handleShortcutContextMenu',
             'handleRecentFileContextMenu',
@@ -586,6 +589,7 @@ export const NavigationPane = React.memo(
         folderCountsRef.current = folderCounts;
         tagCountsRef.current = tagCounts;
         propertyCountsRef.current = propertyCounts;
+        const propertyNoteIndex = usePropertyNoteIndex(app, settings.enableFolderNotes && settings.enableFolderNoteLinks);
         const tagNoteIndex = useTagNoteIndex(app, settings.enableFolderNotes && settings.enableFolderNoteLinks);
 
         const tree = useNavigationPaneTreeInteractions({
@@ -1164,6 +1168,7 @@ export const NavigationPane = React.memo(
                 propertyCounts,
                 vaultChangeVersion,
                 tagNoteIndex,
+                propertyNoteIndex,
                 fileVisibility: activeProfile.fileVisibility,
                 hiddenFolders: activeProfile.hiddenFolders,
                 descendantExcludedFolders: activeProfile.descendantExcludedFolders,
@@ -1219,6 +1224,7 @@ export const NavigationPane = React.memo(
                 showHiddenItems,
                 tagCounts,
                 tagNoteIndex,
+                propertyNoteIndex,
                 tree,
                 uiState.pinShortcuts,
                 restoreNavigationPaneFocus,

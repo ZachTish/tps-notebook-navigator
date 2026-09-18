@@ -1,3 +1,4 @@
+import { getPropertyNote, openPropertyNoteFile, revealPropertyNoteInNavigator } from '../../utils/propertyNotes';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -500,6 +501,71 @@ export function useNavigationPaneShortcutActions({
         ]
     );
 
+    const handleShortcutPropertyNoteClick = useCallback(
+        (propertyNodeId: string, shortcutKey: string, event: NavigationNoteActivationEvent) => {
+            if (!settings.enableFolderNotes || !settings.enableFolderNoteLinks) {
+                handleShortcutPropertyActivate(propertyNodeId, shortcutKey);
+                return;
+            }
+
+            const canonicalPath = propertyNodeId;
+            const propertyNote = getPropertyNote(app, propertyNodeId);
+            if (!canonicalPath || !propertyNote) {
+                handleShortcutPropertyActivate(propertyNodeId, shortcutKey);
+                return;
+            }
+
+            setActiveShortcut(shortcutKey);
+            onResetSearchForNavigation();
+            const openContext = resolveFolderNoteClickOpenContext(event, settings.folderNoteOpenLocation, settings.multiSelectModifier);
+            focusListPaneAfterRightSidebarFolderNoteSelection(openContext);
+            revealPropertyNoteInNavigator(selectionDispatch, propertyNote, canonicalPath);
+            runAsyncAction(() =>
+                openPropertyNoteFile({
+                    app,
+                    commandQueue,
+                    propertyNote,
+                    context: openContext,
+                    openInRightSidebar: openFolderNoteInRightSidebar
+                })
+            );
+            scheduleShortcutRelease();
+        },
+        [
+            app,
+            commandQueue,
+            focusListPaneAfterRightSidebarFolderNoteSelection,
+            handleShortcutPropertyActivate,
+            onResetSearchForNavigation,
+            openFolderNoteInRightSidebar,
+            scheduleShortcutRelease,
+            selectionDispatch,
+            setActiveShortcut,
+            settings
+        ]
+    );
+
+    const handleShortcutPropertyNoteMouseDown = useCallback(
+        (propertyNodeId: string, event: React.MouseEvent<HTMLSpanElement>) => {
+            if (event.button !== 1 || !settings.enableFolderNotes || !settings.enableFolderNoteLinks) {
+                return;
+            }
+
+            const canonicalPath = propertyNodeId;
+            const propertyNote = getPropertyNote(app, propertyNodeId);
+            if (!canonicalPath || !propertyNote) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            onResetSearchForNavigation();
+            revealPropertyNoteInNavigator(selectionDispatch, propertyNote, canonicalPath);
+            runAsyncAction(() => openPropertyNoteFile({ app, commandQueue, propertyNote, context: 'tab' }));
+        },
+        [app, commandQueue, onResetSearchForNavigation, selectionDispatch, settings]
+    );
+
     const openShortcutByNumber = useCallback(
         async (shortcutNumber: number) => {
             if (!Number.isInteger(shortcutNumber) || shortcutNumber < 1) {
@@ -569,6 +635,8 @@ export function useNavigationPaneShortcutActions({
         handleShortcutTagNoteClick,
         handleShortcutTagNoteMouseDown,
         handleShortcutPropertyActivate,
+        handleShortcutPropertyNoteClick,
+        handleShortcutPropertyNoteMouseDown,
         openShortcutByNumber
     };
 }

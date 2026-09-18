@@ -1,3 +1,5 @@
+import { getPropertyNote, openPropertyNoteFile, revealPropertyNoteInNavigator } from '../propertyNotes';
+import { resolveFolderNoteDefaultOpenContext } from '../keyboardOpenContext';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -162,6 +164,25 @@ export function buildPropertyMenu(params: PropertyMenuBuilderParams): void {
             onSelect: () => selectionDispatch({ type: 'SET_SELECTED_PROPERTY', nodeId: normalizedNodeId })
         });
     };
+
+    if (settings.enableFolderNotes && getPropertyNote(app, normalizedNodeId)) {
+        menu.addItem((item: MenuItem) => {
+            setAsyncOnClick(item.setTitle('Open property note').setIcon('lucide-file-text'), async () => {
+                const file = getPropertyNote(app, normalizedNodeId);
+                if (!file) return;
+                ensurePropertySelected();
+                revealPropertyNoteInNavigator(selectionDispatch, file, normalizedNodeId);
+                uiDispatch({ type: 'ACTIVATE_PANE', target: 'files' });
+                await openPropertyNoteFile({
+                    app,
+                    commandQueue: services.commandQueue,
+                    propertyNote: file,
+                    context: resolveFolderNoteDefaultOpenContext(settings.folderNoteOpenLocation),
+                    openInRightSidebar: note => services.plugin.openFolderNoteInRightSidebar(note)
+                });
+            });
+        });
+    }
 
     const handleFileCreation = (file: TFile | null | undefined) => {
         if (!file) {

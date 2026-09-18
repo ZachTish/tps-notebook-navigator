@@ -1,3 +1,4 @@
+import { getPropertyNote, openPropertyNoteFile, revealPropertyNoteInNavigator } from '../../utils/propertyNotes';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -105,6 +106,8 @@ export interface NavigationPaneTreeInteractionsResult {
     handleTagToggleAllSiblings: (tagPath: string) => void;
     handleTagNameClick: (tagNode: TagTreeNode, event?: NavigationNoteActivationEvent) => void;
     handleTagNameMouseDown: (tagNode: TagTreeNode, event: React.MouseEvent<HTMLSpanElement>) => void;
+    handlePropertyNameClick: (node: PropertyTreeNode, event?: NavigationNoteActivationEvent) => void;
+    handlePropertyNameMouseDown: (node: PropertyTreeNode, event: React.MouseEvent<HTMLSpanElement>) => void;
     handlePropertyToggle: (nodeId: string) => void;
     handlePropertyToggleAllSiblings: (propertyNode: PropertyTreeNode) => void;
     handleVirtualFolderToggle: (folderId: string) => void;
@@ -791,6 +794,78 @@ export function useNavigationPaneTreeInteractions({
         [expansionDispatch, expansionState.expandedFolders, getAllDescendantFolders, handleFolderToggle, settings.showRootFolder]
     );
 
+    const handlePropertyNameClick = useCallback(
+        (propertyNode: PropertyTreeNode, event?: NavigationNoteActivationEvent) => {
+            const rowClickEvent = event && 'button' in event ? event : undefined;
+            if (!settings.enableFolderNotes || !settings.enableFolderNoteLinks) {
+                handlePropertyClick(propertyNode, rowClickEvent);
+                return;
+            }
+
+            const propertyNote = getPropertyNote(app, propertyNode.id);
+            if (!propertyNote) {
+                handlePropertyClick(propertyNode, rowClickEvent);
+                return;
+            }
+
+            onResetSearchForNavigation();
+            clearActiveShortcut();
+
+            if (settings.autoExpandNavItems && propertyNode.children.size > 0 && !expansionState.expandedProperties.has(propertyNode.id)) {
+                handlePropertyToggle(propertyNode.id);
+            }
+
+            const openContext = event
+                ? resolveFolderNoteClickOpenContext(event, settings.folderNoteOpenLocation, settings.multiSelectModifier)
+                : resolveFolderNoteDefaultOpenContext(settings.folderNoteOpenLocation);
+            focusListPaneAfterRightSidebarNoteSelection(openContext);
+            revealPropertyNoteInNavigator(selectionDispatch, propertyNote, propertyNode.id);
+            runAsyncAction(() =>
+                openPropertyNoteFile({
+                    app,
+                    commandQueue,
+                    propertyNote,
+                    context: openContext,
+                    openInRightSidebar: openFolderNoteInRightSidebar
+                })
+            );
+        },
+        [
+            app,
+            clearActiveShortcut,
+            commandQueue,
+            expansionState.expandedProperties,
+            focusListPaneAfterRightSidebarNoteSelection,
+            handlePropertyClick,
+            handlePropertyToggle,
+            openFolderNoteInRightSidebar,
+            onResetSearchForNavigation,
+            selectionDispatch,
+            settings
+        ]
+    );
+
+    const handlePropertyNameMouseDown = useCallback(
+        (propertyNode: PropertyTreeNode, event: React.MouseEvent<HTMLSpanElement>) => {
+            if (event.button !== 1 || !settings.enableFolderNotes || !settings.enableFolderNoteLinks) {
+                return;
+            }
+
+            const propertyNote = getPropertyNote(app, propertyNode.id);
+            if (!propertyNote) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            onResetSearchForNavigation();
+            clearActiveShortcut();
+            revealPropertyNoteInNavigator(selectionDispatch, propertyNote, propertyNode.id);
+            runAsyncAction(() => openPropertyNoteFile({ app, commandQueue, propertyNote, context: 'tab' }));
+        },
+        [app, clearActiveShortcut, commandQueue, onResetSearchForNavigation, selectionDispatch, settings]
+    );
+
     const handleTagToggleAllSiblings = useCallback(
         (tagPath: string) => {
             const isCurrentlyExpanded = expansionState.expandedTags.has(tagPath);
@@ -890,6 +965,8 @@ export function useNavigationPaneTreeInteractions({
         handleTagToggleAllSiblings,
         handleTagNameClick,
         handleTagNameMouseDown,
+        handlePropertyNameClick,
+        handlePropertyNameMouseDown,
         handlePropertyToggle,
         handlePropertyToggleAllSiblings,
         handleVirtualFolderToggle,
@@ -912,6 +989,8 @@ export function useNavigationPaneTreeInteractions({
         'handleTagToggleAllSiblings',
         'handleTagNameClick',
         'handleTagNameMouseDown',
+        'handlePropertyNameClick',
+        'handlePropertyNameMouseDown',
         'handlePropertyToggle',
         'handlePropertyToggleAllSiblings',
         'handleVirtualFolderToggle',

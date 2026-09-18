@@ -1,3 +1,4 @@
+import { resolvePropertyNoteFromIndex } from '../../utils/propertyNotes';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -272,6 +273,9 @@ export function NavigationPaneTreeRow({
         case NavigationPaneItemType.PROPERTY_KEY:
         case NavigationPaneItemType.PROPERTY_VALUE: {
             const propertyNode = item.data;
+            const propertyNote = context.propertyNoteIndex
+                ? resolvePropertyNoteFromIndex(context.propertyNoteIndex, propertyNode.id)
+                : null;
             const indentGuideLevels = indentGuideLevelsByKey.get(getNavigationItemRenderKey(item));
             const searchMatch = getNavigationItemSearchMatch(item, searchHighlights);
             const inclusionOperator =
@@ -286,6 +290,9 @@ export function NavigationPaneTreeRow({
                     isSelected={isSelected}
                     onToggle={() => tree.handlePropertyToggle(propertyNode.id)}
                     onClick={event => tree.handlePropertyClick(propertyNode, event)}
+                    hasPropertyNote={Boolean(propertyNote)}
+                    onNameClick={event => tree.handlePropertyNameClick(propertyNode, event)}
+                    onNameMouseDown={event => tree.handlePropertyNameMouseDown(propertyNode, event)}
                     onToggleAllSiblings={() => tree.handlePropertyToggleAllSiblings(propertyNode)}
                     color={item.color}
                     backgroundColor={getSolidBackground(item.backgroundColor)}

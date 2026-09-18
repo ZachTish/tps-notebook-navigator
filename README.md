@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: [6.1.0](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.1.0) · Obsidian 1.11.0+ · Desktop and mobile.
+Current release: [6.2.0](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.2.0) · Obsidian 1.11.0+ · Desktop and mobile.
 
 ## Install with BRAT
 
@@ -20,6 +20,16 @@ Upstream-settings import is an explicit, one-way, read-only import. It does not 
 - New keys appear in Properties navigation and file menus without adding every value to list rows. Removing a GCM field does not erase Navigator preferences or note data.
 - Property sort/group changes retain the active editor's position while typing and commit on save/blur. Presentation refreshes preserve authored note fields.
 - File types, folders, tags, properties, shortcuts, and views use their existing Navigator settings. Local appearance preferences retain their per-device persistence controls.
+
+## Property notes (6.2.0)
+
+Enable **Folders & navigation notes → Enable folder, tag and property notes** and **Names open matching notes**. Property key and value labels link to a unique Markdown filename anywhere in the vault, case-insensitively: `status` → `status.md`, and `project: xyz` → `xyz.md`. The destination need not contain the property, tags, or any frontmatter. Scalar and list values use the same property-tree labels. Names with spaces work. Matching uses the whole label; partial names, folder-path suffixes, aliases, and duplicate filenames are not guessed. Wiki-link values use their existing property-tree display label, not a new link-target resolver. No notes or properties are created or rewritten.
+
+Click a linked name to open its note; click the icon/row to filter as before. Links appear in Properties, property shortcuts (including renamed shortcuts), and the selected list title. Enter on a selected property or focused link opens its note; middle-click opens a new tab. The existing navigation-note destination supports current tab, new tab, and right sidebar. **Open property note** in the context menu remains available when name links are off. Missing or ambiguous matches remain ordinary filter rows. File creation, rename, deletion, and folder moves refresh links without reloading. The shared transient filename index attaches vault listeners only while used; ordinary body edits do not trigger filename scans.
+
+This additive minor release preserves settings keys/defaults, property filtering, note counts, and upstream isolation. No new destination, disclosure, schema field, migration, or mobile-specific layout is added; existing responsive rows and accessible note links are reused. No separate property-note creation/template action is included. Obsidian 1.11.0+ remains supported.
+
+Validation: focused filename/index lifecycle, interaction, and existing tag-note/accessibility regressions; full declared tests; separate production-mode build and test-vault deployment. All 3,061 tests in 269 files passed. Native UI checks in Obsidian 1.14.1 confirmed key/value name activation, the context-menu action, preserved property scope and note bodies, and live duplicate/rename handling. Temporary preferences were restored and fixtures archived. The final artifact was explicitly reloaded after refreshing Obsidian’s cached manifest. Scoped and full ESLint, TypeScript, namespace, artifact, and operational-identity checks are recorded with SHA-256 hashes in the release notes. Pre-existing GCM catalog and artifact-test typing errors were corrected without changing the valid catalog contract; remaining lint warnings are existing advisory warnings. iOS hardware was not tested. Production updates remain the user's BRAT pull.
 
 ## Documentation and attribution
 

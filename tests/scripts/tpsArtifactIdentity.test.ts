@@ -51,7 +51,7 @@ function createFixture(): ArtifactInputs {
 describe('TPS generated artifact identity gate', () => {
     it('accepts the current repository artifacts and a minimal isolated fixture', async () => {
         expect(TPS_NOTEBOOK_NAVIGATOR_STYLE_SETTINGS_ID).toBe(RUNTIME_STYLE_SETTINGS_ID);
-        const manifest = JSON.parse(await readFile(path.join(repositoryRoot, 'manifest.json'), 'utf8'));
+        const manifest = JSON.parse(await readFile(path.join(repositoryRoot, 'manifest.json'), 'utf8')) as { version: string };
         expect(await checkTpsArtifacts(repositoryRoot)).toBe(manifest.version);
         expect(assertTpsArtifactIdentity(createFixture())).toBe('9.8.7');
     });

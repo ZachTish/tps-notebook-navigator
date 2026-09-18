@@ -1068,7 +1068,7 @@ export const STRINGS_EN = {
                 description: 'Folder display, matching folder and tag notes, templates, and note-link behavior.',
                 groups: {
                     folders: 'Folders',
-                    folderNotes: 'Folder and tag notes',
+                    folderNotes: 'Folder, tag and property notes',
                     folderNoteFiles: 'Folder note files'
                 }
             },
@@ -2425,8 +2425,8 @@ export const STRINGS_EN = {
                 placeholder: 'archive*, *draft, projects/*/old'
             },
             enableFolderNotes: {
-                name: 'Enable folder and tag notes',
-                desc: 'Folders and tags with one matching note file are displayed as clickable links.'
+                name: 'Enable folder, tag and property notes',
+                desc: 'Folders, tags, property names and property values with one matching note file are displayed as clickable links. Property notes match Markdown filenames without requiring frontmatter.'
             },
             folderNoteType: {
                 name: 'Default folder note type',
@@ -2449,7 +2449,7 @@ export const STRINGS_EN = {
             },
             folderNamesOpenFolderNotes: {
                 name: 'Names open matching notes',
-                desc: 'Clicking a linked folder or tag name opens its matching note. When off, folder notes only provide folder metadata such as name, icon, and color.'
+                desc: 'Clicking a linked folder, tag or property name opens its matching note. When off, folder notes only provide folder metadata such as name, icon, and color.'
             },
             hideFolderNoteInList: {
                 name: 'Hide folder notes in list',
@@ -2461,7 +2461,7 @@ export const STRINGS_EN = {
             },
             folderNoteOpenLocation: {
                 name: 'Open navigation notes in',
-                desc: 'Choose where matching folder and tag notes open.',
+                desc: 'Choose where matching folder, tag and property notes open.',
                 options: {
                     currentTab: 'Current tab',
                     newTab: 'New tab',

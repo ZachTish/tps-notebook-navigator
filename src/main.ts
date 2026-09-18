@@ -1,4 +1,4 @@
-import { mergeGcmPropertyKeys } from "./integrations/gcm/gcmPropertyCatalog";
+import { mergeGcmPropertyKeys } from './integrations/gcm/gcmPropertyCatalog';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -17,7 +17,7 @@ import { mergeGcmPropertyKeys } from "./integrations/gcm/gcmPropertyCatalog";
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { App, Platform, Plugin, TFile, FileView, TFolder, WorkspaceLeaf, addIcon } from 'obsidian';
+import { App, Platform, Plugin, TFile, FileView, TFolder, WorkspaceLeaf, addIcon, type EventRef } from 'obsidian';
 import type { NotebookNavigatorSettings } from './settings/types';
 import { LazyNotebookNavigatorSettingTab } from './settings/LazyNotebookNavigatorSettingTab';
 import type { NarrowSidebarLayout, NarrowSidebarTriggerMode } from './settings/types';
@@ -837,17 +837,24 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
         this.coreTagSearchRouter.start();
 
         const importGcmProperties = async () => {
-            const provider = (this.app as any).plugins?.plugins?.['tps-global-context-menu']?.api?.propertyCatalog;
+            const pluginHost = this.app as unknown as {
+                plugins?: { plugins?: Record<string, { api?: { propertyCatalog?: { version?: unknown; list?: () => unknown } } }> };
+            };
+            const provider = pluginHost.plugins?.plugins?.['tps-global-context-menu']?.api?.propertyCatalog;
             if (provider?.version !== 1 || typeof provider.list !== 'function') return;
             const catalog = provider.list();
             let changed = false;
             for (const profile of this.settings.vaultProfiles) {
                 const next = mergeGcmPropertyKeys(profile.propertyKeys, catalog);
-                if (next !== profile.propertyKeys) { profile.propertyKeys = next; changed = true; }
+                if (next !== profile.propertyKeys) {
+                    profile.propertyKeys = next;
+                    changed = true;
+                }
             }
             if (changed) await this.saveSettingsAndUpdate();
         };
-        this.registerEvent((this.app.workspace as any).on('tps:gcm-api-changed', () => runAsyncAction(importGcmProperties)));
+        const catalogEvents = this.app.workspace as unknown as { on(name: string, callback: () => void): EventRef };
+        this.registerEvent(catalogEvents.on('tps:gcm-api-changed', () => runAsyncAction(importGcmProperties)));
         this.app.workspace.onLayoutReady(() => runAsyncAction(importGcmProperties));
 
         // Post-layout initialization

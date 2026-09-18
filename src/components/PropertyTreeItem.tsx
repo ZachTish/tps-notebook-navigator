@@ -31,6 +31,7 @@ import { getDirectPropertyKeyNoteCount } from '../utils/propertyTree';
 import { resolveUXIcon } from '../utils/uxIcons';
 import { IndentGuideColumns } from './IndentGuideColumns';
 import { ObsidianIcon } from './ObsidianIcon';
+import { NavigationNoteLink, type NavigationNoteActivationEvent } from './NavigationNoteLink';
 import { InlineRenameInput, type InlineRenameControl } from './InlineRenameInput';
 
 interface PropertyTreeItemProps {
@@ -41,6 +42,9 @@ interface PropertyTreeItemProps {
     isSelected: boolean;
     onToggle: () => void;
     onClick: (event: React.MouseEvent) => void;
+    hasPropertyNote?: boolean;
+    onNameClick?: (event: NavigationNoteActivationEvent) => void;
+    onNameMouseDown?: (event: React.MouseEvent<HTMLSpanElement>) => void;
     onToggleAllSiblings?: () => void;
     countInfo?: NoteCountInfo;
     showFileCount: boolean;
@@ -65,6 +69,9 @@ export const PropertyTreeItem = React.memo(
             isSelected,
             onToggle,
             onClick,
+            hasPropertyNote,
+            onNameClick,
+            onNameMouseDown,
             onToggleAllSiblings,
             countInfo,
             showFileCount,
@@ -141,11 +148,12 @@ export const PropertyTreeItem = React.memo(
 
         const propertyNameClassName = useMemo(() => {
             const classes = ['nn-navitem-name'];
+            if (hasPropertyNote) classes.push('nn-has-folder-note');
             if (applyColorToName) {
                 classes.push('nn-has-custom-color');
             }
             return classes.join(' ');
-        }, [applyColorToName]);
+        }, [applyColorToName, hasPropertyNote]);
 
         const contentClassName = useMemo(() => buildSearchMatchContentClass(['nn-navitem-content'], searchMatch), [searchMatch]);
 
@@ -268,6 +276,21 @@ export const PropertyTreeItem = React.memo(
                     {settings.showPropertyIcons && <span className="nn-navitem-icon" ref={iconRef} style={color ? { color } : undefined} />}
                     {inlineRename ? (
                         <InlineRenameInput {...inlineRename} className="nn-navitem-inline-rename" />
+                    ) : hasPropertyNote ? (
+                        <NavigationNoteLink
+                            className={propertyNameClassName}
+                            style={applyColorToName ? { color } : undefined}
+                            onActivate={event => {
+                                event.stopPropagation();
+                                onNameClick?.(event);
+                            }}
+                            onMouseDown={event => {
+                                event.stopPropagation();
+                                onNameMouseDown?.(event);
+                            }}
+                        >
+                            {propertyNode.name}
+                        </NavigationNoteLink>
                     ) : (
                         <span className={propertyNameClassName} style={applyColorToName ? { color } : undefined}>
                             {propertyNode.name}

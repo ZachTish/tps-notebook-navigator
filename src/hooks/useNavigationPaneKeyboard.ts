@@ -1,3 +1,4 @@
+import { getPropertyNote, openPropertyNoteFile, revealPropertyNoteInNavigator } from '../utils/propertyNotes';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -433,6 +434,40 @@ export function useNavigationPaneKeyboard({
                             context: openContext,
                             active: false,
                             openInRightSidebar: tagNoteFile => plugin.openFolderNoteInRightSidebar(tagNoteFile)
+                        })
+                    );
+                    return;
+                }
+            }
+
+            if (
+                isEnterKey(e) &&
+                settings.enableFolderNotes &&
+                settings.enableFolderNoteLinks &&
+                selectionState.selectionType === ItemType.PROPERTY &&
+                selectionState.selectedProperty
+            ) {
+                const nodeId = selectionState.selectedProperty;
+                const propertyNote = getPropertyNote(app, nodeId);
+                if (propertyNote) {
+                    e.preventDefault();
+
+                    const modifierAction = resolveKeyboardEnterAction(e, settings);
+                    if (modifierAction === 'rename') {
+                        onStartRename?.();
+                        return;
+                    }
+
+                    const openContext = modifierAction ?? resolveFolderNoteDefaultOpenContext(settings.folderNoteOpenLocation);
+                    revealPropertyNoteInNavigator(selectionDispatch, propertyNote, nodeId);
+                    runAsyncAction(() =>
+                        openPropertyNoteFile({
+                            app,
+                            commandQueue,
+                            propertyNote,
+                            context: openContext,
+                            active: false,
+                            openInRightSidebar: propertyNoteFile => plugin.openFolderNoteInRightSidebar(propertyNoteFile)
                         })
                     );
                     return;

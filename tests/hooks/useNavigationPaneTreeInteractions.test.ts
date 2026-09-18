@@ -475,6 +475,57 @@ describe('useNavigationPaneTreeInteractions', () => {
         expect(harness.selectionDispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_SELECTED_TAG' }));
     });
 
+    it.each(['key', 'value'] as const)('opens a property %s note and preserves ordinary row selection', kind => {
+        const app = new App();
+        const openFile = vi.fn(async () => undefined);
+        Object.assign(app, { workspace: { getLeaf: vi.fn(() => ({ openFile })) } });
+        const note = addTagNote(app, kind === 'key' ? 'Topics/Status.md' : 'Topics/xyz.md');
+        const node = kind === 'key' ? createPropertyKeyNode('status', 'Status', []) : createPropertyValueNode('project', 'xyz', 'xyz', []);
+        const harness = renderTreeInteractionHarness({
+            app,
+            settings: { ...DEFAULT_SETTINGS, enableFolderNotes: true, enableFolderNoteLinks: true }
+        });
+        harness.result.handlePropertyNameClick(node);
+        expect(harness.selectionDispatch).toHaveBeenCalledWith({
+            type: 'REVEAL_FILE',
+            file: note,
+            targetProperty: node.id,
+            source: 'manual'
+        });
+        expect(harness.onResetSearchForNavigation).toHaveBeenCalledOnce();
+        harness.selectionDispatch.mockClear();
+        harness.result.handlePropertyClick(node);
+        expect(harness.selectionDispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_SELECTED_PROPERTY', nodeId: node.id }));
+        expect(harness.selectionDispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'REVEAL_FILE' }));
+    });
+
+    it('opens property notes with middle-click and falls back to filtering when links are disabled or ambiguous', () => {
+        const app = new App();
+        Object.assign(app, { workspace: { getLeaf: vi.fn(() => ({ openFile: vi.fn(async () => undefined) })) } });
+        const note = addTagNote(app, 'Topics/xyz.md');
+        const node = createPropertyValueNode('project', 'xyz', 'xyz', []);
+        const harness = renderTreeInteractionHarness({
+            app,
+            settings: { ...DEFAULT_SETTINGS, enableFolderNotes: true, enableFolderNoteLinks: true }
+        });
+        const preventDefault = vi.fn();
+        const event = { button: 1, preventDefault, stopPropagation: vi.fn() } as unknown as React.MouseEvent<HTMLSpanElement>;
+        harness.result.handlePropertyNameMouseDown(node, event);
+        expect(preventDefault).toHaveBeenCalledOnce();
+        expect(harness.selectionDispatch).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'REVEAL_FILE', file: note, targetProperty: node.id })
+        );
+        addTagNote(app, 'Duplicate/XYZ.md');
+        harness.selectionDispatch.mockClear();
+        harness.result.handlePropertyNameClick(node);
+        expect(harness.selectionDispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'REVEAL_FILE' }));
+        const disabled = renderTreeInteractionHarness({ app, settings: { ...DEFAULT_SETTINGS, enableFolderNotes: false } });
+        disabled.result.handlePropertyNameClick(node);
+        expect(disabled.selectionDispatch).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'SET_SELECTED_PROPERTY', nodeId: node.id })
+        );
+    });
+
     it('preserves search for modifier-added tag and file-backed Type facets', () => {
         const previousIsMobile = Platform.isMobile;
         const previousIsTablet = Platform.isTablet;

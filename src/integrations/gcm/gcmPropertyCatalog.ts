@@ -5,8 +5,9 @@ export function mergeGcmPropertyKeys(existing: VaultProfilePropertyKey[], catalo
     if (!Array.isArray(catalog)) return existing;
     const keys = new Set(existing.map(entry => entry.key.trim().toLowerCase()));
     const additions: VaultProfilePropertyKey[] = [];
-    for (const value of catalog) {
-        if (!value || typeof value.key !== 'string') continue;
+    const entries: unknown[] = catalog;
+    for (const value of entries) {
+        if (!value || typeof value !== 'object' || !('key' in value) || typeof value.key !== 'string') continue;
         const key = value.key.trim();
         if (!key || keys.has(key.toLowerCase())) continue;
         keys.add(key.toLowerCase());

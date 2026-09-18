@@ -106,6 +106,16 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '6.2.0',
+        date: '2026-09-18',
+        new: [
+            'Property names and values now link to a unique Markdown note with the same filename, without requiring frontmatter on that note.'
+        ],
+        improved: [
+            'Property note links work in the tree, shortcuts, list title, context menu, and keyboard navigation, using the existing folder/tag note controls and opening destination.'
+        ]
+    },
+    {
         version: '5.25.0',
         date: '2026-09-03',
         new: [

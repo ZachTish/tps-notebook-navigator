@@ -1,3 +1,4 @@
+import { resolvePropertyNoteFromIndex } from '../../utils/propertyNotes';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -375,6 +376,8 @@ export function NavigationPaneShortcutRow({ item, context, adjacentFilledClassNa
         case NavigationPaneItemType.SHORTCUT_PROPERTY: {
             const isMissing = Boolean(item.isMissing);
             const propertyNodeId = item.propertyNodeId;
+            const propertyNote =
+                !isMissing && context.propertyNoteIndex ? resolvePropertyNoteFromIndex(context.propertyNoteIndex, propertyNodeId) : null;
             const propertyCountInfo =
                 !isMissing && shortcutUiState.shouldShowShortcutCounts ? shortcuts.getPropertyShortcutCount(propertyNodeId) : undefined;
             const propertyAlias = isPropertyShortcut(item.shortcut) ? item.shortcut.alias : undefined;
@@ -396,6 +399,13 @@ export function NavigationPaneShortcutRow({ item, context, adjacentFilledClassNa
                 forceShowCount: shortcutUiState.shouldShowShortcutCounts,
                 isDisabled: isMissing,
                 isMissing,
+                hasFolderNote: Boolean(propertyNote),
+                onLabelClick: propertyNote
+                    ? (event: NavigationNoteActivationEvent) => shortcuts.handleShortcutPropertyNoteClick(propertyNodeId, item.key, event)
+                    : undefined,
+                onLabelMouseDown: propertyNote
+                    ? (event: React.MouseEvent<HTMLSpanElement>) => shortcuts.handleShortcutPropertyNoteMouseDown(propertyNodeId, event)
+                    : undefined,
                 onClick: () => {
                     if (isMissing) {
                         return;

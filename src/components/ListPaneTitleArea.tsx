@@ -1,3 +1,10 @@
+import {
+    getPropertyNote,
+    usePropertyNoteIndex,
+    resolvePropertyNoteFromIndex,
+    openPropertyNoteFile,
+    revealPropertyNoteInNavigator
+} from '../utils/propertyNotes';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -82,6 +89,14 @@ export const ListPaneTitleArea = React.memo(function ListPaneTitleArea({ desktop
 
         return resolveTagNoteFromIndex(tagNoteIndex, selectedTag, selectedTagDisplayPath).file;
     }, [selectedTag, selectedTagDisplayPath, tagNoteIndex]);
+
+    const selectedProperty = selectionState.selectionType === ItemType.PROPERTY ? selectionState.selectedProperty : null;
+    const propertyNoteIndex = usePropertyNoteIndex(
+        app,
+        Boolean(selectedProperty && settings.enableFolderNotes && settings.enableFolderNoteLinks)
+    );
+    const selectedPropertyNote =
+        selectedProperty && propertyNoteIndex ? resolvePropertyNoteFromIndex(propertyNoteIndex, selectedProperty) : null;
 
     const handleFolderNoteClick = useCallback(
         (event: NavigationNoteActivationEvent) => {
@@ -195,9 +210,61 @@ export const ListPaneTitleArea = React.memo(function ListPaneTitleArea({ desktop
         [app, commandQueue, selectedTag, selectedTagDisplayPath, selectionDispatch]
     );
 
-    const selectedNavigationNote = selectedFolderNote ?? selectedTagNote;
-    const handleNavigationNoteClick = selectedFolderNote ? handleFolderNoteClick : handleTagNoteClick;
-    const handleNavigationNoteMouseDown = selectedFolderNote ? handleFolderNoteMouseDown : handleTagNoteMouseDown;
+    const handlePropertyNoteClick = useCallback(
+        (event: NavigationNoteActivationEvent) => {
+            if (!selectedProperty) {
+                return;
+            }
+            const currentPropertyNote = getPropertyNote(app, selectedProperty);
+            if (!currentPropertyNote) {
+                return;
+            }
+
+            event.stopPropagation();
+            const openContext = resolveFolderNoteClickOpenContext(event, settings.folderNoteOpenLocation, settings.multiSelectModifier);
+            revealPropertyNoteInNavigator(selectionDispatch, currentPropertyNote, selectedProperty);
+            runAsyncAction(() =>
+                openPropertyNoteFile({
+                    app,
+                    commandQueue,
+                    propertyNote: currentPropertyNote,
+                    context: openContext,
+                    openInRightSidebar: propertyNote => plugin.openFolderNoteInRightSidebar(propertyNote)
+                })
+            );
+        },
+        [app, commandQueue, plugin, selectedProperty, selectionDispatch, settings.folderNoteOpenLocation, settings.multiSelectModifier]
+    );
+
+    const handlePropertyNoteMouseDown = useCallback(
+        (event: React.MouseEvent<HTMLSpanElement>) => {
+            if (event.button !== 1 || !selectedProperty) {
+                return;
+            }
+            const currentPropertyNote = getPropertyNote(app, selectedProperty);
+            if (!currentPropertyNote) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            revealPropertyNoteInNavigator(selectionDispatch, currentPropertyNote, selectedProperty);
+            runAsyncAction(() => openPropertyNoteFile({ app, commandQueue, propertyNote: currentPropertyNote, context: 'tab' }));
+        },
+        [app, commandQueue, selectedProperty, selectionDispatch]
+    );
+
+    const selectedNavigationNote = selectedFolderNote ?? selectedTagNote ?? selectedPropertyNote;
+    const handleNavigationNoteClick = selectedFolderNote
+        ? handleFolderNoteClick
+        : selectedTagNote
+          ? handleTagNoteClick
+          : handlePropertyNoteClick;
+    const handleNavigationNoteMouseDown = selectedFolderNote
+        ? handleFolderNoteMouseDown
+        : selectedTagNote
+          ? handleTagNoteMouseDown
+          : handlePropertyNoteMouseDown;
 
     return (
         <div className="nn-list-title-area">

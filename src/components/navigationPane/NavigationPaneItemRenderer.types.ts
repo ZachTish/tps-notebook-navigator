@@ -1,3 +1,4 @@
+import type { PropertyNoteIndex } from '../../utils/propertyNotes';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -69,6 +70,7 @@ export interface NavigationPaneRowContext {
     vaultChangeVersion: number;
     /** One transient all-vault tag-note scan shared by every rendered tag row. */
     tagNoteIndex?: TagNoteIndex;
+    propertyNoteIndex?: PropertyNoteIndex;
     fileVisibility: FileVisibility;
     hiddenFolders: string[];
     descendantExcludedFolders: string[];
