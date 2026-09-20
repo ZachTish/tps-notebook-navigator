@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: [6.2.0](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.2.0) · Obsidian 1.11.0+ · Desktop and mobile.
+Current release: [6.2.1](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.2.1) · Obsidian 1.11.0+ · Desktop and mobile.
 
 ## Install with BRAT
 
@@ -20,6 +20,14 @@ Upstream-settings import is an explicit, one-way, read-only import. It does not 
 - New keys appear in Properties navigation and file menus without adding every value to list rows. Removing a GCM field does not erase Navigator preferences or note data.
 - Property sort/group changes retain the active editor's position while typing and commit on save/blur. Presentation refreshes preserve authored note fields.
 - File types, folders, tags, properties, shortcuts, and views use their existing Navigator settings. Local appearance preferences retain their per-device persistence controls.
+
+## Selection filtering (6.2.1)
+
+**Filter tags by selection** and **Filter properties by selection** now both follow the selected folder, tag, or property key/value. Previously each switch ignored its own section, silently restoring the full tree when selecting a tag or property there. Enabled trees contain only tags, property keys, and values occurring on notes in that selection. Existing visibility and descendant rules still apply. Empty selections stay empty; disabling either switch restores that section independently. Global ordering is retained while the displayed tree is filtered.
+
+These controls follow navigation selection, not the active note or search text. Tags and Properties roots represent the full visible note collection. Types retain their existing unscoped behavior. No settings keys, defaults, stored state, API, or layout changes are required; Obsidian 1.11.0+ remains supported. This is a backward-compatible patch to the existing filtering controls.
+
+Validation: all 3,067 tests in 269 files passed, including folder, tag, property-key/value and empty scopes, matching values and tag memberships, global ordering, and disabled filters. Full ESLint passed with 24 existing advisory warnings; TypeScript, namespace, artifact, and operational-identity checks passed. A separate production-mode build deployed to the test vault and the plugin was explicitly reloaded. In Obsidian 1.14.2, synthetic notes confirmed selected-tag and selected-property filtering, scoped counts, and independent off/on commands restoring the unrelated tag/closed value. QA settings were restored and fixtures archived. The initial fresh-worktree test run lacked generated main.js; rebuilding and rerunning the full suite resolved both artifact-test failures. Final hashes are in the public release notes. iOS hardware is not tested; production installation remains the user's BRAT pull.
 
 ## Property notes (6.2.0)
 

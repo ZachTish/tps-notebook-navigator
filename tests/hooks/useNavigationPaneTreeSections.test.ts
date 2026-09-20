@@ -32,6 +32,7 @@ import {
     useNavigationPaneTreeSections,
     type NavigationPaneTreeSectionsResult
 } from '../../src/hooks/navigationPane/data/useNavigationPaneTreeSections';
+import type { NavigationSelectionScope } from '../../src/utils/selectionUtils';
 import { createTestTFile } from '../utils/createTestTFile';
 
 const dbFileDataByPath = new Map<string, { tags: string[] | null; properties: PropertyItem[] | null }>();
@@ -188,6 +189,113 @@ function createSourceState(params?: {
 }
 
 describe('useNavigationPaneTreeSections', () => {
+    it.each(['folder', 'tag', 'property-key', 'property-value', 'empty-tag', 'empty-property'] as const)(
+        'scopes both trees to a %s selection and restores the global trees when disabled',
+        selection => {
+            dbFileDataByPath.clear();
+            const selectedFile = createTestTFile('notes/selected/one.md');
+            const otherFile = createTestTFile('notes/other.md');
+            const folder = createFolder('notes/selected', [selectedFile]);
+            Reflect.set(selectedFile, 'parent', folder);
+            dbFileDataByPath.set(selectedFile.path, {
+                tags: ['#alpha', '#shared'],
+                properties: [
+                    { fieldKey: 'project', value: 'One', valueKind: 'string' },
+                    { fieldKey: 'status', value: 'Open', valueKind: 'string' }
+                ]
+            });
+            dbFileDataByPath.set(otherFile.path, {
+                tags: ['#beta', '#shared'],
+                properties: [{ fieldKey: 'status', value: 'Closed', valueKind: 'string' }]
+            });
+            const app = new App();
+            app.vault.getFiles = () => [selectedFile, otherFile];
+            const globalTags = new Map(['alpha', 'beta', 'shared'].map(tag => [tag, createTagNode(tag, tag)]));
+            const globalProperties = new Map([
+                ['project', createPropertyKeyNode('project', 'project', [selectedFile.path])],
+                [
+                    'status',
+                    createPropertyKeyNode(
+                        'status',
+                        'status',
+                        [selectedFile.path, otherFile.path],
+                        [
+                            createPropertyValueNode('status', 'open', 'Open', [selectedFile.path]),
+                            createPropertyValueNode('status', 'closed', 'Closed', [otherFile.path])
+                        ]
+                    )
+                ]
+            ]);
+            const selectionScope: NavigationSelectionScope =
+                selection === 'folder'
+                    ? { selectionType: ItemType.FOLDER, selectedFolder: folder }
+                    : selection === 'tag' || selection === 'empty-tag'
+                      ? { selectionType: ItemType.TAG, selectedTag: selection === 'tag' ? 'alpha' : 'missing' }
+                      : {
+                            selectionType: ItemType.PROPERTY,
+                            selectedProperty:
+                                selection === 'property-key'
+                                    ? buildPropertyKeyNodeId('project')
+                                    : buildPropertyValueNodeId('project', selection === 'empty-property' ? 'missing' : 'one')
+                        };
+            const settings = createSettings({
+                showProperties: true,
+                showAllPropertiesFolder: false,
+                scopePropertiesToCurrentContext: true,
+                vaultProfiles: DEFAULT_SETTINGS.vaultProfiles.map(profile => ({
+                    ...profile,
+                    propertyKeys: ['project', 'status'].map(key => ({
+                        key,
+                        showInNavigation: true,
+                        showInList: false,
+                        showInFileMenu: true
+                    }))
+                }))
+            });
+            let captured: NavigationPaneTreeSectionsResult | undefined;
+            function Harness() {
+                captured = useNavigationPaneTreeSections({
+                    app,
+                    settings,
+                    expansionState: {
+                        expandedFolders: new Set(),
+                        expandedTags: new Set(),
+                        expandedProperties: new Set([buildPropertyKeyNodeId('status')]),
+                        expandedVirtualFolders: new Set()
+                    },
+                    showHiddenItems: false,
+                    includeDescendantNotes: true,
+                    sourceState: createSourceState({
+                        visibleTagTree: globalTags,
+                        propertyTree: globalProperties,
+                        visiblePropertyNavigationKeySet: new Set(['project', 'status'])
+                    }),
+                    selectionScope,
+                    tagTreeService: null,
+                    propertyTreeService: null
+                });
+                return null;
+            }
+            renderToStaticMarkup(React.createElement(Harness));
+            const empty = selection.startsWith('empty-');
+            expect(Array.from(captured!.renderTagTree.keys())).toEqual(empty ? [] : ['alpha', 'shared']);
+            expect(Array.from(captured!.renderPropertyTree.keys())).toEqual(empty ? [] : ['project', 'status']);
+            if (!empty) {
+                expect(Array.from(captured!.renderPropertyTree.get('status')!.children.values()).map(node => node.valuePath)).toEqual([
+                    'open'
+                ]);
+                expect(Array.from(captured!.renderTagTree.get('shared')!.notesWithTag)).toEqual([selectedFile.path]);
+            }
+            expect(Array.from(captured!.rootOrderingTagTree.keys())).toEqual(['alpha', 'beta', 'shared']);
+            expect(captured!.rootOrderingPropertyTree.size).toBe(2);
+            settings.scopeTagsToCurrentContext = false;
+            settings.scopePropertiesToCurrentContext = false;
+            renderToStaticMarkup(React.createElement(Harness));
+            expect(captured!.renderTagTree).toBe(globalTags);
+            expect(captured!.renderPropertyTree.get('status')!.children.size).toBe(2);
+        }
+    );
+
     it('renders the top-level Tags row as the aggregate collection and delegates its count to the shared count map', () => {
         dbFileDataByPath.clear();
 

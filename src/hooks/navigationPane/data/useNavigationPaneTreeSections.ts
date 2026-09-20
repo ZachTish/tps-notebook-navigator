@@ -250,27 +250,14 @@ export function useNavigationPaneTreeSections({
         sourceState.rootFolders
     ]);
 
-    const isScopedTagContextActive = useMemo(() => {
-        if (!settings.showTags || !settings.scopeTagsToCurrentContext) {
-            return false;
-        }
-
-        if (selectionScope.selectionType === ItemType.FOLDER) {
-            return Boolean(selectionScope.selectedFolder);
-        }
-
-        if (selectionScope.selectionType === ItemType.PROPERTY) {
-            return Boolean(selectionScope.selectedProperty);
-        }
-
-        return false;
-    }, [
-        selectionScope.selectedFolder,
-        selectionScope.selectedProperty,
-        selectionScope.selectionType,
-        settings.scopeTagsToCurrentContext,
-        settings.showTags
-    ]);
+    // Both trees describe notes in the same navigation scope, including selections
+    // in their own section. Falling back to the global tree here makes a checked
+    // filter appear to stop working as soon as a tag/property is selected.
+    const hasScopedSelection =
+        (selectionScope.selectionType === ItemType.FOLDER && Boolean(selectionScope.selectedFolder)) ||
+        (selectionScope.selectionType === ItemType.TAG && Boolean(selectionScope.selectedTag)) ||
+        (selectionScope.selectionType === ItemType.PROPERTY && Boolean(selectionScope.selectedProperty));
+    const isScopedTagContextActive = settings.showTags && settings.scopeTagsToCurrentContext && hasScopedSelection;
     const scopedTagPropertySelectionVersion = selectionScope.selectionType === ItemType.PROPERTY ? sourceState.propertyDataVersion : 0;
     const scopedTagPropertyTree = selectionScope.selectionType === ItemType.PROPERTY ? sourceState.propertyTree : null;
 
@@ -632,27 +619,7 @@ export function useNavigationPaneTreeSections({
         return visibleTree;
     }, [settings.showProperties, sourceState.propertyTree, sourceState.visiblePropertyNavigationKeySet]);
 
-    const isScopedPropertyContextActive = useMemo(() => {
-        if (!settings.showProperties || !settings.scopePropertiesToCurrentContext) {
-            return false;
-        }
-
-        if (selectionScope.selectionType === ItemType.FOLDER) {
-            return Boolean(selectionScope.selectedFolder);
-        }
-
-        if (selectionScope.selectionType === ItemType.TAG) {
-            return Boolean(selectionScope.selectedTag);
-        }
-
-        return false;
-    }, [
-        selectionScope.selectedFolder,
-        selectionScope.selectedTag,
-        selectionScope.selectionType,
-        settings.scopePropertiesToCurrentContext,
-        settings.showProperties
-    ]);
+    const isScopedPropertyContextActive = settings.showProperties && settings.scopePropertiesToCurrentContext && hasScopedSelection;
     const scopedPropertyTagSelectionVersion =
         selectionScope.selectionType === ItemType.TAG ||
         (selectionScope.selectionType === ItemType.FOLDER && !showHiddenItems && sourceState.hiddenFileTags.length > 0)

@@ -169,8 +169,10 @@ the navigation pane, a tag pill, or a clickable property pill whose key is shown
 search. Newly added filters use AND; Cmd/Ctrl+Shift-click requests OR. When **Multi-select modifier** is **Option/Alt
 click**, use Option/Alt and Option/Alt+Shift instead. Clicking the same positive filter again removes it. A negated
 filter entered manually, such as `-#project`, is not removed by clicking the corresponding tag or property. **Filter
-tags by selection** limits tags to notes under the selected folder or property. **Filter properties by selection**
-limits properties to notes under the selected folder or tag.
+tags by selection** and **Filter properties by selection** limit their trees to notes matching the selected
+folder, tag, or property (key or value), including selections in the same section. The switches operate independently.
+They follow the navigation selection, not the active note or the search field; selecting the Tags or Properties
+root shows the full visible note collection.
 
 AND and OR clicks apply to searches containing only tag and property filters. If a query also contains a display name,
 date, task, folder, or extension filter, newly added clicked filters use implicit AND.

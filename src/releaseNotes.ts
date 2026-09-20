@@ -106,6 +106,13 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '6.2.1',
+        date: '2026-09-20',
+        fixed: [
+            'Filter tags/properties by selection now also follows selections in the same section: selecting a tag narrows tags, and selecting a property key or value narrows properties and values.'
+        ]
+    },
+    {
         version: '6.2.0',
         date: '2026-09-18',
         new: [

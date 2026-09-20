@@ -2374,7 +2374,7 @@ export const STRINGS_EN = {
             },
             filterTagsBySelection: {
                 name: 'Filter tags by selection',
-                desc: 'Only show tags that appear in notes within the selected folder or property.'
+                desc: 'Only show tags that appear in notes matching the selected folder, tag, or property.'
             },
             keepEmptyTagsProperty: {
                 name: 'Retain tags property after removing last tag',
@@ -2412,7 +2412,7 @@ export const STRINGS_EN = {
             },
             filterPropertiesBySelection: {
                 name: 'Filter properties by selection',
-                desc: 'Only show properties that appear in notes within the selected folder or tag.'
+                desc: 'Only show properties and values that appear in notes matching the selected folder, tag, or property.'
             },
             hideTags: {
                 name: 'Hide tags (vault profile)',
