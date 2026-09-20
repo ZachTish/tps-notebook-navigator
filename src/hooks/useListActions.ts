@@ -1,3 +1,4 @@
+import { legacyNewNoteTabPreference } from '../utils/tpsNoteOpening';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -726,7 +727,11 @@ export function useListActions({
 
             const manualSortContext = getManualSortNewFileContext?.() ?? null;
             if (selectionState.selectedFolder) {
-                await fileSystemOps.createNewFile(selectionState.selectedFolder, settings.createNewNotesInNewTab, manualSortContext);
+                await fileSystemOps.createNewFile(
+                    selectionState.selectedFolder,
+                    legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab),
+                    manualSortContext
+                );
                 return;
             }
 
@@ -735,7 +740,7 @@ export function useListActions({
                 await fileSystemOps.createNewFileForTag(
                     selectionState.selectedTag,
                     sourcePath,
-                    settings.createNewNotesInNewTab,
+                    legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab),
                     manualSortContext
                 );
                 return;
@@ -746,7 +751,7 @@ export function useListActions({
                 await fileSystemOps.createNewFileForProperty(
                     selectionState.selectedProperty,
                     sourcePath,
-                    settings.createNewNotesInNewTab,
+                    legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab),
                     manualSortContext
                 );
             }

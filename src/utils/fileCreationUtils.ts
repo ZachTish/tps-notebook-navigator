@@ -1,3 +1,4 @@
+import { presentCreatedNote } from './tpsNoteOpening';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -157,7 +158,7 @@ export async function createFileWithOptions(parent: TFolder, app: App, options: 
         }
 
         // Open the file if requested
-        if (openFile) {
+        if (openFile && !(await presentCreatedNote(app, file, openInNewTab, triggerRename))) {
             const leaf = app.workspace.getLeaf(openInNewTab);
             const openState = extension === 'md' ? { state: { mode: 'source' }, active: true } : undefined;
             await leaf.openFile(file, openState);

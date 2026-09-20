@@ -1,3 +1,4 @@
+import { getTpsNoteOpeningApi } from '../../utils/tpsNoteOpening';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -97,7 +98,20 @@ function createBehaviorDefinitionGroup(context: SettingsTabContext): SettingDefi
     const { plugin } = context;
 
     return createGroupDefinition(undefined, [
+        createRenderDefinition({
+            name: 'After creating a note',
+            visible: () => Boolean(getTpsNoteOpeningApi(plugin.app)?.openSettings),
+            render: setting => {
+                setting
+                    .setName('After creating a note')
+                    .setDesc('The global context menu plugin controls editable preview, open, or stay for newly created notes.')
+                    .addButton(button =>
+                        button.setButtonText('Configure note opening').onClick(() => getTpsNoteOpeningApi(plugin.app)?.openSettings?.())
+                    );
+            }
+        }),
         createToggleDefinition('createNewNotesInNewTab', {
+            visible: () => !getTpsNoteOpeningApi(plugin.app),
             name: strings.settings.items.openNewNotesInNewTab.name,
             desc: strings.settings.items.openNewNotesInNewTab.desc
         }),

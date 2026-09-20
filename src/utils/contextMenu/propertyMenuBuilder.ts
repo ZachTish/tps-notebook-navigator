@@ -1,3 +1,4 @@
+import { legacyNewNoteTabPreference } from '../tpsNoteOpening';
 import { getPropertyNote, openPropertyNoteFile, revealPropertyNoteInNavigator } from '../propertyNotes';
 import { resolveFolderNoteDefaultOpenContext } from '../keyboardOpenContext';
 /*
@@ -203,7 +204,7 @@ export function buildPropertyMenu(params: PropertyMenuBuilderParams): void {
             const createdFile = await fileSystemOps.createNewFileForProperty(
                 normalizedNodeId,
                 sourcePath,
-                settings.createNewNotesInNewTab,
+                legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab),
                 manualSortContext
             );
             handleFileCreation(createdFile);

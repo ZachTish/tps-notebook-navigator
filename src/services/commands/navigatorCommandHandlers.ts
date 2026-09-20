@@ -1,3 +1,4 @@
+import { legacyNewNoteTabPreference } from '../../utils/tpsNoteOpening';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -1094,7 +1095,7 @@ export default function registerNavigatorCommands(plugin: NotebookNavigatorPlugi
             runAsyncAction(async () => {
                 const view = await ensureNavigatorOpen(plugin);
                 if (view) {
-                    await view.createNoteInSelectedFolder(plugin.settings.createNewNotesInNewTab);
+                    await view.createNoteInSelectedFolder(legacyNewNoteTabPreference(plugin.app, plugin.settings.createNewNotesInNewTab));
                 }
             });
         }

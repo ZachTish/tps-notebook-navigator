@@ -1,3 +1,4 @@
+import { legacyNewNoteTabPreference } from '../tpsNoteOpening';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -93,7 +94,11 @@ export function buildFolderCreationMenu(params: FolderMenuBuilderParams, folderD
             const manualSortContext = await fileSystemOps.getManualSortNewFileContextForTarget('folder', folder.path, {
                 waitForSelectionUpdate: selectionChanged
             });
-            const createdFile = await fileSystemOps.createNewFile(folder, params.settings.createNewNotesInNewTab, manualSortContext);
+            const createdFile = await fileSystemOps.createNewFile(
+                folder,
+                legacyNewNoteTabPreference(app, params.settings.createNewNotesInNewTab),
+                manualSortContext
+            );
             handleFileCreation(createdFile);
         });
     });

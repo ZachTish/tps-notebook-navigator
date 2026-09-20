@@ -1,3 +1,4 @@
+import { presentCreatedNote } from '../utils/tpsNoteOpening';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -844,12 +845,14 @@ export class FileSystemOperations {
                 deferCompactionPrompt: true
             });
 
-            const leaf = this.app.workspace.getLeaf(openInNewTab);
-            await leaf.openFile(file, { state: { mode: 'source' }, active: true });
+            if (!(await presentCreatedNote(this.app, file, openInNewTab))) {
+                const leaf = this.app.workspace.getLeaf(openInNewTab);
+                await leaf.openFile(file, { state: { mode: 'source' }, active: true });
 
-            window.setTimeout(() => {
-                executeCommand(this.app, OBSIDIAN_COMMANDS.EDIT_FILE_TITLE);
-            }, TIMEOUTS.FILE_OPERATION_DELAY);
+                window.setTimeout(() => {
+                    executeCommand(this.app, OBSIDIAN_COMMANDS.EDIT_FILE_TITLE);
+                }, TIMEOUTS.FILE_OPERATION_DELAY);
+            }
             scheduleDeferredManualSortPrompt?.();
 
             return file;
@@ -909,7 +912,7 @@ export class FileSystemOperations {
             const source = `---\ntags:\n  - ${JSON.stringify(resolvedTagPath)}\n---\n`;
             file = await this.app.vault.create(targetPath, source);
 
-            if (options.openAfterCreate !== false) {
+            if (options.openAfterCreate !== false && !(await presentCreatedNote(this.app, file, options.openInNewTab ?? false, false))) {
                 const leaf = this.app.workspace.getLeaf(options.openInNewTab ?? false);
                 await leaf.openFile(file, { state: { mode: 'source' }, active: true });
             }
@@ -987,12 +990,14 @@ export class FileSystemOperations {
                 deferCompactionPrompt: true
             });
 
-            const leaf = this.app.workspace.getLeaf(openInNewTab);
-            await leaf.openFile(file, { state: { mode: 'source' }, active: true });
+            if (!(await presentCreatedNote(this.app, file, openInNewTab))) {
+                const leaf = this.app.workspace.getLeaf(openInNewTab);
+                await leaf.openFile(file, { state: { mode: 'source' }, active: true });
 
-            window.setTimeout(() => {
-                executeCommand(this.app, OBSIDIAN_COMMANDS.EDIT_FILE_TITLE);
-            }, TIMEOUTS.FILE_OPERATION_DELAY);
+                window.setTimeout(() => {
+                    executeCommand(this.app, OBSIDIAN_COMMANDS.EDIT_FILE_TITLE);
+                }, TIMEOUTS.FILE_OPERATION_DELAY);
+            }
             scheduleDeferredManualSortPrompt?.();
 
             return file;

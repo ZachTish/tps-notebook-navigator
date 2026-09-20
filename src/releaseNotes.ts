@@ -106,6 +106,14 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '6.3.0',
+        date: '2026-09-20',
+        new: ['New notes can follow the shared editable preview, open, or stay preference in TPS Global Context Menu.'],
+        improved: [
+            'The new-note settings include a direct handoff to the shared owner. Explicit new-tab actions and behavior without GCM are preserved.'
+        ]
+    },
+    {
         version: '6.2.1',
         date: '2026-09-20',
         fixed: [

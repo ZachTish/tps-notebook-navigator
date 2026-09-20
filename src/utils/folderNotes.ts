@@ -1,3 +1,4 @@
+import { presentCreatedNote } from './tpsNoteOpening';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -272,15 +273,17 @@ export async function createFolderNote(
             file = await app.vault.create(notePath, templateContent ?? createDatabaseContent());
         }
 
-        await openFolderNoteFile({
-            app,
-            commandQueue: commandQueue ?? null,
-            folder,
-            folderNote: file,
-            context: options?.openContext ?? null,
-            active: true,
-            openInRightSidebar: options?.openInRightSidebar
-        });
+        if (options?.openContext || !(await presentCreatedNote(app, file, false, false))) {
+            await openFolderNoteFile({
+                app,
+                commandQueue: commandQueue ?? null,
+                folder,
+                folderNote: file,
+                context: options?.openContext ?? null,
+                active: true,
+                openInRightSidebar: options?.openInRightSidebar
+            });
+        }
         return file;
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

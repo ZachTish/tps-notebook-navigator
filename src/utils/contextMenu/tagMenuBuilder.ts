@@ -1,3 +1,4 @@
+import { legacyNewNoteTabPreference, presentCreatedNote } from '../tpsNoteOpening';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -108,7 +109,7 @@ export function buildTagMenu(params: TagMenuBuilderParams): void {
                 const createdFile = await fileSystemOps.createNewFileForTag(
                     tagPath,
                     sourcePath,
-                    settings.createNewNotesInNewTab,
+                    legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab),
                     manualSortContext
                 );
                 handleFileCreation(createdFile);
@@ -143,7 +144,7 @@ export function buildTagMenu(params: TagMenuBuilderParams): void {
                     const sourcePath = selectionState.selectedFile?.path ?? app.workspace.getActiveFile()?.path ?? '';
                     const result = await fileSystemOps.createTagNote(tagPath, sourcePath, { openAfterCreate: false });
                     if (result.status === 'created') {
-                        await revealAndOpenTagNote(result.file);
+                        if (!(await presentCreatedNote(app, result.file, false, false))) await revealAndOpenTagNote(result.file);
                         return;
                     }
                     if (result.status === 'invalid') {
