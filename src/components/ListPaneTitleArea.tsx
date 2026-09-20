@@ -57,7 +57,8 @@ export const ListPaneTitleArea = React.memo(function ListPaneTitleArea({ desktop
     const selectedFolderFileVersion = useSelectedFolderFileVersion(
         app.vault,
         selectedFolder,
-        settings.enableFolderNotes && settings.enableFolderNoteLinks
+        settings.enableFolderNotes && settings.enableFolderNoteLinks,
+        { metadataCache: app.metadataCache }
     );
     // Resolves the note file that represents the selected folder.
     const selectedFolderNote = useMemo(() => {
@@ -67,11 +68,16 @@ export const ListPaneTitleArea = React.memo(function ListPaneTitleArea({ desktop
             return null;
         }
 
-        return getFolderNote(selectedFolder, {
-            enableFolderNotes: settings.enableFolderNotes,
-            folderNoteNamePattern: settings.folderNoteNamePattern
-        });
+        return getFolderNote(
+            selectedFolder,
+            {
+                enableFolderNotes: settings.enableFolderNotes,
+                folderNoteNamePattern: settings.folderNoteNamePattern
+            },
+            app.metadataCache
+        );
     }, [
+        app.metadataCache,
         selectedFolder,
         settings.enableFolderNotes,
         settings.enableFolderNoteLinks,

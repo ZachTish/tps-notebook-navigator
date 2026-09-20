@@ -1320,7 +1320,7 @@ export default function registerNavigatorCommands(plugin: NotebookNavigatorPlugi
                 return true;
             }
 
-            const folderNote = getFolderNote(selectedFolder, getFolderNoteDetectionSettings(plugin.settings));
+            const folderNote = getFolderNote(selectedFolder, getFolderNoteDetectionSettings(plugin.settings), plugin.app.metadataCache);
 
             if (!folderNote) {
                 showNotice(strings.fileSystem.errors.folderNoteNotFound, { variant: 'warning' });
@@ -1370,7 +1370,7 @@ export default function registerNavigatorCommands(plugin: NotebookNavigatorPlugi
                         return;
                     }
 
-                    if (!isFolderNote(file, parent, folderNoteSettings)) {
+                    if (!isFolderNote(file, parent, folderNoteSettings, plugin.app.metadataCache)) {
                         return;
                     }
 

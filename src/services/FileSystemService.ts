@@ -48,6 +48,7 @@ import { getCachedCommaSeparatedList } from '../utils/commaSeparatedListUtils';
 import { resolveFolderNoteName, shouldRenameFolderNoteWithFolderName } from '../utils/folderNoteName';
 import {
     getFolderNote,
+    getFolderNoteTitle,
     getFolderNoteDetectionSettings,
     isFolderNote,
     isSupportedFolderNoteExtension,
@@ -634,7 +635,7 @@ export class FileSystemOperations {
             return null;
         }
 
-        const folderNote = getFolderNote(folder, getFolderNoteDetectionSettings(settings));
+        const folderNote = getFolderNote(folder, getFolderNoteDetectionSettings(settings), this.app.metadataCache);
         if (!folderNote || folderNote.extension !== 'md') {
             return null;
         }
@@ -1205,7 +1206,7 @@ export class FileSystemOperations {
             let folderNote: TFile | null = null;
             let renamedFolderNoteFileName: string | null = null;
             if (folderNoteNamingSettings) {
-                folderNote = getFolderNote(folder, folderNoteNamingSettings);
+                folderNote = getFolderNote(folder, folderNoteNamingSettings, this.app.metadataCache);
             }
 
             if (folderNote && folderNoteNamingSettings) {
@@ -1228,9 +1229,10 @@ export class FileSystemOperations {
                 await this.app.fileManager.renameFile(folder, newFolderPath);
                 await this.folderPathSettingsSync.syncHiddenFolderPathChange(previousFolderPath, newFolderPath);
 
-                if (folderNote && renamedFolderNoteFileName !== null) {
+                if (folderNote && renamedFolderNoteFileName !== null && folderNoteNamingSettings) {
                     const newNotePath = buildPathInFolder(newFolderPath, renamedFolderNoteFileName);
                     await this.app.fileManager.renameFile(folderNote, newNotePath);
+                    await this.updateFolderNoteTitle(folderNote, resolveFolderNoteName(filteredName, folderNoteNamingSettings));
                 }
             };
 
@@ -1494,7 +1496,7 @@ export class FileSystemOperations {
 
         const detectionSettings = getFolderNoteDetectionSettings(settings);
 
-        if (isFolderNote(file, parent, detectionSettings)) {
+        if (isFolderNote(file, parent, detectionSettings, this.app.metadataCache)) {
             showNotice(strings.fileSystem.errors.folderNoteAlreadyLinked, { variant: 'warning' });
             return;
         }
@@ -1506,7 +1508,7 @@ export class FileSystemOperations {
             return;
         }
 
-        const existingFolderNote = getFolderNote(parent, detectionSettings);
+        const existingFolderNote = getFolderNote(parent, detectionSettings, this.app.metadataCache);
         if (existingFolderNote && existingFolderNote.path !== file.path) {
             showNotice(strings.fileSystem.errors.folderNoteAlreadyExists, { variant: 'warning' });
             return;
@@ -1520,6 +1522,15 @@ export class FileSystemOperations {
             if (!targetBaseName) {
                 return;
             }
+        }
+
+        if (getFolderNoteTitle(file, this.app.metadataCache)) {
+            try {
+                await this.updateFolderNoteTitle(file, targetBaseName);
+            } catch (error) {
+                this.notifyError(strings.fileSystem.errors.renameFile, error);
+            }
+            return;
         }
 
         const targetFileName = this.buildFolderNoteFileName(targetBaseName, file.extension, isExcalidraw);
@@ -1541,6 +1552,16 @@ export class FileSystemOperations {
         } catch (error) {
             this.notifyError(strings.fileSystem.errors.renameFile, error);
         }
+    }
+
+    private async updateFolderNoteTitle(file: TFile, title: string): Promise<void> {
+        if (file.extension !== 'md') return;
+        await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+            const key = findMatchingRecordKey(frontmatter, 'title');
+            if (key && typeof frontmatter[key] === 'string' && String(frontmatter[key]).trim()) {
+                frontmatter[key] = title;
+            }
+        });
     }
 
     /**
@@ -1565,7 +1586,7 @@ export class FileSystemOperations {
         const detectionSettings = getFolderNoteDetectionSettings(settings);
 
         // Check if file is already acting as a folder note
-        if (isFolderNote(file, parent, detectionSettings)) {
+        if (isFolderNote(file, parent, detectionSettings, this.app.metadataCache)) {
             showNotice(strings.fileSystem.errors.folderNoteAlreadyLinked, { variant: 'warning' });
             return;
         }
@@ -1579,7 +1600,7 @@ export class FileSystemOperations {
         }
 
         const isExcalidraw = isExcalidrawFile(file);
-        let folderName = file.basename;
+        let folderName = this.filterNameInputFinal(getFolderNoteTitle(file, this.app.metadataCache) ?? file.basename);
         if (isExcalidraw) {
             // Strip .excalidraw from the basename when deriving the folder name.
             folderName = stripExcalidrawSuffix(folderName);
@@ -1664,6 +1685,8 @@ export class FileSystemOperations {
                     }
                 }
             }
+
+            await this.updateFolderNoteTitle(movedFile, finalBaseName);
 
             // Attempt to open the folder note using command queue for proper context tracking
             const commandQueue = this.getCommandQueue();

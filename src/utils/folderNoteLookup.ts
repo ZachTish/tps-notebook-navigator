@@ -16,9 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { TFile, type TFolder, normalizePath } from 'obsidian';
+import { TFile, type TFolder, type MetadataCache, normalizePath } from 'obsidian';
 import { FOLDER_NOTE_TYPE_EXTENSIONS } from '../types/folderNote';
-import { EXCALIDRAW_BASENAME_SUFFIX, isExcalidrawFile, stripExcalidrawSuffix } from './fileNameUtils';
+import { containsUnresolvedTemplateExpression, EXCALIDRAW_BASENAME_SUFFIX, isExcalidrawFile, stripExcalidrawSuffix } from './fileNameUtils';
+import { casefold, findMatchingRecordKey } from './recordUtils';
 import { type FolderNoteNameSettings, resolveFolderNoteName } from './folderNoteName';
 
 // Lookup-only helpers used by startup services. Creation and opening behavior stays in folderNotes.ts.
@@ -38,6 +39,17 @@ export function getFolderNoteDetectionSettings(settings: FolderNoteDetectionSett
         enableFolderNotes: settings.enableFolderNotes,
         folderNoteNamePattern: settings.folderNoteNamePattern
     };
+}
+
+/** A valid authored title is identity; untitled/non-Markdown notes retain filename lookup. */
+export function getFolderNoteTitle(file: TFile, metadataCache?: Pick<MetadataCache, 'getFileCache'>): string | null {
+    if (file.extension !== 'md') return null;
+    const frontmatter = metadataCache?.getFileCache(file)?.frontmatter;
+    if (!frontmatter) return null;
+    const key = findMatchingRecordKey(frontmatter, 'title');
+    const value: unknown = key ? frontmatter[key] : undefined;
+    if (typeof value !== 'string' || !value.trim() || containsUnresolvedTemplateExpression(value)) return null;
+    return value.trim();
 }
 
 /** Set of file extensions that are valid for folder notes */
@@ -97,7 +109,20 @@ export function isSupportedFolderNoteExtension(extension: string): boolean {
  * @param settings - Settings for folder note detection
  * @returns The folder note file or null if not found
  */
-function getFolderNoteForExpectedName(folder: TFolder, expectedName: string): TFile | null {
+function getFolderNoteForExpectedName(
+    folder: TFolder,
+    expectedName: string,
+    metadataCache?: Pick<MetadataCache, 'getFileCache'>
+): TFile | null {
+    const titleMatches: TFile[] = [];
+    for (const child of folder.children ?? []) {
+        if (!(child instanceof TFile) || child.parent?.path !== folder.path) continue;
+        const title = getFolderNoteTitle(child, metadataCache);
+        if (title !== null && casefold(title) === casefold(expectedName)) titleMatches.push(child);
+    }
+    // Do not silently choose between two notes with the same authored title.
+    if (titleMatches.length > 0) return titleMatches.length === 1 ? titleMatches[0] : null;
+
     const prefix = folder.path === '/' ? '' : `${folder.path}/`;
     const exactCandidates: TFile[] = [];
 
@@ -113,7 +138,7 @@ function getFolderNoteForExpectedName(folder: TFolder, expectedName: string): TF
             continue;
         }
 
-        if (candidate.basename === expectedName) {
+        if (candidate.basename === expectedName && !getFolderNoteTitle(candidate, metadataCache)) {
             exactCandidates.push(candidate);
         }
     }
@@ -122,7 +147,11 @@ function getFolderNoteForExpectedName(folder: TFolder, expectedName: string): TF
     const excalidrawPath = normalizePath(`${prefix}${expectedName}${EXCALIDRAW_BASENAME_SUFFIX}.md`);
     const abstractExcalidrawCandidate = folder.vault.getAbstractFileByPath(excalidrawPath);
     if (abstractExcalidrawCandidate instanceof TFile && abstractExcalidrawCandidate.parent?.path === folder.path) {
-        if (isExcalidrawFile(abstractExcalidrawCandidate) && stripExcalidrawSuffix(abstractExcalidrawCandidate.basename) === expectedName) {
+        if (
+            !getFolderNoteTitle(abstractExcalidrawCandidate, metadataCache) &&
+            isExcalidrawFile(abstractExcalidrawCandidate) &&
+            stripExcalidrawSuffix(abstractExcalidrawCandidate.basename) === expectedName
+        ) {
             excalidrawCandidate = abstractExcalidrawCandidate;
         }
     }
@@ -133,7 +162,7 @@ function getFolderNoteForExpectedName(folder: TFolder, expectedName: string): TF
 
     if (exactCandidates.length > 1) {
         const candidatePaths = new Set<string>(exactCandidates.map(candidate => candidate.path));
-        for (const child of folder.children) {
+        for (const child of folder.children ?? []) {
             if (!(child instanceof TFile)) {
                 continue;
             }
@@ -155,13 +184,17 @@ function getFolderNoteForExpectedName(folder: TFolder, expectedName: string): TF
     return excalidrawCandidate;
 }
 
-export function getFolderNote(folder: TFolder, settings: FolderNoteDetectionSettings): TFile | null {
+export function getFolderNote(
+    folder: TFolder,
+    settings: FolderNoteDetectionSettings,
+    metadataCache?: Pick<MetadataCache, 'getFileCache'>
+): TFile | null {
     if (!settings.enableFolderNotes) {
         return null;
     }
 
     for (const expectedName of resolveFolderNoteNamesForFolder(folder, settings)) {
-        const folderNote = getFolderNoteForExpectedName(folder, expectedName);
+        const folderNote = getFolderNoteForExpectedName(folder, expectedName, metadataCache);
         if (folderNote) {
             return folderNote;
         }
@@ -177,7 +210,12 @@ export function getFolderNote(folder: TFolder, settings: FolderNoteDetectionSett
  * @param settings - Settings for folder note detection
  * @returns True if the file is a folder note for the given folder
  */
-export function isFolderNote(file: TFile, folder: TFolder, settings: FolderNoteDetectionSettings): boolean {
+export function isFolderNote(
+    file: TFile,
+    folder: TFolder,
+    settings: FolderNoteDetectionSettings,
+    metadataCache?: Pick<MetadataCache, 'getFileCache'>
+): boolean {
     if (!settings.enableFolderNotes) {
         return false;
     }
@@ -193,5 +231,5 @@ export function isFolderNote(file: TFile, folder: TFolder, settings: FolderNoteD
     // A folder has one active folder note. This keeps the preferred root `Vault`
     // convention exclusive when a legacy vault-name note is also present and
     // preserves the normal extension/Excalidraw precedence from getFolderNote().
-    return getFolderNote(folder, settings)?.path === file.path;
+    return getFolderNote(folder, settings, metadataCache)?.path === file.path;
 }

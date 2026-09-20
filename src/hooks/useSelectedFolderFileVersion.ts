@@ -17,10 +17,11 @@
  */
 
 import { useEffect, useState } from 'react';
-import { TAbstractFile, TFile, TFolder, Vault } from 'obsidian';
+import { TAbstractFile, TFile, TFolder, Vault, type MetadataCache } from 'obsidian';
 
 interface UseSelectedFolderFileVersionOptions {
     includeAncestors?: boolean;
+    metadataCache?: MetadataCache;
 }
 
 const WATCH_PATH_SEPARATOR = '\u0000';
@@ -97,6 +98,7 @@ export function useSelectedFolderFileVersion(
 ): number {
     // Monotonic counter used by memo dependencies in header/title components.
     const [version, setVersion] = useState(0);
+    const metadataCache = options?.metadataCache;
     const includeAncestors = options?.includeAncestors === true;
     const watchedFolderPathSignature = getSelectedFolderFileWatchPathSignature(selectedFolder, includeAncestors);
 
@@ -127,12 +129,15 @@ export function useSelectedFolderFileVersion(
             handleFileChange(file, oldPath);
         });
 
+        const metadataRef = metadataCache?.on('changed', file => handleFileChange(file));
+
         return () => {
+            if (metadataRef) metadataCache?.offref(metadataRef);
             vault.offref(createRef);
             vault.offref(deleteRef);
             vault.offref(renameRef);
         };
-    }, [enabled, vault, watchedFolderPathSignature]);
+    }, [enabled, vault, metadataCache, watchedFolderPathSignature]);
 
     return version;
 }

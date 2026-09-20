@@ -527,3 +527,76 @@ describe('folder note template compatibility', () => {
         expect(isFolderNoteTemplateCompatible('Templates/Folder.txt', 'markdown')).toBe(false);
     });
 });
+
+describe('title-based folder note identity', () => {
+    const settings = { enableFolderNotes: true, folderNoteNamePattern: '{{folder}}' };
+    function setup() {
+        const app = new App();
+        const root = createRootFolder(app, 'TishOS v0.2');
+        const titles = new Map<string, unknown>();
+        const metadata = { getFileCache: (file: TFile) => ({ frontmatter: { title: titles.get(file.path) } }) };
+        return { app, root, titles, metadata };
+    }
+
+    it('uses the authored title despite an unrelated filename and case differences', () => {
+        const { app, root, titles, metadata } = setup();
+        const note = registerRootFile(app, root, '123-note.md');
+        titles.set(note.path, ' TishOS V0.2 ');
+        expect(getFolderNote(root, settings, metadata)).toBe(note);
+        expect(isFolderNote(note, root, settings, metadata)).toBe(true);
+    });
+
+    it('updates identity when only metadata changes, including title removal', () => {
+        const { app, root, titles, metadata } = setup();
+        const note = registerRootFile(app, root, '123-note.md');
+        titles.set(note.path, 'Unrelated');
+        expect(getFolderNote(root, settings, metadata)).toBeNull();
+        titles.set(note.path, 'TishOS v0.2');
+        expect(getFolderNote(root, settings, metadata)).toBe(note);
+        titles.delete(note.path);
+        expect(getFolderNote(root, settings, metadata)).toBeNull();
+    });
+
+    it('prefers titles over filename matches and rejects a stale matching filename with a different title', () => {
+        const { app, root, titles, metadata } = setup();
+        const named = registerRootFile(app, root, 'TishOS v0.2.md');
+        const titled = registerRootFile(app, root, 'id.md');
+        titles.set(titled.path, 'TishOS v0.2');
+        expect(getFolderNote(root, settings, metadata)).toBe(titled);
+        titles.set(titled.path, 'Other');
+        titles.set(named.path, 'Also other');
+        expect(getFolderNote(root, settings, metadata)).toBeNull();
+    });
+
+    it('does not choose among duplicate titles or descend into subfolders', () => {
+        const { app, root, titles, metadata } = setup();
+        const one = registerRootFile(app, root, 'one.md');
+        const two = registerRootFile(app, root, 'two.md');
+        titles.set(one.path, 'Vault');
+        titles.set(two.path, 'vault');
+        expect(getFolderNote(root, settings, metadata)).toBeNull();
+        two.parent = new TFolder('Nested');
+        expect(getFolderNote(root, settings, metadata)).toBe(one);
+    });
+
+    it('retains filename fallback for missing, empty, invalid, and unresolved titles', () => {
+        const { app, root, titles, metadata } = setup();
+        const note = registerRootFile(app, root, 'Vault.md');
+        for (const value of [undefined, '', ['Vault'], '{{title}}']) {
+            titles.set(note.path, value);
+            expect(getFolderNote(root, settings, metadata)).toBe(note);
+        }
+        expect(getFolderNote(root, { ...settings, enableFolderNotes: false }, metadata)).toBeNull();
+    });
+
+    it('matches nested folder patterns and case-insensitive Title keys', () => {
+        const { app } = setup();
+        const folder = new TFolder('Projects');
+        folder.name = 'Projects';
+        folder.vault = app.vault;
+        folder.children = [];
+        const file = registerRootFile(app, folder, 'Projects/id.md');
+        const metadata = { getFileCache: () => ({ frontmatter: { Title: '_Projects' } }) };
+        expect(getFolderNote(folder, { ...settings, folderNoteNamePattern: '_{{folder}}' }, metadata)).toBe(file);
+    });
+});

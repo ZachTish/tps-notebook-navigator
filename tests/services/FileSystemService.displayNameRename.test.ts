@@ -211,3 +211,18 @@ describe('FileSystemOperations display-name rename', () => {
         expect(processFrontMatter).toHaveBeenCalledWith(folderNote, expect.any(Function));
     });
 });
+
+describe('title-based folder-note actions', () => {
+    it('explicit linking updates an existing title without requiring a filename change', async () => {
+        const app = new App();
+        const processFrontMatter = installFrontmatterMocks(app);
+        const { folder, folderNote } = createFolderWithFolderNote(app, 'Projects');
+        folderNote.frontmatter = { Title: 'Previous title', unrelated: 'preserved' };
+        const settings = createSettings({ enableFolderNotes: true, folderNoteNamePattern: '{{folder}}' });
+        const originalPath = folderNote.path;
+        await createOperations(app, settings).setFileAsFolderNote(folderNote, settings);
+        expect(folderNote.path).toBe(originalPath);
+        expect(folderNote.frontmatter).toEqual({ Title: folder.name, unrelated: 'preserved' });
+        expect(processFrontMatter).toHaveBeenCalledTimes(1);
+    });
+});

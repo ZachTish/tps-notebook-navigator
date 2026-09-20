@@ -160,7 +160,7 @@ export function buildFileMenu(params: FileMenuBuilderParams): void {
         !shouldShowMultiOptions &&
         settings.enableFolderNotes &&
         file.parent instanceof TFolder &&
-        isFolderNote(file, file.parent, settings);
+        isFolderNote(file, file.parent, settings, app.metadataCache);
 
     let cachedFileList: TFile[] | null = null;
     const getCachedFileList = (): TFile[] => {

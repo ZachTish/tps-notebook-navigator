@@ -233,7 +233,8 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     const selectedFolderFileVersion = useSelectedFolderFileVersion(
         app.vault,
         selectedFolder,
-        settings.enableFolderNotes && settings.enableFolderNoteLinks && shouldResolveSelectedFolderNote
+        settings.enableFolderNotes && settings.enableFolderNoteLinks && shouldResolveSelectedFolderNote,
+        { metadataCache: app.metadataCache }
     );
     // Resolves the selected folder's note file with current folder note settings.
     const selectedFolderNote = useMemo(() => {
@@ -243,11 +244,16 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
             return null;
         }
 
-        return getFolderNote(selectedFolder, {
-            enableFolderNotes: settings.enableFolderNotes,
-            folderNoteNamePattern: settings.folderNoteNamePattern
-        });
+        return getFolderNote(
+            selectedFolder,
+            {
+                enableFolderNotes: settings.enableFolderNotes,
+                folderNoteNamePattern: settings.folderNoteNamePattern
+            },
+            app.metadataCache
+        );
     }, [
+        app.metadataCache,
         selectedFolder,
         settings.enableFolderNotes,
         settings.enableFolderNoteLinks,

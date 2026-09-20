@@ -178,7 +178,7 @@ export function useNavigationPaneShortcutActions({
                 return;
             }
 
-            const folderNote = getFolderNote(folder, settings);
+            const folderNote = getFolderNote(folder, settings, app.metadataCache);
             if (!folderNote) {
                 handleShortcutFolderActivate(folder, shortcutKey);
                 return;
@@ -229,7 +229,7 @@ export function useNavigationPaneShortcutActions({
                 return;
             }
 
-            const folderNote = getFolderNote(folder, settings);
+            const folderNote = getFolderNote(folder, settings, app.metadataCache);
             if (!folderNote) {
                 return;
             }

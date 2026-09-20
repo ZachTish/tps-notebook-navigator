@@ -106,6 +106,17 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '6.4.0',
+        date: '2026-09-20',
+        new: ['Folder notes can match a Markdown note by its title property, independently of its filename.'],
+        improved: [
+            'Title matching ignores capitalization and updates folder links, hidden-note lists, and counts after title edits. Untitled notes retain filename matching.'
+        ],
+        changed: [
+            'A valid title is the folder-note identity. Keep it aligned with the folder-note name pattern; duplicate matching titles do not pick an arbitrary note.'
+        ]
+    },
+    {
         version: '6.3.0',
         date: '2026-09-20',
         new: ['New notes can follow the shared editable preview, open, or stay preference in TPS Global Context Menu.'],

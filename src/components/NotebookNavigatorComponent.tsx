@@ -254,7 +254,7 @@ export const NotebookNavigatorComponent = React.memo(
             app.vault,
             selectedFolderForFolderNoteSidebar,
             settings.enableFolderNotes && settings.folderNoteOpenLocation === 'right-sidebar' && settings.showNearestFolderNoteInSidebar,
-            { includeAncestors: true }
+            { includeAncestors: true, metadataCache: app.metadataCache }
         );
         useEffect(() => {
             void selectedFolderFileVersionForFolderNoteSidebar;

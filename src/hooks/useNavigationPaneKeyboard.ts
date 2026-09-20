@@ -378,7 +378,7 @@ export function useNavigationPaneKeyboard({
                 selectionState.selectedFolder
             ) {
                 const folder = selectionState.selectedFolder;
-                const folderNote = getFolderNote(folder, settings);
+                const folderNote = getFolderNote(folder, settings, app.metadataCache);
                 if (folderNote) {
                     e.preventDefault();
 

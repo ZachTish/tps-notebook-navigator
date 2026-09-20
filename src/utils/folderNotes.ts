@@ -27,6 +27,7 @@ import { CommandQueueService } from '../services/CommandQueueService';
 import { promptForFolderNoteType } from '../modals/FolderNoteTypeModal';
 import { showNotice } from './noticeUtils';
 import { openFileInContext } from './openFileInContext';
+import { findMatchingRecordKey } from './recordUtils';
 import { normalizeOptionalVaultFilePath } from './pathUtils';
 import {
     getFolderNote,
@@ -224,7 +225,8 @@ export async function createFolderNote(
         getFolderNoteDetectionSettings({
             enableFolderNotes: true,
             folderNoteNamePattern: settings.folderNoteNamePattern
-        })
+        }),
+        app.metadataCache
     );
 
     if (existingNote) {
@@ -271,6 +273,13 @@ export async function createFolderNote(
         } else {
             const templateContent = await readFolderNoteTemplateContent(app, templatePath, selectedType);
             file = await app.vault.create(notePath, templateContent ?? createDatabaseContent());
+        }
+
+        if (file.extension === 'md') {
+            await app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+                const key = findMatchingRecordKey(frontmatter, 'title');
+                if (key && typeof frontmatter[key] === 'string') frontmatter[key] = baseName;
+            });
         }
 
         if (options?.openContext || !(await presentCreatedNote(app, file, false, false))) {

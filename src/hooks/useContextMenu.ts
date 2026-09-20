@@ -153,7 +153,7 @@ export function useContextMenu(elementRef: React.RefObject<HTMLElement | null>, 
             }
 
             if (settings.enableFolderNoteLinks && menuConfig.type === ItemType.FOLDER && targetElement?.closest('.nn-navitem-name')) {
-                const folderNote = getFolderNote(menuConfig.item, settings);
+                const folderNote = getFolderNote(menuConfig.item, settings, app.metadataCache);
                 if (folderNote) {
                     menuConfig = {
                         type: ItemType.FILE,

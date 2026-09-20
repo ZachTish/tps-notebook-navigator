@@ -183,7 +183,7 @@ export function buildFolderCreationMenu(params: FolderMenuBuilderParams, folderD
 
     // Folder note operations
     if (settings.enableFolderNotes) {
-        const folderNote = getFolderNote(folder, settings);
+        const folderNote = getFolderNote(folder, settings, app.metadataCache);
         const canDeleteFolderNote = Boolean(folderNote);
         const canCreateFolderNote = !folderNote;
 

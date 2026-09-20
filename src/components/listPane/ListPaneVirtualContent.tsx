@@ -838,10 +838,14 @@ export function ListPaneVirtualContent({
 
             const folderNote =
                 settings.enableFolderNotes && settings.enableFolderNoteLinks
-                    ? getFolderNote(folder, {
-                          enableFolderNotes: settings.enableFolderNotes,
-                          folderNoteNamePattern: settings.folderNoteNamePattern
-                      })
+                    ? getFolderNote(
+                          folder,
+                          {
+                              enableFolderNotes: settings.enableFolderNotes,
+                              folderNoteNamePattern: settings.folderNoteNamePattern
+                          },
+                          app.metadataCache
+                      )
                     : null;
 
             targets.set(folderPath, { folder, folderNote });
@@ -859,7 +863,14 @@ export function ListPaneVirtualContent({
         });
 
         return targets;
-    }, [app.vault, listItems, settings.enableFolderNoteLinks, settings.enableFolderNotes, settings.folderNoteNamePattern]);
+    }, [
+        app.metadataCache,
+        app.vault,
+        listItems,
+        settings.enableFolderNoteLinks,
+        settings.enableFolderNotes,
+        settings.folderNoteNamePattern
+    ]);
 
     const { headerModels, headerModelByIndex } = useMemo<HeaderRenderModels>(() => {
         const models: HeaderRenderModel[] = [];

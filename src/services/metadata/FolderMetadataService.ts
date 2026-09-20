@@ -74,6 +74,7 @@ export class FolderMetadataService extends BaseMetadataService {
     private readonly folderDisplayCache = new FolderDisplayCache();
     private readonly folderNoteMetadataAdapter: FolderNoteMetadataAdapter;
     private readonly folderDisplayCacheVaultEventRefs: EventRef[] = [];
+    private folderNoteMetadataEventRef: EventRef | null = null;
     private folderDisplayCacheSettingsListenerProvider: SettingsUpdateListenerProvider | null = null;
     private readonly folderDisplayCacheSettingsListenerId: string;
     private folderDisplayCacheUnsubscribe: (() => void) | null = null;
@@ -279,6 +280,12 @@ export class FolderMetadataService extends BaseMetadataService {
         });
 
         this.folderDisplayCacheVaultEventRefs.push(createRef, deleteRef, renameRef);
+        this.folderNoteMetadataEventRef =
+            this.app.metadataCache.on?.('changed', file => {
+                if (!this.settingsProvider.settings.enableFolderNotes) return;
+                this.folderDisplayCache.invalidateFolderAndDescendants(getParentFolderPath(file.path));
+                this.markFolderDisplayNamesChanged();
+            }) ?? null;
     }
 
     private ensureFolderDisplayCacheState(): void {
@@ -337,6 +344,10 @@ export class FolderMetadataService extends BaseMetadataService {
     }
 
     dispose(): void {
+        if (this.folderNoteMetadataEventRef) {
+            this.app.metadataCache.offref(this.folderNoteMetadataEventRef);
+            this.folderNoteMetadataEventRef = null;
+        }
         if (this.folderDisplayCacheUnsubscribe) {
             this.folderDisplayCacheUnsubscribe();
             this.folderDisplayCacheUnsubscribe = null;

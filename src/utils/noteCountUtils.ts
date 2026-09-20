@@ -27,7 +27,7 @@ import {
     shouldExcludeFolder,
     shouldExcludeFolderFromDescendants
 } from './fileFilters';
-import { isFolderNote, type FolderNoteDetectionSettings } from './folderNoteLookup';
+import { getFolderNote, type FolderNoteDetectionSettings } from './folderNoteLookup';
 import type { HiddenTagVisibility } from './tagPrefixMatcher';
 import { type CachedFileTagsDB, getCachedFileTags } from './tagUtils';
 
@@ -66,15 +66,15 @@ export function calculateFolderNoteCounts(folder: TFolder, options: FolderNoteCo
     let descendants = 0;
     const excludedFileMatcher = options.excludedFileMatcher ?? createFrontmatterPropertyExclusionMatcher(options.excludedFiles);
 
+    const hiddenFolderNote = options.hideFolderNoteInList
+        ? getFolderNote(folder, options.folderNoteSettings, options.app.metadataCache)
+        : null;
+
     // Process each child item in the folder
     for (const child of folder.children) {
         if (child instanceof TFile) {
             // Skip folder notes if they should be hidden from the list
-            if (
-                options.folderNoteSettings.enableFolderNotes &&
-                options.hideFolderNoteInList &&
-                isFolderNote(child, folder, options.folderNoteSettings)
-            ) {
+            if (options.folderNoteSettings.enableFolderNotes && options.hideFolderNoteInList && child === hiddenFolderNote) {
                 continue;
             }
 

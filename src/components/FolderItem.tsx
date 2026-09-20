@@ -199,7 +199,7 @@ export const FolderItem = React.memo(function FolderItem({
 
     const hasFolderNote = useMemo(() => {
         if (!folderNoteLinksEnabled) return false;
-        const folderNote = getFolderNote(folder, settings);
+        const folderNote = getFolderNote(folder, settings, app.metadataCache);
         return folderNote !== null;
         // eslint-disable-next-line react-hooks/exhaustive-deps -- noteCounts.current and vaultChangeVersion refresh folder-note detection.
     }, [folder, settings, folderNoteLinksEnabled, noteCounts.current, vaultChangeVersion]);

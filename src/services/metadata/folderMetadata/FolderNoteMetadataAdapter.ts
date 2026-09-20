@@ -61,7 +61,7 @@ export class FolderNoteMetadataAdapter {
         }
 
         const detectionSettings = getFolderNoteDetectionSettings(settings);
-        const folderNote = getFolderNote(folder, detectionSettings);
+        const folderNote = getFolderNote(folder, detectionSettings, this.app.metadataCache);
         if (!folderNote || folderNote.extension !== 'md') {
             return null;
         }
@@ -277,6 +277,7 @@ export class FolderNoteMetadataAdapter {
         }
 
         const settings = getFolderNoteDetectionSettings(this.settingsProvider.settings);
+        if (getFolderNote(folder, settings, this.app.metadataCache)?.path === path) return true;
         return resolveFolderNoteNamesForFolder(folder, settings).some(expectedName =>
             this.isFolderNotePathForExpectedName(path, expectedName)
         );

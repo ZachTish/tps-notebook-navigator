@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { TFile, TFolder } from 'obsidian';
+import { type MetadataCache, TFile, TFolder } from 'obsidian';
 import type { ISettingsProvider } from '../interfaces/ISettingsProvider';
 import { DEFAULT_SETTINGS } from '../settings/defaultSettings';
 import { isFolderNote } from '../utils/folderNoteLookup';
@@ -25,7 +25,10 @@ import { isFolderNote } from '../utils/folderNoteLookup';
  * Manages the recent notes list stored in vault-local storage
  */
 export class RecentNotesService {
-    constructor(private readonly settingsProvider: ISettingsProvider) {}
+    constructor(
+        private readonly settingsProvider: ISettingsProvider,
+        private readonly metadataCache?: Pick<MetadataCache, 'getFileCache'>
+    ) {}
 
     /**
      * Updates recents when a file is opened
@@ -65,10 +68,15 @@ export class RecentNotesService {
             return false;
         }
 
-        return isFolderNote(file, parent, {
-            enableFolderNotes: true,
-            folderNoteNamePattern: this.settingsProvider.settings.folderNoteNamePattern
-        });
+        return isFolderNote(
+            file,
+            parent,
+            {
+                enableFolderNotes: true,
+                folderNoteNamePattern: this.settingsProvider.settings.folderNoteNamePattern
+            },
+            this.metadataCache
+        );
     }
 
     /**

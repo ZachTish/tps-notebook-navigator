@@ -705,7 +705,7 @@ export class FileDeletionService {
         }
 
         const detectionSettings = getFolderNoteDetectionSettings(settings);
-        if (!isFolderNote(file, parent, detectionSettings)) {
+        if (!isFolderNote(file, parent, detectionSettings, this.app.metadataCache)) {
             return file.basename;
         }
 

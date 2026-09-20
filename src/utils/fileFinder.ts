@@ -474,7 +474,7 @@ export function getFilesForFolder(
             }
 
             if (!folderNotePathByFolderPath.has(parent.path)) {
-                const folderNote = getFolderNote(parent, detectionSettings);
+                const folderNote = getFolderNote(parent, detectionSettings, app.metadataCache);
                 folderNotePathByFolderPath.set(parent.path, folderNote ? folderNote.path : null);
             }
 

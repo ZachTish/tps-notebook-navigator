@@ -95,7 +95,7 @@ export function NavigationPaneShortcutRow({ item, context, adjacentFilledClassNa
             );
             const folderNote =
                 canInteract && folder && settings.enableFolderNotes && settings.enableFolderNoteLinks
-                    ? getFolderNote(folder, settings)
+                    ? getFolderNote(folder, settings, app.metadataCache)
                     : null;
             const folderAlias = isFolderShortcut(item.shortcut) ? item.shortcut.alias : undefined;
             const folderLabel = folderAlias && folderAlias.length > 0 ? folderAlias : folderName;

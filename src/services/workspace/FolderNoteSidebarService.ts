@@ -176,7 +176,7 @@ export class FolderNoteSidebarService {
         let folder: TFolder | null = selectedFolder;
 
         while (folder) {
-            const folderNote = getFolderNote(folder, this.plugin.settings);
+            const folderNote = getFolderNote(folder, this.plugin.settings, this.plugin.app.metadataCache);
             if (folderNote) {
                 return folderNote;
             }

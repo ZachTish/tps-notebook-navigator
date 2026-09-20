@@ -243,7 +243,7 @@ export function useNavigationPaneTreeInteractions({
                 return;
             }
 
-            const folderNote = getFolderNote(folder, settings);
+            const folderNote = getFolderNote(folder, settings, app.metadataCache);
             if (!folderNote) {
                 handleFolderClick(folder);
                 return;
@@ -304,7 +304,7 @@ export function useNavigationPaneTreeInteractions({
                 return;
             }
 
-            const folderNote = getFolderNote(folder, settings);
+            const folderNote = getFolderNote(folder, settings, app.metadataCache);
             if (!folderNote) {
                 return;
             }

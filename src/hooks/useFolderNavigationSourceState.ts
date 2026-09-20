@@ -167,6 +167,14 @@ export function useFolderNavigationSourceState({
         }
     }, [flushFileChangeVersion]);
     useEffect(() => clearScheduledFileChangeVersionBump, [clearScheduledFileChangeVersionBump]);
+    useEffect(() => {
+        if (!settings.enableFolderNotes) return;
+        const ref = app.metadataCache.on('changed', () => {
+            scheduleFileChangeVersionBump();
+            setFolderExclusionVersion(value => value + 1);
+        });
+        return () => app.metadataCache.offref(ref);
+    }, [app, settings.enableFolderNotes, scheduleFileChangeVersionBump]);
     const handleRootFolderChange = useCallback(() => {
         setFolderChangeVersion(value => value + 1);
     }, []);
@@ -284,7 +292,9 @@ export function useFolderNavigationSourceState({
                 let cachedFolderNotePath = folderNotePathByParentPath.get(parentPath);
                 if (cachedFolderNotePath === undefined) {
                     const parentFolder = app.vault.getFolderByPath(parentPath);
-                    cachedFolderNotePath = parentFolder ? (getFolderNote(parentFolder, folderNoteSettings)?.path ?? null) : null;
+                    cachedFolderNotePath = parentFolder
+                        ? (getFolderNote(parentFolder, folderNoteSettings, app.metadataCache)?.path ?? null)
+                        : null;
                     folderNotePathByParentPath.set(parentPath, cachedFolderNotePath);
                 }
 
@@ -368,7 +378,7 @@ export function useFolderNavigationSourceState({
                 return cached;
             }
 
-            const folderNote = getFolderNote(folder, folderNoteSettings);
+            const folderNote = getFolderNote(folder, folderNoteSettings, app.metadataCache);
             if (!folderNote) {
                 directExclusionCache.set(folder.path, false);
                 return false;

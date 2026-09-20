@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: [6.2.1](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.2.1) · Obsidian 1.11.0+ · Desktop and mobile.
+Current release: [6.4.0](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.4.0) · Obsidian 1.11.0+ · Desktop and mobile.
 
 ## Install with BRAT
 
@@ -76,3 +76,16 @@ Appearance & behavior replaces **Open new notes in new tab** with **After creati
 `utils/tpsNoteOpening.ts` feature-detects GCM's additive `api.ui.presentCreatedNote` and `openNoteOpeningSettings`. The handler receives only the created file path, source plugin ID, originating leaf, rename intent, and an explicit destination when requested. Provider errors acknowledge creation without triggering a second opening. Focused tests cover missing/old GCM, legacy-default suppression, explicit new-tab intent, non-Markdown fallback, and settings handoff. Full validation is `npm test`, `npm run lint`, and a separate `npm run build`, with shared-helper deployment and plugin reload in Obsidian Plugin Test Vault. Physical iPhone acceptance remains for the user's BRAT pull. Minimum Obsidian stays 1.11.0; this backward-compatible minor feature requires GCM 2.5.0 for the shared behavior.
 
 Final validation: all 3,071 tests across 270 files passed; lint passed with 24 pre-existing warnings and no errors. The separate production build passed string/locale/type checks and deployed to the test vault. After the 6.3.0 reload, Navigator’s New note showed the shared name-focused preview while the embedded Calendar remained active. The settings handoff reached GCM’s Note opening controls. QA preferences were restored and synthetic files archived.
+
+
+## 6.4.0 — Folder notes follow titles (2026-09-20)
+
+Folder notes resolve by the direct child note's nonempty Markdown `title` property, independent of its filename and the display-name-field setting. Title keys and matching values are case-insensitive; surrounding title whitespace is ignored. Untitled notes, invalid/list/template-placeholder titles, Canvas, and Base files retain filename lookup. A valid title supersedes a stale matching filename. Duplicate matching titles within the folder do not select an arbitrary file. Lookup stays within the folder; nested notes do not become a parent's folder note.
+
+The existing folder-note name pattern remains in effect. The root checks `Vault` first, then the actual vault name, so a root note titled `TishOS v0.2` may have an unrelated filename. Root display aliases do not redefine identity. Folder-note links still require folder notes and links enabled. Title lookup works independently of automatic filename syncing or GCM installation; GCM 2.5.1 separately corrects case-only title-to-filename syncing when Auto-rename is enabled.
+
+Tree rows, headers, keyboard/menu actions, sidebar opening, recents, list hiding, counts, and folder styling all use the same metadata-aware resolver. Metadata changes refresh existing folder-note links without a reload. Counts resolve once per folder rather than scanning siblings per file. Explicit linking and folder renaming preserve an authored title's folder-note role; conversion derives the folder name from the title, and creation aligns a template's existing title with the intended folder note. No new settings or persisted UI schema are introduced. A title that deliberately differs from its folder-pattern name is no longer that folder's note; use a matching title to retain that role.
+
+Regression coverage includes unrelated filenames, root/nested names and patterns, capitalization, metadata-only identity changes, missing/invalid titles, duplicate titles, and legacy filename fallback. Validation uses `npm test`, `npm run lint`, namespace/artifact/operational identity checks, and a separate `npm run build`, deployed only to Obsidian Plugin Test Vault and reloaded with the plugin command. Minimum Obsidian remains 1.11.0. This backward-compatible title lookup capability is a minor release; physical iPhone acceptance and the production BRAT pull remain user-owned.
+
+Test-vault UI validation on 2026-09-20: with Auto-rename disabled, `Inbox/Title Folder QA 20260920/id-note.md` gained the folder link solely from its title. Navigator hid it from the list, reduced the count, and opened that exact file from the underlined tree label. Editing the title away removed the link and restored the file/count without reload. The GCM title dialog then renamed a separate `TishOS V0.2.md` fixture to `TishOS v0.2.md` on this Mac's case-insensitive filesystem, retaining the body. Temporary folder-note/auto-rename preferences were restored and fixtures archived. The final build/reload and artifact checks are recorded in the release notes.
