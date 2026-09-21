@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: [6.4.0](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.4.0) · Obsidian 1.11.0+ · Desktop and mobile.
+Current release: [6.4.1](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.4.1) · Obsidian 1.11.0+ · Desktop and mobile.
 
 ## Install with BRAT
 
@@ -89,3 +89,11 @@ Tree rows, headers, keyboard/menu actions, sidebar opening, recents, list hiding
 Regression coverage includes unrelated filenames, root/nested names and patterns, capitalization, metadata-only identity changes, missing/invalid titles, duplicate titles, and legacy filename fallback. Validation uses `npm test`, `npm run lint`, namespace/artifact/operational identity checks, and a separate `npm run build`, deployed only to Obsidian Plugin Test Vault and reloaded with the plugin command. Minimum Obsidian remains 1.11.0. This backward-compatible title lookup capability is a minor release; physical iPhone acceptance and the production BRAT pull remain user-owned.
 
 Test-vault UI validation on 2026-09-20: with Auto-rename disabled, `Inbox/Title Folder QA 20260920/id-note.md` gained the folder link solely from its title. Navigator hid it from the list, reduced the count, and opened that exact file from the underlined tree label. Editing the title away removed the link and restored the file/count without reload. The GCM title dialog then renamed a separate `TishOS V0.2.md` fixture to `TishOS v0.2.md` on this Mac's case-insensitive filesystem, retaining the body. Temporary folder-note/auto-rename preferences were restored and fixtures archived. The final build/reload and artifact checks are recorded in the release notes.
+
+## 6.4.1 — Faster file-type catalog sorting
+
+File-type catalog sorting reuses one locale comparator instead of initializing locale comparison for every pair of records. This removes a measured main-thread hotspot when files are created, renamed or deleted in a large vault. Ordering remains base-sensitive by label, with the same path tie-breaker; numeric ordering, labels, type membership and immutable snapshots are unchanged. The existing 100 ms event batching and read-free metadata catalog remain.
+
+No settings, defaults, navigation routes, namespace or stored state change. This is a backward-compatible performance patch. Regression coverage compares accented names, case, numeric text and path ties with the previous comparator, alongside the existing 10,000-file event-batching test. Full tests/lint, a separate final build, test-vault deployment/reload and measured QA are recorded in the release notes. Minimum Obsidian stays 1.11.0; production remains the user's BRAT pull.
+
+Installed CPU sampling of a synthetic file creation plus six note opens measured the catalog refresh at approximately 832 ms before and 26 ms after this change. This is one local diagnostic comparison, not an overall speed or device guarantee. All 3,079 tests across 270 files passed, including a run on Node 24.19.0; ESLint passed with 24 existing advisory warnings. Namespace, artifact and operational identity checks passed. Test deployment and explicit reload used only Obsidian Plugin Test Vault. QA fixtures were archived, temporary runtime probes removed, and original navigation restored. No settings were saved or outbound automation enabled. See release notes for final artifact hashes.

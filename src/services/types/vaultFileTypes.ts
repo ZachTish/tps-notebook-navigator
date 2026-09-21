@@ -84,10 +84,13 @@ function toFileTypeRecord(file: TFile, typeId: TpsNavigatorFileTypeId): TpsNavig
     });
 }
 
+// Reuse locale setup across the entire catalog rather than once per comparison.
+const fileRecordCollator = new Intl.Collator(undefined, { sensitivity: 'base' });
+
 function compareFileRecords(left: TpsNavigatorTypeRecord, right: TpsNavigatorTypeRecord): number {
     return (
-        left.label.localeCompare(right.label, undefined, { sensitivity: 'base' }) ||
-        left.sourcePath.localeCompare(right.sourcePath, undefined, { sensitivity: 'base' })
+        fileRecordCollator.compare(left.label, right.label) ||
+        fileRecordCollator.compare(left.sourcePath, right.sourcePath)
     );
 }
 

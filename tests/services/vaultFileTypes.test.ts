@@ -135,3 +135,22 @@ describe('vault file Types', () => {
         expectNoFileReads(context);
     });
 });
+
+it('retains base-sensitive locale ordering and path ties without per-comparison locale setup', () => {
+    const files = ['Z/Alpha.md', 'A/alpha.md', 'N/Éclair.md', 'N/eclair.md', 'N/Zulu.md', 'N/file-10.md', 'N/file-2.md'].map(createTestTFile);
+    const expected = [...files].sort((a, b) =>
+        a.basename.localeCompare(b.basename, undefined, { sensitivity: 'base' }) ||
+        a.path.localeCompare(b.path, undefined, { sensitivity: 'base' })
+    ).map(file => file.path);
+    const context = createApp(files);
+    const localeCompare = vi.spyOn(String.prototype, 'localeCompare').mockImplementation(() => {
+        throw new Error('Do not initialize locale comparison for every catalog comparison');
+    });
+    try {
+        const records = buildVaultFileTypesSnapshot(context.app).recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.NOTES);
+        expect(records?.map(record => record.sourcePath)).toEqual(expected);
+        expectNoFileReads(context);
+    } finally {
+        localeCompare.mockRestore();
+    }
+});
