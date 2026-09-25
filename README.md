@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: [6.4.1](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.4.1) · Obsidian 1.11.0+ · Desktop and mobile.
+Current release: [6.4.2](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.4.2) · Obsidian 1.11.0+ · Desktop and mobile.
 
 ## Install with BRAT
 
@@ -97,3 +97,15 @@ File-type catalog sorting reuses one locale comparator instead of initializing l
 No settings, defaults, navigation routes, namespace or stored state change. This is a backward-compatible performance patch. Regression coverage compares accented names, case, numeric text and path ties with the previous comparator, alongside the existing 10,000-file event-batching test. Full tests/lint, a separate final build, test-vault deployment/reload and measured QA are recorded in the release notes. Minimum Obsidian stays 1.11.0; production remains the user's BRAT pull.
 
 Installed CPU sampling of a synthetic file creation plus six note opens measured the catalog refresh at approximately 832 ms before and 26 ms after this change. This is one local diagnostic comparison, not an overall speed or device guarantee. All 3,079 tests across 270 files passed, including a run on Node 24.19.0; ESLint passed with 24 existing advisory warnings. Namespace, artifact and operational identity checks passed. Test deployment and explicit reload used only Obsidian Plugin Test Vault. QA fixtures were archived, temporary runtime probes removed, and original navigation restored. No settings were saved or outbound automation enabled. See release notes for final artifact hashes.
+
+
+## Immediate note renaming (6.4.2)
+
+With GCM available, right-click **Rename note**, its inline editor, its dialog fallback and the manual-sort keyboard rename update the note's `title` through GCM's existing `api.updateFrontmatter`. Previously the default filename route changed only the file path; the subsequent title sync depended on Controller background authority and did not run on User/mobile devices. An installed test-vault reproduction immediately after creation, before metadata existed, produced `Renamed immediately.md` with `title: Untitled`.
+
+The explicit title update now reads current source through GCM, without waiting for metadata or background events. GCM's Auto-rename setting determines whether the filename follows the new title; its creation-grace bypass, filename ownership and collision rules remain authoritative. The rename input uses the current title when metadata is available, otherwise the filename. Unchanged or blank submissions do nothing. Cancelled/rejected/failed writes cannot fall through to a filename-only rename. No watcher, delayed repair, retry, migration or persisted preference was added. Separately configured non-title display-name fields, folder-note detachment and non-Markdown filenames retain their existing behavior. Without GCM's update capability, Navigator uses its existing standalone configuration.
+
+Focused regression coverage exercises missing metadata, explicit title ownership, zero-result/cancel/error handling, unchanged submissions, title prefill, dialog parity, custom display fields, standalone operation and non-Markdown/detachment paths. Required validation is the full Vitest suite, ESLint, namespace and operational-identity checks, a separate final TypeScript/production build with test deployment, targeted plugin reload and installed immediate-rename verification. Results and artifact hashes are in [6.4.2 release notes](release-notes/6.4.2.md). Minimum Obsidian remains 1.11.0. GCM 3.3.3 is the tested integration version; no GCM runtime change is required. Physical iPhone acceptance and the production BRAT update remain separate.
+
+
+Validation on 2026-09-25: all 3,089 tests across 270 files passed, including 16 focused rename tests. Full ESLint passed with the same 24 existing advisory warnings and zero errors; namespace, operational-identity, artifact, unused-string and TypeScript checks passed. Installed 6.4.1 reproduced the mismatch before metadata existed on a User-role device. Installed 6.4.2 changed both filename and title through the same immediate operation and preserved the body. The actual New note → right-click → Rename note UI sequence also produced matching filename/title. Final production build deployed only to the test vault, followed by targeted Navigator reload. GCM settings remained byte-identical; Navigator recorded its normal version acknowledgement, and no user preferences were manually changed. Fixtures were archived directly and prior Navigator folder selection restored. Production remains untouched.

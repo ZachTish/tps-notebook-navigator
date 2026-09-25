@@ -293,7 +293,7 @@ export function useManualSortKeyboard({
 
                 const action = resolveKeyboardEnterAction(nativeEvent, settings);
                 if (action === 'rename') {
-                    runAsyncAction(() => fileSystemOps.renameFile(selectedFile));
+                    runAsyncAction(() => fileSystemOps.renameFile(selectedFile, true));
                     return;
                 }
 

@@ -34,8 +34,14 @@ vi.mock('../../src/modals/FolderSuggestModal', () => ({
     FolderSuggestModal: class FolderSuggestModal {}
 }));
 
+const renameModal = vi.hoisted(() => ({ submit: null as null | ((value: string) => Promise<void>), initialValue: '' }));
+
 vi.mock('../../src/modals/InputModal', () => ({
     InputModal: class InputModal {
+        constructor(_app: unknown, _title: string, _prompt: string, submit: (value: string) => Promise<void>, initialValue: string) {
+            renameModal.submit = submit;
+            renameModal.initialValue = initialValue;
+        }
         open(): void {}
     }
 }));
@@ -224,5 +230,97 @@ describe('title-based folder-note actions', () => {
         expect(folderNote.path).toBe(originalPath);
         expect(folderNote.frontmatter).toEqual({ Title: folder.name, unrelated: 'preserved' });
         expect(processFrontMatter).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('Navigator explicit rename with GCM', () => {
+    function setup(frontmatter: Record<string, unknown> = {}, settings: Partial<NotebookNavigatorSettings> = {}) {
+        const app = new App();
+        const processFrontMatter = installFrontmatterMocks(app);
+        const file = createFile('Untitled.md', frontmatter);
+        (file as TFile & { parent: TFolder }).parent = app.vault.getRoot();
+        const renameFile = vi.fn().mockResolvedValue(undefined);
+        app.fileManager.renameFile = renameFile;
+        const updateFrontmatter = vi.fn().mockResolvedValue(1);
+        Object.assign(app, { plugins: { plugins: { 'tps-global-context-menu': { api: { updateFrontmatter } } } } });
+        const operations = createOperations(app, createSettings({ useFrontmatterMetadata: false, ...settings }));
+        return { app, file, operations, updateFrontmatter, renameFile, processFrontMatter };
+    }
+
+    it('sends an immediate rename to the title owner before metadata exists', async () => {
+        const h = setup({ title: 'Untitled' });
+        h.app.metadataCache.getFileCache = () => null;
+        await expect(h.operations.renameFileDisplayName(h.file, 'New note')).resolves.toBe(true);
+        expect(h.updateFrontmatter).toHaveBeenCalledWith([h.file], { title: 'New note' });
+        expect(h.renameFile).not.toHaveBeenCalled();
+        expect(h.processFrontMatter).not.toHaveBeenCalled();
+    });
+
+    it('uses the same title owner when Navigator is configured to display titles', async () => {
+        const h = setup({ Title: 'Untitled' }, { useFrontmatterMetadata: true, frontmatterNameField: 'title' });
+        await expect(h.operations.renameFileDisplayName(h.file, 'New note')).resolves.toBe(true);
+        expect(h.updateFrontmatter).toHaveBeenCalledWith([h.file], { title: 'New note' });
+        expect(h.renameFile).not.toHaveBeenCalled();
+    });
+
+    it('does not fall through to filename-only renaming when the title write is cancelled or rejected', async () => {
+        const h = setup();
+        h.updateFrontmatter.mockResolvedValue(0);
+        await expect(h.operations.renameFileDisplayName(h.file, 'New note')).resolves.toBe(false);
+        expect(h.renameFile).not.toHaveBeenCalled();
+    });
+
+    it('does not fall through after a title writer error', async () => {
+        const h = setup();
+        const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        h.updateFrontmatter.mockRejectedValue(new Error('Rejected'));
+        await expect(h.operations.renameFileDisplayName(h.file, 'New note')).resolves.toBe(false);
+        expect(h.renameFile).not.toHaveBeenCalled();
+        log.mockRestore();
+    });
+
+    it('preserves separately configured display-name fields', async () => {
+        const h = setup({ alias: 'Old', title: 'Untitled' }, { useFrontmatterMetadata: true, frontmatterNameField: 'alias' });
+        await expect(h.operations.renameFileDisplayName(h.file, 'New alias')).resolves.toBe(true);
+        expect(h.file.frontmatter).toEqual({ alias: 'New alias', title: 'Untitled' });
+        expect(h.updateFrontmatter).not.toHaveBeenCalled();
+    });
+
+    it('closes an unchanged title edit without calling either writer', async () => {
+        const h = setup({ title: 'Current title' });
+        await expect(h.operations.renameFileDisplayName(h.file, 'Current title')).resolves.toBe(true);
+        expect(h.updateFrontmatter).not.toHaveBeenCalled();
+        expect(h.renameFile).not.toHaveBeenCalled();
+    });
+
+    it('prefills GCM title edits with the title rather than an unrelated filename', () => {
+        const h = setup({ Title: 'Current title' });
+        expect(h.operations.getFileDisplayNameRenameInput(h.file).initialValue).toBe('Current title');
+    });
+
+    it('routes the ordinary rename dialog through the same title operation', async () => {
+        const h = setup();
+        await h.operations.renameFile(h.file, true);
+        expect(renameModal.initialValue).toBe('Untitled');
+        await renameModal.submit?.('New note');
+        expect(h.updateFrontmatter).toHaveBeenCalledWith([h.file], { title: 'New note' });
+        expect(h.renameFile).not.toHaveBeenCalled();
+    });
+
+    it('retains explicit filename-only operations for folder-note detachment', async () => {
+        const h = setup();
+        await h.operations.renameFile(h.file);
+        await renameModal.submit?.('Detached');
+        expect(h.renameFile).toHaveBeenCalledWith(h.file, 'Detached.md');
+        expect(h.updateFrontmatter).not.toHaveBeenCalled();
+    });
+
+    it('retains filename renaming for non-Markdown resources', async () => {
+        const h = setup();
+        const resource = createFile('Untitled.canvas', {});
+        (resource as TFile & { parent: TFolder }).parent = h.app.vault.getRoot();
+        await expect(h.operations.renameFileDisplayName(resource, 'Canvas')).resolves.toBe(true);
+        expect(h.renameFile).toHaveBeenCalledWith(resource, 'Canvas.canvas');
+        expect(h.updateFrontmatter).not.toHaveBeenCalled();
     });
 });

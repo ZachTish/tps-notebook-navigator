@@ -542,7 +542,7 @@ export function buildFileMenu(params: FileMenuBuilderParams): void {
                     return;
                 }
 
-                await fileSystemOps.renameFile(file);
+                await fileSystemOps.renameFile(file, !isFolderNoteFile);
             });
         });
 

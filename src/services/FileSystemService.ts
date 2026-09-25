@@ -54,7 +54,8 @@ import {
     isSupportedFolderNoteExtension,
     resolveFolderNoteNameForFolder
 } from '../utils/folderNoteLookup';
-import { executeCommand, isPluginInstalled, isRecord } from '../utils/typeGuards';
+import { executeCommand, getPluginById, isPluginInstalled, isRecord } from '../utils/typeGuards';
+import { TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID } from '../constants/tpsIdentity';
 import { getErrorMessage } from '../utils/errorUtils';
 import { TagTreeService } from './TagTreeService';
 import type { PropertyTreeService } from './PropertyTreeService';
@@ -529,6 +530,13 @@ export class FileSystemOperations {
         const target = this.resolveFrontmatterDisplayNameTarget(file, this.getFileRenameDefaultValue(file));
         if (target) {
             return { initialValue: target.initialValue };
+        }
+
+        if (file.extension === 'md' && this.getTpsTitleUpdater()) {
+            const frontmatter: unknown = this.app.metadataCache.getFileCache(file)?.frontmatter;
+            const titleKey = findMatchingRecordKey(isRecord(frontmatter) ? frontmatter : null, 'title');
+            const title = isRecord(frontmatter) && titleKey ? this.extractFrontmatterDisplayNameValue(frontmatter[titleKey]) : null;
+            return { initialValue: title ?? this.getFileRenameDefaultValue(file) };
         }
 
         return {
@@ -1318,20 +1326,22 @@ export class FileSystemOperations {
 
     /**
      * Renames a file with user-provided name
-     * Shows input modal pre-filled with current basename
-     * Preserves original file extension if not provided in new name
+     * Uses display-name editing when requested by an ordinary note action.
+     * Filename-only operations (including folder-note detachment) retain extensions.
      * @param file - The file to rename
      */
-    async renameFile(file: TFile): Promise<void> {
-        const defaultValue = this.getFileRenameDefaultValue(file);
-        const nameInputOptions = this.getNameInputModalOptions();
+    async renameFile(file: TFile, displayName = false): Promise<void> {
+        const { initialValue: defaultValue, ...nameInputOptions } = displayName
+            ? this.getFileDisplayNameRenameInput(file)
+            : { initialValue: this.getFileRenameDefaultValue(file), ...this.getNameInputModalOptions() };
 
         const modal = new InputModal(
             this.app,
             strings.modals.fileSystem.renameFileTitle,
             strings.modals.fileSystem.renamePrompt,
             async rawInput => {
-                await this.renameFileToName(file, rawInput);
+                if (displayName) await this.renameFileDisplayName(file, rawInput);
+                else await this.renameFileToName(file, rawInput);
             },
             defaultValue,
             nameInputOptions
@@ -1339,8 +1349,33 @@ export class FileSystemOperations {
         modal.open();
     }
 
+    private getTpsTitleUpdater(): ((file: TFile, title: string) => Promise<boolean>) | null {
+        const plugin: unknown = getPluginById(this.app, TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID);
+        const api: unknown = isRecord(plugin) ? plugin.api : null;
+        if (!isRecord(api) || typeof api.updateFrontmatter !== 'function') return null;
+        const update = api.updateFrontmatter;
+        return async (file, title) => {
+            const changed: unknown = await update.call(api, [file], { title });
+            return typeof changed === 'number' && changed > 0;
+        };
+    }
+
     async renameFileDisplayName(file: TFile, rawInput: string): Promise<boolean> {
         const target = this.resolveFrontmatterDisplayNameTarget(file, this.getFileRenameDefaultValue(file));
+        // Explicit note renames belong to the title writer, not a later
+        // Controller-only metadata/rename event. It reads current source bytes.
+        const updateTitle =
+            file.extension === 'md' && (!target || target.field.toLowerCase() === 'title') ? this.getTpsTitleUpdater() : null;
+        if (updateTitle) {
+            const title = rawInput.trim();
+            if (!title || title === this.getFileDisplayNameRenameInput(file).initialValue.trim()) return true;
+            try {
+                return await updateTitle(file, title);
+            } catch (error) {
+                this.notifyError(strings.fileSystem.errors.renameFile, error);
+                return false;
+            }
+        }
         if (!target) {
             return this.renameFileToName(file, rawInput);
         }
