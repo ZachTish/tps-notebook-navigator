@@ -1265,3 +1265,58 @@ describe('listPaneMeasurements layout helpers', () => {
         ).toBe(1);
     });
 });
+
+describe('measured title rows', () => {
+    const inputs = {
+        isPinned: false,
+        hasPreviewContent: false,
+        showFeatureImageArea: false,
+        showExtensionBadgeThumbnail: false,
+        showParentFolderLine: false,
+        showTaskProgressLine: false,
+        visiblePillRowCount: 0
+    };
+    const config = {
+        heights: getListPaneMeasurements(false),
+        titleRows: 2,
+        previewRows: 3,
+        isCompactMode: false,
+        showDate: false,
+        showPreview: false,
+        showImage: false,
+        compactPaddingTotal: 18
+    };
+
+    it.each([false, true])('shrinks and grows titles without reserving a blank line (compact=%s)', isCompactMode => {
+        const settings = { ...config, isCompactMode };
+        const padding = isCompactMode ? 18 : settings.heights.basePadding;
+        expect(estimateFileRowHeight(inputs, settings, 20)).toBe(padding + 20);
+        expect(estimateFileRowHeight(inputs, settings, 40)).toBe(padding + 40);
+        expect(estimateFileRowHeight(inputs, settings, 20)).toBe(padding + 20);
+    });
+
+    it('preserves pill, preview and metadata space while sizing the title independently', () => {
+        const settings = { ...config, showPreview: true, showDate: true };
+        const rich = { ...inputs, hasPreviewContent: true, visiblePillRowCount: 2 };
+        const estimated = estimateFileRowHeight(rich, settings);
+        expect(estimateFileRowHeight(rich, settings, 20)).toBe(estimated - 20);
+        expect(estimateFileRowHeight(rich, settings, 40)).toBe(estimated);
+    });
+
+    it('keeps the thumbnail floor even when the title fits one line', () => {
+        expect(estimateFileRowHeight({ ...inputs, showFeatureImageArea: true, showExtensionBadgeThumbnail: true }, config, 20)).toBe(
+            config.heights.basePadding + config.heights.featureImageMinHeight
+        );
+    });
+
+    it('uses measured mobile and fractional text heights without rounding down', () => {
+        const settings = { ...config, heights: getListPaneMeasurements(true) };
+        expect(estimateFileRowHeight(inputs, settings, 21)).toBe(settings.heights.basePadding + 21);
+        expect(estimateFileRowHeight(inputs, settings, 42)).toBe(settings.heights.basePadding + 42);
+        expect(estimateFileRowHeight(inputs, settings, 25.5)).toBe(settings.heights.basePadding + 25.5);
+    });
+
+    it.each([undefined, 0, -1, NaN, Infinity])('retains the estimate until a visible title can be measured (%s)', height => {
+        expect(estimateFileRowHeight(inputs, config, height)).toBe(config.heights.basePadding + 40);
+    });
+});

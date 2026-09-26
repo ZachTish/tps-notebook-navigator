@@ -468,8 +468,13 @@ export function calculateNormalListFileRowHeightEstimate({
     return heights.basePadding + applyFeatureImageFloor(richContentHeight + pillRowsExtraHeight);
 }
 
-export function estimateFileRowHeight(inputs: FileRowHeightInputs, config: FileRowHeightConfig): number {
-    const { heights, titleRows, previewRows, compactPaddingTotal } = config;
+export function estimateFileRowHeight(inputs: FileRowHeightInputs, config: FileRowHeightConfig, measuredTitleHeight?: number): number {
+    const { heights, previewRows, compactPaddingTotal } = config;
+    // The setting caps rendered lines; only unmounted titles need the maximum estimate.
+    const titleRows =
+        typeof measuredTitleHeight === 'number' && Number.isFinite(measuredTitleHeight) && measuredTitleHeight > 0
+            ? measuredTitleHeight / heights.titleLineHeight
+            : config.titleRows;
     const visiblePillRowCount = Math.max(0, inputs.visiblePillRowCount);
     const layoutState = getFileItemLayoutState({
         isCompactMode: config.isCompactMode,

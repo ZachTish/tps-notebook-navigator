@@ -515,6 +515,7 @@ interface ListPaneRowProps {
     isTypePresentation: boolean;
     isCompactMode: boolean;
     titleRows: number;
+    measureTitle: (element: HTMLDivElement | null) => void;
     showTypeIcon: boolean;
     rowMenuHost?: NavigatorProviderRowMenuHost;
 }
@@ -561,6 +562,7 @@ const ListPaneRow = React.memo(function ListPaneRow({
     isTypePresentation,
     isCompactMode,
     titleRows,
+    measureTitle,
     showTypeIcon,
     rowMenuHost
 }: ListPaneRowProps) {
@@ -637,6 +639,8 @@ const ListPaneRow = React.memo(function ListPaneRow({
                     hasSelectedAbove={hasSelectedAbove}
                     hasSelectedBelow={hasSelectedBelow}
                     showQuickActionsPanel={showQuickActionsPanel}
+                    virtualIndex={index}
+                    measureTitle={measureTitle}
                     fileIndex={item.fileIndex}
                     groupHeaderLabel={groupHeaderLabel}
                     parentFolder={item.parentFolder}
@@ -1388,6 +1392,7 @@ export function ListPaneVirtualContent({
                                     isTypePresentation={isTypeProviderRow}
                                     isCompactMode={isCompactMode}
                                     titleRows={appearanceSettings.titleRows}
+                                    measureTitle={rowVirtualizer.measureElement}
                                     showTypeIcon={settings.showFileIcons}
                                     rowMenuHost={rowMenuHost}
                                 />

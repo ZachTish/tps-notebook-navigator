@@ -1012,6 +1012,21 @@ export function useListPaneScroll({
 
             return heights.titleLineHeight;
         },
+        // Observe the title, not the fixed-height virtual wrapper. Its intrinsic height
+        // changes on wrapping, rename, font changes and pane resizing without a second observer.
+        measureElement: (element, entry, instance) => {
+            const index = instance.indexFromElement(element);
+            const item = listItems[index];
+            if (item?.type !== ListPaneItemType.FILE || !(item.data instanceof TFile)) {
+                return instance.options.estimateSize(index);
+            }
+            const titleHeight = entry?.borderBoxSize?.[0]?.blockSize ?? element.getBoundingClientRect().height;
+            return estimateFileRowHeight(
+                resolveListFileRowHeightInputs({ app, db, hasPreview, item, file: item.data, config: rowSizingConfig }),
+                rowSizingConfig,
+                titleHeight
+            );
+        },
         overscan: OVERSCAN,
         scrollPaddingEnd: effectiveScrollPaddingEnd,
         useScrollendEvent: true,
@@ -1032,7 +1047,20 @@ export function useListPaneScroll({
         }
     });
     const measureCurrentVirtualizerRef = useRef<() => void>(() => undefined);
-    measureCurrentVirtualizerRef.current = () => rowVirtualizer.measure();
+    measureCurrentVirtualizerRef.current = () => {
+        rowVirtualizer.measure();
+        // Settings and pill/preview changes invalidate the complete row estimate even
+        // when the title itself has not resized. Keep mounted titles measured.
+        // resizeItem also works during scrolling, when measureElement skips synchronous reads.
+        for (const element of rowVirtualizer.elementsCache.values()) {
+            if (element.isConnected) {
+                rowVirtualizer.resizeItem(
+                    rowVirtualizer.indexFromElement(element),
+                    rowVirtualizer.options.measureElement(element, undefined, rowVirtualizer)
+                );
+            }
+        }
+    };
     const remeasureSchedulerRef = useRef<ReturnType<typeof createRemeasureScheduler> | null>(null);
     if (remeasureSchedulerRef.current === null) {
         remeasureSchedulerRef.current = createRemeasureScheduler(() => measureCurrentVirtualizerRef.current());
@@ -1486,7 +1514,7 @@ export function useListPaneScroll({
     useEffect(() => {
         if (!enabled || !rowVirtualizer) return;
 
-        rowVirtualizer.measure();
+        measureCurrentVirtualizerRef.current();
     }, [enabled, listLayoutSignature, rowVirtualizer]);
 
     /**
@@ -1495,7 +1523,7 @@ export function useListPaneScroll({
      */
     useLayoutEffect(() => {
         if (enabled && isStorageReady && rowVirtualizer) {
-            rowVirtualizer.measure();
+            measureCurrentVirtualizerRef.current();
         }
     }, [enabled, isStorageReady, rowVirtualizer]);
 

@@ -216,6 +216,8 @@ interface FileItemProps {
     shortcutKey?: string;
     manualSortDisabled?: boolean;
     inlineRename?: FileItemInlineRenameHandlers;
+    virtualIndex?: number;
+    measureTitle?: (element: HTMLDivElement | null) => void;
 }
 
 export interface FileItemStorageHelpers {
@@ -439,7 +441,9 @@ export const FileItem = React.memo(function FileItem({
     isHidden = false,
     shortcutKey,
     manualSortDisabled = false,
-    inlineRename
+    inlineRename,
+    virtualIndex,
+    measureTitle
 }: FileItemProps) {
     const {
         onFileClick,
@@ -808,6 +812,8 @@ export const FileItem = React.memo(function FileItem({
         if (inlineRename && renameInputOptions) {
             return (
                 <div
+                    ref={measureTitle}
+                    data-index={virtualIndex}
                     className="nn-file-name nn-file-name--inline-renaming"
                     data-has-color={applyColorToName ? 'true' : 'false'}
                     data-title-rows={appearanceSettings.titleRows}
@@ -835,6 +841,8 @@ export const FileItem = React.memo(function FileItem({
 
         return (
             <div
+                ref={measureTitle}
+                data-index={virtualIndex}
                 className="nn-file-name"
                 data-has-color={applyColorToName ? 'true' : 'false'}
                 data-title-rows={appearanceSettings.titleRows}

@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: [6.5.0](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.5.0) · Obsidian 1.11.0+ · Desktop and mobile.
+Current release: [6.5.1](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.5.1) · Obsidian 1.11.0+ · Desktop and mobile.
 
 ## Install with BRAT
 
@@ -125,3 +125,14 @@ Validation: focused adapter tests cover existing values, profile isolation, casi
 Explicit all-off property entries now survive Navigator normalization and the standalone modal, so a later catalog refresh cannot re-enable a deliberately hidden key. Installed QA used Navigator’s Configure property keys action to open GCM, expanded Status, changed visibility using the native toggles, reloaded Navigator with every surface off, and confirmed the persisted all-off entry. Original test-profile keys were restored; GCM custom-property definitions were unchanged. No notes were created or modified. Controls reuse the existing responsive native settings layout; physical iPhone testing remains outstanding.
 
 All 3,097 tests across 271 files passed. ESLint passed with 24 existing advisory warnings and no errors. Namespace, operational identity, artifact identity, string/locale and TypeScript checks passed. Final artifacts were deployed only to Obsidian Plugin Test Vault and reloaded with the targeted plugin command. Release notes contain SHA-256 hashes.
+
+
+## 6.5.1 — Title rows are a maximum
+
+Choosing two or three title rows now reserves only the lines a note title actually uses. Short titles stay on one line; longer titles wrap up to the existing limit and then truncate. The same behavior applies to standard and compact note lists and existing per-folder appearance overrides. Previews, dates, tags, properties and thumbnail minimum heights retain their existing space. There is no new setting or migration, and no note data changes.
+
+The virtual list previously reserved the configured maximum for every title despite CSS already clamping only when necessary. It now measures the title through the virtualizer's existing ResizeObserver and feeds that height into the existing row-size calculation. Renames, pane resizing and font changes update the measured height. Existing settings/content invalidation remeasures mounted titles even during scrolling; otherwise clearing cached row sizes could leave short titles at the maximum estimate. Unmounted notes retain the maximum estimate until measured. Provider-generated non-file rows keep their existing sizing.
+
+Regression coverage includes standard/compact short→wrapped→short titles, previews/dates/property rows, thumbnail floors, mobile and fractional line metrics, and unmeasured titles. Installed test-vault QA on 2026-09-26 verified 36/56 px standard rows for one/two-line titles, 28/48 px compact rows, one/two/three-row limits, renaming in both directions, and switching between narrow dual panes and a wider single pane. Settings were restored and synthetic fixtures archived directly. Physical iPhone validation remains separate.
+
+Validation and SHA-256 hashes are recorded in [6.5.1 release notes](release-notes/6.5.1.md). Required validation includes the full Vitest suite, ESLint, style lint, identity checks, a separate final production build deployed only to the test vault, and a targeted Navigator reload. Minimum Obsidian remains 1.11.0. This patch is ready for the user's BRAT pull after publication; production installation is separate.

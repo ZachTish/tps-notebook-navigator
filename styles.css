@@ -4295,6 +4295,7 @@ button.tps-nn-navigation-calendar-day {
 
 /* File name - primary text with ellipsis overflow */
 .tps-nn-file-name {
+    flex-shrink: 0; /* Let wrapped titles grow before the virtual row is remeasured. */
     font-size: var(--tps-nn-file-name-size-mobile, var(--tps-nn-file-name-size));
     font-weight: var(--tps-nn-theme-file-name-font-weight);
     color: var(--tps-nn-theme-file-name-color);
