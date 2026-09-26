@@ -17,8 +17,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { TFile, TFolder } from 'obsidian';
-import { selectionReducer } from '../../src/context/selection/state';
+import { App, TFile, TFolder } from 'obsidian';
+import { resolveNavigationCursor, selectionReducer } from '../../src/context/selection/state';
 import type { SelectionState } from '../../src/context/selection/types';
 import { buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 
@@ -360,5 +360,31 @@ describe('selectionReducer navigation history', () => {
         });
 
         expect(cleanupState).toBe(selectedState);
+    });
+});
+
+describe('navigation cursor with a rooted file list', () => {
+    it('keeps arrow/rename targets at the last clicked folder while file scope stays root', () => {
+        const app = new App();
+        const folder = new TFolder('Inbox');
+        (app.vault as unknown as { registerFolder: (folder: TFolder) => void }).registerFolder(folder);
+        const state = createSelectionState(app.vault.getRoot());
+        const cursor = resolveNavigationCursor(state, { type: 'folder', value: 'Inbox' }, app);
+        expect(cursor.selectedFolder).toBe(folder);
+        expect(state.selectedFolder?.path).toBe('/');
+        expect(resolveNavigationCursor(state, { type: 'folder', value: 'missing' }, app)).toBe(state);
+    });
+
+    it.each([
+        ['tag', 'work'],
+        ['property', 'key:status=todo'],
+        ['type', 'file:base']
+    ] as const)('keeps the %s tree cursor independent from list scope', (type, value) => {
+        const app = new App();
+        const state = createSelectionState(app.vault.getRoot());
+        const cursor = resolveNavigationCursor(state, { type, value }, app);
+        expect(cursor.selectionType).toBe(type);
+        expect(state.selectionType).toBe('folder');
+        expect(state.selectedFolder?.path).toBe('/');
     });
 });

@@ -1369,3 +1369,29 @@ describe('quoted literal search terms', () => {
         expect(tokens.folderTokens).toEqual([{ mode: 'exact', value: 'my/folder' }]);
     });
 });
+
+describe('folder subtree filters', () => {
+    it.each(['folder:/work/meetings/**', 'folder:"/work/meetings/**"'])(
+        'matches descendants without matching sibling prefixes: %s',
+        query => {
+            const tokens = parseFilterSearchTokens(query);
+            expect(tokens.invalidReason).toBeNull();
+            expect(tokens.folderTokens).toEqual([{ mode: 'subtree', value: 'work/meetings' }]);
+            for (const [path, expected] of [
+                ['work/meetings', true],
+                ['work/meetings/weekly', true],
+                ['work/meetings-old', false],
+                ['other/work/meetings', false],
+                ['', false]
+            ] as const) {
+                expect(fileMatchesFilterTokens('note', [], tokens, { hasUnfinishedTasks: false, foldedFolderPath: path })).toBe(expected);
+            }
+        }
+    );
+
+    it('supports subtree exclusions and quoted paths with spaces', () => {
+        const tokens = parseFilterSearchTokens('-folder:"/my projects/**"');
+        expect(fileMatchesFilterTokens('note', [], tokens, { hasUnfinishedTasks: false, foldedFolderPath: 'my projects/sub' })).toBe(false);
+        expect(fileMatchesFilterTokens('note', [], tokens, { hasUnfinishedTasks: false, foldedFolderPath: 'my projects-old' })).toBe(true);
+    });
+});

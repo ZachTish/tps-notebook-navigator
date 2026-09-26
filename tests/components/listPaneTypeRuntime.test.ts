@@ -18,7 +18,7 @@ import { ItemType } from '../../src/types';
 import { createTpsNavigatorProviderTypeId, TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 describe('Type-mode list runtime behavior', () => {
-    it('lets the vault root honor descendant visibility while preserving explicit whole-vault search', () => {
+    it('keeps the vault root recursive after search is cleared, regardless of descendant visibility', () => {
         expect(isVaultRootResourceScope(ItemType.FOLDER, '/')).toBe(true);
         expect(isVaultRootResourceScope(ItemType.FOLDER, 'Projects')).toBe(false);
         expect(isVaultRootResourceScope(ItemType.TYPE, '/')).toBe(false);
@@ -29,7 +29,7 @@ describe('Type-mode list runtime behavior', () => {
                 selectedFolderPath: '/',
                 includeDescendants: false
             })
-        ).toBe(false);
+        ).toBe(true);
         expect(
             resolveIncludeDescendantResources({
                 selectionType: ItemType.FOLDER,

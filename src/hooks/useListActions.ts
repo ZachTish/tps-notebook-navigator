@@ -130,9 +130,10 @@ import {
     getTpsFileResourceCreationActionLabel,
     isTpsNavigatorCreatableFileTypeId
 } from '../services/types/fileResourceCreation';
-import { resolveSearchResourceCreation } from '../services/types/searchResourceCreation';
+import { resolveNavigationSearchCreation, resolveSearchResourceCreation } from '../services/types/searchResourceCreation';
 import { getInternalPlugin } from '../utils/typeGuards';
 import type { RevealFileOptions } from './useNavigatorReveal';
+import { resolveFolderShortcutTarget } from '../utils/shortcutPathResolver';
 import { revealFileFromListUserAction } from '../utils/listPaneReveal';
 
 type SelectionSortTarget =
@@ -597,6 +598,10 @@ export function useListActions({
         [activeCreationSearchQuery, creationSearchSupported]
     );
     const searchCreationPlan = searchCreationResolution?.ok ? searchCreationResolution : null;
+    const navigationCreationTarget = useMemo(
+        () => (creationSearchSupported ? resolveNavigationSearchCreation(activeCreationSearchQuery) : null),
+        [activeCreationSearchQuery, creationSearchSupported]
+    );
     const canCreateFromSearch = Boolean(
         searchCreationPlan &&
         (searchCreationPlan.typeId !== TPS_NAVIGATOR_TYPE_IDS.BASES || Boolean(getInternalPlugin(app, 'bases')?.enabled))
@@ -613,20 +618,22 @@ export function useListActions({
         plugin.openSettings();
     }, [plugin]);
     const canCreateNewFile = activeCreationSearchQuery
-        ? canCreateFromSearch
+        ? canCreateFromSearch || Boolean(navigationCreationTarget)
         : selectionState.selectionType === ItemType.TYPE
           ? hasCreatableTypeSelection
           : Boolean(selectionState.selectedFolder) || hasCreatableTagSelection || hasCreatablePropertySelection;
     const effectiveCreationType = searchCreationPlan?.typeId ?? selectionState.selectedType;
     const typeCreationLabel =
         getTpsResourceCreationActionLabel(effectiveCreationType) ?? getTpsFileResourceCreationActionLabel(effectiveCreationType);
-    const newItemLabel = searchCreationPlan
-        ? (typeCreationLabel?.replace(/^New /u, 'New matching ') ?? 'New matching item')
-        : activeCreationSearchQuery && searchCreationResolution && !searchCreationResolution.ok
-          ? searchCreationResolution.reason
-          : hasCreatableTypeSelection
-            ? (typeCreationLabel ?? strings.paneHeader.newNote)
-            : strings.paneHeader.newNote;
+    const newItemLabel = navigationCreationTarget
+        ? strings.paneHeader.newNote
+        : searchCreationPlan
+          ? (typeCreationLabel?.replace(/^New /u, 'New matching ') ?? 'New matching item')
+          : activeCreationSearchQuery && searchCreationResolution && !searchCreationResolution.ok
+            ? searchCreationResolution.reason
+            : hasCreatableTypeSelection
+              ? (typeCreationLabel ?? strings.paneHeader.newNote)
+              : strings.paneHeader.newNote;
     const newItemTooltip = newItemLabel;
     const newItemIcon =
         effectiveCreationType === TPS_NAVIGATOR_TYPE_IDS.BASES
@@ -721,6 +728,19 @@ export function useListActions({
                 return;
             }
 
+            if (navigationCreationTarget) {
+                const newTab = legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab);
+                const sourcePath = selectionState.selectedFile?.path ?? app.workspace.getActiveFile()?.path ?? '';
+                if (navigationCreationTarget.type === 'folder') {
+                    const folder = resolveFolderShortcutTarget(app, navigationCreationTarget.path);
+                    if (folder) await fileSystemOps.createNewFile(folder, newTab);
+                } else if (navigationCreationTarget.type === 'tag') {
+                    await fileSystemOps.createNewFileForTag(navigationCreationTarget.tag, sourcePath, newTab);
+                } else {
+                    await fileSystemOps.createNewFileForProperty(navigationCreationTarget.nodeId, sourcePath, newTab);
+                }
+                return;
+            }
             if (activeCreationSearchQuery) {
                 return;
             }
@@ -770,6 +790,7 @@ export function useListActions({
         hasCreatableFileTypeSelection,
         activeCreationSearchQuery,
         searchCreationPlan,
+        navigationCreationTarget,
         settings.createNewNotesInNewTab,
         settings.tpsResourceCreationTarget,
         settings.tpsResourceCreationSpecificFile,

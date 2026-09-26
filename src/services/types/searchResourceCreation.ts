@@ -2,6 +2,7 @@
 
 import { TPS_NAVIGATOR_TYPE_IDS, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { parseFilterSearchTokens } from '../../utils/filterSearch';
+import { buildPropertyKeyNodeId, buildPropertyValueNodeId, type PropertySelectionNodeId } from '../../utils/propertyTree';
 import type { PropertySearchToken } from '../../utils/filterSearchTypes';
 import { isTpsNavigatorCreatableFileTypeId } from './fileResourceCreation';
 import { isTpsNavigatorCreatableResourceTypeId } from './markdownResourceCreation';
@@ -114,5 +115,46 @@ export function resolveSearchResourceCreation(query: string): SearchResourceCrea
         tags,
         fields: taskFields.fields,
         ...(taskFields.status === undefined ? {} : { status: taskFields.status })
+    };
+}
+
+export type NavigationSearchCreationTarget =
+    { type: 'folder'; path: string } | { type: 'tag'; tag: string } | { type: 'property'; nodeId: PropertySelectionNodeId };
+
+/** Reuse ordinary note creation only when the visible search contains exactly one writable navigation facet. */
+export function resolveNavigationSearchCreation(query: string): NavigationSearchCreationTarget | null {
+    const tokens = parseFilterSearchTokens(query);
+    if (
+        tokens.invalidReason ||
+        tokens.nameTokens.length ||
+        tokens.excludeNameTokens.length ||
+        tokens.excludeTagTokens.length ||
+        tokens.excludePropertyTokens.length ||
+        tokens.excludeFolderTokens.length ||
+        tokens.typeTokens.length ||
+        tokens.excludeTypeTokens.length ||
+        tokens.extensionTokens.length ||
+        tokens.excludeExtensionTokens.length ||
+        tokens.dateRanges.length ||
+        tokens.excludeDateRanges.length ||
+        tokens.requireTagged ||
+        tokens.excludeTagged ||
+        tokens.includeUntagged ||
+        tokens.requireUnfinishedTasks ||
+        tokens.excludeUnfinishedTasks ||
+        tokens.expression.some(token => token.kind === 'operator' && token.operator === 'OR') ||
+        tokens.includedTagTokens.length + tokens.propertyTokens.length + tokens.folderTokens.length !== 1
+    ) {
+        return null;
+    }
+    const folder = tokens.folderTokens[0];
+    if (folder) return folder.mode === 'segment' ? null : { type: 'folder', path: folder.value || '/' };
+    const tag = tokens.includedTagTokens[0];
+    if (tag) return { type: 'tag', tag };
+    const property = tokens.propertyTokens[0];
+    if (!property || property.value === '') return null;
+    return {
+        type: 'property',
+        nodeId: property.value === null ? buildPropertyKeyNodeId(property.key) : buildPropertyValueNodeId(property.key, property.value)
     };
 }

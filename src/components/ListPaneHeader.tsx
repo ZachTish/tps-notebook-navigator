@@ -48,7 +48,8 @@ import type { ManualSortNewFilePlacementContext } from '../utils/manualSort';
 import {
     shouldShowListCreateButton,
     supportsListSortAndGroupingForSelection,
-    supportsNativeListPresentationForSelection
+    supportsNativeListPresentationForSelection,
+    isVaultRootResourceScope
 } from './listPane/typeModeRuntime';
 
 interface ListPaneHeaderProps {
@@ -188,7 +189,11 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
     );
     const supportsListSortAndGrouping = supportsListSortAndGroupingForSelection(selectionState.selectionType, selectionState.selectedType);
     const showSearchButton = listToolbarVisibility.search;
-    const showDescendantsButton = !isTypeSelection && !isAggregateNavigationSelection(selectionState) && listToolbarVisibility.descendants;
+    const showDescendantsButton =
+        !isTypeSelection &&
+        !isVaultRootResourceScope(selectionState.selectionType, selectionState.selectedFolder?.path) &&
+        !isAggregateNavigationSelection(selectionState) &&
+        listToolbarVisibility.descendants;
     const showGroupExpansionButton = supportsListSortAndGrouping && listToolbarVisibility.groupExpansion;
     const showSortButton = supportsListSortAndGrouping && listToolbarVisibility.sort;
     const showAppearanceButton = supportsNativeListPresentation && listToolbarVisibility.appearance;

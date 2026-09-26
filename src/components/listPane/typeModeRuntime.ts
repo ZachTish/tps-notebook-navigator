@@ -25,7 +25,7 @@ export function isVaultRootResourceScope(
     return selectionType === ItemType.FOLDER && selectedFolderPath === '/';
 }
 
-/** Resolves descendant traversal while allowing an explicit whole-vault search to temporarily widen the root scope. */
+/** The vault root always contains every descendant, including after the search is cleared. */
 export function resolveIncludeDescendantResources({
     selectionType,
     selectedFolderPath,
@@ -37,7 +37,7 @@ export function resolveIncludeDescendantResources({
     includeDescendants: boolean;
     forceWholeVaultSearch?: boolean;
 }): boolean {
-    return includeDescendants || forceWholeVaultSearch;
+    return isVaultRootResourceScope(selectionType, selectedFolderPath) || includeDescendants || forceWholeVaultSearch;
 }
 
 /** Native file presentation controls apply to ordinary scopes and fixed file-backed Types only. */

@@ -33,7 +33,7 @@ import {
     useSelectionReconciliation,
     useSelectionStateRef as useSelectionStateRefInternal
 } from './selection/useSelectionProvider';
-import { selectionReducer } from './selection/state';
+import { resolveNavigationCursor, selectionReducer } from './selection/state';
 import type { SelectionAction, SelectionState } from './selection/types';
 
 export type { SelectionAction, SelectionDispatch, SelectionRevealSource, SelectionState } from './selection/types';
@@ -294,4 +294,15 @@ export function useSelectionDispatch() {
         throw new Error('useSelectionDispatch must be used within SelectionProvider');
     }
     return context;
+}
+
+/** Navigation-pane cursor only. List/search consumers continue using the actual root scope. */
+export function useNavigationCursor(): NavigationSelectionState {
+    const selection = useNavigationSelection();
+    const history = useSelectionHistory();
+    const { app } = useServices();
+    return useMemo(
+        () => resolveNavigationCursor(selection, history.navigationHistory[history.navigationHistoryIndex], app),
+        [app, history, selection]
+    );
 }

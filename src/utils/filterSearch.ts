@@ -424,6 +424,10 @@ const normalizeFolderFilterToken = (value: string): FolderFilterToken | null => 
         return null;
     }
 
+    if (normalizedSlashes.startsWith('/') && normalizedSlashes.endsWith('/**')) {
+        return { mode: 'subtree', value: normalizedSlashes.slice(1, -3) };
+    }
+
     if (normalizedSlashes.startsWith('/')) {
         const withoutTrailingSlash = normalizedSlashes.replace(/\/+$/u, '');
         if (!withoutTrailingSlash) {
@@ -527,6 +531,9 @@ const folderMatchesTokenWithNormalizedPath = (
 ): boolean => {
     if (token.mode === 'exact') {
         return normalizedFolderPath === token.value;
+    }
+    if (token.mode === 'subtree') {
+        return !token.value || normalizedFolderPath === token.value || normalizedFolderPath.startsWith(`${token.value}/`);
     }
 
     if (!token.value || !normalizedFolderPath) {
@@ -987,6 +994,7 @@ const parseFilterModeTokens = (
  * - has:task - Include notes with unfinished tasks
  * - folder:meetings - Include notes where any folder segment contains "meetings"
  * - folder:/work/meetings - Include notes whose parent folder path is exactly "work/meetings"
+ * - folder:/work/** - Include notes in work and its descendant folders
  * - folder:/ - Include notes in the vault root
  * - ext:md - Include notes with extension "md"
  * - type:structural:task - Include results from the Checkboxes Type

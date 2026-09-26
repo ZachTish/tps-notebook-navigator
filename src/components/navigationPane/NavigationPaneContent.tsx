@@ -24,7 +24,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Platform, TFile, TFolder } from 'obsidian';
 import { Virtualizer } from '@tanstack/react-virtual';
 import { useExpansionDispatch, useExpansionState } from '../../context/ExpansionContext';
-import { useNavigationSelection, useSelectionDispatch } from '../../context/SelectionContext';
+import { useNavigationCursor, useNavigationSelection, useSelectionDispatch } from '../../context/SelectionContext';
 import { useServices, useMetadataService, useCommandQueue } from '../../context/ServicesContext';
 import { useSettingsState, useSettingsUpdate, useActiveProfile } from '../../context/SettingsContext';
 import { useUXPreferences } from '../../context/UXPreferencesContext';
@@ -158,6 +158,7 @@ export const NavigationPane = React.memo(
         const expansionState = useExpansionState();
         const expansionDispatch = useExpansionDispatch();
         const selectionState = useNavigationSelection();
+        const navigationCursor = useNavigationCursor();
         const selectionDispatch = useSelectionDispatch();
         const settings = useSettingsState();
         useMarkdownWordCountConsumerChanges(app);
@@ -850,21 +851,21 @@ export const NavigationPane = React.memo(
         }, [isRootReorderMode, rowVirtualizer, scrollContainerRef]);
 
         const handleTreeUpdateComplete = useCallback(() => {
-            const selectedPath = getSelectedPath(selectionState);
+            const selectedPath = getSelectedPath(navigationCursor);
             if (!selectedPath) {
                 return;
             }
 
             const itemType =
-                selectionState.selectionType === ItemType.TAG
+                navigationCursor.selectionType === ItemType.TAG
                     ? ItemType.TAG
-                    : selectionState.selectionType === ItemType.PROPERTY
+                    : navigationCursor.selectionType === ItemType.PROPERTY
                       ? ItemType.PROPERTY
-                      : selectionState.selectionType === ItemType.TYPE
+                      : navigationCursor.selectionType === ItemType.TYPE
                         ? ItemType.TYPE
                         : ItemType.FOLDER;
             requestScroll(normalizeNavigationPath(itemType, selectedPath), { align: 'auto', itemType });
-        }, [requestScroll, selectionState]);
+        }, [requestScroll, navigationCursor]);
 
         const prevCalendarOverlayVisibleRef = useRef<boolean>(shouldRenderCalendarOverlay);
         const prevCalendarWeekCountRef = useRef<number>(calendarWeekCount);
@@ -916,16 +917,16 @@ export const NavigationPane = React.memo(
                 return items[index] ?? null;
             };
 
-            if (selectionState.selectionType === ItemType.FOLDER && selectionState.selectedFolder?.path) {
-                return resolveItem(ItemType.FOLDER, selectionState.selectedFolder.path);
+            if (navigationCursor.selectionType === ItemType.FOLDER && navigationCursor.selectedFolder?.path) {
+                return resolveItem(ItemType.FOLDER, navigationCursor.selectedFolder.path);
             }
 
-            if (selectionState.selectionType === ItemType.TAG && selectionState.selectedTag) {
-                return resolveItem(ItemType.TAG, selectionState.selectedTag);
+            if (navigationCursor.selectionType === ItemType.TAG && navigationCursor.selectedTag) {
+                return resolveItem(ItemType.TAG, navigationCursor.selectedTag);
             }
 
-            if (selectionState.selectionType === ItemType.PROPERTY && selectionState.selectedProperty) {
-                return resolveItem(ItemType.PROPERTY, selectionState.selectedProperty);
+            if (navigationCursor.selectionType === ItemType.PROPERTY && navigationCursor.selectedProperty) {
+                return resolveItem(ItemType.PROPERTY, navigationCursor.selectedProperty);
             }
 
             return null;
@@ -933,10 +934,10 @@ export const NavigationPane = React.memo(
             isRootReorderMode,
             items,
             pathToIndex,
-            selectionState.selectedFolder,
-            selectionState.selectedProperty,
-            selectionState.selectedTag,
-            selectionState.selectionType
+            navigationCursor.selectedFolder,
+            navigationCursor.selectedProperty,
+            navigationCursor.selectedTag,
+            navigationCursor.selectionType
         ]);
 
         const buildRenameTarget = useCallback(
@@ -1277,7 +1278,7 @@ export const NavigationPane = React.memo(
                     isSelected:
                         item.type === NavigationPaneItemType.VIRTUAL_FOLDER && item.data.id === keyboardFocusedVirtualFolderId
                             ? true
-                            : keyboardFocusedVirtualFolderId === null && isNavigationItemSelected(item, selectionState),
+                            : keyboardFocusedVirtualFolderId === null && isNavigationItemSelected(item, navigationCursor),
                     isExpanded,
                     renameTarget,
                     isDragSource
@@ -1287,7 +1288,7 @@ export const NavigationPane = React.memo(
                 expansionState,
                 inlineRenameTarget,
                 keyboardFocusedVirtualFolderId,
-                selectionState,
+                navigationCursor,
                 settings.showRootFolder,
                 shortcuts.shortcutsExpanded,
                 shortcuts.recentNotesExpanded,
@@ -1304,13 +1305,13 @@ export const NavigationPane = React.memo(
                         : item.type === NavigationPaneItemType.VIRTUAL_FOLDER && item.data.id === keyboardFocusedVirtualFolderId;
                 return isNavigationItemFilled({
                     item,
-                    selectionState,
+                    selectionState: navigationCursor,
                     searchHighlights,
                     getSolidBackground,
                     isSelectedOverride: keyboardSelectionOverride
                 });
             },
-            [getSolidBackground, keyboardFocusedVirtualFolderId, searchHighlights, selectionState]
+            [getSolidBackground, keyboardFocusedVirtualFolderId, searchHighlights, navigationCursor]
         );
 
         const renderNavigationItem = useCallback(

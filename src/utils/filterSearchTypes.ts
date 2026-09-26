@@ -37,7 +37,7 @@ export interface DateFilterRange {
 }
 
 export interface FolderFilterToken {
-    mode: 'exact' | 'segment';
+    mode: 'exact' | 'segment' | 'subtree';
     value: string;
 }
 

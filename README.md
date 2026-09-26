@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: [6.5.1](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.5.1) · Obsidian 1.11.0+ · Desktop and mobile.
+Current release: [7.0.0](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/7.0.0) · Obsidian 1.11.0+ · Desktop and mobile.
 
 ## Install with BRAT
 
@@ -136,3 +136,18 @@ The virtual list previously reserved the configured maximum for every title desp
 Regression coverage includes standard/compact short→wrapped→short titles, previews/dates/property rows, thumbnail floors, mobile and fractional line metrics, and unmeasured titles. Installed test-vault QA on 2026-09-26 verified 36/56 px standard rows for one/two-line titles, 28/48 px compact rows, one/two/three-row limits, renaming in both directions, and switching between narrow dual panes and a wider single pane. Settings were restored and synthetic fixtures archived directly. Physical iPhone validation remains separate.
 
 Validation and SHA-256 hashes are recorded in [6.5.1 release notes](release-notes/6.5.1.md). Required validation includes the full Vitest suite, ESLint, style lint, identity checks, a separate final production build deployed only to the test vault, and a targeted Navigator reload. Minimum Obsidian remains 1.11.0. This patch is ready for the user's BRAT pull after publication; production installation is separate.
+
+
+## 7.0.0 — Navigation searches the vault root
+
+Selecting a folder, tag, property key/value or file/structural Type now fills the visible Filter Search field and returns the list scope to the vault root. Selecting Tags or Properties roots clears the filter. Clearing the field or closing Search shows the whole visible vault, including descendants regardless of the subfolder toggle. The descendant toggle is hidden for the always-recursive root; folder inclusion is visible in the query. Existing hidden-item and file-visibility preferences still apply. Ordinary file rows continue opening notes.
+
+Examples: a tag becomes `#work`, a property becomes `.status=todo`, and Bases becomes `type:file:base`. Folder clicks become `folder:"/Projects"` for direct children or `folder:"/Projects/**"` for a subtree, according to that folder's existing descendant preference. The new `/**` suffix matches the folder and its children without matching sibling prefixes; exact and segment folder filters retain their previous syntax. Selecting a different tree item replaces the current query; existing modifier-click search composition remains available.
+
+The existing search hook consumes navigation before paint, uses the existing selection dispatch to root the list, and keeps the clicked target in navigation history without adding a root entry. Tree highlighting, scrolling, arrow keys and rename/open actions use that existing history cursor independently of the root list scope. Search text is the only active filter. No watcher, persisted schema, note migration or duplicate filter store is added. Sort and appearance now use the root's settings; saved per-scope overrides remain stored. Public selection/list snapshots report the root, with criteria in `search.query`. This intentional change to navigation/API semantics warrants a major release. Minimum Obsidian remains 1.11.0.
+
+Saved searches with a start folder/tag/property materialize that location in the visible query and run from the root; unavailable targets still fail closed. Such searches use Navigator Filter Search so the generated facets are executable. Saved searches without a start constraint retain their chosen provider. Search terms for structural Types continue using existing row-local semantics.
+
+New note from a single folder, tag or property search reuses that facet's existing creation writer. Explicit Type searches retain their existing resource creation flow. Mixed, negative, text and ambiguous searches keep their creation restrictions; clearing Search restores ordinary root note creation. No new automatic properties are introduced.
+
+Regression coverage covers navigation serialization, aggregate roots, property values, Types, quoted paths, subtree boundaries/exclusions, root recursion and creation eligibility. Installed test-vault QA exercises navigation and clear/erase/close, direct versus recursive folders, saved start targets, note creation with the selected tag, and final reload. Original test settings are restored and synthetic fixtures archived directly. Full tests, lint, identity checks, final build/deploy/reload and artifact hashes are recorded in [7.0.0 release notes](release-notes/7.0.0.md). Physical iPhone acceptance and the production BRAT update remain separate.

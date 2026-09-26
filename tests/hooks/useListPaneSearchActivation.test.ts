@@ -43,6 +43,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../src/context/SelectionContext', () => ({
+    useSelectionDispatch: () => vi.fn(),
     useSelectionState: () => ({
         selectionType: 'folder',
         selectedFolder: null,
@@ -248,9 +249,9 @@ describe('useListPaneSearch activation', () => {
         expect(mocks.showNotice).toHaveBeenCalledOnce();
     });
 
-    it('does not apply the saved search when a preflighted target disappears during navigation', async () => {
-        const { result, onRevealTag } = renderSearchHarness();
-        onRevealTag.mockReturnValue(false);
+    it('does not apply a saved search when root navigation fails', async () => {
+        const { result, onNavigateToFolder } = renderSearchHarness();
+        onNavigateToFolder.mockReturnValue(false);
 
         await result.executeSearchShortcut({
             searchShortcut: {
@@ -262,12 +263,12 @@ describe('useListPaneSearch activation', () => {
             }
         });
 
-        expect(onRevealTag).toHaveBeenCalledOnce();
+        expect(onNavigateToFolder).toHaveBeenCalledWith('/', expect.any(Object));
         expect(mocks.services.plugin.setSearchProvider).not.toHaveBeenCalled();
         expect(mocks.setSearchActive).not.toHaveBeenCalled();
         expect(mocks.uiDispatch).not.toHaveBeenCalled();
         expect(requestAnimationFrame).not.toHaveBeenCalled();
-        expect(mocks.showNotice).toHaveBeenCalledOnce();
+        expect(mocks.showNotice).not.toHaveBeenCalled();
     });
 
     it('executes valid folder, tag, and property start targets before applying the saved search', async () => {
@@ -323,8 +324,10 @@ describe('useListPaneSearch activation', () => {
                 }
             });
 
-            expect(harness[testCase.expectedCallback]).toHaveBeenCalledWith(testCase.expectedTarget, expect.any(Object));
-            expect(mocks.services.plugin.setSearchProvider).toHaveBeenCalledWith('omnisearch');
+            expect(harness.onNavigateToFolder).toHaveBeenCalledWith('/', expect.any(Object));
+            expect(harness.onRevealTag).not.toHaveBeenCalled();
+            expect(harness.onRevealProperty).not.toHaveBeenCalled();
+            expect(mocks.services.plugin.setSearchProvider).toHaveBeenCalledWith('internal');
             expect(mocks.setSearchActive).toHaveBeenCalledWith(true);
             expect(mocks.uiDispatch).toHaveBeenCalledWith({ type: 'ACTIVATE_PANE', target: 'files' });
             expect(mocks.showNotice).not.toHaveBeenCalled();

@@ -16,9 +16,19 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+    type Dispatch,
+    type RefObject,
+    type SetStateAction
+} from 'react';
 import type { App } from 'obsidian';
-import { useSelectionState } from '../context/SelectionContext';
+import { useSelectionDispatch, useSelectionState } from '../context/SelectionContext';
 import { useServices } from '../context/ServicesContext';
 import { useSettingsState } from '../context/SettingsContext';
 import { useShortcuts } from '../context/ShortcutsContext';
@@ -60,6 +70,7 @@ import { resolveFolderShortcutTarget } from '../utils/shortcutPathResolver';
 import { normalizeTagPath } from '../utils/tagUtils';
 import { getVirtualTagCollection, isVirtualTagCollectionId } from '../utils/virtualTagCollections';
 import type { FilterSearchTokens } from '../utils/filterSearch';
+import { resolveSelectionIncludeDescendants } from '../utils/descendantVisibility';
 import { DateUtils } from '../utils/dateUtils';
 import type { NavigateToFolderOptions, RevealPropertyOptions, RevealTagOptions } from './useNavigatorReveal';
 import type { EnsureSelectionOptions, EnsureSelectionResult } from './useListPaneSelectionCoordinator';
@@ -74,10 +85,9 @@ export interface SearchQueryUpdateOptions {
     focusSearch?: boolean;
 }
 
-type SearchTruthSelection = Pick<
-    ReturnType<typeof useSelectionState>,
-    'selectionType' | 'selectedTag' | 'selectedProperty' | 'selectedType'
->;
+type SearchTruthSelection = Pick<ReturnType<typeof useSelectionState>, 'selectionType' | 'selectedTag' | 'selectedType'> & {
+    selectedProperty: string | null;
+};
 
 /** Materializes the visible navigation selection before another facet is added. */
 export function includeNavigationSelectionInSearchQuery(
@@ -135,6 +145,21 @@ export function getTypeFacetQueryWithNavigationSelection(
 /** Makes the query shown when Search opens fully describe the active navigation scope. */
 export function getSearchActivationQuery(query: string, selection: SearchTruthSelection, typesNavigationEnabled = true): string {
     return includeNavigationSelectionInSearchQuery(query, selection, typesNavigationEnabled);
+}
+
+/** null means the list is already rooted; an empty query means an aggregate tree root. */
+export function getNavigationSearchQuery(
+    selection: SearchTruthSelection & { selectedFolder?: { path: string } | null },
+    includeDescendants: boolean,
+    typesNavigationEnabled = true
+): string | null {
+    if (selection.selectionType === ItemType.FOLDER) {
+        const path = selection.selectedFolder?.path;
+        if (!path || path === '/') return null;
+        // Keep the prefix outside quotes so paths containing spaces remain folder filters.
+        return `folder:${JSON.stringify(`/${path}${includeDescendants ? '/**' : ''}`)}`;
+    }
+    return getSearchActivationQuery('', selection, typesNavigationEnabled);
 }
 
 interface UseListPaneSearchParams {
@@ -308,13 +333,12 @@ export function useListPaneSearch({
     rootContainerRef,
     onSearchTokensChange,
     onNavigateToFolder,
-    onRevealTag,
-    onRevealProperty,
     ensureSelectionForCurrentFilterRef
 }: UseListPaneSearchParams): UseListPaneSearchResult {
     const { app, plugin, propertyTreeService, tagTreeService } = useServices();
     const settings = useSettingsState();
     const selectionState = useSelectionState();
+    const selectionDispatch = useSelectionDispatch();
     const shortcuts = useShortcuts();
     const uiDispatch = useUIDispatch();
     const uxPreferences = useUXPreferences();
@@ -329,6 +353,28 @@ export function useListPaneSearch({
     const [shouldFocusSearch, setShouldFocusSearch] = useState(false);
     const [isSavingSearchShortcut, setIsSavingSearchShortcut] = useState(false);
     const suppressSearchTopScrollRef = useRef(false);
+    const navigationSearchQuery = getNavigationSearchQuery(
+        selectionState,
+        resolveSelectionIncludeDescendants(settings, selectionState, uxPreferences.includeDescendantNotes),
+        settings.tpsFileTypesNavigationEnabled
+    );
+    useLayoutEffect(() => {
+        if (navigationSearchQuery === null) return;
+        // Consume navigation at the search boundary: the visible query owns filtering,
+        // while the list, creation context and public snapshot all remain at the root.
+        plugin.setSearchProvider('internal');
+        setSearchQuery(navigationSearchQuery);
+        setDebouncedSearchQuery(navigationSearchQuery);
+        setSearchActive(navigationSearchQuery.length > 0);
+        setShouldFocusSearch(false);
+        selectionDispatch({
+            type: 'SET_SELECTED_FOLDER',
+            folder: app.vault.getRoot(),
+            autoSelectedFile: selectionState.selectedFile,
+            historyBehavior: 'skip'
+        });
+    }, [app, navigationSearchQuery, plugin, selectionDispatch, selectionState.selectedFile, setSearchActive]);
+
     const dayKey = useLocalDayKey();
     const searchReferenceDate = useMemo(() => DateUtils.parseLocalDayKey(dayKey) ?? undefined, [dayKey]);
 
@@ -789,33 +835,39 @@ export function useListPaneSearch({
                 return;
             }
 
-            let didNavigate = true;
-            if (resolvedStartTarget) {
-                if (isShortcutStartFolder(resolvedStartTarget)) {
-                    didNavigate = onNavigateToFolder(resolvedStartTarget.path, {
-                        source: 'shortcut',
-                        suppressAutoSelect: true,
-                        skipScroll: settings.skipAutoScroll
-                    });
-                } else if (isShortcutStartTag(resolvedStartTarget)) {
-                    didNavigate = onRevealTag(resolvedStartTarget.tagPath, {
-                        source: 'shortcut',
-                        skipScroll: settings.skipAutoScroll
-                    });
-                } else if (isShortcutStartProperty(resolvedStartTarget)) {
-                    didNavigate = onRevealProperty(resolvedStartTarget.nodeId, {
-                        source: 'shortcut',
-                        skipScroll: settings.skipAutoScroll
-                    });
-                }
-            }
-
-            if (!didNavigate) {
-                reportUnavailableSearchShortcutStartTarget(searchShortcut);
-                return;
-            }
-
-            plugin.setSearchProvider(targetProvider);
+            const startSelection = resolvedStartTarget
+                ? {
+                      selectionType: resolvedStartTarget.type,
+                      selectedFolder: isShortcutStartFolder(resolvedStartTarget)
+                          ? app.vault.getFolderByPath(resolvedStartTarget.path)
+                          : null,
+                      selectedTag: isShortcutStartTag(resolvedStartTarget) ? resolvedStartTarget.tagPath : null,
+                      selectedProperty: isShortcutStartProperty(resolvedStartTarget) ? resolvedStartTarget.nodeId : null,
+                      selectedType: null
+                  }
+                : null;
+            const startQuery = startSelection
+                ? getNavigationSearchQuery(
+                      startSelection,
+                      resolveSelectionIncludeDescendants(
+                          settings,
+                          {
+                              selectionType: startSelection.selectionType,
+                              selectedFolder: startSelection.selectedFolder,
+                              selectedTag: startSelection.selectedTag,
+                              selectedProperty:
+                                  startSelection.selectedProperty === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID
+                                      ? PROPERTIES_ROOT_VIRTUAL_FOLDER_ID
+                                      : normalizePropertyNodeId(startSelection.selectedProperty ?? '')
+                          },
+                          uxPreferences.includeDescendantNotes
+                      ),
+                      settings.tpsFileTypesNavigationEnabled
+                  )
+                : null;
+            const visibleQuery = [startQuery, normalizedQuery].filter(Boolean).join(' ');
+            if (!onNavigateToFolder('/', { source: 'shortcut', suppressAutoSelect: true, skipScroll: true, skipFocus: true })) return;
+            plugin.setSearchProvider(startQuery ? 'internal' : targetProvider);
 
             uiDispatch({ type: 'ACTIVATE_PANE', target: 'files' });
 
@@ -832,8 +884,8 @@ export function useListPaneSearch({
             }
 
             setShouldFocusSearch(false);
-            setSearchQuery(normalizedQuery);
-            setDebouncedSearchQuery(normalizedQuery);
+            setSearchQuery(visibleQuery);
+            setDebouncedSearchQuery(visibleQuery);
 
             await waitForNextFrame();
             await waitForNextFrame();
@@ -850,13 +902,12 @@ export function useListPaneSearch({
             focusListScroller,
             isSearchActive,
             onNavigateToFolder,
-            onRevealProperty,
-            onRevealTag,
             plugin,
             propertyTreeService,
             rootContainerRef,
             setSearchActive,
-            settings.skipAutoScroll,
+            settings,
+            uxPreferences.includeDescendantNotes,
             tagTreeService,
             uiDispatch,
             waitForSinglePaneTransition,

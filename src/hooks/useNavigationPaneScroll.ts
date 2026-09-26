@@ -48,7 +48,7 @@
 import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useVirtualizer, Virtualizer } from '@tanstack/react-virtual';
 import { useServices } from '../context/ServicesContext';
-import { useNavigationSelection, useSelectionReveal } from '../context/SelectionContext';
+import { useNavigationCursor, useSelectionReveal } from '../context/SelectionContext';
 import { useUIState } from '../context/UIStateContext';
 import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferences } from '../context/UXPreferencesContext';
@@ -153,7 +153,7 @@ export function useNavigationPaneScroll({
     scrollPaddingEnd
 }: UseNavigationPaneScrollParams): UseNavigationPaneScrollResult {
     const { isMobile } = useServices();
-    const selectionState = useNavigationSelection();
+    const selectionState = useNavigationCursor();
     const selectionReveal = useSelectionReveal();
     const uiState = useUIState();
     const settings = useSettingsState();

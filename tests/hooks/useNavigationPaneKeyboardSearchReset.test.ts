@@ -45,6 +45,7 @@ vi.mock('../../src/context/ExpansionContext', () => ({
 }));
 
 vi.mock('../../src/context/SelectionContext', () => ({
+    useNavigationCursor: () => ({}),
     useSelectionState: () => ({
         selectionType: 'folder',
         selectedFolder: null,

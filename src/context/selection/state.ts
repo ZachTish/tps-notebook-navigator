@@ -19,6 +19,7 @@
 import type { App, TFile, TFolder } from 'obsidian';
 import { PROPERTIES_ROOT_VIRTUAL_FOLDER_ID } from '../../types';
 import { normalizePropertyNodeId } from '../../utils/propertyTree';
+import { isTpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { normalizeTagPath } from '../../utils/tagUtils';
 import type { SelectionAction, SelectionHistoryBehavior, SelectionHistoryEntry, SelectionRevealSource, SelectionState } from './types';
 
@@ -780,4 +781,25 @@ export function selectionReducer(state: SelectionState, action: SelectionAction,
         default:
             return state;
     }
+}
+
+/** Tree focus follows navigation history; it must not become an invisible list filter. */
+export function resolveNavigationCursor(
+    state: Pick<SelectionState, 'selectionType' | 'selectedFolder' | 'selectedTag' | 'selectedProperty' | 'selectedType'>,
+    entry: SelectionHistoryEntry | undefined,
+    app: App
+): Pick<SelectionState, 'selectionType' | 'selectedFolder' | 'selectedTag' | 'selectedProperty' | 'selectedType'> {
+    if (state.selectionType !== 'folder' || state.selectedFolder?.path !== '/' || !entry) return state;
+    const empty = { selectedFolder: null, selectedTag: null, selectedProperty: null, selectedType: null };
+    if (entry.type === 'folder') {
+        const folder = app.vault.getFolderByPath(entry.value);
+        return folder ? { ...empty, selectionType: 'folder', selectedFolder: folder } : state;
+    }
+    if (entry.type === 'tag') return { ...empty, selectionType: 'tag', selectedTag: entry.value };
+    if (entry.type === 'property') {
+        const nodeId = normalizeSelectedPropertyNodeId(entry.value as SelectionState['selectedProperty']);
+        return nodeId ? { ...empty, selectionType: 'property', selectedProperty: nodeId } : state;
+    }
+    if (entry.type === 'type' && isTpsNavigatorTypeId(entry.value)) return { ...empty, selectionType: 'type', selectedType: entry.value };
+    return state;
 }

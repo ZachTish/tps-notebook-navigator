@@ -32,7 +32,8 @@ import { ItemType } from '../types';
 import {
     shouldShowListCreateButton,
     supportsListSortAndGroupingForSelection,
-    supportsNativeListPresentationForSelection
+    supportsNativeListPresentationForSelection,
+    isVaultRootResourceScope
 } from './listPane/typeModeRuntime';
 
 interface ListToolbarProps {
@@ -109,7 +110,11 @@ export function ListToolbar({
     );
     const supportsListSortAndGrouping = supportsListSortAndGroupingForSelection(selectionState.selectionType, selectionState.selectedType);
     const showSearchButton = listVisibility.search;
-    const showDescendantsButton = !isTypeSelection && !isAggregateNavigationSelection(selectionState) && listVisibility.descendants;
+    const showDescendantsButton =
+        !isTypeSelection &&
+        !isVaultRootResourceScope(selectionState.selectionType, selectionState.selectedFolder?.path) &&
+        !isAggregateNavigationSelection(selectionState) &&
+        listVisibility.descendants;
     const showGroupExpansionButton = supportsListSortAndGrouping && listVisibility.groupExpansion;
     const showSortButton = supportsListSortAndGrouping && listVisibility.sort;
     const showAppearanceButton = supportsNativeListPresentation && listVisibility.appearance;

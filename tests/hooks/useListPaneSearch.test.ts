@@ -22,6 +22,7 @@ import { ShortcutStartType } from '../../src/types/shortcuts';
 import {
     canSaveSearchShortcutQuery,
     getSearchActivationQuery,
+    getNavigationSearchQuery,
     getTypeFacetQueryWithNavigationSelection,
     includeNavigationSelectionInSearchQuery,
     resolveSearchShortcutStartFolderPath,
@@ -234,5 +235,64 @@ describe('search shortcut query validation', () => {
                 typesNavigationEnabled: false
             })
         ).toBe(false);
+    });
+});
+
+describe('root-scoped navigation queries', () => {
+    const root = {
+        selectionType: ItemType.FOLDER,
+        selectedFolder: { path: '/' },
+        selectedTag: null,
+        selectedProperty: null,
+        selectedType: null
+    } as const;
+
+    it('leaves an already-rooted query alone, including when it is cleared', () => {
+        expect(getNavigationSearchQuery(root, false)).toBeNull();
+        expect(getNavigationSearchQuery(root, true)).toBeNull();
+    });
+
+    it.each([ALL_TAGS_TAG_ID, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID])('turns aggregate %s into an empty vault-wide search', id => {
+        const selection =
+            id === ALL_TAGS_TAG_ID
+                ? { ...root, selectionType: ItemType.TAG, selectedTag: id }
+                : { ...root, selectionType: ItemType.PROPERTY, selectedProperty: id };
+        expect(getNavigationSearchQuery(selection, false)).toBe('');
+    });
+
+    it.each([
+        ['work/projects', '#work/projects'],
+        [TAGGED_TAG_ID, '#'],
+        [UNTAGGED_TAG_ID, '-#']
+    ])('represents tag %s entirely in the query', (selectedTag, query) => {
+        expect(getNavigationSearchQuery({ ...root, selectionType: ItemType.TAG, selectedTag }, true)).toBe(query);
+    });
+
+    it('represents property keys and values entirely in the query', () => {
+        expect(
+            getNavigationSearchQuery(
+                { ...root, selectionType: ItemType.PROPERTY, selectedProperty: buildPropertyKeyNodeId('status') },
+                true
+            )
+        ).toBe('.status');
+        expect(
+            getNavigationSearchQuery(
+                { ...root, selectionType: ItemType.PROPERTY, selectedProperty: buildPropertyValueNodeId('status', 'in progress') },
+                true
+            )
+        ).toBe('.status="in progress"');
+    });
+
+    it('represents file and structural types using the existing filter grammar', () => {
+        for (const selectedType of [TPS_NAVIGATOR_TYPE_IDS.NOTES, TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES]) {
+            const selection = { ...root, selectionType: ItemType.TYPE, selectedType };
+            expect(getNavigationSearchQuery(selection, true)).toBe(getSearchActivationQuery('', selection));
+        }
+    });
+
+    it('quotes folders and expresses descendant visibility in the visible query', () => {
+        const selection = { ...root, selectedFolder: { path: 'Projects/Team "A"' } };
+        expect(getNavigationSearchQuery(selection, false)).toBe('folder:' + JSON.stringify('/Projects/Team "A"'));
+        expect(getNavigationSearchQuery(selection, true)).toBe('folder:' + JSON.stringify('/Projects/Team "A"/**'));
     });
 });

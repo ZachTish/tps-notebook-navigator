@@ -29,11 +29,11 @@ import { getPropertyNote, openPropertyNoteFile, revealPropertyNoteInNavigator } 
  * - Page navigation
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TFolder } from 'obsidian';
 import { Virtualizer } from '@tanstack/react-virtual';
 import { useExpansionState, useExpansionDispatch } from '../context/ExpansionContext';
-import { useSelectionState, useSelectionDispatch } from '../context/SelectionContext';
+import { useSelectionState, useSelectionDispatch, useNavigationCursor } from '../context/SelectionContext';
 import { useServices, useFileSystemOps } from '../context/ServicesContext';
 import { useSettingsState } from '../context/SettingsContext';
 import { useUXPreferences } from '../context/UXPreferencesContext';
@@ -150,7 +150,9 @@ export function useNavigationPaneKeyboard({
     const uxPreferences = useUXPreferences();
     const includeDescendantNotes = uxPreferences.includeDescendantNotes;
     const showHiddenItems = uxPreferences.showHiddenItems;
-    const selectionState = useSelectionState();
+    const rootSelection = useSelectionState();
+    const navigationCursor = useNavigationCursor();
+    const selectionState = useMemo(() => ({ ...rootSelection, ...navigationCursor }), [rootSelection, navigationCursor]);
     const selectionDispatch = useSelectionDispatch();
     const expansionState = useExpansionState();
     const expansionDispatch = useExpansionDispatch();
