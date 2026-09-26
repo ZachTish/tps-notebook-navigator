@@ -1,3 +1,4 @@
+import { createPropertyVisibilityAPI } from './modules/PropertyVisibilityAPI';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -84,6 +85,8 @@ export class NotebookNavigatorAPI {
     private readonly typesController: TypesAPI;
     private readonly listController: ListAPI;
 
+    public readonly propertyVisibility: ReturnType<typeof createPropertyVisibilityAPI>;
+
     // Sub-APIs
     public readonly navigation: Pick<
         NavigationAPI,
@@ -150,6 +153,7 @@ export class NotebookNavigatorAPI {
 
     constructor(plugin: NotebookNavigatorPlugin, app: App) {
         this.plugin = plugin;
+        this.propertyVisibility = createPropertyVisibilityAPI(plugin);
         this.app = app;
         this.events = new Events();
 

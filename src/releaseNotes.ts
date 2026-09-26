@@ -106,6 +106,13 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '6.5.0',
+        date: '2026-09-26',
+        new: ['Configure each property’s Navigator visibility from TPS Global Context Menu 3.4.0 Custom properties.'],
+        changed: ['Properties configuration opens GCM, with separate navigation, note-list, and file-menu toggles for the active Navigator profile.'],
+        fixed: ['Properties hidden from all three surfaces remain hidden after saving, reloading, and refreshing the GCM property catalog.']
+    },
+    {
         version: '6.4.0',
         date: '2026-09-20',
         new: ['Folder notes can match a Markdown note by its title property, independently of its filename.'],

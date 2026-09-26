@@ -440,9 +440,7 @@ export const clonePropertyKeys = (propertyKeys: VaultProfilePropertyKey[] | unde
         if (!sanitized) {
             return;
         }
-        if (!sanitized.showInNavigation && !sanitized.showInList && !sanitized.showInFileMenu) {
-            return;
-        }
+        // An all-off entry is an explicit preference, not an absent catalog key.
 
         const normalizedKey = casefold(sanitized.key);
         if (!normalizedKey || seenKeys.has(normalizedKey)) {

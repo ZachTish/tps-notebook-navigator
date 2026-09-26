@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: [6.4.2](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.4.2) · Obsidian 1.11.0+ · Desktop and mobile.
+Current release: [6.5.0](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/6.5.0) · Obsidian 1.11.0+ · Desktop and mobile.
 
 ## Install with BRAT
 
@@ -109,3 +109,19 @@ Focused regression coverage exercises missing metadata, explicit title ownership
 
 
 Validation on 2026-09-25: all 3,089 tests across 270 files passed, including 16 focused rename tests. Full ESLint passed with the same 24 existing advisory warnings and zero errors; namespace, operational-identity, artifact, unused-string and TypeScript checks passed. Installed 6.4.1 reproduced the mismatch before metadata existed on a User-role device. Installed 6.4.2 changed both filename and title through the same immediate operation and preserved the body. The actual New note → right-click → Rename note UI sequence also produced matching filename/title. Final production build deployed only to the test vault, followed by targeted Navigator reload. GCM settings remained byte-identical; Navigator recorded its normal version acknowledgement, and no user preferences were manually changed. Fixtures were archived directly and prior Navigator folder selection restored. Production remains untouched.
+
+## 6.5.0 — Navigator visibility in Custom properties
+
+Navigator's Properties configuration button, section-menu action, and property-key settings action open GCM's Rules & fields → Custom fields destination. Tags, ADOLink, PR Link, all other existing definitions, and note frontmatter remain unchanged. This release adds controls; it does not apply the proposed taxonomy or remove Health fields.
+
+Each GCM property editor shows three Navigator toggles: navigation tree, populated note-list values, and file context menu. These edit only the active Navigator profile, whose name is shown beside the controls. Global Navigator section/list switches still govern their surfaces. Existing per-profile visibility and ordering remain authoritative; missing keys are added only when edited, with unrelated surfaces off. Existing catalog import behavior is unchanged. Removing a GCM definition does not erase Navigator preferences or note data. Navigator-only keys can be managed here by adding a matching GCM custom property.
+
+GCM 3.4.0 publishes `api.ui.openCustomPropertySettings(): boolean`; Navigator 6.5.0 publishes `api.propertyVisibility` v1 with `get(key)` and `set(key, surface, visible, expectedProfileId)`. The three surfaces are `showInNavigation`, `showInList`, and `showInFileMenu`. GCM hosts the controls; Navigator validates and persists its existing profile settings. There is no mirrored visibility configuration, migration, note writer, new watcher or background automation. Stale-profile edits fail before mutation. Failed saves restore in-memory visibility and surface the error.
+
+The handoff clears only transient property search/type filters and focuses the property search. No destination or nested disclosure is added: controls sit inside the existing single expanded property editor and reuse the responsive native Setting/toggle layout. Navigator retains its original configuration modal with missing/older GCM; GCM shows the required Navigator version when its adapter is unavailable. Upstream Notebook Navigator is never addressed.
+
+Validation: focused adapter tests cover existing values, profile isolation, casing/order, new keys, no-op writes, stale profiles, save failure and missing providers. The full suites, final builds and installed test-vault UI verification are recorded in this release's notes. This is a backward-compatible minor feature, ready for a BRAT pull after publication; production installation and physical iPhone acceptance are separate.
+
+Explicit all-off property entries now survive Navigator normalization and the standalone modal, so a later catalog refresh cannot re-enable a deliberately hidden key. Installed QA used Navigator’s Configure property keys action to open GCM, expanded Status, changed visibility using the native toggles, reloaded Navigator with every surface off, and confirmed the persisted all-off entry. Original test-profile keys were restored; GCM custom-property definitions were unchanged. No notes were created or modified. Controls reuse the existing responsive native settings layout; physical iPhone testing remains outstanding.
+
+All 3,097 tests across 271 files passed. ESLint passed with 24 existing advisory warnings and no errors. Namespace, operational identity, artifact identity, string/locale and TypeScript checks passed. Final artifacts were deployed only to Obsidian Plugin Test Vault and reloaded with the targeted plugin command. Release notes contain SHA-256 hashes.

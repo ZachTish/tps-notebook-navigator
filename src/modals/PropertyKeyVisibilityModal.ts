@@ -289,9 +289,6 @@ export class PropertyKeyVisibilityModal extends Modal {
             if (!row) {
                 return;
             }
-            if (!row.showInNavigation && !row.showInList && !row.showInFileMenu) {
-                return;
-            }
             includeRow(row);
         });
 

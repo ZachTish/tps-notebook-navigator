@@ -1,3 +1,4 @@
+import { openGcmPropertySettings } from '../../integrations/gcm/gcmPropertySettings';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -330,6 +331,7 @@ function createVaultSetupRenderers(context: SettingsTabContext): VaultSetupRende
 
         propertyKeysSetting.addButton(button =>
             button.setButtonText(strings.settings.items.propertyKeys.addButtonTooltip).onClick(() => {
+                if (openGcmPropertySettings(context.app)) return;
                 const activeProfile = getActiveProfile();
                 if (!activeProfile) {
                     return;

@@ -644,6 +644,24 @@ export interface NotebookNavigatorEvents {
  * @version 3.6.0
  */
 export interface NotebookNavigatorAPI {
+    /** TPS profile-owned visibility settings, exposed for GCM's property editor. */
+    readonly propertyVisibility: {
+        readonly version: 1;
+        get(key: string): {
+            profileId: string;
+            profileName: string;
+            showInNavigation: boolean;
+            showInList: boolean;
+            showInFileMenu: boolean;
+        };
+        set(
+            key: string,
+            surface: 'showInNavigation' | 'showInList' | 'showInFileMenu',
+            visible: boolean,
+            expectedProfileId: string
+        ): Promise<ReturnType<NotebookNavigatorAPI['propertyVisibility']['get']>>;
+    };
+
     /** Get the API version string */
     getVersion(): string;
 

@@ -1,3 +1,4 @@
+import { openGcmPropertySettings } from '../../integrations/gcm/gcmPropertySettings';
 import { usePropertyNoteIndex } from '../../utils/propertyNotes';
 /*
  * Notebook Navigator - Plugin for Obsidian
@@ -378,6 +379,7 @@ export const NavigationPane = React.memo(
         const [isRootReorderMode, setRootReorderMode] = useState(false);
 
         const handleConfigurePropertyKeysFromSectionMenu = useCallback(() => {
+            if (openGcmPropertySettings(app)) return;
             const profile = getActiveVaultProfile(plugin.settings);
             const modal = new PropertyKeyVisibilityModal(app, {
                 initialKeys: profile.propertyKeys,
