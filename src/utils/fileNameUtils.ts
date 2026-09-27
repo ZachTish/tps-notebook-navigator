@@ -20,7 +20,7 @@ import { TFile } from 'obsidian';
 import type { NotebookNavigatorSettings } from '../settings/types';
 
 export const EXCALIDRAW_BASENAME_SUFFIX = '.excalidraw';
-const EXCALIDRAW_FRONTMATTER_KEY = 'excalidraw-plugin';
+export const EXCALIDRAW_FRONTMATTER_KEY = 'excalidraw-plugin';
 
 type ExcalidrawFrontmatterFlagValue = boolean | number | string | object | null | undefined;
 

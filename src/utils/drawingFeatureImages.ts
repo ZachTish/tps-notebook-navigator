@@ -19,6 +19,7 @@
 import { App, TFile, normalizePath } from 'obsidian';
 import {
     EXCALIDRAW_BASENAME_SUFFIX,
+    EXCALIDRAW_FRONTMATTER_KEY,
     hasExcalidrawFrontmatterFlagValue,
     isExcalidrawFile,
     isTruthyFrontmatterFlagValue
@@ -153,6 +154,20 @@ function getDrawingFeatureImageProviderById(providerId: DrawingFeatureImageProvi
 }
 
 function getDrawingFeatureImageProviderWithFrontmatter(file: TFile, frontmatter: unknown): DrawingFeatureImageProvider | null {
+    // Ordinary Markdown dominates virtual row estimates. Reject absent drawing flags before
+    // enumerating providers, while using the live metadata passed by the caller. Present keys
+    // (including empty/unsupported values) still use the original provider truthiness rules.
+    if (
+        file.extension === 'md' &&
+        !isExcalidrawFile(file) &&
+        (!frontmatter ||
+            typeof frontmatter !== 'object' ||
+            Array.isArray(frontmatter) ||
+            (!(EXCALIDRAW_FRONTMATTER_KEY in frontmatter) && !(TLDRAW_FRONTMATTER_KEY in frontmatter)))
+    ) {
+        return null;
+    }
+
     return DRAWING_FEATURE_IMAGE_PROVIDERS.find(provider => provider.isSourceFileWithFrontmatter(file, frontmatter)) ?? null;
 }
 
