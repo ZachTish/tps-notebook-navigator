@@ -378,7 +378,8 @@ export const ListPane = React.memo(
         const showHiddenItems = uxPreferences.showHiddenItems;
         const showCalendar = uxPreferences.showCalendar;
         const appearanceSettings = useListPaneAppearance();
-        const { getFileDisplayName, getDB, getFileTimestamps, hasPreview, regenerateFeatureImageForFile } = useFileCache();
+        const { gcmPresentationRevision, getFileDisplayName, getDB, getFileTimestamps, hasPreview, regenerateFeatureImageForFile } =
+            useFileCache();
         const { noteShortcutKeysByPath, addNoteShortcut, removeShortcut } = useShortcuts();
         const uiState = useUIState();
         const uiDispatch = useUIDispatch();
@@ -1114,13 +1115,14 @@ export const ListPane = React.memo(
         }, [activeProfile.propertyKeys]);
         const fileItemStorage = useMemo<FileItemStorageHelpers>(
             () => ({
+                gcmPresentationRevision,
                 getFileDisplayName,
                 getDB,
                 getFileTimestamps,
                 hasPreview,
                 regenerateFeatureImageForFile
             }),
-            [getFileDisplayName, getDB, getFileTimestamps, hasPreview, regenerateFeatureImageForFile]
+            [gcmPresentationRevision, getFileDisplayName, getDB, getFileTimestamps, hasPreview, regenerateFeatureImageForFile]
         );
         const hiddenTagVisibility = useMemo(
             () => createHiddenTagVisibility(activeProfile.hiddenTags, showHiddenItems),

@@ -221,6 +221,8 @@ interface FileItemProps {
 }
 
 export interface FileItemStorageHelpers {
+    /** Refresh memoized visible rows when their generated appearance becomes available. */
+    gcmPresentationRevision: number;
     getFileDisplayName: (file: TFile) => string;
     getDB: () => FileItemContentDb;
     getFileTimestamps: (file: TFile) => { created: number; modified: number };

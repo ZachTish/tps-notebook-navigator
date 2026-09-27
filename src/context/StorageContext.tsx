@@ -86,6 +86,8 @@ import { runAsyncAction } from '../utils/async';
  */
 interface StorageContextValue {
     fileData: StorageFileData;
+    /** Generated icon/color/property revision; independent from authored display names. */
+    gcmPresentationRevision: number;
     // Methods to get file metadata with frontmatter extraction
     getFileDisplayName: (file: TFile) => string;
     getFileCreatedTime: (file: TFile) => number;
@@ -430,14 +432,13 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
 
     const getFileDisplayName = useCallback(
         (file: TFile): string => {
-            // This revision is presentation-only; reading it keeps the callback
-            // identity aligned with optional GCM API lifecycle announcements.
+            // API replacement can change native title resolution. Generated
+            // icons/colors/properties cannot, so they must not invalidate names.
             void gcmNativeRecordApiRevision;
-            void gcmPresentationRevision;
             const metadata = getFrontmatterMetadata(file);
             return getFileDisplayNameWithGcmNativeFallback(app, file, { fn: metadata?.fn }, settings);
         },
-        [app, gcmNativeRecordApiRevision, gcmPresentationRevision, getFrontmatterMetadata, settings]
+        [app, gcmNativeRecordApiRevision, getFrontmatterMetadata, settings]
     );
 
     const getFileTimestamps = useCallback(
@@ -548,6 +549,7 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
 
         return {
             fileData,
+            gcmPresentationRevision,
             getFileDisplayName,
             getFileCreatedTime,
             getFileModifiedTime,
@@ -568,6 +570,7 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
         };
     }, [
         fileData,
+        gcmPresentationRevision,
         getFileDisplayName,
         getFileCreatedTime,
         getFileModifiedTime,
