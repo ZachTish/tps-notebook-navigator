@@ -7708,15 +7708,6 @@ body.tps-nn-resizing {
     position: relative;
 }
 
-/* Virtual items container */
-.tps-nn-navigation-pane-scroller [data-index],
-.tps-nn-list-pane-scroller [data-index] {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-}
-
 /* Virtual navigation item (folders and tags) */
 .tps-nn-virtual-nav-item {
     position: absolute;

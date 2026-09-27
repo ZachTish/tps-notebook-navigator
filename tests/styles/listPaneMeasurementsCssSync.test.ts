@@ -61,6 +61,16 @@ describe('List pane measurements stay in sync with CSS', () => {
         expect(virtualListCss).not.toMatch(/translateZ\(0\)/);
     });
 
+    test('measured titles stay in text flow while virtual row wrappers stay positioned', () => {
+        const virtualCss = readTextFile('src/styles/sections/layout-virtual-list.css');
+        const headerCss = readTextFile('src/styles/sections/list-group-headers.css');
+        // Titles also carry TanStack's data-index for intrinsic-height measurement.
+        // That measurement marker must never position arbitrary descendants as rows.
+        expect(virtualCss).not.toMatch(/\.tps-nn-(?:navigation|list)-pane-scroller\s+\[data-index\]/);
+        expect(extractRuleBlock(virtualCss, '.tps-nn-virtual-nav-item')).toMatch(/position:\s*absolute/);
+        expect(extractRuleBlock(headerCss, '.tps-nn-list-pane-scroller .tps-nn-virtual-item')).toMatch(/position:\s*absolute/);
+    });
+
     test('desktop horizontal list pane keeps its scroller on the full pane height', () => {
         const paneCss = readTextFile('src/styles/sections/layout-panes.css');
         const listCss = readTextFile('src/styles/sections/list-files.css');

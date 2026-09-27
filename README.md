@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: [7.0.0](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/7.0.0) · Obsidian 1.11.0+ · Desktop and mobile.
+Current release: [7.0.1](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/7.0.1) · Obsidian 1.11.0+ · Desktop and mobile.
 
 ## Install with BRAT
 
@@ -151,3 +151,13 @@ Saved searches with a start folder/tag/property materialize that location in the
 New note from a single folder, tag or property search reuses that facet's existing creation writer. Explicit Type searches retain their existing resource creation flow. Mixed, negative, text and ambiguous searches keep their creation restrictions; clearing Search restores ordinary root note creation. No new automatic properties are introduced.
 
 Regression coverage covers navigation serialization, aggregate roots, property values, Types, quoted paths, subtree boundaries/exclusions, root recursion and creation eligibility. Installed test-vault QA exercises navigation and clear/erase/close, direct versus recursive folders, saved start targets, note creation with the selected tag, and final reload. Original test settings are restored and synthetic fixtures archived directly. Full tests, lint, identity checks, final build/deploy/reload and artifact hashes are recorded in [7.0.0 release notes](release-notes/7.0.0.md). Physical iPhone acceptance and the production BRAT update remain separate.
+
+
+## 7.0.1 — Keep note titles beside their icons
+
+Fixes overlapping titles and icons in compact and standard file lists. The intrinsic-title measurement added in 6.5.1 uses `data-index`; an older generic CSS rule incorrectly positioned every indexed descendant as an entire virtual row. Removing that redundant rule leaves only the existing explicit virtual-row classes responsible for positioning. Titles and inline rename fields remain in their text column, and short versus wrapped title heights still use the same measurement path. Navigation rows, group headers, providers and scroll positioning retain their explicit wrapper styles.
+
+No settings, note data, tag classifications, APIs or mobile preferences change. Minimum Obsidian remains 1.11.0. A focused regression protects the separation between measurement attributes and positioned row classes; the existing title-height tests cover short/wrapped titles, compact rows and mobile metrics. Validation and artifact hashes are recorded in [7.0.1 release notes](release-notes/7.0.1.md). Production installation remains the user's BRAT pull.
+
+
+Installed test-vault verification on 2026-09-27 reproduced `position: absolute` on file titles before the fix, then confirmed `position: static` after targeted Navigator reload. Rendered standard and compact probes both retained a 6 px icon-to-title gap, measured short titles at 20 px and wrapped titles at 40 px, and kept virtual wrappers absolutely positioned. A current app screenshot confirmed that titles and preview/metadata text no longer overlap. The probe removed its temporary DOM and did not create notes or change preferences; runtime settings stayed byte-identical. All 3,144 tests in 271 files, style lint, TypeScript, locale, namespace and artifact/operational identity checks passed. ESLint reported zero errors and the existing 24 advisory warnings. The final build deployed only to Obsidian Plugin Test Vault. Physical iPhone verification remains separate.

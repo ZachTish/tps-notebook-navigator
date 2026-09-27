@@ -17,15 +17,6 @@
     position: relative;
 }
 
-/* Virtual items container */
-.nn-navigation-pane-scroller [data-index],
-.nn-list-pane-scroller [data-index] {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-}
-
 /* Virtual navigation item (folders and tags) */
 .nn-virtual-nav-item {
     position: absolute;
