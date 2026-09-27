@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { parseFrontMatterAliases, TFile, TFolder } from 'obsidian';
-import type { App, FrontMatterCache } from 'obsidian';
+import type { App, CachedMetadata, FrontMatterCache } from 'obsidian';
 import type { NotebookNavigatorSettings, SortOption } from '../../settings/types';
 import type { FilterSearchMatchOptions, FilterSearchTokens } from '../../utils/filterSearch';
 import {
@@ -105,7 +105,7 @@ export function resolveAppliedListSearchState({
 interface UseSearchableNamesArgs {
     app: App;
     baseFiles: TFile[];
-    getFileDisplayName: (file: TFile) => string;
+    getFileDisplayName: (file: TFile, metadata?: CachedMetadata) => string;
     searchTokens: FilterSearchTokens | null;
     useOmnisearch: boolean;
 }
@@ -115,6 +115,16 @@ export interface SearchableNameData {
     /** Original and folded aliases share frontmatter order so a match index resolves to the displayed alias. */
     aliases: readonly string[];
     foldedAliases: readonly string[];
+}
+
+interface SearchableNameEntry extends SearchableNameData {
+    file: TFile;
+}
+
+interface SearchableNameState {
+    metadataCache: App['metadataCache'];
+    getFileDisplayName: UseSearchableNamesArgs['getFileDisplayName'];
+    names: Map<string, SearchableNameEntry>;
 }
 
 export interface FilterListPaneFilesResult {
@@ -353,7 +363,11 @@ export function useSearchableNames({
     searchTokens,
     useOmnisearch
 }: UseSearchableNamesArgs): ReadonlyMap<string, SearchableNameData> {
-    const [searchableNames, setSearchableNames] = useState<Map<string, SearchableNameData>>(new Map());
+    const [nameState, setNameState] = useState<SearchableNameState>({
+        metadataCache: app.metadataCache,
+        getFileDisplayName,
+        names: new Map()
+    });
     // Names are irrelevant to ordinary navigation and structural-only filters.
     // In native-record mode resolving one name also validates its GCM record;
     // don't repeat that work for every file when this search cannot use it.
@@ -365,44 +379,68 @@ export function useSearchableNames({
 
     useEffect(() => {
         if (!needsNames) {
-            setSearchableNames(previous => (previous.size === 0 ? previous : new Map()));
+            setNameState(previous => (previous.names.size === 0 ? previous : { ...previous, names: new Map() }));
             return;
         }
-        const next = new Map<string, SearchableNameData>();
-        baseFiles.forEach(file => {
-            const frontmatter = file.extension === 'md' ? (app.metadataCache.getFileCache(file)?.frontmatter ?? null) : null;
-            next.set(file.path, buildSearchableNameData(getFileDisplayName(file), frontmatter));
+        setNameState(previous => {
+            const reuseNames = previous.metadataCache === app.metadataCache && previous.getFileDisplayName === getFileDisplayName;
+            // Reordering a modified-date list does not change its searchable names.
+            // Metadata events own changes to existing entries; only membership or
+            // the name resolver's replacement requires work here.
+            if (
+                reuseNames &&
+                previous.names.size === baseFiles.length &&
+                baseFiles.every(file => previous.names.get(file.path)?.file === file)
+            ) {
+                return previous;
+            }
+
+            const names = new Map<string, SearchableNameEntry>();
+            baseFiles.forEach(file => {
+                const retained = reuseNames ? previous.names.get(file.path) : undefined;
+                if (retained?.file === file) {
+                    names.set(file.path, retained);
+                    return;
+                }
+                const metadata = file.extension === 'md' ? app.metadataCache.getFileCache(file) : null;
+                names.set(file.path, {
+                    file,
+                    ...buildSearchableNameData(getFileDisplayName(file, metadata ?? undefined), metadata?.frontmatter ?? null)
+                });
+            });
+            return { metadataCache: app.metadataCache, getFileDisplayName, names };
         });
-        setSearchableNames(next);
     }, [app.metadataCache, baseFiles, getFileDisplayName, needsNames]);
 
     useEffect(() => {
         if (!needsNames) return;
         const basePaths = new Set(baseFiles.map(file => file.path));
-        const offref = app.metadataCache.on('changed', (changedFile, _data, cache) => {
+        const metadataCache = app.metadataCache;
+        const offref = metadataCache.on('changed', (changedFile, _data, cache) => {
             if (!changedFile || !basePaths.has(changedFile.path)) {
                 return;
             }
 
             const frontmatter = changedFile.extension === 'md' ? (cache.frontmatter ?? null) : null;
-            const nextName = buildSearchableNameData(getFileDisplayName(changedFile), frontmatter);
-            setSearchableNames(previous => {
-                if (searchableNameDataEqual(previous.get(changedFile.path), nextName)) {
+            const nextName = { file: changedFile, ...buildSearchableNameData(getFileDisplayName(changedFile, cache), frontmatter) };
+            setNameState(previous => {
+                const previousName = previous.names.get(changedFile.path);
+                if (previousName?.file === changedFile && searchableNameDataEqual(previousName, nextName)) {
                     return previous;
                 }
 
-                const next = new Map(previous);
-                next.set(changedFile.path, nextName);
-                return next;
+                const names = new Map(previous.names);
+                names.set(changedFile.path, nextName);
+                return { ...previous, names };
             });
         });
 
         return () => {
-            app.metadataCache.offref(offref);
+            metadataCache.offref(offref);
         };
     }, [app.metadataCache, baseFiles, getFileDisplayName, needsNames]);
 
-    return searchableNames;
+    return nameState.names;
 }
 
 export function filterListPaneFiles({

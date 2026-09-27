@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { App, FrontMatterCache, TFile } from 'obsidian';
-import type { SearchableNameData } from '../../../src/hooks/listPaneData/searchPipeline';
+import type { App, CachedMetadata, FrontMatterCache, TFile } from 'obsidian';
 import type { IndexedDBStorage } from '../../../src/storage/IndexedDBStorage';
 import { createTestTFile } from '../../utils/createTestTFile';
 import { parseFilterSearchTokens } from '../../../src/utils/filterSearch';
@@ -76,26 +75,31 @@ function fixture(count = 1000) {
             }
         }
     } as unknown as App;
-    const inspect = vi.fn((file: TFile) => metadata.get(file.path)?.title || file.basename);
+    const inspect = vi.fn((file: TFile, _metadata?: CachedMetadata) => metadata.get(file.path)?.title || file.basename);
     function render(query: string, options: { useOmnisearch?: boolean; files?: TFile[]; replacementGetter?: boolean } = {}) {
-        hooks.cursor = 0;
-        hooks.pending = [];
-        useSearchableNames({
-            app,
-            baseFiles: options.files || files,
-            getFileDisplayName: options.replacementGetter ? file => inspect(file) : inspect,
-            searchTokens: query ? parseFilterSearchTokens(query) : null,
-            useOmnisearch: options.useOmnisearch === true
-        });
-        hooks.pending.forEach(effect => effect());
-        return hooks.state as ReadonlyMap<string, SearchableNameData>;
+        const getFileDisplayName = options.replacementGetter ? (file: TFile) => inspect(file) : inspect;
+        for (let pass = 0; pass < 4; pass++) {
+            hooks.cursor = 0;
+            hooks.pending = [];
+            const previous = hooks.state;
+            const names = useSearchableNames({
+                app,
+                baseFiles: options.files || files,
+                getFileDisplayName,
+                searchTokens: query ? parseFilterSearchTokens(query) : null,
+                useOmnisearch: options.useOmnisearch === true
+            });
+            hooks.pending.forEach(effect => effect());
+            if (hooks.state === previous) return names;
+        }
+        throw Error('Unstable searchable-name hook');
     }
     function update(file: TFile, title: string, aliases: string[]) {
         const frontmatter = { title, aliases };
         metadata.set(file.path, frontmatter);
         listeners.forEach(callback => callback(file, '', { frontmatter }));
     }
-    return { app, files, inspect, getFileCache, render, update, listeners };
+    return { app, files, metadata, inspect, getFileCache, render, update, listeners };
 }
 
 describe('searchable names work follows name-search demand', () => {
@@ -134,7 +138,7 @@ describe('searchable names work follows name-search demand', () => {
         const names = f.render('Alias');
         expect(names.size).toBe(1000);
         expect(f.inspect).toHaveBeenCalledTimes(1000);
-        expect(names.get(f.files[17].path)).toEqual({
+        expect(names.get(f.files[17].path)).toMatchObject({
             foldedDisplayName: 'native title 17',
             aliases: ['Alias 17'],
             foldedAliases: ['alias 17']
@@ -158,6 +162,150 @@ describe('searchable names work follows name-search demand', () => {
         });
         expect(result.files).toEqual([f.files[17]]);
         expect(result.matchedAliases.get(f.files[17].path)?.map(alias => alias.value)).toEqual(['Special alias']);
+    });
+
+    it('retains resolved names when modified sorting only replaces or reorders the file array', () => {
+        const f = fixture();
+        const names = f.render('Native');
+        f.inspect.mockClear();
+        f.getFileCache.mockClear();
+
+        expect(f.render('Native', { files: [...f.files].reverse() })).toBe(names);
+        expect(f.render('Native', { files: [...f.files] })).toBe(names);
+        expect(f.inspect).not.toHaveBeenCalled();
+        expect(f.getFileCache).not.toHaveBeenCalled();
+    });
+
+    it('does not re-inspect the full selection during a burst of body edits and modified-sort refreshes', () => {
+        const f = fixture();
+        const names = f.render('Native');
+        f.inspect.mockClear();
+        f.getFileCache.mockClear();
+
+        let currentNames = names;
+        for (let index = 0; index < 20; index++) {
+            f.update(f.files[index], `Native title ${index}`, [`Alias ${index}`]);
+            const files = index % 2 === 0 ? [...f.files].reverse() : [...f.files];
+            currentNames = f.render('Native', { files });
+        }
+
+        expect(f.inspect).toHaveBeenCalledTimes(20);
+        expect(f.getFileCache).not.toHaveBeenCalled();
+        expect(currentNames).toBe(names);
+    });
+
+    it('resolves only additions while preserving changed titles and aliases through membership changes', () => {
+        const f = fixture(4);
+        f.render('Native', { files: f.files.slice(0, 2) });
+        f.inspect.mockClear();
+        f.getFileCache.mockClear();
+        f.update(f.files[0], 'Replacement', ['Special alias']);
+
+        const names = f.render('Special', { files: [f.files[2], f.files[0]] });
+        expect([...names.keys()]).toEqual([f.files[2].path, f.files[0].path]);
+        expect(names.get(f.files[0].path)?.foldedDisplayName).toBe('replacement');
+        expect(names.get(f.files[0].path)?.aliases).toEqual(['Special alias']);
+        expect(f.inspect).toHaveBeenCalledTimes(2);
+        expect(f.getFileCache).toHaveBeenCalledTimes(1);
+
+        f.update(f.files[1], 'Changed while absent', []);
+        const reentered = f.render('Changed', { files: [f.files[1], f.files[0]] });
+        expect(reentered.get(f.files[1].path)?.foldedDisplayName).toBe('changed while absent');
+        expect(f.inspect).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not reuse a deleted note name when a new TFile occupies the same path', () => {
+        const f = fixture(2);
+        f.render('Native');
+        f.inspect.mockClear();
+        const replacement = createTestTFile(f.files[0].path);
+        f.metadata.set(replacement.path, { title: 'Replacement file', aliases: ['New alias'] });
+
+        const names = f.render('Replacement', { files: [replacement, f.files[1]] });
+        expect(names.get(replacement.path)?.foldedDisplayName).toBe('replacement file');
+        expect(names.get(replacement.path)?.aliases).toEqual(['New alias']);
+        expect(f.inspect).toHaveBeenCalledTimes(1);
+        expect(f.inspect).toHaveBeenCalledWith(replacement, { frontmatter: f.metadata.get(replacement.path) });
+    });
+
+    it('uses supplied live metadata for new files and name events instead of a stale indexed name', () => {
+        const f = fixture(1);
+        f.inspect.mockImplementation((_file, metadata) => {
+            const title: unknown = metadata?.frontmatter?.title;
+            return typeof title === 'string' ? title : 'Stale indexed name';
+        });
+        expect(f.render('Native').get(f.files[0].path)?.foldedDisplayName).toBe('native title 0');
+
+        f.update(f.files[0], 'Fresh event name', ['Fresh alias']);
+        const changed = f.render('Fresh');
+        expect(changed.get(f.files[0].path)?.foldedDisplayName).toBe('fresh event name');
+        expect(f.render('Fresh', { files: [...f.files] })).toBe(changed);
+
+        const replacement = createTestTFile(f.files[0].path);
+        f.metadata.set(replacement.path, { title: 'Fresh replacement name', aliases: [] });
+        expect(f.render('Fresh', { files: [replacement] }).get(replacement.path)?.foldedDisplayName).toBe('fresh replacement name');
+    });
+
+    it('drops a renamed path and resolves its new title without rereading retained notes', () => {
+        const f = fixture(3);
+        f.render('Native');
+        f.inspect.mockClear();
+        const originalPath = f.files[0].path;
+        f.files[0].path = 'Notes/renamed.md';
+        f.files[0].basename = 'renamed';
+        f.update(f.files[0], 'Renamed title', ['New alias']);
+        expect(f.inspect).not.toHaveBeenCalled();
+
+        const names = f.render('Renamed', { files: [...f.files] });
+        expect(names.has(originalPath)).toBe(false);
+        expect(names.get(f.files[0].path)?.foldedDisplayName).toBe('renamed title');
+        expect(f.inspect).toHaveBeenCalledTimes(1);
+        expect(f.inspect).toHaveBeenCalledWith(f.files[0], { frontmatter: f.metadata.get(f.files[0].path) });
+    });
+
+    it('rebuilds all names when the resolver or metadata source is replaced', () => {
+        const f = fixture(3);
+        f.render('Native');
+        f.inspect.mockClear();
+        f.metadata.set(f.files[0].path, { title: 'Updated resolver name', aliases: [] });
+
+        const names = f.render('Updated', { replacementGetter: true });
+        expect(names.get(f.files[0].path)?.foldedDisplayName).toBe('updated resolver name');
+        expect(f.inspect).toHaveBeenCalledTimes(3);
+        f.render('Updated');
+        expect(f.inspect).toHaveBeenCalledTimes(6);
+        f.render('Updated');
+        expect(f.inspect).toHaveBeenCalledTimes(6);
+
+        const replacementListeners = new Set<unknown>();
+        Reflect.set(f.app, 'metadataCache', {
+            getFileCache: f.getFileCache,
+            on: (_name: string, listener: unknown) => {
+                replacementListeners.add(listener);
+                return listener;
+            },
+            offref: (listener: unknown) => replacementListeners.delete(listener)
+        });
+        f.render('Updated');
+        expect(f.inspect).toHaveBeenCalledTimes(9);
+        expect(f.listeners.size).toBe(0);
+        expect(replacementListeners.size).toBe(1);
+    });
+
+    it('releases names for Omnisearch and rebuilds current values when internal name search resumes', () => {
+        const f = fixture(2);
+        f.render('Native');
+        expect(f.inspect).toHaveBeenCalledTimes(2);
+        expect(f.render('Native', { useOmnisearch: true }).size).toBe(0);
+        expect(f.listeners.size).toBe(0);
+        f.update(f.files[0], 'Changed while external search owns results', ['New alias']);
+        expect(f.inspect).toHaveBeenCalledTimes(2);
+
+        const names = f.render('Changed');
+        expect(names.get(f.files[0].path)?.foldedDisplayName).toBe('changed while external search owns results');
+        expect(names.get(f.files[0].path)?.aliases).toEqual(['New alias']);
+        expect(f.inspect).toHaveBeenCalledTimes(4);
+        expect(f.listeners.size).toBe(1);
     });
 
     it('negative name search still indexes aliases and clearing search releases its metadata listener', () => {

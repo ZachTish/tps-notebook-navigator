@@ -40,8 +40,8 @@
  */
 
 import { createContext, useContext, useState, useRef, ReactNode, useMemo, useCallback, useEffect } from 'react';
-import { App, TFile, debounce, EventRef } from 'obsidian';
-import { ProcessedMetadata, extractMetadata } from '../utils/metadataExtractor';
+import { App, TFile, debounce, EventRef, type CachedMetadata } from 'obsidian';
+import { ProcessedMetadata, extractMetadata, extractMetadataFromCache } from '../utils/metadataExtractor';
 import { extractCurrentFrontmatterMetadataFromFileData } from '../utils/frontmatterMetadataCache';
 import { ContentProviderRegistry } from '../services/content/ContentProviderRegistry';
 import { useCacheRebuildNotice } from './storage/useCacheRebuildNotice';
@@ -89,7 +89,7 @@ interface StorageContextValue {
     /** Generated icon/color/property revision; independent from authored display names. */
     gcmPresentationRevision: number;
     // Methods to get file metadata with frontmatter extraction
-    getFileDisplayName: (file: TFile) => string;
+    getFileDisplayName: (file: TFile, metadata?: CachedMetadata) => string;
     getFileCreatedTime: (file: TFile) => number;
     getFileModifiedTime: (file: TFile) => number;
     getFileTimestamps: (file: TFile) => { created: number; modified: number };
@@ -431,11 +431,16 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
     );
 
     const getFileDisplayName = useCallback(
-        (file: TFile): string => {
+        (file: TFile, changedMetadata?: CachedMetadata): string => {
             // API replacement can change native title resolution. Generated
             // icons/colors/properties cannot, so they must not invalidate names.
             void gcmNativeRecordApiRevision;
-            const metadata = getFrontmatterMetadata(file);
+            // A metadata event already owns the fresh cache, including edits
+            // whose mtime is unchanged while the persisted metadata catches up.
+            const metadata =
+                changedMetadata && file.extension === 'md'
+                    ? extractMetadataFromCache(changedMetadata, settings)
+                    : getFrontmatterMetadata(file);
             return getFileDisplayNameWithGcmNativeFallback(app, file, { fn: metadata?.fn }, settings);
         },
         [app, gcmNativeRecordApiRevision, getFrontmatterMetadata, settings]

@@ -4,6 +4,7 @@ import { App, TFolder, type TFile } from 'obsidian';
 import type { ActiveProfileState } from '../../../src/context/SettingsContext';
 import type { ListNoteGroupingOption, NotebookNavigatorSettings } from '../../../src/settings/types';
 import type { ListPaneItem } from '../../../src/types/virtualization';
+import type { FileData } from '../../../src/storage/IndexedDBStorage';
 
 interface HookSlot {
     value?: unknown;
@@ -31,7 +32,7 @@ const harness = vi.hoisted(() => ({
     emptyTypes: { availability: 'unavailable', descriptors: [], recordsByType: new Map(), revision: 0 },
     noop: () => {},
     empty: () => [],
-    db: { getFile: () => null, hasPreview: () => false }
+    db: { getFile: vi.fn<(_path: string) => FileData | null>(() => null), hasPreview: () => false }
 }));
 
 // Run the real provider and list hook with React dependency/state/effect
@@ -172,6 +173,7 @@ import { getActiveVaultProfile } from '../../../src/utils/vaultProfiles';
 import { sortNavigationFiles } from '../../../src/utils/fileFinder';
 import { resolveListSort } from '../../../src/utils/sortUtils';
 import { getGcmNotebookNavigatorAppearanceValue } from '../../../src/integrations/gcm/gcmNotebookNavigatorPresentation';
+import { clearFrontmatterMetadataCacheSignature, markFrontmatterMetadataCacheCurrent } from '../../../src/utils/frontmatterMetadataCache';
 
 function createRun(): HookRun {
     return { slots: [], cursor: 0, dirty: false, pending: [] };
@@ -196,6 +198,8 @@ beforeEach(() => {
     harness.inspect.mockReset();
     harness.projectionListeners.clear();
     harness.lifecycleListeners.clear();
+    harness.db.getFile.mockReset().mockReturnValue(null);
+    clearFrontmatterMetadataCacheSignature();
 });
 
 function fixture(query = '', count = 1000) {
@@ -301,6 +305,33 @@ function fixture(query = '', count = 1000) {
 }
 
 describe('GCM appearance invalidation does not rebuild unrelated list data', () => {
+    it('keeps fresh event names through list refreshes while same-mtime persisted metadata is stale', () => {
+        const f = fixture('Fresh', 1);
+        f.setSettings({ useFrontmatterMetadata: true, frontmatterNameField: 'title' });
+        const file = f.files[0];
+        const mtime = file.stat.mtime;
+        harness.db.getFile.mockReturnValue({
+            path: file.path,
+            metadataMtime: mtime,
+            metadata: { name: 'Stale indexed name' }
+        } as FileData);
+        markFrontmatterMetadataCacheCurrent(harness.settings!);
+        harness.inspect.mockImplementation((_app: App, file: TFile, metadata?: { fn?: string }) => metadata?.fn ?? file.basename);
+
+        expect(f.run().files).toEqual([]);
+        expect(f.context().getFileDisplayName(file)).toBe('Stale indexed name');
+        f.updateTitle(0, 'Fresh event name');
+        expect(file.stat.mtime).toBe(mtime);
+        expect(f.run().files).toEqual([file]);
+        harness.refresh();
+        expect(f.run().files).toEqual([file]);
+        expect(f.context().getFileDisplayName(file)).toBe('Stale indexed name');
+        expect(f.context().getFileDisplayName(file, { frontmatter: { title: 'Fresh event name' } })).toBe('Fresh event name');
+        expect(f.context().getFileDisplayName(file, {})).toBe(file.basename);
+        const attachment = createTestTFile('Notes/attachment.pdf');
+        expect(f.context().getFileDisplayName(attachment, { frontmatter: { title: 'Unrelated metadata' } })).toBe('attachment');
+    });
+
     it.each(['', 'Title', '#work'])(
         'retains candidates and name lookup work through 20 scrolling-like appearance batches for %s',
         query => {
