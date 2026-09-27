@@ -261,11 +261,16 @@ describe('FileSystemOperations property assignment', () => {
         );
 
         app.fileManager.getNewFileParent = vi.fn(() => app.vault.getRoot());
-        app.fileManager.createNewMarkdownFile = vi.fn().mockResolvedValue(createdFile);
-        app.fileManager.processFrontMatter = vi.fn((file: TFile, callback: (frontmatter: Record<string, unknown>) => void) => {
+        app.fileManager.createNewMarkdownFile = vi.fn(async (_parent, _name, content) => {
+            expect(content).toBe('---\n"Categories": null\n---\n');
+            createdFile.frontmatter.Categories = null;
+            return createdFile;
+        });
+        const processFrontMatter = vi.fn((file: TFile, callback: (frontmatter: Record<string, unknown>) => void) => {
             callback((file as TFile & { frontmatter: Record<string, unknown> }).frontmatter);
             return Promise.resolve();
         });
+        app.fileManager.processFrontMatter = processFrontMatter;
         app.workspace = {
             getActiveFile: vi.fn(() => null),
             getLeaf: vi.fn(() => ({ openFile }))
@@ -275,6 +280,7 @@ describe('FileSystemOperations property assignment', () => {
 
         await expect(operations.createNewFileForProperty(buildPropertyKeyNodeId('categories'))).resolves.toBe(createdFile);
         expect(createdFile.frontmatter).toEqual({ Categories: null });
+        expect(processFrontMatter).not.toHaveBeenCalled();
         expect(openFile).toHaveBeenCalledWith(createdFile, { state: { mode: 'source' }, active: true });
     });
 

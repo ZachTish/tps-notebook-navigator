@@ -517,7 +517,7 @@ export function useListPaneData({
         useOmnisearch,
         omnisearchResult
     });
-    const searchableNames = useSearchableNames({ app, baseFiles, getFileDisplayName });
+    const searchableNames = useSearchableNames({ app, baseFiles, getFileDisplayName, searchTokens: parsedSearchTokens, useOmnisearch });
     const filterSettings = useMemo(() => ({ alphabeticalDateMode: settings.alphabeticalDateMode }), [settings.alphabeticalDateMode]);
 
     const structuralSourceSearchTokens = useMemo(

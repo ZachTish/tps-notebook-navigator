@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: [7.0.1](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/7.0.1) · Obsidian 1.11.0+ · Desktop and mobile.
+Current release: [7.0.2](https://github.com/ZachTish/tps-notebook-navigator/releases/tag/7.0.2) · Obsidian 1.11.0+ · Desktop and mobile.
 
 ## Install with BRAT
 
@@ -161,3 +161,21 @@ No settings, note data, tag classifications, APIs or mobile preferences change. 
 
 
 Installed test-vault verification on 2026-09-27 reproduced `position: absolute` on file titles before the fix, then confirmed `position: static` after targeted Navigator reload. Rendered standard and compact probes both retained a 6 px icon-to-title gap, measured short titles at 20 px and wrapped titles at 40 px, and kept virtual wrappers absolutely positioned. A current app screenshot confirmed that titles and preview/metadata text no longer overlap. The probe removed its temporary DOM and did not create notes or change preferences; runtime settings stayed byte-identical. All 3,144 tests in 271 files, style lint, TypeScript, locale, namespace and artifact/operational identity checks passed. ESLint reported zero errors and the existing 24 advisory warnings. The final build deployed only to Obsidian Plugin Test Vault. Physical iPhone verification remains separate.
+
+## 7.0.2 — Faster navigation and complete facet note creation
+
+Ordinary navigation no longer builds a searchable title/alias map for every note. Empty search, tag/property/folder/type/date filters without name clauses, and Omnisearch do not consume that map, so they now skip its full-list title resolution and metadata listener. Previously each list refresh could ask GCM to inspect every native record merely to build unused search names, blocking the same UI thread that opens and renders notes.
+
+Positive or excluded name clauses still activate the existing map. Metadata changes update the affected note's title and aliases while search is active; clearing search releases the listener, and reactivation reads current names. Visible row titles, title sorting, aliases, search results, GCM identity validation, and note-opening behavior retain their contracts. No new cache, poller, setting, storage field, or migration is introduced.
+
+Creating a note from a tag or property now includes that facet in the initial file content passed to Obsidian's existing Markdown creation API. Previously Navigator created an empty file, then performed a second frontmatter write and continued opening the note even if that assignment failed. Creation observers now see the selected nested tag or typed property value immediately. Property key roots still produce a present key with a null value. Default folder resolution, unique naming, creation hooks, manual-sort placement and the shared GCM presentation route are unchanged. Failed creation does not present an incomplete note; no repair or retry is added.
+
+Regression checks execute the hook's effects and count work: a 1,000-note startup and repeated empty-search/list refreshes make zero display-name inspections and zero search-metadata reads; name search builds once, then one changed note adds one lookup. Alias matching, negative name clauses, structural-only filters, clearing/reactivating search, and Omnisearch are covered. The 23 focused search checks and full suite of 3,157 tests in 273 files passed. ESLint reported zero errors and the existing 24 advisory warnings; TypeScript, locale, namespace and artifact/operational identity checks passed.
+
+Installed test-vault QA on 2026-09-27 compared four opens of two unchanged notes in the same Navigator selection/search state, with 10,256 notes indexed. With the combined GCM 3.6.2 and Navigator 7.0.2 fixes, GCM identity inspections fell from 72,849 to 448. The four measured opens changed from 15/550/504/19 ms to 20/29/24/20 ms. Maximum observed timer delay changed from 2,900 ms to 904 ms, but the test window was backgrounded with timer throttling enabled; that metric does not prove a CPU stall. These measurements do not establish production or iPhone timings, and opening-call duration is not an end-to-end rendering guarantee.
+
+A separate post-fix repeat with the test window visible and focused measured opens of 42/11/15/11 ms, 594 identity inspections, at most 18 ms drift on a 100 ms timer, and no PerformanceObserver long tasks during the roughly six-second capture. A warm plugin reload measured 266 ms with zero vault body-read or write calls; this was a plugin reload in the backgrounded window, not a full Obsidian cold start.
+
+After reloading the final build, installed creation QA called the real Navigator file-system operations for tag, property and folder creation with the real GCM registry. Each route made one Markdown creation call, one vault create and one presentation call, with no follow-up frontmatter/process/modify write from creation. The selected nested tag and synthetic property were present in the initial API and vault payloads and parsed correctly in metadata. Immediate test body edits survived 4.5 seconds of settling; configured preview opened for all three routes. Temporary Inbox fixtures were archived directly, wrappers and list state restored, and runtime settings preserved. This covered installed creation APIs, not toolbar-command gestures or a physical iPhone.
+
+The final versioned build was deployed and Navigator reloaded only in Obsidian Plugin Test Vault. A separate build after documentation changes confirmed byte-identical runtime artifacts and preserved runtime settings. Release details and SHA-256 hashes are in [7.0.2 release notes](release-notes/7.0.2.md). Minimum Obsidian remains 1.11.0. Production installation and physical iPhone acceptance remain the user's BRAT pull.

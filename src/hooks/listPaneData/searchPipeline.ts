@@ -106,6 +106,8 @@ interface UseSearchableNamesArgs {
     app: App;
     baseFiles: TFile[];
     getFileDisplayName: (file: TFile) => string;
+    searchTokens: FilterSearchTokens | null;
+    useOmnisearch: boolean;
 }
 
 export interface SearchableNameData {
@@ -347,20 +349,35 @@ function searchableNameDataEqual(left: SearchableNameData | undefined, right: Se
 export function useSearchableNames({
     app,
     baseFiles,
-    getFileDisplayName
+    getFileDisplayName,
+    searchTokens,
+    useOmnisearch
 }: UseSearchableNamesArgs): ReadonlyMap<string, SearchableNameData> {
     const [searchableNames, setSearchableNames] = useState<Map<string, SearchableNameData>>(new Map());
+    // Names are irrelevant to ordinary navigation and structural-only filters.
+    // In native-record mode resolving one name also validates its GCM record;
+    // don't repeat that work for every file when this search cannot use it.
+    const needsNames =
+        !useOmnisearch &&
+        searchTokens?.invalidReason === null &&
+        searchTokens.mode === 'filter' &&
+        (searchTokens.nameTokens.length > 0 || searchTokens.excludeNameTokens.length > 0);
 
     useEffect(() => {
+        if (!needsNames) {
+            setSearchableNames(previous => (previous.size === 0 ? previous : new Map()));
+            return;
+        }
         const next = new Map<string, SearchableNameData>();
         baseFiles.forEach(file => {
             const frontmatter = file.extension === 'md' ? (app.metadataCache.getFileCache(file)?.frontmatter ?? null) : null;
             next.set(file.path, buildSearchableNameData(getFileDisplayName(file), frontmatter));
         });
         setSearchableNames(next);
-    }, [app.metadataCache, baseFiles, getFileDisplayName]);
+    }, [app.metadataCache, baseFiles, getFileDisplayName, needsNames]);
 
     useEffect(() => {
+        if (!needsNames) return;
         const basePaths = new Set(baseFiles.map(file => file.path));
         const offref = app.metadataCache.on('changed', (changedFile, _data, cache) => {
             if (!changedFile || !basePaths.has(changedFile.path)) {
@@ -383,7 +400,7 @@ export function useSearchableNames({
         return () => {
             app.metadataCache.offref(offref);
         };
-    }, [app.metadataCache, baseFiles, getFileDisplayName]);
+    }, [app.metadataCache, baseFiles, getFileDisplayName, needsNames]);
 
     return searchableNames;
 }

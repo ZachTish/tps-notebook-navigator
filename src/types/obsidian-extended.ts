@@ -216,7 +216,7 @@ export const OBSIDIAN_COMMANDS = {
 
 declare module 'obsidian' {
     interface FileManager {
-        createNewMarkdownFile(folder: import('obsidian').TFolder, fileName: string): Promise<TFile>;
+        createNewMarkdownFile(folder: import('obsidian').TFolder, fileName: string, content?: string): Promise<TFile>;
     }
 }
 

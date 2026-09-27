@@ -838,17 +838,9 @@ export class FileSystemOperations {
             const defaultParent = this.app.fileManager.getNewFileParent(sourceFilePath ?? '');
             const targetFolder = defaultParent instanceof TFolder ? defaultParent : this.app.vault.getRoot();
             const fileName = generateUniqueFilename(targetFolder.path, strings.fileSystem.defaultNames.untitled, 'md', this.app);
-            const file = await this.app.fileManager.createNewMarkdownFile(targetFolder, fileName);
-
-            try {
-                // Mutate frontmatter through Obsidian's API so YAML serialization matches other tag operations.
-                await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
-                    frontmatter.tags = [resolvedTagPath];
-                });
-            } catch (error) {
-                console.error('[Notebook Navigator] Failed to update created note tags', error);
-                showNotice(strings.dragDrop.errors.failedToAddTag.replace('{tag}', `#${resolvedTagPath}`), { variant: 'warning' });
-            }
+            // Creation observers must see the selected tag in the first file payload.
+            const source = `---\ntags:\n  - ${JSON.stringify(resolvedTagPath)}\n---\n`;
+            const file = await this.app.fileManager.createNewMarkdownFile(targetFolder, fileName, source);
 
             const scheduleDeferredManualSortPrompt = await this.applyManualSortNewFilePlacement(file, resolvedManualSortContext, {
                 deferCompactionPrompt: true
@@ -980,20 +972,10 @@ export class FileSystemOperations {
             const defaultParent = this.app.fileManager.getNewFileParent(sourceFilePath ?? '');
             const targetFolder = defaultParent instanceof TFolder ? defaultParent : this.app.vault.getRoot();
             const fileName = generateUniqueFilename(targetFolder.path, strings.fileSystem.defaultNames.untitled, 'md', this.app);
-            const file = await this.app.fileManager.createNewMarkdownFile(targetFolder, fileName);
-
-            try {
-                // Mutate frontmatter through Obsidian's API so YAML serialization matches other property operations.
-                await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
-                    frontmatter[assignment.propertyKey] = propertyValue;
-                });
-            } catch (error) {
-                console.error('[Notebook Navigator] Failed to update created note properties', error);
-                showNotice(
-                    strings.dragDrop.errors.failedToSetProperty.replace('{error}', getErrorMessage(error, strings.common.unknownError)),
-                    { variant: 'warning' }
-                );
-            }
+            // JSON-quoted YAML preserves key/value punctuation and scalar types.
+            // Publish the selected property atomically with the new note.
+            const source = `---\n${JSON.stringify(assignment.propertyKey)}: ${JSON.stringify(propertyValue)}\n---\n`;
+            const file = await this.app.fileManager.createNewMarkdownFile(targetFolder, fileName, source);
 
             const scheduleDeferredManualSortPrompt = await this.applyManualSortNewFilePlacement(file, resolvedManualSortContext, {
                 deferCompactionPrompt: true
