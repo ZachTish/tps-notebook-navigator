@@ -440,7 +440,8 @@ export function useListPaneSearch({
     }, [isSearchActive, searchQuery]);
 
     useEffect(() => {
-        if (!isSearchActive) {
+        // Clearing is a complete action, so restore the full list without the typing delay.
+        if (!isSearchActive || searchQuery.length === 0) {
             if (debouncedSearchQuery) {
                 setDebouncedSearchQuery('');
             }
