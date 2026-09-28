@@ -91,6 +91,8 @@ import { Calendar } from './calendar';
 import type { SearchShortcut } from '../types/shortcuts';
 import { UpdateNoticeBanner } from './UpdateNoticeBanner';
 import { showNotice } from '../utils/noticeUtils';
+import { resolveNavigationSearchCreation } from '../services/types/searchResourceCreation';
+import { createNoteForNavigationTarget } from '../services/navigationNoteCreation';
 import { EMPTY_SEARCH_NAV_FILTER_STATE, type SearchNavFilterState } from '../types/search';
 import { getFeatureImageDisplayMeasurements, getListPaneMeasurements } from '../utils/listPaneMeasurements';
 import type { InclusionOperator } from '../utils/filterSearch';
@@ -1127,6 +1129,17 @@ export const NotebookNavigatorComponent = React.memo(
                 },
                 createNoteInSelectedFolder: async (openInNewTab = false) => {
                     const manualSortContext = listPaneRef.current?.getManualSortNewFileContext() ?? null;
+
+                    const search = listPaneRef.current?.getListSnapshot().search;
+                    const query = search?.active ? search.query.trim() : '';
+                    if (query) {
+                        const target = search?.requestedProvider === 'internal' ? resolveNavigationSearchCreation(query) : null;
+                        if (target) {
+                            const sourcePath = selectionState.selectedFile?.path ?? app.workspace.getActiveFile()?.path ?? '';
+                            await createNoteForNavigationTarget(app, fileSystemOps, target, sourcePath, openInNewTab, manualSortContext);
+                        }
+                        return;
+                    }
 
                     if (selectionState.selectedFolder) {
                         await fileSystemOps.createNewFile(selectionState.selectedFolder, openInNewTab, manualSortContext);

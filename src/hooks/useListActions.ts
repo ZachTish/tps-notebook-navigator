@@ -133,7 +133,7 @@ import {
 import { resolveNavigationSearchCreation, resolveSearchResourceCreation } from '../services/types/searchResourceCreation';
 import { getInternalPlugin } from '../utils/typeGuards';
 import type { RevealFileOptions } from './useNavigatorReveal';
-import { resolveFolderShortcutTarget } from '../utils/shortcutPathResolver';
+import { createNoteForNavigationTarget } from '../services/navigationNoteCreation';
 import { revealFileFromListUserAction } from '../utils/listPaneReveal';
 
 type SelectionSortTarget =
@@ -731,14 +731,7 @@ export function useListActions({
             if (navigationCreationTarget) {
                 const newTab = legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab);
                 const sourcePath = selectionState.selectedFile?.path ?? app.workspace.getActiveFile()?.path ?? '';
-                if (navigationCreationTarget.type === 'folder') {
-                    const folder = resolveFolderShortcutTarget(app, navigationCreationTarget.path);
-                    if (folder) await fileSystemOps.createNewFile(folder, newTab);
-                } else if (navigationCreationTarget.type === 'tag') {
-                    await fileSystemOps.createNewFileForTag(navigationCreationTarget.tag, sourcePath, newTab);
-                } else {
-                    await fileSystemOps.createNewFileForProperty(navigationCreationTarget.nodeId, sourcePath, newTab);
-                }
+                await createNoteForNavigationTarget(app, fileSystemOps, navigationCreationTarget, sourcePath, newTab);
                 return;
             }
             if (activeCreationSearchQuery) {
