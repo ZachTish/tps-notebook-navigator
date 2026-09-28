@@ -5,7 +5,7 @@
  * metadata cache. Classification never reads file bodies, PDFs, or binaries.
  */
 
-import type { App, TFile } from 'obsidian';
+import { TFile, TFolder, type App, type TAbstractFile } from 'obsidian';
 import {
     TPS_NAVIGATOR_FILE_TYPES,
     TPS_NAVIGATOR_TYPE_IDS,
@@ -88,10 +88,7 @@ function toFileTypeRecord(file: TFile, typeId: TpsNavigatorFileTypeId): TpsNavig
 const fileRecordCollator = new Intl.Collator(undefined, { sensitivity: 'base' });
 
 function compareFileRecords(left: TpsNavigatorTypeRecord, right: TpsNavigatorTypeRecord): number {
-    return (
-        fileRecordCollator.compare(left.label, right.label) ||
-        fileRecordCollator.compare(left.sourcePath, right.sourcePath)
-    );
+    return fileRecordCollator.compare(left.label, right.label) || fileRecordCollator.compare(left.sourcePath, right.sourcePath);
 }
 
 /** Builds one immutable snapshot from an already-resolved file set without reading file bodies. */
@@ -127,4 +124,70 @@ export function buildVaultFileTypesSnapshot(app: App): TpsNavigatorTypesSnapshot
     const vault = app.vault as unknown as { getFiles?: () => TFile[] };
     const files = typeof vault?.getFiles === 'function' ? vault.getFiles() : [];
     return buildVaultFileTypesSnapshotFromFiles(app, files);
+}
+
+/** Applies one event batch to the existing catalog; unrelated files are never reclassified. */
+export function updateVaultFileTypesSnapshot(
+    app: App,
+    snapshot: TpsNavigatorTypesSnapshot,
+    paths: ReadonlyMap<string, boolean>
+): TpsNavigatorTypesSnapshot {
+    const folderPrefixes = [...paths].filter(([, recursive]) => recursive).map(([path]) => (path === '/' ? '' : `${path}/`));
+    const affected = (path: string) => paths.has(path) || folderPrefixes.some(prefix => path.startsWith(prefix));
+    const files = new Map<string, TFile>();
+    const folders = new Set<TFolder>();
+    const remaining: TAbstractFile[] = [];
+    for (const path of paths.keys()) {
+        const file = app.vault.getAbstractFileByPath(path);
+        if (file) remaining.push(file);
+    }
+    while (remaining.length) {
+        const file = remaining.pop();
+        if (file instanceof TFile) files.set(file.path, file);
+        else if (file instanceof TFolder && !folders.has(file)) {
+            folders.add(file);
+            for (const child of file.children) remaining.push(child);
+        }
+    }
+    const replacements = new Map<string, TpsNavigatorTypeRecord>();
+    for (const file of files.values()) {
+        const typeId = getTpsNavigatorFileTypeId(app, file);
+        if (typeId) replacements.set(file.path, toFileTypeRecord(file, typeId));
+    }
+
+    // Walk existing records once per batch, then sort each affected bucket once.
+    // Unchanged records/arrays remain shared with the previous immutable snapshot.
+    const changedBuckets = new Map<TpsNavigatorTypeId, TpsNavigatorTypeRecord[]>();
+    for (const [typeId, records] of snapshot.recordsByType) {
+        let next: TpsNavigatorTypeRecord[] | undefined;
+        records.forEach((record, index) => {
+            if (affected(record.sourcePath)) {
+                const replacement = replacements.get(record.sourcePath);
+                if (replacement?.typeId === typeId && replacement.label === record.label) {
+                    replacements.delete(record.sourcePath);
+                } else {
+                    next ??= records.slice(0, index);
+                    return;
+                }
+            }
+            next?.push(record);
+        });
+        if (next) changedBuckets.set(typeId, next);
+    }
+    for (const record of replacements.values()) {
+        let records = changedBuckets.get(record.typeId);
+        if (!records) {
+            records = [...(snapshot.recordsByType.get(record.typeId) ?? [])];
+            changedBuckets.set(record.typeId, records);
+        }
+        records.push(record);
+    }
+    if (!changedBuckets.size) return snapshot;
+    const recordsByType = new Map(snapshot.recordsByType);
+    for (const [typeId, records] of changedBuckets) recordsByType.set(typeId, Object.freeze(records.sort(compareFileRecords)));
+    const descriptors = snapshot.descriptors.map(descriptor => {
+        const records = changedBuckets.get(descriptor.id);
+        return records && records.length !== descriptor.count ? Object.freeze({ ...descriptor, count: records.length }) : descriptor;
+    });
+    return Object.freeze({ ...snapshot, recordsByType, descriptors: Object.freeze(descriptors) });
 }
