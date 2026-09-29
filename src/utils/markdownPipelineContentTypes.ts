@@ -20,8 +20,13 @@ import { getAllTags, type App, type EventRef, type FrontMatterCache, type TFile 
 import type { FileContentType } from '../interfaces/IContentProvider';
 import { showsCharacterCount, showsWordCount, type NotebookNavigatorSettings } from '../settings/types';
 import { ALL_TAGS_TAG_ID, ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
-import { hasEffectiveCustomListGroupingForSelection } from './listGrouping';
 import {
+    hasEffectiveCustomListGrouping,
+    hasEffectiveCustomListGroupingForSelection,
+    invalidateEffectiveCustomListGrouping
+} from './listGrouping';
+import {
+    clearManualSortGroupHeaderWordCountConsumers,
     getManualSortGroupHeaderWordCountConsumerSnapshot,
     refreshManualSortGroupHeaderWordCountConsumer,
     removeManualSortGroupHeaderWordCountConsumer,
@@ -224,6 +229,9 @@ function getActiveManualSortGroupHeaderWordCountConsumerPaths(
     settings: NotebookNavigatorSettings,
     options?: { scanIfMissing?: boolean }
 ): readonly string[] {
+    if (!hasEffectiveCustomListGrouping(settings)) {
+        return [];
+    }
     const source = getManualSortGroupHeaderWordCountConsumerSnapshot(app, settings, options);
     const cached = activeGroupHeaderWordCountConsumerCache.get(app);
     const sourceIsCurrent = cached?.sourceVersion === source.version;
@@ -304,7 +312,9 @@ function invalidateMarkdownWordCountConsumerSettings(app: App): void {
 
 /** Rebuilds settings-derived consumer results before mutable plugin settings are published to listeners. */
 export function refreshMarkdownWordCountConsumerSettings(app: App, settings: NotebookNavigatorSettings): void {
+    invalidateEffectiveCustomListGrouping(settings);
     invalidateMarkdownWordCountConsumerSettings(app);
+    prepareCustomHeaderWordCountDiscovery(app, settings);
     // The prepared result is shared with cache-only render checks even though SettingsProvider
     // publishes a snapshot object with a different identity from the mutable plugin settings.
     hasMarkdownWordCountConsumer(settings, app);
@@ -331,11 +341,26 @@ function finalizeMarkdownWordCountConsumerUpdate(
     };
 }
 
+/** Inactive custom headers own no vault scan or per-file metadata work. */
+function prepareCustomHeaderWordCountDiscovery(app: App, settings: NotebookNavigatorSettings): boolean {
+    if (hasEffectiveCustomListGrouping(settings)) {
+        return true;
+    }
+    // Forget the existing snapshots rather than maintaining an index that has no
+    // consumer. A later enabling settings publication discovers current headers.
+    clearManualSortGroupHeaderWordCountConsumers(app);
+    activeGroupHeaderWordCountConsumerCache.delete(app);
+    return false;
+}
+
 function applyMarkdownWordCountConsumerUpdate(
     app: App,
     settings: NotebookNavigatorSettings,
     updateSource: () => void
 ): MarkdownWordCountConsumerUpdate {
+    if (!prepareCustomHeaderWordCountDiscovery(app, settings)) {
+        return { becameActive: false, dependenciesChanged: false };
+    }
     // Metadata cache events arrive after Obsidian has published the new metadata. Preserve the last
     // prepared derived paths here; resolving them again would erase the pre-event state needed to
     // detect a context activation or deactivation.
@@ -350,6 +375,9 @@ function applyPreparedMarkdownWordCountConsumerUpdate(
     settings: NotebookNavigatorSettings,
     updateSource: () => boolean
 ): MarkdownWordCountConsumerUpdate {
+    if (!prepareCustomHeaderWordCountDiscovery(app, settings)) {
+        return { becameActive: false, dependenciesChanged: false };
+    }
     const beforePaths = getActiveManualSortGroupHeaderWordCountConsumerPaths(app, settings, { scanIfMissing: false });
     if (!updateSource()) {
         return { becameActive: false, dependenciesChanged: false };
@@ -367,6 +395,9 @@ function applyPreparedMarkdownWordCountConsumerUpdate(
  * @returns Whether word counting became active and whether the active header paths changed.
  */
 export function rescanMarkdownWordCountConsumers(app: App, settings: NotebookNavigatorSettings): MarkdownWordCountConsumerUpdate {
+    if (!prepareCustomHeaderWordCountDiscovery(app, settings)) {
+        return { becameActive: false, dependenciesChanged: false };
+    }
     const beforePaths = getActiveManualSortGroupHeaderWordCountConsumerPaths(app, settings, { scanIfMissing: false });
     rescanManualSortGroupHeaderWordCountConsumers(app, settings);
     const afterPaths = getActiveManualSortGroupHeaderWordCountConsumerPaths(app, settings);

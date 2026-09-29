@@ -485,6 +485,11 @@ function hasEffectiveCustomGroupingInMap(params: {
     return false;
 }
 
+/** Settings controls publish in-place edits through their existing invalidation boundary. */
+export function invalidateEffectiveCustomListGrouping(settings: NotebookNavigatorSettings): void {
+    effectiveCustomListGroupingCache.delete(settings);
+}
+
 /**
  * Returns whether any configured list context can render custom group headers after sort rules are applied.
  * The content pipeline is vault-wide, so it must include both the default context and every appearance or sort override.

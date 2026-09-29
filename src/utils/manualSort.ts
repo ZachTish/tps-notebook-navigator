@@ -682,6 +682,11 @@ function getManualSortGroupHeaderWordCountConsumerCache(
     return cached?.propertyKey === propertyKey ? cached : scanManualSortGroupHeaderWordCountConsumers(app, settings);
 }
 
+/** Drop inactive header discovery so enabling custom grouping reads current metadata. */
+export function clearManualSortGroupHeaderWordCountConsumers(app: App): void {
+    manualSortGroupHeaderWordCountConsumerCache.delete(app);
+}
+
 /** Rebuilds the cached consumers after Obsidian finishes resolving vault metadata. */
 export function rescanManualSortGroupHeaderWordCountConsumers(
     app: App,

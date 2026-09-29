@@ -31,6 +31,8 @@ import {
     haveMarkdownCountConsumersChanged,
     refreshMarkdownWordCountConsumerForFile,
     refreshMarkdownWordCountConsumerSettings,
+    removeMarkdownWordCountConsumerForFile,
+    renameMarkdownWordCountConsumerForFile,
     removeMarkdownWordCountConsumersInFolder,
     renameMarkdownWordCountConsumersInFolder,
     rescanMarkdownWordCountConsumers,
@@ -998,5 +1000,74 @@ describe('MarkdownPipelineContentProvider word count', () => {
         const result = await provider.runWordCount(file, settings);
 
         expect(result).toBe(0);
+    });
+});
+
+describe('inactive custom-header word-count ownership', () => {
+    it('does no vault discovery or metadata inspection for startup and unchanged event bursts without custom grouping', () => {
+        const { app, markdownFiles, cachedMetadataByPath } = createApp();
+        for (let i = 0; i < 1000; i++) {
+            const file = createFile(`Notes/${i}.md`);
+            markdownFiles.push(file);
+            cachedMetadataByPath.set(file.path, { frontmatter: { group_header: { title: 'Header', show_word_count: true } } });
+        }
+        const enumerate = vi.spyOn(app.vault, 'getMarkdownFiles');
+        const metadata = vi.spyOn(app.metadataCache, 'getFileCache');
+        const settings = createSettings({ textCountDisplay: 'none', noteGrouping: 'date', defaultFolderSort: 'modified-desc' });
+        for (let i = 0; i < 2; i++)
+            expect(rescanMarkdownWordCountConsumers(app, settings)).toEqual({ becameActive: false, dependenciesChanged: false });
+        for (let i = 0; i < 100; i++) {
+            refreshMarkdownWordCountConsumerForFile(app, markdownFiles[i], settings);
+            renameMarkdownWordCountConsumerForFile(app, 'absent.md', 'renamed.md', settings);
+            removeMarkdownWordCountConsumerForFile(app, 'absent.md', settings);
+            renameMarkdownWordCountConsumersInFolder(app, 'absent', 'renamed', settings);
+            removeMarkdownWordCountConsumersInFolder(app, 'absent', settings);
+            expect(hasMarkdownWordCountConsumer(settings, app)).toBe(false);
+            expect(hasCachedMarkdownWordCountConsumer(settings, app)).toBe(false);
+        }
+        expect(enumerate).not.toHaveBeenCalled();
+        expect(metadata).not.toHaveBeenCalled();
+    });
+
+    it('discovers current headers when grouping is enabled after edits while disabled, including in-place settings changes', () => {
+        const { app, markdownFiles, cachedMetadataByPath } = createApp();
+        const oldHeader = createFile('Notes/Old.md'),
+            newHeader = createFile('Notes/New.md');
+        markdownFiles.push(oldHeader);
+        cachedMetadataByPath.set(oldHeader.path, { frontmatter: { group_header: { title: 'Old', show_word_count: true } } });
+        const settings = createSettings({ textCountDisplay: 'none', noteGrouping: 'custom', defaultFolderSort: 'title-asc' });
+        expect(rescanMarkdownWordCountConsumers(app, settings).becameActive).toBe(true);
+        settings.noteGrouping = 'date';
+        settings.defaultFolderSort = 'modified-desc';
+        refreshMarkdownWordCountConsumerSettings(app, settings);
+        expect(hasMarkdownWordCountConsumer(settings, app)).toBe(false);
+        markdownFiles.splice(0, 1, newHeader);
+        cachedMetadataByPath.delete(oldHeader.path);
+        cachedMetadataByPath.set(newHeader.path, { frontmatter: { group_header: { title: 'New', show_word_count: true } } });
+        const enumerate = vi.spyOn(app.vault, 'getMarkdownFiles');
+        const metadata = vi.spyOn(app.metadataCache, 'getFileCache');
+        removeMarkdownWordCountConsumerForFile(app, oldHeader.path, settings);
+        refreshMarkdownWordCountConsumerForFile(app, newHeader, settings);
+        expect(enumerate).not.toHaveBeenCalled();
+        expect(metadata).not.toHaveBeenCalled();
+        settings.folderAppearances.Notes = { groupBy: 'custom' };
+        refreshMarkdownWordCountConsumerSettings(app, settings);
+        expect(getMarkdownTextCountDependencies(app, settings)).toEqual([{ reason: 'group-header', path: newHeader.path }]);
+        expect(enumerate).toHaveBeenCalledTimes(1);
+        const published = { ...settings };
+        metadata.mockClear();
+        expect(hasCachedMarkdownWordCountConsumer(published, app)).toBe(true);
+        expect(metadata).not.toHaveBeenCalled();
+    });
+
+    it('retains global counts without scanning inactive custom headers', () => {
+        const { app } = createApp();
+        const enumerate = vi.spyOn(app.vault, 'getMarkdownFiles');
+        const settings = createSettings({ textCountDisplay: 'words', noteGrouping: 'date', defaultFolderSort: 'modified-desc' });
+        expect(hasMarkdownWordCountConsumer(settings, app)).toBe(true);
+        rescanMarkdownWordCountConsumers(app, settings);
+        refreshMarkdownWordCountConsumerSettings(app, settings);
+        expect(hasCachedMarkdownWordCountConsumer(settings, app)).toBe(true);
+        expect(enumerate).not.toHaveBeenCalled();
     });
 });
