@@ -525,7 +525,7 @@ export const FileItem = React.memo(function FileItem({
             (!isMobile && settings.showTooltips));
     const shouldRefreshMetadataVersionOnFeatureImageChange = isMarkdownFile && appearanceSettings.showImage;
     const fileStatMtime = useImageFileResourceVersion(app, file, appearanceSettings.showImage && isRasterImageFile(file));
-    const drawingFeatureImageSource = getDrawingFeatureImageSource(app, file);
+    const drawingFeatureImageSource = appearanceSettings.showImage ? getDrawingFeatureImageSource(app, file) : null;
     const isDrawingFeatureImageRow = drawingFeatureImageSource !== null;
     const {
         previewText,
@@ -740,6 +740,9 @@ export const FileItem = React.memo(function FileItem({
         : undefined;
     const applyColorToName = Boolean(fileTitleColor);
     const dragFallbackIconId = useMemo(() => {
+        if (isMobile || disableNativeDrag) {
+            return undefined;
+        }
         void metadataVersion;
         return resolveFileDragIconId(
             file,
@@ -749,7 +752,16 @@ export const FileItem = React.memo(function FileItem({
             settings.fileTypeIconPreset,
             settings.externalIconProviders
         );
-    }, [app.metadataCache, file, metadataVersion, settings.externalIconProviders, settings.fileTypeIconMap, settings.fileTypeIconPreset]);
+    }, [
+        app.metadataCache,
+        disableNativeDrag,
+        file,
+        isMobile,
+        metadataVersion,
+        settings.externalIconProviders,
+        settings.fileTypeIconMap,
+        settings.fileTypeIconPreset
+    ]);
     // Icon to use when dragging the file
     const dragIconId = effectiveFileIconId || dragFallbackIconId;
 
