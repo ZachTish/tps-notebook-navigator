@@ -60,7 +60,9 @@ import {
     registerCalendarDailyNoteReadinessRefresh,
     resolveCalendarNotePath,
     resolveCalendarNoteTarget,
-    resolveCoreDailyNoteDateFromFile
+    resolveCoreDailyNoteDateFromFile,
+    shouldRefreshCalendarForGcmApiChange,
+    shouldRefreshCalendarForVaultFileChange
 } from './calendarNoteResolution';
 import {
     buildDateFilterToken,
@@ -220,6 +222,17 @@ export function Calendar({
     const calendarLabelId = useId();
 
     const momentApi = getMomentApi();
+    const currentLanguage = getCurrentLanguage();
+    const { displayLocale, calendarRulesLocale } = useMemo(
+        () => resolveCalendarLocales(settings.calendarLocale, momentApi, currentLanguage),
+        [currentLanguage, momentApi, settings.calendarLocale]
+    );
+    const dailyNoteLocale = resolveDailyNoteLocale(momentApi);
+    const periodicNotesLocale = resolveCalendarPeriodicNotesLocale(
+        settings.calendarPeriodicNotesLocaleSource,
+        calendarRulesLocale,
+        momentApi
+    );
     const [initialStoredCursorDateIso] = useState<string | null>(() => plugin.getCalendarCursorDateIso());
     const [initialCursorDate] = useState<MomentInstance | null>(() =>
         resolveInitialCalendarCursorDate(momentApi, initialStoredCursorDateIso)
@@ -341,12 +354,17 @@ export function Calendar({
         },
         [onMissingFeatureImage, regenerateFeatureImageForFile]
     );
-    const shouldTrackCalendarVaultChange = useCallback((file: unknown): boolean => {
-        if (!(file instanceof TFile)) {
-            return true;
-        }
-        return file.extension === 'md';
-    }, []);
+    const shouldTrackCalendarVaultChange = useCallback(
+        (file: unknown, oldPath?: string): boolean =>
+            shouldRefreshCalendarForVaultFileChange({
+                file,
+                oldPath,
+                settings,
+                customCalendarRootFolderSettings,
+                momentApi
+            }),
+        [customCalendarRootFolderSettings, momentApi, settings]
+    );
     const {
         hoverTooltip,
         hoverTooltipStyle,
@@ -423,8 +441,8 @@ export function Calendar({
     }, [app.workspace, commandQueue, syncActiveEditorFilePath]);
 
     useEffect(() => {
-        const onVaultUpdate = (file: unknown) => {
-            if (!shouldTrackCalendarVaultChange(file)) {
+        const onVaultUpdate = (file: unknown, oldPath?: string) => {
+            if (!shouldTrackCalendarVaultChange(file, oldPath)) {
                 return;
             }
             scheduleVaultVersionUpdate();
@@ -462,7 +480,9 @@ export function Calendar({
             return;
         }
         const ref = eventSource.on(TPS_GCM_API_CHANGED_EVENT, () => {
-            scheduleVaultVersionUpdate();
+            if (shouldRefreshCalendarForGcmApiChange(settings.calendarIntegrationMode)) {
+                scheduleVaultVersionUpdate();
+            }
         });
         if (typeof eventSource.trigger === 'function') {
             eventSource.trigger(TPS_GCM_API_REQUEST_EVENT, {
@@ -474,7 +494,7 @@ export function Calendar({
         return () => {
             eventSource.offref(ref);
         };
-    }, [app.workspace, scheduleVaultVersionUpdate]);
+    }, [app.workspace, scheduleVaultVersionUpdate, settings.calendarIntegrationMode]);
 
     useEffect(() => {
         if (!db) {
@@ -634,18 +654,6 @@ export function Calendar({
 
         setYearPanelYear(previousYear => (previousYear === cursorDate.year() ? previousYear : cursorDate.year()));
     }, [cursorDate]);
-
-    const currentLanguage = getCurrentLanguage();
-    const { displayLocale, calendarRulesLocale } = useMemo(
-        () => resolveCalendarLocales(settings.calendarLocale, momentApi, currentLanguage),
-        [currentLanguage, momentApi, settings.calendarLocale]
-    );
-    const dailyNoteLocale = resolveDailyNoteLocale(momentApi);
-    const periodicNotesLocale = resolveCalendarPeriodicNotesLocale(
-        settings.calendarPeriodicNotesLocaleSource,
-        calendarRulesLocale,
-        momentApi
-    );
 
     useEffect(() => {
         setCursorDate(previousCursorDate => previousCursorDate?.clone().locale(displayLocale) ?? previousCursorDate);

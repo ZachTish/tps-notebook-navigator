@@ -16,9 +16,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { normalizePath, type App, type MetadataCache, type TFile } from 'obsidian';
+import { TFile, normalizePath, type App, type MetadataCache } from 'obsidian';
 import type { NotebookNavigatorSettings } from '../../settings/types';
-import { escapeMomentLiteralPath } from '../../utils/calendarCustomNotePatterns';
+import { DEFAULT_CALENDAR_CUSTOM_FILE_PATTERN, escapeMomentLiteralPath } from '../../utils/calendarCustomNotePatterns';
 import { isPathInExcludedFolder } from '../../utils/fileFilters';
 import {
     buildCustomCalendarFilePathForPattern,
@@ -353,4 +353,76 @@ export function parseCalendarNoteDateFromPath({
     }
 
     return parsedDate;
+}
+
+/**
+ * Vault-event filtering must not rely on reverse-parsing formatted note paths: valid custom patterns can include
+ * conflicting date tokens. Year-first patterns safely rule out ordinary non-year folders without reading a file.
+ */
+export function isConfiguredCustomCalendarNotePath({
+    filePath,
+    settings,
+    customCalendarRootFolderSettings
+}: {
+    filePath: string;
+    settings: NotebookNavigatorSettings;
+    customCalendarRootFolderSettings: CalendarNoteRootFolderSettings;
+}): boolean {
+    if (!filePath.toLowerCase().endsWith('.md')) {
+        return false;
+    }
+
+    const relativePath = getCalendarNotePathRelativeToRoot(filePath, customCalendarRootFolderSettings.calendarCustomRootFolder);
+    if (relativePath === null) {
+        return false;
+    }
+    const patterns = [
+        settings.calendarCustomFilePattern.trim() || DEFAULT_CALENDAR_CUSTOM_FILE_PATTERN,
+        settings.calendarCustomWeekPattern.trim(),
+        settings.calendarCustomMonthPattern.trim(),
+        settings.calendarCustomQuarterPattern.trim(),
+        settings.calendarCustomYearPattern.trim()
+    ].filter(Boolean);
+    const allYearFirst = patterns.every(pattern => /^(?:YYYY|GGGG|gggg)(?:\/|$)/u.test(pattern));
+    return !allYearFirst || /\p{Nd}/u.test(relativePath.split('/')[0] ?? '');
+}
+
+/** Filters vault events before refreshing custom-calendar year lookups. */
+export function shouldRefreshCalendarForVaultFileChange({
+    file,
+    oldPath,
+    settings,
+    customCalendarRootFolderSettings,
+    momentApi
+}: {
+    file: unknown;
+    oldPath?: string;
+    settings: NotebookNavigatorSettings;
+    customCalendarRootFolderSettings: CalendarNoteRootFolderSettings;
+    momentApi: MomentApi | null;
+}): boolean {
+    // Folder moves can move calendar notes without individual file rename events.
+    if (!(file instanceof TFile)) {
+        return true;
+    }
+    if (file.extension !== 'md' && !oldPath?.toLowerCase().endsWith('.md')) {
+        return false;
+    }
+    // Daily Notes mode retains its existing provider and metadata readiness behavior.
+    if (settings.calendarIntegrationMode !== 'notebook-navigator' || !momentApi) {
+        return true;
+    }
+
+    const paths = oldPath ? [file.path, oldPath] : [file.path];
+    return paths.some(filePath =>
+        isConfiguredCustomCalendarNotePath({
+            filePath,
+            settings,
+            customCalendarRootFolderSettings
+        })
+    );
+}
+
+export function shouldRefreshCalendarForGcmApiChange(mode: NotebookNavigatorSettings['calendarIntegrationMode']): boolean {
+    return mode === 'daily-notes';
 }

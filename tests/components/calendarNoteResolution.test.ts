@@ -16,14 +16,19 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { App } from 'obsidian';
+import { App, TFile, TFolder } from 'obsidian';
+import moment from 'moment';
 import { describe, expect, test, vi } from 'vitest';
 import {
     createCalendarNotePathResolverContext,
+    isConfiguredCustomCalendarNotePath,
     parseCalendarNoteDateFromPath,
     registerCalendarDailyNoteReadinessRefresh,
+    resolveCalendarNotePath,
     resolveCalendarNoteTarget,
-    resolveCoreDailyNoteDateFromFile
+    resolveCoreDailyNoteDateFromFile,
+    shouldRefreshCalendarForGcmApiChange,
+    shouldRefreshCalendarForVaultFileChange
 } from '../../src/components/calendar/calendarNoteResolution';
 import { TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID } from '../../src/constants/tpsIdentity';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
@@ -113,6 +118,198 @@ function createGcmDailyNotes(overrides: Readonly<Record<string, unknown>> = {}):
 }
 
 describe('calendar note resolution', () => {
+    test('skips year refreshes for an unrelated burst while keeping configured custom notes live', () => {
+        const settings = { ...DEFAULT_SETTINGS, calendarIntegrationMode: 'notebook-navigator' as const };
+        const momentApi = createMomentApi({});
+        const momentCalls = Object.assign(vi.fn(momentApi), momentApi);
+        const base = {
+            settings,
+            customCalendarRootFolderSettings: { calendarCustomRootFolder: '' },
+            momentApi: momentCalls,
+            locale: 'en'
+        };
+        const cachedDayTargets = new Map([['2026-08-03', '2026/20260803.md']]);
+        const onRefresh = vi.fn(() => cachedDayTargets.clear());
+        const applyVaultEvent = (file: unknown, oldPath?: string) => {
+            if (shouldRefreshCalendarForVaultFileChange({ ...base, file, oldPath })) {
+                onRefresh();
+            }
+        };
+
+        for (let index = 0; index < 100; index++) {
+            const file = createTestTFile(`Inbox/Withdrawal QA ${index}.md`);
+            applyVaultEvent(file); // create
+            applyVaultEvent(file, `Inbox/Previous QA ${index}.md`); // rename
+            applyVaultEvent(file); // delete
+        }
+        expect(onRefresh).not.toHaveBeenCalled();
+        expect(cachedDayTargets.size).toBe(1);
+        expect(momentCalls).not.toHaveBeenCalled();
+        for (let index = 0; index < 100; index++) {
+            // GCM can reannounce its API after an unrelated metadata edit.
+            if (shouldRefreshCalendarForGcmApiChange(settings.calendarIntegrationMode)) {
+                onRefresh();
+            }
+        }
+        expect(onRefresh).not.toHaveBeenCalled();
+        expect(cachedDayTargets.size).toBe(1);
+        expect(isConfiguredCustomCalendarNotePath({ ...base, filePath: '2026/20260803.md' })).toBe(true);
+        expect(isConfiguredCustomCalendarNotePath({ ...base, filePath: '2026/202608.md' })).toBe(true);
+        expect(isConfiguredCustomCalendarNotePath({ ...base, filePath: '2026/W32.md' })).toBe(true);
+        expect(isConfiguredCustomCalendarNotePath({ ...base, filePath: '2026/Q3.md' })).toBe(true);
+        expect(isConfiguredCustomCalendarNotePath({ ...base, filePath: '2026.md' })).toBe(true);
+        expect(isConfiguredCustomCalendarNotePath({ ...base, filePath: '2026/20260803-copy.md' })).toBe(true);
+        expect(isConfiguredCustomCalendarNotePath({ ...base, filePath: '2026/Project.md' })).toBe(true);
+        expect(isConfiguredCustomCalendarNotePath({ ...base, filePath: 'Inbox/2026/Project.md' })).toBe(false);
+        expect(
+            isConfiguredCustomCalendarNotePath({
+                ...base,
+                filePath: '2026/20260803.md',
+                settings: { ...settings, calendarCustomFilePattern: '' }
+            })
+        ).toBe(true);
+
+        // One refresh per relevant event is still coalesced by Calendar's existing scheduler.
+        applyVaultEvent(createTestTFile('2026/20260803.md')); // create
+        expect(cachedDayTargets.size).toBe(0);
+        applyVaultEvent(createTestTFile('2026/202608.md')); // create a month note
+        applyVaultEvent(createTestTFile('2026/20260803.md')); // delete
+        applyVaultEvent(createTestTFile('Inbox/Moved.md'), '2026/20260803.md'); // rename out
+        applyVaultEvent(createTestTFile('2026/20260803.md'), 'Inbox/Moved.md'); // rename in
+        expect(onRefresh).toHaveBeenCalledTimes(5);
+        expect(momentCalls).not.toHaveBeenCalled();
+    });
+
+    test('preserves folder moves, Daily Notes mode, and Markdown extension changes', () => {
+        const settings = { ...DEFAULT_SETTINGS, calendarIntegrationMode: 'notebook-navigator' as const };
+        const momentApi = createMomentApi({
+            'YYYY/YYYYMMDD::2026/20260803': {
+                YYYY: '2026',
+                YYYYMMDD: '20260803',
+                'YYYY/YYYYMMDD': '2026/20260803'
+            }
+        });
+        const base = {
+            settings,
+            customCalendarRootFolderSettings: { calendarCustomRootFolder: '' },
+            momentApi,
+            locale: 'en'
+        };
+
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file: new TFolder('2026') })).toBe(true);
+        expect(
+            shouldRefreshCalendarForVaultFileChange({ ...base, file: new TFile('2026/20260803.txt'), oldPath: '2026/20260803.md' })
+        ).toBe(true);
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file: new TFile('Inbox/Other.txt'), oldPath: 'Inbox/Other.md' })).toBe(
+            false
+        );
+        expect(
+            shouldRefreshCalendarForVaultFileChange({
+                ...base,
+                file: new TFile('Inbox/Other.md'),
+                settings: { ...settings, calendarIntegrationMode: 'daily-notes' }
+            })
+        ).toBe(true);
+        expect(shouldRefreshCalendarForGcmApiChange('daily-notes')).toBe(true);
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file: new TFile('Inbox/Other.md'), momentApi: null })).toBe(true);
+    });
+
+    test('conservatively refreshes literal-first patterns and accepts localized year digits', () => {
+        const settings = {
+            ...DEFAULT_SETTINGS,
+            calendarIntegrationMode: 'notebook-navigator' as const,
+            calendarCustomFilePattern: '[Daily]/YYYYMMDD',
+            calendarCustomWeekPattern: '',
+            calendarCustomMonthPattern: '',
+            calendarCustomQuarterPattern: '',
+            calendarCustomYearPattern: ''
+        };
+        const momentApi = createMomentApi({});
+        const base = {
+            settings,
+            customCalendarRootFolderSettings: { calendarCustomRootFolder: '' },
+            momentApi,
+            locale: 'en'
+        };
+
+        expect(isConfiguredCustomCalendarNotePath({ ...base, filePath: 'Daily/20260803.md' })).toBe(true);
+        expect(isConfiguredCustomCalendarNotePath({ ...base, filePath: 'Daily/Other.md' })).toBe(true);
+        expect(
+            isConfiguredCustomCalendarNotePath({
+                ...base,
+                filePath: 'Daily/Other.md',
+                customCalendarRootFolderSettings: { calendarCustomRootFolder: 'Periodic' }
+            })
+        ).toBe(false);
+        expect(
+            isConfiguredCustomCalendarNotePath({
+                ...base,
+                settings: { ...settings, calendarCustomFilePattern: 'YYYY/YYYYMMDD' },
+                filePath: '٢٠٢٦/٢٠٢٦٠٨٠٣.md'
+            })
+        ).toBe(true);
+        expect(
+            isConfiguredCustomCalendarNotePath({
+                ...base,
+                settings: { ...DEFAULT_SETTINGS, calendarCustomMonthPattern: '[Monthly]/YYYY-MM' },
+                filePath: 'Inbox/Other.md'
+            })
+        ).toBe(true);
+    });
+
+    test.each([
+        {
+            name: 'day with quarter token',
+            kind: 'day' as const,
+            settingsPatch: { calendarCustomFilePattern: 'YYYY-MM-DD/[Q]Q' },
+            date: '2026-06-19',
+            relativePath: '2026-06-19/Q2.md'
+        },
+        {
+            name: 'month with locale week-year',
+            kind: 'month' as const,
+            settingsPatch: { calendarCustomMonthPattern: 'gggg/MM' },
+            date: '2027-02-17',
+            relativePath: '2027/02.md'
+        },
+        {
+            name: 'quarter with locale week-year',
+            kind: 'quarter' as const,
+            settingsPatch: { calendarCustomQuarterPattern: 'gggg/[Q]Q' },
+            date: '2027-04-03',
+            relativePath: '2027/Q2.md'
+        },
+        {
+            name: 'year with mixed year tokens',
+            kind: 'year' as const,
+            settingsPatch: { calendarCustomYearPattern: 'gggg/YYYY' },
+            date: '2020-12-31',
+            relativePath: '2021/2020.md'
+        }
+    ])('refreshes generated $name paths on create, delete, and either rename direction', ({ kind, settingsPatch, date, relativePath }) => {
+        const settings = { ...DEFAULT_SETTINGS, ...settingsPatch, calendarIntegrationMode: 'notebook-navigator' as const };
+        const momentApi = moment as unknown as MomentApi;
+        const customCalendarRootFolderSettings = { calendarCustomRootFolder: 'Periodic' };
+        const filePath = resolveCalendarNotePath({
+            kind,
+            date: moment(date, 'YYYY-MM-DD', true),
+            resolverContext: createCalendarNotePathResolverContext(kind, settings),
+            calendarLocale: 'en',
+            weekLocale: 'en',
+            customCalendarRootFolderSettings,
+            momentApi
+        })?.filePath;
+
+        expect(filePath).toBe(`Periodic/${relativePath}`);
+        const base = { settings, customCalendarRootFolderSettings, momentApi, locale: 'en' };
+        const file = createTestTFile(filePath!);
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file })).toBe(true); // create
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file })).toBe(true); // delete
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file: createTestTFile('Inbox/Moved.md'), oldPath: filePath })).toBe(true);
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file, oldPath: 'Inbox/Moved.md' })).toBe(true);
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file: createTestTFile(`Outside/${relativePath}`) })).toBe(false);
+    });
+
     test('refreshes cached Daily Note misses across startup metadata readiness and unregisters cleanly', () => {
         const eventRef = { id: 'calendar-daily-note-readiness' };
         const listeners = new Map<object, () => void>();
@@ -369,6 +566,77 @@ describe('calendar note resolution', () => {
 
         expect(parsedDate).not.toBeNull();
         expect(parsedDate?.format('YYYY-MM-DD')).toBe('2026-06-14');
+    });
+
+    test('refreshes a configured weekly note at a calendar-year and week-year boundary', () => {
+        const settings = {
+            ...DEFAULT_SETTINGS,
+            calendarIntegrationMode: 'notebook-navigator' as const,
+            calendarCustomWeekPattern: 'YYYY/YYYY-[Q]Q/YYYY-MM/YYYY-[W]ww/YYYY-[W]ww'
+        };
+        const momentApi = moment as unknown as MomentApi;
+        const customCalendarRootFolderSettings = { calendarCustomRootFolder: 'Periodic' };
+        const resolverContext = createCalendarNotePathResolverContext('week', settings);
+        const filePath = resolveCalendarNotePath({
+            kind: 'week',
+            date: moment('2020-12-31', 'YYYY-MM-DD', true),
+            resolverContext,
+            calendarLocale: 'en',
+            weekLocale: 'en',
+            customCalendarRootFolderSettings,
+            momentApi
+        })?.filePath;
+
+        expect(filePath).toBe('Periodic/2020/2020-Q4/2020-12/2020-W01/2020-W01.md');
+        const base = { settings, customCalendarRootFolderSettings, momentApi, locale: 'en' };
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file: createTestTFile(filePath!) })).toBe(true);
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file: createTestTFile('Inbox/Moved.md'), oldPath: filePath })).toBe(true);
+        expect(
+            shouldRefreshCalendarForVaultFileChange({
+                ...base,
+                file: createTestTFile('Periodic/2020/2020-Q4/2020-12/2020-W01/Unrelated.md')
+            })
+        ).toBe(true);
+    });
+
+    test.each([
+        ['locale week year', 'gggg/MM/[W]ww', '2021/12/W01'],
+        ['ISO week year', 'GGGG/MM/[W]WW', '2020/12/W53'],
+        ['literal-first ISO week year', '[Weekly]/GGGG/MM/[W]WW', 'Weekly/2020/12/W53'],
+        ['date token that renders folders', 'gggg/L/[W]ww', '2021/12/27/2020/W01'],
+        ['literal Markdown extension', 'gggg/[W]ww[.md]', '2021/W01']
+    ])('refreshes generated %s paths without relying on strict reverse parsing', (_description, pattern, relativePath) => {
+        const settings = {
+            ...DEFAULT_SETTINGS,
+            calendarIntegrationMode: 'notebook-navigator' as const,
+            calendarCustomWeekPattern: pattern
+        };
+        const momentApi = moment as unknown as MomentApi;
+        const customCalendarRootFolderSettings = { calendarCustomRootFolder: 'Periodic' };
+        const resolverContext = createCalendarNotePathResolverContext('week', settings);
+        const filePath = resolveCalendarNotePath({
+            kind: 'week',
+            date: moment('2020-12-31', 'YYYY-MM-DD', true),
+            resolverContext,
+            calendarLocale: 'en',
+            weekLocale: 'en',
+            customCalendarRootFolderSettings,
+            momentApi
+        })?.filePath;
+
+        expect(filePath).toBe(`Periodic/${relativePath}.md`);
+        const base = { settings, customCalendarRootFolderSettings, momentApi, locale: 'en' };
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file: createTestTFile(filePath!) })).toBe(true);
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file: createTestTFile('Inbox/Moved.md'), oldPath: filePath })).toBe(true);
+        expect(shouldRefreshCalendarForVaultFileChange({ ...base, file: createTestTFile(filePath!), oldPath: 'Inbox/Moved.md' })).toBe(
+            true
+        );
+        expect(
+            shouldRefreshCalendarForVaultFileChange({
+                ...base,
+                file: createTestTFile(`Periodic/${relativePath.replace(/W\d+$/u, 'Unrelated')}.md`)
+            })
+        ).toBe(true);
     });
 
     test('returns null when a nested weekly note path does not resolve back to the same month folder', () => {
