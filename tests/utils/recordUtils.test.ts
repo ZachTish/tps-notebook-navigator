@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
     casefold,
     casefoldPreservingWhitespace,
@@ -103,6 +103,34 @@ describe('identifier normalization helpers', () => {
 
         expect(findMatchingRecordKey(record, 'réunion')).toBe('re\u0301union');
         expect(getMatchingRecordValue(record, 'réunion')).toBe('value');
+    });
+
+    it('preserves the first matching record key across ASCII and Unicode case variants', () => {
+        const asciiRecord = { Title: 'first', title: 'Second' };
+        const unicodeRecord = { ' Re\u0301union ': 'first', réunion: 'second' };
+
+        expect(findMatchingRecordKey(asciiRecord, 'title')).toBe('Title');
+        expect(getMatchingRecordValue(asciiRecord, 'title')).toBe('first');
+        expect(findMatchingRecordKey(unicodeRecord, 'RÉUNION')).toBe(' Re\u0301union ');
+    });
+
+    it('skips NFC normalization across repeated ASCII frontmatter key scans', () => {
+        const record: Record<string, unknown> = Object.fromEntries(Array.from({ length: 128 }, (_, index) => [`field_${index}`, index]));
+        record.Title = 'first';
+        record.title = 'Second';
+        const normalize = vi.spyOn(String.prototype, 'normalize');
+        let matches: (string | null)[] = [];
+        let normalizeCalls = -1;
+
+        try {
+            matches = Array.from({ length: 20 }, () => findMatchingRecordKey(record, 'title'));
+            normalizeCalls = normalize.mock.calls.length;
+        } finally {
+            normalize.mockRestore();
+        }
+
+        expect(matches).toEqual(Array(20).fill('Title'));
+        expect(normalizeCalls).toBe(0);
     });
 });
 

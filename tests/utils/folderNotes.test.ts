@@ -599,4 +599,39 @@ describe('title-based folder note identity', () => {
         const metadata = { getFileCache: () => ({ frontmatter: { Title: '_Projects' } }) };
         expect(getFolderNote(folder, { ...settings, folderNoteNamePattern: '_{{folder}}' }, metadata)).toBe(file);
     });
+
+    it('avoids NFC work during repeated ASCII sibling scans and still follows title changes', () => {
+        const app = new App();
+        const root = createRootFolder(app, 'Test Vault');
+        const frontmatterByPath = new Map<string, Record<string, unknown>>();
+        const plainFrontmatter = Object.fromEntries(Array.from({ length: 12 }, (_, index) => [`field_${index}`, index]));
+        const files = Array.from({ length: 120 }, (_, index) => {
+            const file = registerRootFile(app, root, `Transaction ${index}.md`);
+            frontmatterByPath.set(file.path, plainFrontmatter);
+            return file;
+        });
+        const titledFile = files[files.length - 1];
+        const metadata = { getFileCache: (file: TFile) => ({ frontmatter: frontmatterByPath.get(file.path) }) };
+        const normalize = vi.spyOn(String.prototype, 'normalize');
+        let unchangedResults: (TFile | null)[] = [];
+        let matchedResult: TFile | null = null;
+        let removedResult: TFile | null = null;
+        let normalizeCalls = -1;
+
+        try {
+            unchangedResults = Array.from({ length: 4 }, () => getFolderNote(root, settings, metadata));
+            frontmatterByPath.set(titledFile.path, { ...plainFrontmatter, Title: 'Vault' });
+            matchedResult = getFolderNote(root, settings, metadata);
+            frontmatterByPath.set(titledFile.path, plainFrontmatter);
+            removedResult = getFolderNote(root, settings, metadata);
+            normalizeCalls = normalize.mock.calls.length;
+        } finally {
+            normalize.mockRestore();
+        }
+
+        expect(unchangedResults).toEqual(Array(4).fill(null));
+        expect(matchedResult).toBe(titledFile);
+        expect(removedResult).toBeNull();
+        expect(normalizeCalls).toBe(0);
+    });
 });

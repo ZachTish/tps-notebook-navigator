@@ -86,6 +86,9 @@ export function isPlainObjectRecordValue(value: unknown): value is Record<string
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+// ASCII is already NFC; the same guard also serves accent-insensitive search folding below.
+const NON_ASCII_PATTERN = /[\u0080-\uFFFF]/;
+
 /**
  * Canonicalizes a case-insensitive identifier while preserving surrounding whitespace.
  * Use for user-authored lookup keys where NFC/NFD-equivalent text must match.
@@ -95,7 +98,7 @@ export function normalizeCaseInsensitiveIdentifierPreservingWhitespace(value: st
         return '';
     }
 
-    return value.normalize('NFC').toLowerCase();
+    return (NON_ASCII_PATTERN.test(value) ? value.normalize('NFC') : value).toLowerCase();
 }
 
 /**
@@ -380,12 +383,9 @@ export function casefold(value: string): string {
 const SEARCH_COMBINING_MARK_PATTERN = /\p{M}/u;
 // Matches Latin script letters used to gate accent stripping.
 const SEARCH_LATIN_LETTER_PATTERN = /\p{Script=Latin}/u;
-// Fast path: ASCII-only strings already match after lowercase conversion.
-const SEARCH_NORMALIZATION_NON_ASCII_PATTERN = /[\u0080-\uFFFF]/;
-
 const foldSearchLowercaseValue = (lowercaseValue: string): string => {
     // ASCII-only inputs are already in final folded form after lowercase conversion.
-    if (!SEARCH_NORMALIZATION_NON_ASCII_PATTERN.test(lowercaseValue)) {
+    if (!NON_ASCII_PATTERN.test(lowercaseValue)) {
         return lowercaseValue;
     }
 
