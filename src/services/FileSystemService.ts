@@ -494,6 +494,13 @@ export class FileSystemOperations {
         };
     }
 
+    private isConfiguredListProperty(assignment: ResolvedPropertyNodeAssignment): boolean {
+        return (
+            assignment.nodeKind === 'value' &&
+            resolveGcmItemPropertiesApi(this.app)?.resolveDefinition(assignment.propertyKey)?.type === 'list'
+        );
+    }
+
     /**
      * Filters input name for live typing
      * Strips leading periods to avoid hidden files
@@ -966,7 +973,7 @@ export class FileSystemOperations {
             normalizedPropertyNodeId ?? ''
         );
 
-        const propertyValue: unknown = assignment.writeValue;
+        const propertyValue: unknown = this.isConfiguredListProperty(assignment) ? [assignment.writeValue] : assignment.writeValue;
 
         try {
             const activeFilePath = this.app.workspace.getActiveFile()?.path ?? '';
@@ -1025,9 +1032,7 @@ export class FileSystemOperations {
             return { updated: 0, skipped: 0 };
         }
 
-        const isListProperty =
-            assignment.nodeKind === 'value' &&
-            resolveGcmItemPropertiesApi(this.app)?.resolveDefinition(assignment.propertyKey)?.type === 'list';
+        const isListProperty = this.isConfiguredListProperty(assignment);
         const normalizedPropertyKey = casefold(assignment.propertyKey);
 
         const isUnknownArray = (value: unknown): value is unknown[] => Array.isArray(value);

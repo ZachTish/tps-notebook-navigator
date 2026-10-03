@@ -19,6 +19,7 @@
 import { describe, expect, it } from 'vitest';
 import { fileMatchesFilterTokens, parseFilterSearchTokens, updateFilterQueryWithProperty } from '../src/utils/filterSearch';
 import { foldSearchText } from '../src/utils/recordUtils';
+import { extractFrontmatterPropertyValues } from '../src/utils/propertyUtils';
 
 describe('filterSearch property tokenization', () => {
     it('keeps quoted property values in one token', () => {
@@ -94,6 +95,17 @@ describe('filterSearch property parsing', () => {
 });
 
 describe('filterSearch property evaluation', () => {
+    it('matches a saved property shortcut against an indexed YAML list element', () => {
+        const values = extractFrontmatterPropertyValues(['task/todo']).map(entry => foldSearchText(entry.value));
+        const tokens = parseFilterSearchTokens('.kind=task/todo');
+        expect(
+            fileMatchesFilterTokens('Untitled', [], tokens, {
+                hasUnfinishedTasks: false,
+                propertyValuesByKey: new Map([['kind', values]])
+            })
+        ).toBe(true);
+    });
+
     it('matches key-only and substring value tokens', () => {
         const keyOnlyTokens = parseFilterSearchTokens('.status');
         const valueTokens = parseFilterSearchTokens('.status=work');

@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: **8.0.1** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.0.1.md) record the test-vault validation and BRAT handoff.
+Current release: **8.0.2** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.0.2.md) record the test-vault validation and BRAT handoff.
 
 ## Install with BRAT
 
@@ -23,6 +23,7 @@ Navigator delegates new-note presentation to GCM's shared **Obsidian Page Previe
 - GCM 2.3.0+ publishes configured property keys. Navigator 6.1.0+ adds them to each vault profile's property configuration. Existing ordering and per-key visibility remain authoritative; repeated imports do nothing.
 - New keys appear in Properties navigation and file menus without adding every value to list rows. Removing a GCM field does not erase Navigator preferences or note data.
 - Property sort/group changes retain the active editor's position while typing and commit on save/blur. Presentation refreshes preserve authored note fields.
+- New note from a property value (including a sole-property Filter Search or shortcut) uses GCM's configured property definition: a list field starts as a one-element YAML list, while scalar fields keep a scalar value and key-only selection keeps an empty value. The selected property is in the initial note payload, so no follow-up frontmatter write is needed. Without an available GCM list definition, the existing scalar behavior is retained.
 - File types, folders, tags, properties, shortcuts, and views use their existing Navigator settings. Local appearance preferences retain their per-device persistence controls.
 
 ## Selection filtering (6.2.1)
@@ -310,3 +311,9 @@ Focused zero-write coverage checks that line-Type Filter Search creation is reje
 Navigator no longer treats every Obsidian metadata-cache change as a structural folder or scoped tag/property change. An unchanged note body update does not bump the navigation file version, rebuild scoped tag/property trees, or invalidate folder-note exclusions and cached folder labels. Folder-note identity is compared only when the changed file was an observed folder note or could become one through its filename or authored title. Real title-driven identity changes still refresh folder visibility and labels; IndexedDB content-change notifications continue to own tag, property, folder style, and configured display-name updates. File creation, deletion, and rename still refresh their affected navigation scopes.
 
 The change adds no settings, schema migration, writer, timer, or vault scan. Minimum Obsidian remains 1.11.0. Focused operation-count tests cover 20-event body-only bursts, active folder notes, title addition/removal, same-path display-name changes, and tag/property updates. Full test-vault validation and artifact hashes are recorded in [8.0.1 release notes](release-notes/8.0.1.md); production installation remains the user's BRAT pull.
+
+## 8.0.2 — Create configured list properties as lists
+
+When New note is used on a property value, Navigator now checks GCM's configured property type before publishing the note. A list property writes its selected value as a one-element YAML list in the initial file content. This applies to the Properties tree, property shortcuts and a sole-property Filter Search such as `.kind=task/todo`. Previously these creation routes wrote a scalar even though dropping that same value onto an existing note already used GCM's list type. Key-only selection still creates an empty property; selector, checkbox and unconfigured fields retain their prior scalar/boolean behavior. No post-create repair, settings field, note migration or extra writer is added.
+
+This is a backward-compatible patch with the same minimum Obsidian 1.11.0. Focused tests cover configured lists under different key names, an empty list key, unchanged scalar creation, atomic initial payloads, and slash-valued property searches. Full validation and Test-vault verification are recorded in [8.0.2 release notes](release-notes/8.0.2.md). Production installation remains the user's BRAT pull.

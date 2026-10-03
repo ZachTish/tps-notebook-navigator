@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ISettingsProvider } from '../../src/interfaces/ISettingsProvider';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import { FileSystemOperations } from '../../src/services/FileSystemService';
-import { buildPropertyValueNodeId } from '../../src/utils/propertyTree';
+import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { presentCreatedNote } from '../../src/utils/tpsNoteOpening';
 import { createTestTFile } from '../utils/createTestTFile';
 
@@ -71,6 +71,46 @@ describe('facet note creation publishes complete initial content', () => {
         expect(f.created).toHaveBeenCalledExactlyOnceWith('---\n"kind": "task"\n---\n');
         expect(f.mutate).not.toHaveBeenCalled();
         expect(presentCreatedNote).toHaveBeenCalledExactlyOnceWith(f.app, f.file, false);
+    });
+
+    it.each([
+        ['kind', 'task/todo'],
+        ['categories', 'Work/Projects']
+    ])('publishes configured list property %s as an array in the initial note', async (key, value) => {
+        const f = fixture();
+        const resolveDefinition = vi.fn((requestedKey: string) =>
+            requestedKey.toLowerCase() === key.toLowerCase() ? { id: key, key, label: key, type: 'list', allowInlineSet: true } : null
+        );
+        (f.app as App & { plugins: unknown }).plugins = {
+            enabledPlugins: new Set(['tps-global-context-menu']),
+            getPlugin: () => ({ api: { itemProperties: { version: 1, listDefinitions: vi.fn(() => []), resolveDefinition } } })
+        };
+
+        await expect(f.operations.createNewFileForProperty(buildPropertyValueNodeId(key, value))).resolves.toBe(f.file);
+        expect(resolveDefinition).toHaveBeenCalledWith(key);
+        expect(f.created).toHaveBeenCalledExactlyOnceWith(`---\n${JSON.stringify(key)}: [${JSON.stringify(value)}]\n---\n`);
+        expect(f.mutate).not.toHaveBeenCalled();
+        expect(presentCreatedNote).toHaveBeenCalledExactlyOnceWith(f.app, f.file, false);
+    });
+
+    it('keeps a configured list key without a selected value as an empty placeholder', async () => {
+        const f = fixture();
+        (f.app as App & { plugins: unknown }).plugins = {
+            enabledPlugins: new Set(['tps-global-context-menu']),
+            getPlugin: () => ({
+                api: {
+                    itemProperties: {
+                        version: 1,
+                        listDefinitions: vi.fn(() => []),
+                        resolveDefinition: vi.fn(() => ({ id: 'categories', key: 'Categories', label: 'Categories', type: 'list' }))
+                    }
+                }
+            })
+        };
+
+        await expect(f.operations.createNewFileForProperty(buildPropertyKeyNodeId('Categories'))).resolves.toBe(f.file);
+        expect(f.created).toHaveBeenCalledExactlyOnceWith('---\n"categories": null\n---\n');
+        expect(f.mutate).not.toHaveBeenCalled();
     });
 
     it.each(['tag', 'property'] as const)('does not publish or open an incomplete note when %s creation fails', async route => {

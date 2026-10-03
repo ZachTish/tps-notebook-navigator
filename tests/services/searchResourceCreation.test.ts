@@ -38,6 +38,7 @@ describe('ordinary creation from a navigation search', () => {
         ['#work', { type: 'tag', tag: 'work' }],
         ['.status', { type: 'property', nodeId: 'key:status' }],
         ['.status=todo', { type: 'property', nodeId: 'key:status=todo' }],
+        ['.kind=task/todo', { type: 'property', nodeId: 'key:kind=task/todo' }],
         ['folder:"/my projects/**"', { type: 'folder', path: 'my projects' }],
         ['folder:/inbox', { type: 'folder', path: 'inbox' }]
     ])('routes %s to the existing writer', (query, target) => {
