@@ -1,18 +1,13 @@
-/* TPS Notebook Navigator - strict creation plans derived from Filter Search. */
+/* TPS Notebook Navigator - strict whole-file creation plans derived from Filter Search. */
 
-import { TPS_NAVIGATOR_TYPE_IDS, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
+import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { parseFilterSearchTokens } from '../../utils/filterSearch';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId, type PropertySelectionNodeId } from '../../utils/propertyTree';
-import type { PropertySearchToken } from '../../utils/filterSearchTypes';
 import { isTpsNavigatorCreatableFileTypeId } from './fileResourceCreation';
-import { isTpsNavigatorCreatableResourceTypeId } from './markdownResourceCreation';
 
 export interface SearchResourceCreationPlan {
     readonly ok: true;
     readonly typeId: TpsNavigatorTypeId;
-    readonly tags: readonly string[];
-    readonly fields: Readonly<Record<string, string>>;
-    readonly status?: string;
 }
 
 export interface SearchResourceCreationBlock {
@@ -22,38 +17,9 @@ export interface SearchResourceCreationBlock {
 
 export type SearchResourceCreationResolution = SearchResourceCreationPlan | SearchResourceCreationBlock;
 
-const AMBIGUOUS_FILTER_REASON =
-    'New item unavailable: this search contains text, exclusions, OR branches, or source constraints that cannot be applied deterministically.';
-const UNSUPPORTED_PROPERTY_KEYS = new Set(['checkbox', 'marker', 'tags', 'title']);
+const AMBIGUOUS_FILTER_REASON = 'New item unavailable: this search contains criteria that cannot be applied to a new file.';
 
-function resolveTaskFields(
-    propertyTokens: readonly PropertySearchToken[]
-): { readonly ok: true; readonly fields: Readonly<Record<string, string>>; readonly status?: string } | SearchResourceCreationBlock {
-    const fields: Record<string, string> = Object.create(null) as Record<string, string>;
-    let status: string | undefined;
-    for (const token of propertyTokens) {
-        if (token.value === null || token.value.length === 0 || UNSUPPORTED_PROPERTY_KEYS.has(token.key)) {
-            return { ok: false, reason: 'New item unavailable: this search contains a property that cannot be assigned safely.' };
-        }
-        if (token.key === 'status') {
-            if (status !== undefined && status !== token.value) {
-                return { ok: false, reason: 'New item unavailable: this search requires conflicting task statuses.' };
-            }
-            status = token.value;
-            continue;
-        }
-        if (fields[token.key] !== undefined && fields[token.key] !== token.value) {
-            return { ok: false, reason: `New item unavailable: this search requires conflicting values for ${token.key}.` };
-        }
-        fields[token.key] = token.value;
-    }
-    return { ok: true, fields: Object.freeze(fields), ...(status === undefined ? {} : { status }) };
-}
-
-/**
- * A nonempty search may create only when one supported Type and every criterion can be written to the new item.
- * This deliberately rejects guesses: the created resource must be guaranteed to satisfy the current query.
- */
+/** A Type search can create only a complete file whose resulting type is guaranteed to match. */
 export function resolveSearchResourceCreation(query: string): SearchResourceCreationResolution {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) {
@@ -65,14 +31,16 @@ export function resolveSearchResourceCreation(query: string): SearchResourceCrea
         return { ok: false, reason: 'New item unavailable: this search must select exactly one supported Type.' };
     }
     const typeId = tokens.typeTokens[0];
-    if (!isTpsNavigatorCreatableResourceTypeId(typeId) && !isTpsNavigatorCreatableFileTypeId(typeId)) {
-        return { ok: false, reason: 'New item unavailable: the selected Type does not support creation.' };
+    if (!isTpsNavigatorCreatableFileTypeId(typeId)) {
+        return { ok: false, reason: 'New item unavailable: only whole-file Types support creation.' };
     }
 
     const hasUnsupportedCriteria =
         tokens.nameTokens.length > 0 ||
         tokens.excludeNameTokens.length > 0 ||
+        tokens.includedTagTokens.length > 0 ||
         tokens.excludeTagTokens.length > 0 ||
+        tokens.propertyTokens.length > 0 ||
         tokens.excludePropertyTokens.length > 0 ||
         tokens.folderTokens.length > 0 ||
         tokens.excludeFolderTokens.length > 0 ||
@@ -85,37 +53,12 @@ export function resolveSearchResourceCreation(query: string): SearchResourceCrea
         tokens.requireTagged ||
         tokens.includeUntagged ||
         tokens.excludeTagged ||
-        tokens.expression.some(
-            token =>
-                token.kind === 'notTag' ||
-                token.kind === 'notProperty' ||
-                token.kind === 'requireTagged' ||
-                token.kind === 'untagged' ||
-                (token.kind === 'operator' && token.operator === 'OR')
-        );
+        tokens.expression.some(token => token.kind === 'operator' && token.operator === 'OR');
     if (hasUnsupportedCriteria) {
         return { ok: false, reason: AMBIGUOUS_FILTER_REASON };
     }
 
-    const tags = Object.freeze([...new Set(tokens.includedTagTokens)]);
-    if (typeId !== TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES) {
-        if (tags.length > 0 || tokens.propertyTokens.length > 0) {
-            return { ok: false, reason: 'New item unavailable: this Type cannot safely apply the required tags or properties.' };
-        }
-        return { ok: true, typeId, tags, fields: Object.freeze({}) };
-    }
-
-    const taskFields = resolveTaskFields(tokens.propertyTokens);
-    if (!taskFields.ok) {
-        return taskFields;
-    }
-    return {
-        ok: true,
-        typeId,
-        tags,
-        fields: taskFields.fields,
-        ...(taskFields.status === undefined ? {} : { status: taskFields.status })
-    };
+    return { ok: true, typeId };
 }
 
 export type NavigationSearchCreationTarget =

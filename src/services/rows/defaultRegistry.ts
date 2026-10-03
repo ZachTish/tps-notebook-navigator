@@ -1,10 +1,7 @@
 /*
- * TPS Notebook Navigator - built-in optional row providers.
+ * TPS Notebook Navigator - reserved built-in row provider registry.
  */
 
-import { registerBuiltInRowProviders } from '../../integrations/rowProviderIntegrations';
 import { NavigatorRowProviderRegistry } from './NavigatorRowProviderRegistry';
 
 export const navigatorRowProviderRegistry = new NavigatorRowProviderRegistry();
-
-registerBuiltInRowProviders(navigatorRowProviderRegistry);

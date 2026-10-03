@@ -78,15 +78,6 @@ export function resolveMixedStructuralTypeCollections(
     return searchTokens ? getStructuralTypeSearchCollections(searchTokens) : [];
 }
 
-/** Avoid rendering the attached task feed twice when the canonical Checkboxes collection is present at root. */
-export function filterDuplicateRootProviderRows(
-    rows: readonly NavigatorProvidedRow[],
-    rootHasCanonicalCheckboxRows: boolean,
-    duplicateProviderId: string
-): readonly NavigatorProvidedRow[] {
-    return rootHasCanonicalCheckboxRows ? rows.filter(row => row.providerId !== duplicateProviderId) : rows;
-}
-
 interface ComposeTypeListItemsArgs {
     mode: TypeListMode;
     coreListItems: ListPaneItem[];

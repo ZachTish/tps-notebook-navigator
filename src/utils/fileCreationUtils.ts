@@ -1,4 +1,4 @@
-import { presentCreatedNote } from './tpsNoteOpening';
+import { presentCreatedNote, type NotePresentationOrigin } from './tpsNoteOpening';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -40,6 +40,8 @@ export interface CreateFileOptions {
     openInNewTab?: boolean;
     /** Whether to trigger rename mode after opening */
     triggerRename?: boolean;
+    /** Click origin for Obsidian's native page preview, when creation began from a button */
+    presentationOrigin?: NotePresentationOrigin;
     /** Hook run after creating the file and before opening it */
     afterCreate?: (file: TFile) => Promise<void>;
     /** Custom error message key */
@@ -136,6 +138,7 @@ export async function createFileWithOptions(parent: TFolder, app: App, options: 
         openFile = true,
         openInNewTab = false,
         triggerRename = true,
+        presentationOrigin,
         afterCreate,
         errorKey = 'createFile'
     } = options;
@@ -158,7 +161,8 @@ export async function createFileWithOptions(parent: TFolder, app: App, options: 
         }
 
         // Open the file if requested
-        if (openFile && !(await presentCreatedNote(app, file, openInNewTab, triggerRename))) {
+        const originArgs: [NotePresentationOrigin] | [] = presentationOrigin ? [presentationOrigin] : [];
+        if (openFile && !(await presentCreatedNote(app, file, openInNewTab, triggerRename, ...originArgs))) {
             const leaf = app.workspace.getLeaf(openInNewTab);
             const openState = extension === 'md' ? { state: { mode: 'source' }, active: true } : undefined;
             await leaf.openFile(file, openState);

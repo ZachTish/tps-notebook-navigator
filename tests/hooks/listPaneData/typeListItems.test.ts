@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
     collectFileBackedTypeFiles,
     composeTypeListItems,
-    filterDuplicateRootProviderRows,
     getSelectedTypeSearchSourceScope,
     resolveMixedStructuralTypeCollections,
     resolveTypeListSnapshot,
@@ -66,20 +65,6 @@ describe('vault-root mixed resources', () => {
         expect(resolveMixedStructuralTypeCollections(false, parseFilterSearchTokens('type:structural:task'))).toEqual([
             TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES
         ]);
-    });
-
-    it('removes only the duplicate attached task feed when canonical checkbox rows exist', () => {
-        const taskRow = {
-            providerId: 'tps/gcm-tasks',
-            id: 'task-1',
-            kind: 'tps/gcm-task',
-            label: 'Task',
-            sourcePath: 'Tasks.md'
-        } satisfies NavigatorProvidedRow;
-        const otherRow = { ...taskRow, providerId: 'example/rows', id: 'other-1' } satisfies NavigatorProvidedRow;
-
-        expect(filterDuplicateRootProviderRows([taskRow, otherRow], true, 'tps/gcm-tasks')).toEqual([otherRow]);
-        expect(filterDuplicateRootProviderRows([taskRow, otherRow], false, 'tps/gcm-tasks')).toEqual([taskRow, otherRow]);
     });
 });
 

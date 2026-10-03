@@ -57,7 +57,7 @@ import type { SearchResultMeta } from '../types/search';
 import type { ActiveProfileState } from '../context/SettingsContext';
 import type { SearchProvider } from '../types/search';
 import type { PropertySelectionNodeId } from '../utils/propertyTree';
-import { TPS_NAVIGATOR_TYPE_IDS, type TpsNavigatorTypeId } from '../types/navigatorTypes';
+import type { TpsNavigatorTypeId } from '../types/navigatorTypes';
 import { getFilesForNavigationSelection, getVisibleFileTypeFiles } from '../utils/selectionUtils';
 import { sortNavigationFiles } from '../utils/fileFinder';
 import {
@@ -103,7 +103,6 @@ import { useNavigatorTypeRows } from './useNavigatorTypeRows';
 import {
     collectFileBackedTypeFiles,
     composeTypeListItems,
-    filterDuplicateRootProviderRows,
     getSelectedTypeSearchSourceScope,
     resolveMixedStructuralTypeCollections,
     resolveTypeListMode
@@ -113,7 +112,6 @@ import {
     getEffectiveStandaloneStructuralTypeGrouping
 } from './listPaneData/standaloneTypePresentation';
 import { isTpsNavigatorLineTypeId } from '../types/navigatorTypes';
-import { GCM_TASK_ROW_PROVIDER_ID } from '../integrations/gcm/GcmTaskRowProvider';
 import {
     fileMatchesStructuralTypeSearch,
     getStructuralLineTypeSourceSearchTokens,
@@ -1031,12 +1029,6 @@ export function useListPaneData({
         trimmedQuery,
         typeSnapshot
     ]);
-    const visibleProviderRows = useMemo(() => {
-        const rootHasCanonicalCheckboxRows =
-            isVaultRootAggregate &&
-            structuralTypeGroups.some(group => group.typeId === TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES && group.rows.length > 0);
-        return filterDuplicateRootProviderRows(providerRows, rootHasCanonicalCheckboxRows, GCM_TASK_ROW_PROVIDER_ID);
-    }, [isVaultRootAggregate, providerRows, structuralTypeGroups]);
     const liveListItems = useMemo(() => {
         if (parsedSearchTokens?.invalidReason) {
             return [];
@@ -1045,7 +1037,7 @@ export function useListPaneData({
             mode: typeListMode,
             coreListItems,
             typeRows,
-            providerRows: visibleProviderRows,
+            providerRows,
             presentedTypeListItems,
             searchTypeGroups: structuralTypeGroups,
             globalTypeSearch: useGlobalTypeSearch,
@@ -1120,7 +1112,7 @@ export function useListPaneData({
         typeListMode,
         typeRows,
         useGlobalTypeSearch,
-        visibleProviderRows
+        providerRows
     ]);
 
     const editingContext = useMemo(

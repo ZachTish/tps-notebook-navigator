@@ -134,6 +134,8 @@ function payload(
     taskLines: GcmTaskLinesApiLike,
     taskCheckboxes?: GcmTaskCheckboxesApiLike
 ): unknown {
+    Object.assign(tasks, { supportsTaskLineMutation: tasks.supportsTaskLineMutation ?? true });
+    Object.assign(taskLines, { supportsTaskLineMutation: taskLines.supportsTaskLineMutation ?? true });
     return {
         source: 'tps-global-context-menu',
         sourcePluginId: TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID,
@@ -483,5 +485,23 @@ describe('GCM entity Type task integration', () => {
         }));
         adapter.acceptApiPayload(payload(entityApi.api, tasks.api, createTaskLinesApi().api, taskCheckboxes));
         await expect(adapter.setTaskCheckbox(record!, true)).resolves.toMatchObject({ ok: false, reason: 'mutation-failed' });
+    });
+
+    it('does not expose task mutation or menus when GCM v5 disables line actions', async () => {
+        const entityApi = createEntityApi(taskEntity());
+        const tasks = createTaskApi([taskRecord()]);
+        const taskLines = createTaskLinesApi();
+        Object.assign(tasks.api, { version: 4, supportsTaskLineMutation: false });
+        Object.assign(taskLines.api, { version: 2, supportsTaskLineMutation: false });
+        const adapter = new GcmEntityTypeIndexAdapter(createAppWithFile());
+        adapter.acceptApiPayload(payload(entityApi.api, tasks.api, taskLines.api));
+        const record = (await adapter.loadSnapshot()).recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES)?.[0];
+
+        expect(record?.task).toMatchObject({ canMutateCheckbox: false, hasContextMenu: false });
+        await expect(adapter.setTaskCheckbox(record!, true)).resolves.toMatchObject({ ok: false, reason: 'gcm-unavailable' });
+        expect(adapter.addTaskContextMenuItems({ addItem: vi.fn(), addSeparator: vi.fn() }, record!)).toBe(false);
+        expect(tasks.setCompletion).not.toHaveBeenCalled();
+        expect(tasks.setCheckbox).not.toHaveBeenCalled();
+        expect(taskLines.addMenuItems).not.toHaveBeenCalled();
     });
 });

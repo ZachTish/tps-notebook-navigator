@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import { NavigatorRowProviderRegistry } from '../../src/services/rows/NavigatorRowProviderRegistry';
+import { navigatorRowProviderRegistry } from '../../src/services/rows/defaultRegistry';
 import {
     composeProviderRows,
     NAVIGATOR_ROW_PROVIDER_MAX_ROWS,
@@ -39,6 +40,10 @@ afterEach(() => {
 });
 
 describe('NavigatorRowProviderRegistry', () => {
+    it('starts without the retired first-party GCM task-row provider', () => {
+        expect(navigatorRowProviderRegistry.get('tps/gcm-tasks')).toBeNull();
+    });
+
     it('requires namespaced provider IDs and rejects duplicate registrations', () => {
         const registry = new NavigatorRowProviderRegistry();
 

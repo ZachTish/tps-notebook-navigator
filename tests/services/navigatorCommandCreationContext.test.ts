@@ -289,6 +289,20 @@ describe('shared navigation-facet note dispatch', () => {
         { type: 'folder', path: 'Inbox/QA command context' },
         { type: 'tag', tag: 'qa/creation' },
         { type: 'property', nodeId: buildPropertyValueNodeId('qacreate', 'command') }
+    ])('passes the real creation click to the $type note creator', async target => {
+        const f = fixture('');
+        const origin = { anchorEl: { isConnected: true } as HTMLElement, event: { type: 'click' } as MouseEvent };
+        await createNoteForNavigationTarget(f.app, f.fileSystemOps, target, f.activeFile.path, false, null, origin);
+        const calls = Object.values(f.fileSystemOps).flatMap(create => create.mock.calls);
+        expect(calls).toHaveLength(1);
+        const [call] = calls;
+        expect(call?.[call.length - 1]).toBe(origin);
+    });
+
+    it.each<NavigationSearchCreationTarget>([
+        { type: 'folder', path: 'Inbox/QA command context' },
+        { type: 'tag', tag: 'qa/creation' },
+        { type: 'property', nodeId: buildPropertyValueNodeId('qacreate', 'command') }
     ])('retains toolbar source, destination and provider-owned manual placement for $type', async target => {
         const f = fixture('');
         await createNoteForNavigationTarget(f.app, f.fileSystemOps, target, f.activeFile.path, true);

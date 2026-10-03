@@ -36,6 +36,21 @@ describe('shared note creation presentation', () => {
         expect(await presentCreatedNote(createApp({ presentCreatedNote: present }), createTestTFile('Canvas.canvas'))).toBe(false);
         expect(present).not.toHaveBeenCalled();
     });
+    it('passes a connected creation click to the shared native page preview owner', async () => {
+        const present = vi.fn().mockResolvedValue(true);
+        const app = createApp({ presentCreatedNote: present });
+        const anchorEl = { isConnected: true } as HTMLElement;
+        const event = { type: 'click' } as MouseEvent;
+        await presentCreatedNote(app, createTestTFile('Note.md'), false, true, { anchorEl, event });
+        expect(present.mock.lastCall?.[0]).toMatchObject({ anchorEl, event });
+
+        await presentCreatedNote(app, createTestTFile('Note.md'), false, true, {
+            anchorEl: { isConnected: false } as HTMLElement,
+            event
+        });
+        expect(present.mock.lastCall?.[0]).not.toHaveProperty('anchorEl');
+        expect(present.mock.lastCall?.[0]).not.toHaveProperty('event');
+    });
     it('provides a settings handoff using the API owner as receiver', () => {
         const ui = { presentCreatedNote: vi.fn(), openNoteOpeningSettings: vi.fn() };
         getTpsNoteOpeningApi(createApp(ui))?.openSettings?.();

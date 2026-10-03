@@ -844,6 +844,7 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         controller.applySettingsRecord(
             {
                 tpsTypesPauseMigrationVersion: 1,
+                tpsDataArchitectureMode: 'legacy',
                 tpsTypesNavigationEnabled: false,
                 typeNavigationSortOrder: 'count-desc',
                 rootTypeOrder: [TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId, TPS_NAVIGATOR_TYPE_IDS.TABLES, 'kind:project', 'invalid'],
@@ -857,20 +858,22 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         );
 
         expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
+        expect(controller.settings.tpsDataArchitectureMode).toBe('native-records');
         expect(controller.settings.typeNavigationSortOrder).toBe('count-desc');
         expect(controller.settings.rootTypeOrder).toEqual([TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId]);
         expect(controller.settings.tpsResourceCreationTarget).toBe('specific-note');
         expect(controller.settings.tpsResourceCreationSpecificFile).toBe('Inbox/Capture.md');
-        expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(true);
+        expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(false);
         expect(controller.settings.tpsGcmTaskRowsIncludeCompleted).toBe(true);
         expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(12);
         expect(controller.getPersistableSettings()).toMatchObject({
             tpsTypesNavigationEnabled: false,
+            tpsDataArchitectureMode: 'native-records',
             typeNavigationSortOrder: 'count-desc',
             rootTypeOrder: [TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId],
             tpsResourceCreationTarget: 'specific-note',
             tpsResourceCreationSpecificFile: 'Inbox/Capture.md',
-            tpsGcmTaskRowsEnabled: true,
+            tpsGcmTaskRowsEnabled: false,
             tpsGcmTaskRowsIncludeCompleted: true,
             tpsGcmTaskRowsPerNote: 12
         });
@@ -899,12 +902,13 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsPerNote);
     });
 
-    it('keeps retired Types off while preserving the separate attached-row preference', () => {
+    it('keeps retired Types and attached task rows off after legacy settings are reimported', () => {
         const { controller } = createController();
 
         const migrated = controller.applySettingsRecord(
             {
                 tpsTypesNavigationEnabled: true,
+                tpsDataArchitectureMode: 'legacy',
                 tpsGcmTaskRowsEnabled: true
             },
             { isFirstLaunch: false }
@@ -913,6 +917,7 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         expect(migrated).toBe(true);
         expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
         expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(false);
+        expect(controller.settings.tpsDataArchitectureMode).toBe('native-records');
         expect(controller.settings.tpsTypesPauseMigrationVersion).toBe(1);
 
         const persistedAfterMigration = controller.getPersistableSettings() as unknown as Record<string, unknown>;
@@ -922,7 +927,8 @@ describe('PluginSettingsController.applySettingsRecord', () => {
 
         expect(afterExplicitOptIn).toBe(false);
         expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
-        expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(true);
+        expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(false);
+        expect(controller.settings.tpsDataArchitectureMode).toBe('native-records');
         expect(controller.settings.tpsTypesPauseMigrationVersion).toBe(1);
     });
 

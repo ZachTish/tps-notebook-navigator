@@ -33,26 +33,12 @@ export interface GcmTaskMutationResultLike {
     error?: string;
 }
 
-export interface GcmTaskCreateInputLike {
-    title: string;
-    targetFile?: TFile;
-    targetPath?: string;
-    checkbox?: string;
-    status?: string;
-    fields?: Record<string, string | number | boolean | null | undefined>;
-    tags?: string[];
-    rawLine?: string;
-    placement?: 'after-frontmatter' | 'end';
-    focus?: boolean;
-    notice?: boolean;
-}
-
 export interface GcmTaskApiLike {
     readonly version: number;
+    /** Explicit GCM capability; omitted/false means Navigator must not offer task-line actions. */
+    readonly supportsTaskLineMutation?: boolean;
     list(filter: { paths: string[]; includeCompleted: boolean; maxResults: number }): Promise<GcmTaskRecordLike[]>;
     focus(ref: GcmTaskRefLike): Promise<boolean>;
-    /** Canonical configured task creation path in newer GCM v1 builds. */
-    create?(input: GcmTaskCreateInputLike): Promise<GcmTaskMutationResultLike>;
     /** Available in current GCM v1 builds. */
     get?(ref: GcmTaskRefLike): Promise<GcmTaskRecordLike | null>;
     /** Available in current GCM v1 builds. */
@@ -77,21 +63,11 @@ export interface GcmItemPropertyDefinitionLike {
     allowInlineSet: boolean;
 }
 
-export interface GcmItemPropertyRefLike {
-    path: string;
-    lineNumber: number;
-    rawLine?: string;
-}
-
 export interface GcmItemPropertiesApiLike {
     readonly version: number;
+    readonly supportsTaskLineMutation?: boolean;
     listDefinitions(): readonly GcmItemPropertyDefinitionLike[];
     resolveDefinition(keyOrId: unknown): GcmItemPropertyDefinitionLike | null;
-    applyToTaskLines(
-        refs: readonly GcmItemPropertyRefLike[],
-        mutation: { key: string; action: 'set' | 'add' | 'remove' | 'clear'; values?: unknown[] },
-        cause?: { sourcePluginId?: string; surface?: string }
-    ): Promise<{ ok: boolean; requested: number; updated: number; skipped: number; error?: string }>;
 }
 
 export interface GcmFrontmatterApiLike {
@@ -159,6 +135,7 @@ export interface GcmTaskLineContextLike {
 
 export interface GcmTaskLinesApiLike {
     readonly version: number;
+    readonly supportsTaskLineMutation?: boolean;
     addMenuItems(
         menu: GcmTaskMenuLike,
         context: GcmTaskLineContextLike,
@@ -205,8 +182,7 @@ export function isGcmItemPropertiesApiLike(value: unknown): value is GcmItemProp
         typeof value.version === 'number' &&
         value.version >= 1 &&
         typeof value.listDefinitions === 'function' &&
-        typeof value.resolveDefinition === 'function' &&
-        typeof value.applyToTaskLines === 'function'
+        typeof value.resolveDefinition === 'function'
     );
 }
 

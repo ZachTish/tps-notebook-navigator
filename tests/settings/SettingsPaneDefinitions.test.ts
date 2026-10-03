@@ -45,7 +45,7 @@ const EXPECTED_PANES: Array<{ id: SettingsPaneId; label: string; description: st
     {
         id: 'tps-integration',
         label: 'TPS integration',
-        description: 'Connect optional TPS features and move settings into this fork without coupling it to the original plugin.',
+        description: 'Browse whole-file types and import settings from the original Notebook Navigator.',
         native: true
     },
     {

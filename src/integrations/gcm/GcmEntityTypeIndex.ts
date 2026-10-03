@@ -786,8 +786,9 @@ export class GcmEntityTypeIndexAdapter {
         const entityApi = this.api;
         const taskApi = this.taskApi;
         const taskCheckboxesApi = this.taskCheckboxesApi;
-        const canSetCompletion = typeof taskApi?.setCompletion === 'function';
-        const canSetMappedCheckbox = typeof taskApi?.setCheckbox === 'function' && taskCheckboxesApi !== null;
+        const canSetCompletion = taskApi?.supportsTaskLineMutation === true && typeof taskApi.setCompletion === 'function';
+        const canSetMappedCheckbox =
+            taskApi?.supportsTaskLineMutation === true && typeof taskApi.setCheckbox === 'function' && taskCheckboxesApi !== null;
         if (!entityApi || !taskApi || (!canSetCompletion && !canSetMappedCheckbox)) {
             return { ok: false, reason: 'gcm-unavailable' };
         }
@@ -874,7 +875,13 @@ export class GcmEntityTypeIndexAdapter {
         }
         const entityApi = this.api;
         const taskLinesApi = this.taskLinesApi;
-        if (!entityApi || !taskLinesApi || typeof menu?.addItem !== 'function' || typeof menu?.addSeparator !== 'function') {
+        if (
+            !entityApi ||
+            this.taskApi?.supportsTaskLineMutation !== true ||
+            taskLinesApi?.supportsTaskLineMutation !== true ||
+            typeof menu?.addItem !== 'function' ||
+            typeof menu?.addSeparator !== 'function'
+        ) {
             return false;
         }
         const current = this.resolveCurrentTaskEntity(record, entityApi);
@@ -940,9 +947,10 @@ export class GcmEntityTypeIndexAdapter {
     private getTaskCapabilities(): { canMutateCheckbox: boolean; hasContextMenu: boolean } {
         return {
             canMutateCheckbox:
-                typeof this.taskApi?.setCompletion === 'function' ||
-                (typeof this.taskApi?.setCheckbox === 'function' && this.taskCheckboxesApi !== null),
-            hasContextMenu: this.taskLinesApi !== null
+                this.taskApi?.supportsTaskLineMutation === true &&
+                (typeof this.taskApi.setCompletion === 'function' ||
+                    (typeof this.taskApi.setCheckbox === 'function' && this.taskCheckboxesApi !== null)),
+            hasContextMenu: this.taskApi?.supportsTaskLineMutation === true && this.taskLinesApi?.supportsTaskLineMutation === true
         };
     }
 

@@ -3,38 +3,9 @@ import { resolveNavigationSearchCreation, resolveSearchResourceCreation } from '
 import { TPS_NAVIGATOR_TYPE_IDS } from '../../src/types/navigatorTypes';
 
 describe('search-backed resource creation', () => {
-    it('builds one matching task from positive AND tags', () => {
-        expect(resolveSearchResourceCreation('#hca AND #idea type:structural:task')).toEqual({
-            ok: true,
-            typeId: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
-            tags: ['hca', 'idea'],
-            fields: {}
-        });
-    });
-
-    it('maps exact task properties into canonical status and inline fields', () => {
-        expect(resolveSearchResourceCreation('#hca AND .status=todo AND .priority=high type:structural:task')).toEqual({
-            ok: true,
-            typeId: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
-            tags: ['hca'],
-            fields: { priority: 'high' },
-            status: 'todo'
-        });
-    });
-
-    it('allows a Type-only query when its creation flow needs no inferred metadata', () => {
-        expect(resolveSearchResourceCreation('type:structural:bullet')).toMatchObject({
-            ok: true,
-            typeId: TPS_NAVIGATOR_TYPE_IDS.BULLETS,
-            tags: [],
-            fields: {}
-        });
-        expect(resolveSearchResourceCreation('type:file:canvas')).toMatchObject({
-            ok: true,
-            typeId: TPS_NAVIGATOR_TYPE_IDS.CANVAS,
-            tags: [],
-            fields: {}
-        });
+    it('allows only whole-file Type creation', () => {
+        expect(resolveSearchResourceCreation('type:file:canvas')).toEqual({ ok: true, typeId: TPS_NAVIGATOR_TYPE_IDS.CANVAS });
+        expect(resolveSearchResourceCreation('type:file:base')).toEqual({ ok: true, typeId: TPS_NAVIGATOR_TYPE_IDS.BASES });
     });
 
     it.each([
@@ -48,7 +19,15 @@ describe('search-backed resource creation', () => {
         '.priority type:structural:task',
         '.priority= type:structural:task',
         '#hca type:structural:bullet',
-        '#hca type:file:canvas'
+        '#hca type:file:canvas',
+        'type:structural:task',
+        'type:structural:bullet',
+        'type:structural:heading',
+        'type:structural:code-block',
+        'type:structural:callout',
+        'type:structural:blockquote',
+        'type:structural:table',
+        'type:structural:web-link'
     ])('rejects a search whose new item cannot be guaranteed to match: %s', query => {
         expect(resolveSearchResourceCreation(query)).toMatchObject({ ok: false });
     });

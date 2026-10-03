@@ -180,7 +180,7 @@ describe('FileSystemOperations property assignment', () => {
         expect(target.frontmatter).toEqual({ Categories: null });
     });
 
-    it('keeps GCM-enabled Legacy property key drops present with an empty value', async () => {
+    it('writes a Markdown property key without invoking GCM companion writers even with a saved legacy mode', async () => {
         const app = new App();
         const missingTarget = createFile('Missing.md', {});
         const valuedTarget = createFile('Valued.md', { Status: 'done' });
@@ -216,8 +216,7 @@ describe('FileSystemOperations property assignment', () => {
                             label: 'Status',
                             type: 'selector',
                             allowInlineSet: true
-                        })),
-                        applyToTaskLines: vi.fn()
+                        }))
                     },
                     frontmatter: { setValues, addListValues },
                     fileProperties: {
@@ -314,9 +313,11 @@ describe('FileSystemOperations property assignment', () => {
         expect(plainTarget.frontmatter).toEqual({ Project: rawValue });
     });
 
-    it('uses GCM property types so list values add while scalar values replace', async () => {
+    it('adds configured list values with native frontmatter without calling GCM writers', async () => {
         const app = new App();
         const target = createFile('Target.md', { Parents: ['[[Alpha]]'], Priority: 'low' });
+        const emptyTarget = createFile('Empty.md', {});
+        const scalarTarget = createFile('Scalar.md', { Parents: '[[Alpha]]' });
         const propertyTreeService = new PropertyTreeService();
         propertyTreeService.updatePropertyTree(
             buildPropertyTreeFromDatabase(
@@ -333,6 +334,11 @@ describe('FileSystemOperations property assignment', () => {
         );
         const addListValues = vi.fn().mockResolvedValue([target]);
         const setValues = vi.fn().mockResolvedValue([target]);
+        const processFrontMatter = vi.fn((file: TFile, callback: (frontmatter: Record<string, unknown>) => void) => {
+            callback((file as TFile & { frontmatter: Record<string, unknown> }).frontmatter);
+            return Promise.resolve();
+        });
+        app.fileManager.processFrontMatter = processFrontMatter;
         const itemProperties = {
             version: 1,
             listDefinitions: vi.fn(() => []),
@@ -340,8 +346,7 @@ describe('FileSystemOperations property assignment', () => {
                 key.toLowerCase() === 'parents'
                     ? { id: 'parents', key: 'Parents', label: 'Parents', type: 'list', listItemType: 'link', allowInlineSet: true }
                     : { id: 'priority', key: 'Priority', label: 'Priority', type: 'selector', allowInlineSet: true }
-            ),
-            applyToTaskLines: vi.fn()
+            )
         };
         (app as App & { plugins: unknown }).plugins = {
             enabledPlugins: new Set(['tps-global-context-menu']),
@@ -355,25 +360,25 @@ describe('FileSystemOperations property assignment', () => {
         };
         const operations = createOperations(app, propertyTreeService);
 
-        await operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('parents', normalizePropertyTreeValuePath('[[Beta]]')), [
-            target
-        ]);
-        expect(addListValues).toHaveBeenCalledWith(
-            [target],
-            'Parents',
-            ['[[Beta]]'],
-            expect.objectContaining({ kind: 'user', sourcePluginId: 'tps-notebook-navigator' })
-        );
+        const parentsNode = buildPropertyValueNodeId('parents', normalizePropertyTreeValuePath('[[Beta]]'));
+        await expect(operations.applyPropertyNodeToFiles(parentsNode, [target, emptyTarget, scalarTarget])).resolves.toEqual({
+            updated: 3,
+            skipped: 0
+        });
+        expect(target.frontmatter.Parents).toEqual(['[[Alpha]]', '[[Beta]]']);
+        expect(emptyTarget.frontmatter.Parents).toEqual(['[[Beta]]']);
+        expect(scalarTarget.frontmatter.Parents).toEqual(['[[Alpha]]', '[[Beta]]']);
+        await expect(operations.applyPropertyNodeToFiles(parentsNode, [target])).resolves.toEqual({ updated: 0, skipped: 1 });
+        expect(target.frontmatter.Parents).toEqual(['[[Alpha]]', '[[Beta]]']);
 
         await operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('priority', normalizePropertyTreeValuePath('high')), [target]);
-        expect(setValues).toHaveBeenCalledWith(
-            [target],
-            { Priority: 'high' },
-            expect.objectContaining({ kind: 'user', surface: 'navigator-property-drop' })
-        );
+        expect(target.frontmatter.Priority).toBe('high');
+        expect(processFrontMatter).toHaveBeenCalledTimes(5);
+        expect(addListValues).not.toHaveBeenCalled();
+        expect(setValues).not.toHaveBeenCalled();
     });
 
-    it('reports typed GCM property no-ops as skipped instead of claiming an update', async () => {
+    it('skips a whole-note property drop when the current value already matches', async () => {
         const app = new App();
         const target = createFile('Target.md', { Parents: ['[[Alpha]]'] });
         const propertyTreeService = new PropertyTreeService();
@@ -382,6 +387,11 @@ describe('FileSystemOperations property assignment', () => {
                 createMockDb([{ path: 'Source.md', properties: [{ fieldKey: 'Parents', value: '[[Alpha]]', valueKind: 'string' }] }])
             )
         );
+        const processFrontMatter = vi.fn((file: TFile, callback: (frontmatter: Record<string, unknown>) => void) => {
+            callback((file as TFile & { frontmatter: Record<string, unknown> }).frontmatter);
+            return Promise.resolve();
+        });
+        app.fileManager.processFrontMatter = processFrontMatter;
         (app as App & { plugins: unknown }).plugins = {
             enabledPlugins: new Set(['tps-global-context-menu']),
             getPlugin: () => ({
@@ -396,8 +406,7 @@ describe('FileSystemOperations property assignment', () => {
                             type: 'list',
                             listItemType: 'link',
                             allowInlineSet: true
-                        })),
-                        applyToTaskLines: vi.fn()
+                        }))
                     },
                     frontmatter: { setValues: vi.fn(), addListValues: vi.fn().mockResolvedValue([]) },
                     fileProperties: {
@@ -414,9 +423,10 @@ describe('FileSystemOperations property assignment', () => {
         await expect(
             operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('parents', normalizePropertyTreeValuePath('[[Alpha]]')), [target])
         ).resolves.toEqual({ updated: 0, skipped: 1 });
+        expect(processFrontMatter).toHaveBeenCalledOnce();
     });
 
-    it('routes non-Markdown property drops through GCM companions without changing source bytes', async () => {
+    it('does not write companion properties for non-Markdown file drops', async () => {
         const app = new App();
         const target = createFile('Board.canvas', {});
         const processFrontMatter = vi.fn().mockResolvedValue(undefined);
@@ -443,8 +453,7 @@ describe('FileSystemOperations property assignment', () => {
                             type: 'list',
                             listItemType: 'link',
                             allowInlineSet: true
-                        })),
-                        applyToTaskLines: vi.fn()
+                        }))
                     },
                     frontmatter: { setValues: vi.fn(), addListValues: frontmatterAdd },
                     fileProperties: {
@@ -459,9 +468,9 @@ describe('FileSystemOperations property assignment', () => {
         const operations = createOperations(app, propertyTreeService);
         await expect(
             operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('parents', normalizePropertyTreeValuePath('[[Beta]]')), [target])
-        ).resolves.toEqual({ updated: 1, skipped: 0 });
+        ).resolves.toEqual({ updated: 0, skipped: 0 });
         expect(frontmatterAdd).not.toHaveBeenCalled();
-        expect(assetAdd).toHaveBeenCalledWith([target], 'Parents', ['[[Beta]]'], expect.any(Object));
+        expect(assetAdd).not.toHaveBeenCalled();
         expect(processFrontMatter).not.toHaveBeenCalled();
     });
 
@@ -482,8 +491,7 @@ describe('FileSystemOperations property assignment', () => {
                     itemProperties: {
                         version: 1,
                         listDefinitions: vi.fn(() => []),
-                        resolveDefinition: vi.fn(() => ({ id: 'parents', key: 'Parents', label: 'Parents', type: 'list' })),
-                        applyToTaskLines: vi.fn()
+                        resolveDefinition: vi.fn(() => ({ id: 'parents', key: 'Parents', label: 'Parents', type: 'list' }))
                     },
                     frontmatter: { setValues: vi.fn(), addListValues: vi.fn() },
                     fileProperties: { version: 1, isTarget: vi.fn(() => true), setValues: vi.fn(), addListValues: assetAdd }

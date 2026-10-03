@@ -128,9 +128,7 @@ import { ConfirmModal } from '../modals/ConfirmModal';
 import { resolveEffectiveListGroupingForSort, resolveListGrouping } from '../utils/listGrouping';
 import { isAggregateNavigationSelection } from '../utils/descendantVisibility';
 import { focusElementPreventScroll } from '../utils/domUtils';
-import { createBuiltInRowProviderSelection } from '../integrations/rowProviderIntegrations';
 import { useExternalRowProviderSelection } from '../hooks/useProviderRows';
-import { mergeNavigatorRowProviderSelections } from '../services/rows/providerSelections';
 import {
     resolveIncludeDescendantResources,
     resolveRenderedPropertyGroupingForSelection,
@@ -801,25 +799,7 @@ export const ListPane = React.memo(
         // Determine if list pane is visible early to optimize
         const isVisible = !uiState.singlePane || uiState.currentSinglePaneView === 'files';
         const externalRowProviderSelection = useExternalRowProviderSelection(plugin.api);
-        const rowProviderSelection = useMemo(
-            () =>
-                mergeNavigatorRowProviderSelections(
-                    createBuiltInRowProviderSelection({
-                        tpsDataArchitectureMode: settings.tpsDataArchitectureMode,
-                        tpsGcmTaskRowsEnabled: settings.tpsGcmTaskRowsEnabled,
-                        tpsGcmTaskRowsIncludeCompleted: settings.tpsGcmTaskRowsIncludeCompleted,
-                        tpsGcmTaskRowsPerNote: settings.tpsGcmTaskRowsPerNote
-                    }),
-                    externalRowProviderSelection
-                ),
-            [
-                externalRowProviderSelection,
-                settings.tpsDataArchitectureMode,
-                settings.tpsGcmTaskRowsEnabled,
-                settings.tpsGcmTaskRowsIncludeCompleted,
-                settings.tpsGcmTaskRowsPerNote
-            ]
-        );
+        const rowProviderSelection = externalRowProviderSelection;
 
         // Use the new data hook
         const {

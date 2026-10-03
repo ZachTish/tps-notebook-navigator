@@ -660,8 +660,9 @@ export const ListPaneHeader = React.memo(function ListPaneHeader({
                             className="nn-icon-button"
                             aria-label={newItemLabel}
                             title={newItemTooltip}
-                            onClick={() => {
-                                runAsyncAction(() => handleNewFile());
+                            onClick={event => {
+                                const origin = { anchorEl: event.currentTarget, event: event.nativeEvent };
+                                runAsyncAction(() => handleNewFile(origin));
                             }}
                             disabled={actionsDisabled || !canCreateNewFile}
                             tabIndex={-1}

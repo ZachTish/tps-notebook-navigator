@@ -1,4 +1,4 @@
-import { presentCreatedNote } from '../utils/tpsNoteOpening';
+import { presentCreatedNote, type NotePresentationOrigin } from '../utils/tpsNoteOpening';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -97,12 +97,7 @@ import type {
     MoveFolderResult,
     SelectionContext
 } from './fileSystem/types';
-import {
-    resolveGcmFilePropertiesApi,
-    resolveGcmFrontmatterApi,
-    resolveGcmItemPropertiesApi,
-    type GcmFrontmatterApiLike
-} from '../integrations/gcm/gcmTaskApi';
+import { resolveGcmItemPropertiesApi } from '../integrations/gcm/gcmTaskApi';
 export { FolderMoveError } from './fileSystem/FileMoveService';
 export type { FileTrashResult };
 export type { ManualSortNewFilePlacementContext };
@@ -789,7 +784,8 @@ export class FileSystemOperations {
     async createNewFile(
         parent: TFolder,
         openInNewTab = false,
-        manualSortContext?: ManualSortNewFilePlacementContext | null
+        manualSortContext?: ManualSortNewFilePlacementContext | null,
+        presentationOrigin?: NotePresentationOrigin
     ): Promise<TFile | null> {
         const resolvedManualSortContext = this.resolveManualSortNewFileContext(manualSortContext, 'folder', parent.path);
         const deferredManualSortPrompt: { run: (() => void) | null } = { run: null };
@@ -797,6 +793,7 @@ export class FileSystemOperations {
             extension: 'md',
             content: '',
             openInNewTab,
+            presentationOrigin,
             afterCreate: async createdFile => {
                 deferredManualSortPrompt.run = await this.applyManualSortNewFilePlacement(createdFile, resolvedManualSortContext, {
                     deferCompactionPrompt: true
@@ -820,7 +817,8 @@ export class FileSystemOperations {
         tagPath: string,
         sourcePath?: string,
         openInNewTab = false,
-        manualSortContext?: ManualSortNewFilePlacementContext | null
+        manualSortContext?: ManualSortNewFilePlacementContext | null,
+        presentationOrigin?: NotePresentationOrigin
     ): Promise<TFile | null> {
         const normalizedTag = normalizeTagPath(tagPath);
         if (!normalizedTag || normalizedTag === ALL_TAGS_TAG_ID || normalizedTag === TAGGED_TAG_ID || normalizedTag === UNTAGGED_TAG_ID) {
@@ -846,7 +844,10 @@ export class FileSystemOperations {
                 deferCompactionPrompt: true
             });
 
-            if (!(await presentCreatedNote(this.app, file, openInNewTab))) {
+            const presented = presentationOrigin
+                ? await presentCreatedNote(this.app, file, openInNewTab, true, presentationOrigin)
+                : await presentCreatedNote(this.app, file, openInNewTab);
+            if (!presented) {
                 const leaf = this.app.workspace.getLeaf(openInNewTab);
                 await leaf.openFile(file, { state: { mode: 'source' }, active: true });
 
@@ -947,7 +948,8 @@ export class FileSystemOperations {
         propertyNodeId: string,
         sourcePath?: string,
         openInNewTab = false,
-        manualSortContext?: ManualSortNewFilePlacementContext | null
+        manualSortContext?: ManualSortNewFilePlacementContext | null,
+        presentationOrigin?: NotePresentationOrigin
     ): Promise<TFile | null> {
         if (propertyNodeId === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID) {
             return null;
@@ -981,7 +983,10 @@ export class FileSystemOperations {
                 deferCompactionPrompt: true
             });
 
-            if (!(await presentCreatedNote(this.app, file, openInNewTab))) {
+            const presented = presentationOrigin
+                ? await presentCreatedNote(this.app, file, openInNewTab, true, presentationOrigin)
+                : await presentCreatedNote(this.app, file, openInNewTab);
+            if (!presented) {
                 const leaf = this.app.workspace.getLeaf(openInNewTab);
                 await leaf.openFile(file, { state: { mode: 'source' }, active: true });
 
@@ -1001,7 +1006,7 @@ export class FileSystemOperations {
     /**
      * Applies a property key/value node to one or more markdown files.
      * Key nodes set `key: null`, which Obsidian serializes as an empty YAML value.
-     * Value nodes set `key: value`, replacing the current value. When the current value is a string array, replaces it with a single item array.
+     * Value nodes replace scalar values. Configured list properties add a value without removing existing entries.
      */
     async applyPropertyNodeToFiles(propertyNodeId: string, files: readonly TFile[]): Promise<ApplyPropertyNodeResult> {
         if (files.length === 0) {
@@ -1013,50 +1018,6 @@ export class FileSystemOperations {
             return { updated: 0, skipped: 0 };
         }
 
-        const itemPropertiesApi = resolveGcmItemPropertiesApi(this.app);
-        const definition = itemPropertiesApi?.resolveDefinition(assignment.propertyKey) ?? null;
-        const frontmatterApi = resolveGcmFrontmatterApi(this.app);
-        const filePropertiesApi =
-            this.settingsProvider.settings.tpsDataArchitectureMode === 'native-records' ? null : resolveGcmFilePropertiesApi(this.app);
-        // GCM's typed setValues contract treats null as deletion. Property key nodes instead
-        // mean "keep this key present with no value", so Markdown key assignments must use
-        // Obsidian's processFrontMatter path below. Concrete value nodes keep the typed GCM
-        // behavior (list values add; scalar values replace).
-        if (assignment.nodeKind === 'value' && definition && frontmatterApi && filePropertiesApi) {
-            const markdownFiles = files.filter(file => file.extension === 'md');
-            const assetFiles = files.filter(file => file.extension !== 'md' && filePropertiesApi.isTarget(file));
-            if (markdownFiles.length + assetFiles.length !== files.length) {
-                showNotice(strings.fileSystem.notifications.propertiesRequireMarkdown, { variant: 'warning' });
-                return { updated: 0, skipped: files.length };
-            }
-            const cause = { kind: 'user', sourcePluginId: 'tps-notebook-navigator', surface: 'navigator-property-drop' };
-            const apply = async (targetFiles: TFile[], api: GcmFrontmatterApiLike): Promise<number> => {
-                if (targetFiles.length === 0) return 0;
-                let result: unknown;
-                if (definition.type === 'list' && assignment.nodeKind === 'value' && assignment.writeValue !== null) {
-                    result = await api.addListValues(targetFiles, definition.key, [assignment.writeValue], cause);
-                } else {
-                    result = await api.setValues(targetFiles, { [definition.key]: assignment.writeValue }, cause);
-                }
-                return Array.isArray(result) ? result.length : targetFiles.length;
-            };
-            let updated = 0;
-            try {
-                updated += await apply(markdownFiles, frontmatterApi);
-                updated += await apply(assetFiles, filePropertiesApi);
-            } catch (error) {
-                const message = getErrorMessage(error, strings.common.unknownError);
-                showNotice(strings.dragDrop.errors.failedToSetProperty.replace('{error}', message), { variant: 'warning' });
-                return { updated: 0, skipped: files.length };
-            }
-            const message =
-                updated === 1
-                    ? strings.fileSystem.notifications.propertySetOnNote
-                    : strings.fileSystem.notifications.propertySetOnNotes.replace('{count}', updated.toString());
-            showNotice(message, { variant: 'success' });
-            return { updated, skipped: files.length - updated };
-        }
-
         const markdownFiles = files.filter(file => file.extension === 'md');
         if (markdownFiles.length === 0) return { updated: 0, skipped: 0 };
         if (markdownFiles.length !== files.length) {
@@ -1064,6 +1025,9 @@ export class FileSystemOperations {
             return { updated: 0, skipped: 0 };
         }
 
+        const isListProperty =
+            assignment.nodeKind === 'value' &&
+            resolveGcmItemPropertiesApi(this.app)?.resolveDefinition(assignment.propertyKey)?.type === 'list';
         const normalizedPropertyKey = casefold(assignment.propertyKey);
 
         const isUnknownArray = (value: unknown): value is unknown[] => Array.isArray(value);
@@ -1118,6 +1082,26 @@ export class FileSystemOperations {
                     const desiredValue = assignment.desiredValue;
                     const normalizedDesiredValue = assignment.normalizedDesiredValue;
                     if (!desiredValue || !normalizedDesiredValue) {
+                        return;
+                    }
+
+                    if (isListProperty) {
+                        const values = isUnknownArray(currentValue)
+                            ? currentValue
+                            : currentValue === undefined || currentValue === null || currentValue === ''
+                              ? []
+                              : [currentValue];
+                        if (
+                            values.some(
+                                value =>
+                                    typeof value === 'string' &&
+                                    this.shouldKeepCurrentPropertyString(value, desiredValue, normalizedDesiredValue)
+                            )
+                        ) {
+                            return;
+                        }
+                        frontmatter[targetPropertyKey] = [...values, desiredValue];
+                        didChange = true;
                         return;
                     }
 

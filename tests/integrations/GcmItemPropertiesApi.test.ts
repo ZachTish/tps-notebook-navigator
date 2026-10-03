@@ -11,13 +11,12 @@ function installGcm(app: App, api: Record<string, unknown>): void {
 }
 
 describe('GCM item-property adapter', () => {
-    it('accepts the versioned typed mutation and file-property surfaces', () => {
+    it('uses only read-only property definitions and whole-file property surfaces', () => {
         const app = new App();
         const itemProperties = {
             version: 1,
             listDefinitions: vi.fn(() => []),
-            resolveDefinition: vi.fn(() => null),
-            applyToTaskLines: vi.fn()
+            resolveDefinition: vi.fn(() => null)
         };
         const frontmatter = { setValues: vi.fn(), addListValues: vi.fn() };
         const fileProperties = { version: 1, isTarget: vi.fn(), ...frontmatter };
@@ -37,12 +36,9 @@ describe('GCM item-property adapter', () => {
         expect(resolveGcmFilePropertiesApi(app)).toBeNull();
     });
 
-    it('wires multi-item GCM pointer drops only to Navigator tag and property value targets', () => {
+    it('does not listen for task-line pointer drops', () => {
         const source = readFileSync(new URL('../../src/hooks/useDragAndDrop.ts', import.meta.url), 'utf8');
-        expect(source).toContain("addEventListener('tps-task-line-pointer-drop'");
-        expect(source).toContain('[data-drop-zone="tag"],[data-drop-zone="property"]');
-        expect(source).toContain("action: definition.type === 'list' ? 'add' : 'set'");
-        expect(source).toContain("surface: 'navigator-property-drop'");
-        expect(source).toContain('Drop task items on a property value, not on an empty property key.');
+        expect(source).not.toContain('tps-task-line-pointer-drop');
+        expect(source).not.toContain('applyToTaskLines');
     });
 });

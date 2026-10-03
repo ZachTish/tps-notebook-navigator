@@ -104,7 +104,7 @@ function createBehaviorDefinitionGroup(context: SettingsTabContext): SettingDefi
             render: setting => {
                 setting
                     .setName('After creating a note')
-                    .setDesc('The global context menu plugin controls editable preview, open, or stay for newly created notes.')
+                    .setDesc('The global context menu plugin controls whether new notes use Obsidian page preview, open in the editor, or stay in the current view.')
                     .addButton(button =>
                         button.setButtonText('Configure note opening').onClick(() => getTpsNoteOpeningApi(plugin.app)?.openSettings?.())
                     );

@@ -1,4 +1,4 @@
-import { legacyNewNoteTabPreference } from '../utils/tpsNoteOpening';
+import { legacyNewNoteTabPreference, type NotePresentationOrigin } from '../utils/tpsNoteOpening';
 /*
  * Notebook Navigator - Plugin for Obsidian
  * Copyright (c) 2025-2026 Johan Sanneblad
@@ -25,7 +25,6 @@ import { useSettingsState, useSettingsUpdate } from '../context/SettingsContext'
 import { useUXPreferences } from '../context/UXPreferencesContext';
 import { strings } from '../i18n';
 import { ConfirmModal } from '../modals/ConfirmModal';
-import { InputModal } from '../modals/InputModal';
 import {
     createPropertyGroupingOption,
     getPropertyGroupingGranularity,
@@ -120,11 +119,6 @@ import {
     isTpsNavigatorStructuralTypeId
 } from '../types/navigatorTypes';
 import { collectFileBackedTypeFiles } from './listPaneData/typeListItems';
-import {
-    createTpsNavigatorResource,
-    getTpsResourceCreationActionLabel,
-    isTpsNavigatorCreatableResourceTypeId
-} from '../services/types/markdownResourceCreation';
 import {
     createTpsNavigatorFileResource,
     getTpsFileResourceCreationActionLabel,
@@ -580,13 +574,10 @@ export function useListActions({
         selectionState.selectedType,
         mixedStructuralSearchActive
     );
-    const hasCreatableLineTypeSelection =
-        selectionState.selectionType === ItemType.TYPE && isTpsNavigatorCreatableResourceTypeId(selectionState.selectedType);
     const hasCreatableFileTypeSelection =
         selectionState.selectionType === ItemType.TYPE &&
         isTpsNavigatorCreatableFileTypeId(selectionState.selectedType) &&
         (selectionState.selectedType !== TPS_NAVIGATOR_TYPE_IDS.BASES || Boolean(getInternalPlugin(app, 'bases')?.enabled));
-    const hasCreatableTypeSelection = hasCreatableLineTypeSelection || hasCreatableFileTypeSelection;
     const activeCreationSearchQuery = creationSearchQuery.trim();
     const searchCreationResolution = useMemo(
         () =>
@@ -620,18 +611,17 @@ export function useListActions({
     const canCreateNewFile = activeCreationSearchQuery
         ? canCreateFromSearch || Boolean(navigationCreationTarget)
         : selectionState.selectionType === ItemType.TYPE
-          ? hasCreatableTypeSelection
+          ? hasCreatableFileTypeSelection
           : Boolean(selectionState.selectedFolder) || hasCreatableTagSelection || hasCreatablePropertySelection;
     const effectiveCreationType = searchCreationPlan?.typeId ?? selectionState.selectedType;
-    const typeCreationLabel =
-        getTpsResourceCreationActionLabel(effectiveCreationType) ?? getTpsFileResourceCreationActionLabel(effectiveCreationType);
+    const typeCreationLabel = getTpsFileResourceCreationActionLabel(effectiveCreationType);
     const newItemLabel = navigationCreationTarget
         ? strings.paneHeader.newNote
         : searchCreationPlan
           ? (typeCreationLabel?.replace(/^New /u, 'New matching ') ?? 'New matching item')
           : activeCreationSearchQuery && searchCreationResolution && !searchCreationResolution.ok
             ? searchCreationResolution.reason
-            : hasCreatableTypeSelection
+            : hasCreatableFileTypeSelection
               ? (typeCreationLabel ?? strings.paneHeader.newNote)
               : strings.paneHeader.newNote;
     const newItemTooltip = newItemLabel;
@@ -669,129 +659,103 @@ export function useListActions({
         selectionState.selectedType
     ]);
 
-    const handleNewFile = useCallback(async () => {
-        try {
-            const selectedType = selectionState.selectedType;
-            const lineCreationType =
-                searchCreationPlan && isTpsNavigatorCreatableResourceTypeId(searchCreationPlan.typeId)
-                    ? searchCreationPlan.typeId
-                    : hasCreatableLineTypeSelection && isTpsNavigatorCreatableResourceTypeId(selectedType)
-                      ? selectedType
-                      : null;
-            if (lineCreationType) {
-                const createResource = async (taskTitle?: string) => {
-                    const result = await createTpsNavigatorResource(
-                        app,
-                        lineCreationType,
-                        {
-                            target: settings.tpsResourceCreationTarget,
-                            specificFile: settings.tpsResourceCreationSpecificFile
-                        },
-                        {
-                            taskTitle,
-                            ...(searchCreationPlan
-                                ? {
-                                      taskTags: searchCreationPlan.tags,
-                                      taskFields: searchCreationPlan.fields,
-                                      taskStatus: searchCreationPlan.status
-                                  }
-                                : {})
-                        }
-                    );
-                    if (!result.ok) {
-                        showNotice(result.message, { variant: 'warning' });
+    const handleNewFile = useCallback(
+        async (presentationOrigin?: NotePresentationOrigin) => {
+            try {
+                const originArgs: [NotePresentationOrigin] | [] = presentationOrigin ? [presentationOrigin] : [];
+                const selectedType = selectionState.selectedType;
+                const fileCreationType =
+                    searchCreationPlan && isTpsNavigatorCreatableFileTypeId(searchCreationPlan.typeId)
+                        ? searchCreationPlan.typeId
+                        : hasCreatableFileTypeSelection && isTpsNavigatorCreatableFileTypeId(selectedType)
+                          ? selectedType
+                          : null;
+                if (fileCreationType) {
+                    const createdFile = await createTpsNavigatorFileResource(fileCreationType, app.vault.getRoot(), fileSystemOps);
+                    if (createdFile) {
+                        selectionDispatch({ type: 'SET_SELECTED_FILE', file: createdFile });
                     }
-                };
-
-                if (lineCreationType === TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES) {
-                    new InputModal(app, 'New checkbox', 'Task title', value => createResource(value), '', {
-                        submitButtonText: 'Create'
-                    }).open();
                     return;
                 }
 
-                await createResource();
-                return;
-            }
-
-            const fileCreationType =
-                searchCreationPlan && isTpsNavigatorCreatableFileTypeId(searchCreationPlan.typeId)
-                    ? searchCreationPlan.typeId
-                    : hasCreatableFileTypeSelection && isTpsNavigatorCreatableFileTypeId(selectedType)
-                      ? selectedType
-                      : null;
-            if (fileCreationType) {
-                const createdFile = await createTpsNavigatorFileResource(fileCreationType, app.vault.getRoot(), fileSystemOps);
-                if (createdFile) {
-                    selectionDispatch({ type: 'SET_SELECTED_FILE', file: createdFile });
+                if (navigationCreationTarget) {
+                    const newTab = legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab);
+                    const sourcePath = selectionState.selectedFile?.path ?? app.workspace.getActiveFile()?.path ?? '';
+                    await createNoteForNavigationTarget(
+                        app,
+                        fileSystemOps,
+                        navigationCreationTarget,
+                        sourcePath,
+                        newTab,
+                        undefined,
+                        ...originArgs
+                    );
+                    return;
                 }
-                return;
-            }
+                if (activeCreationSearchQuery) {
+                    return;
+                }
+                if (selectionState.selectionType === ItemType.TYPE) {
+                    return;
+                }
 
-            if (navigationCreationTarget) {
-                const newTab = legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab);
-                const sourcePath = selectionState.selectedFile?.path ?? app.workspace.getActiveFile()?.path ?? '';
-                await createNoteForNavigationTarget(app, fileSystemOps, navigationCreationTarget, sourcePath, newTab);
-                return;
-            }
-            if (activeCreationSearchQuery) {
-                return;
-            }
+                const manualSortContext = getManualSortNewFileContext?.() ?? null;
+                if (selectionState.selectedFolder) {
+                    await fileSystemOps.createNewFile(
+                        selectionState.selectedFolder,
+                        legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab),
+                        manualSortContext,
+                        ...originArgs
+                    );
+                    return;
+                }
 
-            const manualSortContext = getManualSortNewFileContext?.() ?? null;
-            if (selectionState.selectedFolder) {
-                await fileSystemOps.createNewFile(
-                    selectionState.selectedFolder,
-                    legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab),
-                    manualSortContext
-                );
-                return;
-            }
+                if (hasCreatableTagSelection && selectionState.selectedTag) {
+                    const sourcePath = selectionState.selectedFile?.path ?? app.workspace.getActiveFile()?.path ?? '';
+                    await fileSystemOps.createNewFileForTag(
+                        selectionState.selectedTag,
+                        sourcePath,
+                        legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab),
+                        manualSortContext,
+                        ...originArgs
+                    );
+                    return;
+                }
 
-            if (hasCreatableTagSelection && selectionState.selectedTag) {
-                const sourcePath = selectionState.selectedFile?.path ?? app.workspace.getActiveFile()?.path ?? '';
-                await fileSystemOps.createNewFileForTag(
-                    selectionState.selectedTag,
-                    sourcePath,
-                    legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab),
-                    manualSortContext
-                );
-                return;
+                if (hasCreatablePropertySelection && selectionState.selectedProperty) {
+                    const sourcePath = selectionState.selectedFile?.path ?? app.workspace.getActiveFile()?.path ?? '';
+                    await fileSystemOps.createNewFileForProperty(
+                        selectionState.selectedProperty,
+                        sourcePath,
+                        legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab),
+                        manualSortContext,
+                        ...originArgs
+                    );
+                }
+            } catch {
+                // Error is handled by FileSystemOperations with user notification
             }
-
-            if (hasCreatablePropertySelection && selectionState.selectedProperty) {
-                const sourcePath = selectionState.selectedFile?.path ?? app.workspace.getActiveFile()?.path ?? '';
-                await fileSystemOps.createNewFileForProperty(
-                    selectionState.selectedProperty,
-                    sourcePath,
-                    legacyNewNoteTabPreference(app, settings.createNewNotesInNewTab),
-                    manualSortContext
-                );
-            }
-        } catch {
-            // Error is handled by FileSystemOperations with user notification
-        }
-    }, [
-        selectionState.selectedFolder,
-        selectionState.selectedTag,
-        selectionState.selectedProperty,
-        selectionState.selectedFile,
-        selectionState.selectedType,
-        hasCreatableTagSelection,
-        hasCreatablePropertySelection,
-        hasCreatableLineTypeSelection,
-        hasCreatableFileTypeSelection,
-        activeCreationSearchQuery,
-        searchCreationPlan,
-        navigationCreationTarget,
-        settings.createNewNotesInNewTab,
-        settings.tpsResourceCreationTarget,
-        settings.tpsResourceCreationSpecificFile,
-        getManualSortNewFileContext,
-        fileSystemOps,
-        app,
-        selectionDispatch
-    ]);
+        },
+        [
+            selectionState.selectedFolder,
+            selectionState.selectedTag,
+            selectionState.selectedProperty,
+            selectionState.selectedFile,
+            selectionState.selectedType,
+            selectionState.selectionType,
+            hasCreatableTagSelection,
+            hasCreatablePropertySelection,
+            hasCreatableFileTypeSelection,
+            activeCreationSearchQuery,
+            searchCreationPlan,
+            navigationCreationTarget,
+            settings.createNewNotesInNewTab,
+            getManualSortNewFileContext,
+            fileSystemOps,
+            app,
+            selectionDispatch
+        ]
+    );
 
     const handleRevealFile = useCallback(async () => {
         const activeFile = getRevealableActiveFile();

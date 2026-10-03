@@ -233,8 +233,9 @@ export function ListToolbar({
             className="nn-mobile-toolbar-button nn-mobile-toolbar-button-circle"
             aria-label={newItemLabel}
             title={newItemTooltip}
-            onClick={() => {
-                runAsyncAction(() => handleNewFile());
+            onClick={event => {
+                const origin = { anchorEl: event.currentTarget, event: event.nativeEvent };
+                runAsyncAction(() => handleNewFile(origin));
             }}
             disabled={!canCreateNewFile}
             tabIndex={-1}

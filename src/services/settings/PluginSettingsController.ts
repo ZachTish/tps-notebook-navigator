@@ -70,7 +70,6 @@ import {
     isSettingSyncMode,
     isSortOption,
     isTagSortOrder,
-    isTpsDataArchitectureMode,
     isTpsResourceCreationTarget,
     isTypeNavigationSortOrder,
     normalizeAppearanceGroupBy,
@@ -554,9 +553,8 @@ export class PluginSettingsController {
         const migratedTypesPause =
             !isFirstLaunch && (!Number.isSafeInteger(storedTypesPauseMigrationVersion) || Number(storedTypesPauseMigrationVersion) < 1);
         if (migratedTypesPause) {
-            // Types remain available as an explicit opt-in, but the first upgrade to the paused
-            // phase must stop both catalog indexing and attached GCM rows. The persisted marker
-            // makes every later user opt-in survive reloads and settings synchronization.
+            // Retain the historical migration marker while closing old line catalog and
+            // attached-task-row preferences before their final whole-note normalization.
             this.currentSettings.tpsTypesNavigationEnabled = false;
             this.currentSettings.tpsGcmTaskRowsEnabled = false;
             this.currentSettings.tpsTypesPauseMigrationVersion = 1;
@@ -681,10 +679,9 @@ export class PluginSettingsController {
             DEFAULT_SETTINGS.calendarEnabled
         );
 
-        if (!isTpsDataArchitectureMode(this.currentSettings.tpsDataArchitectureMode)) {
-            this.currentSettings.tpsDataArchitectureMode = DEFAULT_SETTINGS.tpsDataArchitectureMode;
-        }
-        // Retired sub-file Types cannot restart through an older saved preference.
+        // Native records are the only supported mode. Retained keys are normalized
+        // so older saved preferences cannot restore sub-file rows on reload/import.
+        this.currentSettings.tpsDataArchitectureMode = 'native-records';
         this.currentSettings.tpsTypesNavigationEnabled = false;
         this.currentSettings.tpsFileTypesNavigationEnabled = this.sanitizeBooleanSetting(
             this.currentSettings.tpsFileTypesNavigationEnabled,
@@ -699,14 +696,7 @@ export class PluginSettingsController {
         this.currentSettings.tpsResourceCreationSpecificFile = normalizeOptionalVaultFilePath(
             this.currentSettings.tpsResourceCreationSpecificFile
         );
-        this.currentSettings.tpsGcmTaskRowsEnabled = this.sanitizeBooleanSetting(
-            this.currentSettings.tpsGcmTaskRowsEnabled,
-            DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled
-        );
-        if (this.currentSettings.tpsDataArchitectureMode === 'native-records') {
-            this.currentSettings.tpsTypesNavigationEnabled = false;
-            this.currentSettings.tpsGcmTaskRowsEnabled = false;
-        }
+        this.currentSettings.tpsGcmTaskRowsEnabled = false;
         this.currentSettings.tpsGcmTaskRowsIncludeCompleted = this.sanitizeBooleanSetting(
             this.currentSettings.tpsGcmTaskRowsIncludeCompleted,
             DEFAULT_SETTINGS.tpsGcmTaskRowsIncludeCompleted
