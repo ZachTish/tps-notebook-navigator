@@ -24,6 +24,7 @@ import { isFolderShortcut } from '../../types/shortcuts';
 import type { FileContentChange } from '../../storage/IndexedDBStorage';
 import { normalizeCanonicalIconId } from '../../utils/iconizeFormat';
 import { getParentFolderPath } from '../../utils/pathUtils';
+import { couldMetadataChangeFolderNoteIdentity, getFolderNoteDetectionSettings } from '../../utils/folderNoteLookup';
 import { createShortcutTargetPathEventMatcher } from '../../utils/shortcutPathResolver';
 import {
     deleteCollapsedPinnedContextKeys,
@@ -282,8 +283,26 @@ export class FolderMetadataService extends BaseMetadataService {
         this.folderDisplayCacheVaultEventRefs.push(createRef, deleteRef, renameRef);
         this.folderNoteMetadataEventRef =
             this.app.metadataCache.on?.('changed', file => {
-                if (!this.settingsProvider.settings.enableFolderNotes) return;
-                this.folderDisplayCache.invalidateFolderAndDescendants(getParentFolderPath(file.path));
+                const settings = this.settingsProvider.settings;
+                if (!settings.useFrontmatterMetadata || !settings.enableFolderNotes) return;
+                const parentPath = getParentFolderPath(file.path);
+                const previousPath = this.folderDisplayCache.getTrackedFolderNotePath(parentPath);
+                if (previousPath === undefined) return;
+                const folder = this.getFolderByPath(parentPath);
+                if (
+                    !folder ||
+                    !couldMetadataChangeFolderNoteIdentity(
+                        file,
+                        folder,
+                        getFolderNoteDetectionSettings(settings),
+                        this.app.metadataCache,
+                        previousPath
+                    )
+                ) {
+                    return;
+                }
+                if (this.folderNoteMetadataAdapter.getCurrentFolderNotePath(parentPath) === previousPath) return;
+                this.folderDisplayCache.invalidateFolderAndDescendants(parentPath);
                 this.markFolderDisplayNamesChanged();
             }) ?? null;
     }

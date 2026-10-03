@@ -94,6 +94,27 @@ export function resolveFolderNoteNameForFolder(folder: TFolder, settings: Folder
     return resolveFolderNoteNamesForFolder(folder, settings)[0] ?? resolveFolderNoteName('Vault', settings);
 }
 
+/** Cheap preflight before resolving a folder note after one file's metadata changes. */
+export function couldMetadataChangeFolderNoteIdentity(
+    file: TFile,
+    folder: TFolder,
+    settings: FolderNoteDetectionSettings,
+    metadataCache: Pick<MetadataCache, 'getFileCache'>,
+    previousFolderNotePath: string | null
+): boolean {
+    if (!settings.enableFolderNotes || !SUPPORTED_FOLDER_NOTE_EXTENSIONS.has(file.extension)) return false;
+    if (file.path === previousFolderNotePath) return true;
+
+    const title = getFolderNoteTitle(file, metadataCache);
+    return resolveFolderNoteNamesForFolder(folder, settings).some(expectedName => {
+        return (
+            (title !== null && casefold(title) === casefold(expectedName)) ||
+            file.basename === expectedName ||
+            (file.extension === 'md' && file.basename === `${expectedName}${EXCALIDRAW_BASENAME_SUFFIX}`)
+        );
+    });
+}
+
 /**
  * Checks if a file extension is supported for folder notes
  * @param extension - The file extension to check

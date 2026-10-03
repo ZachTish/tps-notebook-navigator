@@ -33,7 +33,7 @@ import {
 } from '../utils/fileFilters';
 import { resolveFolderDisplayName } from '../utils/folderDisplayName';
 import { resolveFolderNoteName } from '../utils/folderNoteName';
-import { getFolderNote, getFolderNoteDetectionSettings } from '../utils/folderNoteLookup';
+import { couldMetadataChangeFolderNoteIdentity, getFolderNote, getFolderNoteDetectionSettings } from '../utils/folderNoteLookup';
 import { EXCALIDRAW_BASENAME_SUFFIX } from '../utils/fileNameUtils';
 import { getParentFolderPath, getPathBaseName } from '../utils/pathUtils';
 import { getCachedFileTags } from '../utils/tagUtils';
@@ -137,6 +137,7 @@ export function useFolderNavigationSourceState({
     const [folderExclusionVersion, setFolderExclusionVersion] = useState(0);
     const [fileChangeVersion, setFileChangeVersion] = useState(0);
     const [folderChangeVersion, setFolderChangeVersion] = useState(0);
+    const observedFolderNotePathsRef = useRef(new Map<string, string | null>());
 
     // Vault file events can arrive once per file during moves, deletes, and syncs.
     // The trailing timer collapses each burst; the max-wait timer refreshes during continuous bursts.
@@ -168,13 +169,26 @@ export function useFolderNavigationSourceState({
     }, [flushFileChangeVersion]);
     useEffect(() => clearScheduledFileChangeVersionBump, [clearScheduledFileChangeVersionBump]);
     useEffect(() => {
-        if (!settings.enableFolderNotes) return;
-        const ref = app.metadataCache.on('changed', () => {
-            scheduleFileChangeVersionBump();
+        if (!shouldEvaluateFolderNoteExclusions) return;
+        const ref = app.metadataCache.on('changed', file => {
+            const parentPath = getParentFolderPath(file.path);
+            const observedFolderNotePaths = observedFolderNotePathsRef.current;
+            if (!observedFolderNotePaths.has(parentPath)) return;
+            const previousPath = observedFolderNotePaths.get(parentPath) ?? null;
+            const parentFolder = app.vault.getFolderByPath(parentPath);
+            if (
+                !parentFolder ||
+                !couldMetadataChangeFolderNoteIdentity(file, parentFolder, folderNoteSettings, app.metadataCache, previousPath)
+            ) {
+                return;
+            }
+            const currentPath = getFolderNote(parentFolder, folderNoteSettings, app.metadataCache)?.path ?? null;
+            if (currentPath === previousPath) return;
+            observedFolderNotePaths.set(parentPath, currentPath);
             setFolderExclusionVersion(value => value + 1);
         });
         return () => app.metadataCache.offref(ref);
-    }, [app, settings.enableFolderNotes, scheduleFileChangeVersionBump]);
+    }, [app, folderNoteSettings, shouldEvaluateFolderNoteExclusions]);
     const handleRootFolderChange = useCallback(() => {
         setFolderChangeVersion(value => value + 1);
     }, []);
@@ -182,11 +196,18 @@ export function useFolderNavigationSourceState({
         (change: RootFileChangeEvent) => {
             scheduleFileChangeVersionBump();
             onFileChange?.(change);
-            if (isFolderNoteRelatedPath(change.path) || (change.oldPath !== undefined && isFolderNoteRelatedPath(change.oldPath))) {
+            const wasObservedFolderNote = (path: string): boolean => {
+                return shouldEvaluateFolderNoteExclusions && observedFolderNotePathsRef.current.get(getParentFolderPath(path)) === path;
+            };
+            if (
+                isFolderNoteRelatedPath(change.path) ||
+                wasObservedFolderNote(change.path) ||
+                (change.oldPath !== undefined && (isFolderNoteRelatedPath(change.oldPath) || wasObservedFolderNote(change.oldPath)))
+            ) {
                 setFolderExclusionVersion(value => value + 1);
             }
         },
-        [isFolderNoteRelatedPath, onFileChange, scheduleFileChangeVersionBump]
+        [isFolderNoteRelatedPath, onFileChange, scheduleFileChangeVersionBump, shouldEvaluateFolderNoteExclusions]
     );
 
     const { rootFolders, rootLevelFolders, rootFolderOrderMap, missingRootFolderPaths } = useRootFolderOrder({
@@ -379,6 +400,7 @@ export function useFolderNavigationSourceState({
             }
 
             const folderNote = getFolderNote(folder, folderNoteSettings, app.metadataCache);
+            observedFolderNotePathsRef.current.set(folder.path, folderNote?.path ?? null);
             if (!folderNote) {
                 directExclusionCache.set(folder.path, false);
                 return false;

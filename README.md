@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: **8.0.0** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.0.0.md) record the test-vault validation and BRAT handoff.
+Current release: **8.0.1** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.0.1.md) record the test-vault validation and BRAT handoff.
 
 ## Install with BRAT
 
@@ -304,3 +304,9 @@ TPS integration has two groups: **File types**, containing **Show File types**, 
 The generic external row and Type-provider APIs remain available. Their owners decide which rows to show and whether to attach actions. Health owns the read-only Daily Macros and Activity widgets. Navigator's dormant GCM task adapter accepts task-line mutation and menu actions only when the corresponding GCM API explicitly reports `supportsTaskLineMutation: true`; GCM 6.0.0 reports false. Note task counts and progress indicators remain read-only. This removal of first-party line creation and attached task-row behavior is a major version; minimum Obsidian stays 1.11.0.
 
 Focused zero-write coverage checks that line-Type Filter Search creation is rejected, no built-in GCM row provider or task-line drop listener is installed, GCM's disabled capability cannot invoke task mutators or menus, and whole-note property drops do not call GCM companion writers. All 3,209 tests across 273 files pass. ESLint has zero errors and 26 existing advisory warnings; TypeScript, stylelint, locale, TPS namespace, artifact and operational-identity checks pass. The final 8.0.0 build is installed in the Test vault, byte-identical to the tested assets. After a scoped reload, the installed settings surface showed only File types and One-way setup. With GCM 6.0.0, Navigator's New note showed Obsidian's core Page Preview; clicking the note body entered its editor and persisted a change to the created file. QA files were archived and original preferences restored. [8.0.0 release notes](release-notes/8.0.0.md) record hashes and the BRAT handoff. Production remains untouched; the user owns any later BRAT pull.
+
+## 8.0.1 — Keep body-only metadata updates out of navigation work
+
+Navigator no longer treats every Obsidian metadata-cache change as a structural folder or scoped tag/property change. An unchanged note body update does not bump the navigation file version, rebuild scoped tag/property trees, or invalidate folder-note exclusions and cached folder labels. Folder-note identity is compared only when the changed file was an observed folder note or could become one through its filename or authored title. Real title-driven identity changes still refresh folder visibility and labels; IndexedDB content-change notifications continue to own tag, property, folder style, and configured display-name updates. File creation, deletion, and rename still refresh their affected navigation scopes.
+
+The change adds no settings, schema migration, writer, timer, or vault scan. Minimum Obsidian remains 1.11.0. Focused operation-count tests cover 20-event body-only bursts, active folder notes, title addition/removal, same-path display-name changes, and tag/property updates. Full test-vault validation and artifact hashes are recorded in [8.0.1 release notes](release-notes/8.0.1.md); production installation remains the user's BRAT pull.

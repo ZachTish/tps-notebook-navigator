@@ -49,6 +49,10 @@ export class FolderDisplayCache {
         return this.folderPathsByFolderNotePath.has(folderNotePath);
     }
 
+    getTrackedFolderNotePath(folderPath: string): string | null | undefined {
+        return this.folderNotePathByFolderPath.get(folderPath);
+    }
+
     getTrackedFolderPaths(folderNotePath: string): ReadonlySet<string> | undefined {
         return this.folderPathsByFolderNotePath.get(folderNotePath);
     }

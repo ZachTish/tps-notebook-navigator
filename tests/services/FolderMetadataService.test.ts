@@ -80,7 +80,8 @@ vi.mock('../../src/storage/fileOperations', () => ({
     getDBInstanceOrNull: getDBInstanceOrNullMock
 }));
 
-vi.mock('../../src/utils/folderNoteLookup', () => ({
+vi.mock('../../src/utils/folderNoteLookup', async importOriginal => ({
+    ...(await importOriginal<typeof import('../../src/utils/folderNoteLookup')>()),
     getFolderNote: getFolderNoteMock,
     getFolderNoteDetectionSettings: getFolderNoteDetectionSettingsMock,
     resolveFolderNoteNameForFolder: resolveFolderNoteNameForFolderMock,
@@ -934,6 +935,97 @@ describe('FolderMetadataService folder note frontmatter integration', () => {
             includeIcon: false
         });
         expect(getFileMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not invalidate folder display names for a burst of unchanged metadata events', () => {
+        let metadataChanged: (file: TFile) => void = () => {};
+        Reflect.set(app.metadataCache, 'on', (_event: string, listener: (file: TFile) => void) => {
+            metadataChanged = listener;
+            return {};
+        });
+        const onDisplayNameChange = vi.fn();
+        service.subscribeToFolderDisplayNameChanges(onDisplayNameChange);
+        service.getFolderDisplayData('Projects', {
+            includeDisplayName: true,
+            includeColor: false,
+            includeBackgroundColor: false,
+            includeIcon: false
+        });
+        getFolderNoteMock.mockClear();
+
+        const ordinaryFile = new TFile('Projects/Ordinary.md');
+        for (let index = 0; index < 20; index += 1) {
+            metadataChanged(ordinaryFile);
+        }
+        expect(onDisplayNameChange).toHaveBeenCalledTimes(0);
+        expect(getFolderNoteMock).toHaveBeenCalledTimes(0);
+
+        for (let index = 0; index < 20; index += 1) {
+            metadataChanged(folderNoteFile);
+        }
+        expect(onDisplayNameChange).toHaveBeenCalledTimes(0);
+    });
+
+    it('updates folder display names when a different note becomes the active folder note', () => {
+        let metadataChanged: (file: TFile) => void = () => {};
+        Reflect.set(app.metadataCache, 'on', (_event: string, listener: (file: TFile) => void) => {
+            metadataChanged = listener;
+            return {};
+        });
+        const onDisplayNameChange = vi.fn();
+        service.subscribeToFolderDisplayNameChanges(onDisplayNameChange);
+        service.getFolderDisplayData('Projects', {
+            includeDisplayName: true,
+            includeColor: false,
+            includeBackgroundColor: false,
+            includeIcon: false
+        });
+
+        const newFolderNote = new TFile('Projects/Alternate.md');
+        getFolderNoteMock.mockReturnValue(newFolderNote);
+        metadataChanged(folderNoteFile);
+        expect(onDisplayNameChange).toHaveBeenCalledTimes(1);
+        service.getFolderDisplayData('Projects', {
+            includeDisplayName: true,
+            includeColor: false,
+            includeBackgroundColor: false,
+            includeIcon: false
+        });
+        metadataChanged(newFolderNote);
+        expect(onDisplayNameChange).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps same-path title display updates owned by the content-change event', () => {
+        settingsProvider.settings.frontmatterNameField = 'title';
+        let metadataChanged: (file: TFile) => void = () => {};
+        Reflect.set(app.metadataCache, 'on', (_event: string, listener: (file: TFile) => void) => {
+            metadataChanged = listener;
+            return {};
+        });
+        getFileMock.mockReturnValueOnce({ metadata: { name: 'Projects' } }).mockReturnValue({ metadata: { name: 'projects' } });
+        const onDisplayNameChange = vi.fn();
+        service.subscribeToFolderDisplayNameChanges(onDisplayNameChange);
+        const first = service.getFolderDisplayData('Projects', {
+            includeDisplayName: true,
+            includeColor: false,
+            includeBackgroundColor: false,
+            includeIcon: false
+        });
+        expect(first.displayName).toBe('Projects');
+        metadataChanged(folderNoteFile);
+        expect(onDisplayNameChange).toHaveBeenCalledTimes(0);
+
+        const listenerCandidate = onContentChangeMock.mock.calls[0]?.[0];
+        if (!isMetadataChangeListener(listenerCandidate)) throw new Error('Expected content change listener');
+        listenerCandidate([{ path: folderNoteFile.path, changes: { metadata: { name: 'projects' } }, metadataNameChanged: true }]);
+        expect(onDisplayNameChange).toHaveBeenCalledTimes(1);
+        const updated = service.getFolderDisplayData('Projects', {
+            includeDisplayName: true,
+            includeColor: false,
+            includeBackgroundColor: false,
+            includeIcon: false
+        });
+        expect(updated.displayName).toBe('projects');
     });
 
     it('invalidates folder display cache when tracked folder note receives non-metadata changes', () => {
