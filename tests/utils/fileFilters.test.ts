@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { App, TFile } from 'obsidian';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import type { NotebookNavigatorSettings } from '../../src/settings/types';
@@ -25,6 +25,7 @@ import {
     createHiddenFileNameMatcher,
     getFilteredFiles,
     getFilteredIndexableFiles,
+    shouldExcludeFileWithMatcher,
     shouldExcludeFileName,
     shouldExcludeFolder
 } from '../../src/utils/fileFilters';
@@ -244,6 +245,70 @@ describe('createFrontmatterPropertyExclusionMatcher', () => {
         expect(matcher.matches({ status: ['draft', 'Done'] })).toBe(true);
         expect(matcher.matches({ published: [false, true] })).toBe(true);
         expect(matcher.matches({ status: ['draft', 'review'] })).toBe(false);
+    });
+
+    it('matches a leading property-value prefix across nested list values', () => {
+        const matcher = createFrontmatterPropertyExclusionMatcher(['kind=transaction*']);
+
+        expect(matcher.matches({ kind: ['note/daily', 'transaction/financial/investment'] })).toBe(true);
+        expect(matcher.matches({ Kind: 'TRANSACTION/FINANCIAL' })).toBe(true);
+        expect(matcher.matches({ kind: 'transaction' })).toBe(true);
+        expect(matcher.matches({ kind: ['note/transaction', 'nontransaction/financial'] })).toBe(false);
+    });
+
+    it('matches a trailing property-value suffix and accepts the YAML-style separator', () => {
+        const matcher = createFrontmatterPropertyExclusionMatcher(['kind: *example']);
+
+        expect(matcher.matches({ kind: ['note/daily', 'entity/example'] })).toBe(true);
+        expect(matcher.matches({ kind: 'note/myExample' })).toBe(true);
+        expect(matcher.matches({ kind: 'entity/example-extra' })).toBe(false);
+        expect(matcher.matches({ other: 'entity/example' })).toBe(false);
+    });
+
+    it('supports descendant-only prefixes and retains colons inside exact values', () => {
+        const descendants = createFrontmatterPropertyExclusionMatcher(['kind=transaction/*']);
+        const url = createFrontmatterPropertyExclusionMatcher(['source=https://example.com']);
+
+        expect(descendants.matches({ kind: 'transaction/financial/investment' })).toBe(true);
+        expect(descendants.matches({ kind: 'transaction' })).toBe(false);
+        expect(descendants.matches({ kind: 'transactional/financial' })).toBe(false);
+        expect(url.matches({ source: 'https://example.com' })).toBe(true);
+        expect(url.matches({ source: 'https://example.com/other' })).toBe(false);
+    });
+
+    it('keeps literal and key-only rules exact while ignoring unsupported wildcard shapes', () => {
+        const exact = createFrontmatterPropertyExclusionMatcher(['kind=transaction']);
+        const keyOnly = createFrontmatterPropertyExclusionMatcher(['kind']);
+        const unsupported = createFrontmatterPropertyExclusionMatcher(['kind=trans*action', 'kind=*trans*', 'kind=*']);
+
+        expect(exact.matches({ kind: 'transaction' })).toBe(true);
+        expect(exact.matches({ kind: ['transaction/financial'] })).toBe(false);
+        expect(keyOnly.matches({ kind: ['transaction/financial'] })).toBe(true);
+        expect(unsupported.hasCriteria).toBe(false);
+        expect(unsupported.matches({ kind: 'transaction' })).toBe(false);
+    });
+
+    it('canonicalizes colon and equals rules into one cached matcher and reads metadata only', () => {
+        const first = createFrontmatterPropertyExclusionMatcher(['kind: transaction*', 'status=done']);
+        const second = createFrontmatterPropertyExclusionMatcher(['status: done', 'kind=transaction*']);
+        const files = Array.from({ length: 1000 }, (_, index) => createTestTFile(`Inbox/${index}.md`));
+        const app = createAppWithFiles(files);
+        app.vault.read = vi.fn();
+        app.vault.cachedRead = vi.fn();
+        app.vault.modify = vi.fn();
+        const getFileCache = vi.spyOn(app.metadataCache, 'getFileCache').mockImplementation(file => ({
+            frontmatter: { kind: file.path.endsWith('/999.md') ? ['transaction/financial'] : ['note/daily'] }
+        }));
+        const read = vi.spyOn(app.vault, 'read');
+        const cachedRead = vi.spyOn(app.vault, 'cachedRead');
+        const modify = vi.spyOn(app.vault, 'modify');
+
+        expect(first).toBe(second);
+        expect(files.filter(file => shouldExcludeFileWithMatcher(file, first, app))).toHaveLength(1);
+        expect(getFileCache).toHaveBeenCalledTimes(1000);
+        expect(read).not.toHaveBeenCalled();
+        expect(cachedRead).not.toHaveBeenCalled();
+        expect(modify).not.toHaveBeenCalled();
     });
 
     it('ignores invalid rules and caches normalized rule sets', () => {

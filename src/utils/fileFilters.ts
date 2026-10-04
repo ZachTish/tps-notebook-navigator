@@ -255,6 +255,12 @@ interface FrontmatterPropertyExclusionRule {
     value: string | null;
 }
 
+interface ConfiguredPropertyValues {
+    exact: Set<string>;
+    startsWith: string[];
+    endsWith: string[];
+}
+
 interface FrontmatterPropertyExclusionMatcher {
     hasCriteria: boolean;
     matches: (record: Record<string, unknown> | null | undefined) => boolean;
@@ -281,7 +287,9 @@ function setFrontmatterPropertyExclusionMatcherCacheEntry(cacheKey: string, matc
 }
 
 function parseFrontmatterPropertyExclusionRule(rawRule: string): FrontmatterPropertyExclusionRule | null {
-    const separatorIndex = rawRule.indexOf('=');
+    const equalsIndex = rawRule.indexOf('=');
+    const colonIndex = rawRule.indexOf(':');
+    const separatorIndex = equalsIndex === -1 ? colonIndex : colonIndex === -1 ? equalsIndex : Math.min(equalsIndex, colonIndex);
     if (separatorIndex === -1) {
         const normalizedKey = casefold(rawRule);
         if (!normalizedKey) {
@@ -296,20 +304,36 @@ function parseFrontmatterPropertyExclusionRule(rawRule: string): FrontmatterProp
         return null;
     }
 
+    const starCount = normalizedValue.split('*').length - 1;
+    if (
+        starCount > 0 &&
+        (starCount !== 1 || normalizedValue === '*' || (!normalizedValue.startsWith('*') && !normalizedValue.endsWith('*')))
+    ) {
+        return null;
+    }
+
     return {
         key: normalizedKey,
         value: normalizedValue
     };
 }
 
-function frontmatterValueMatchesConfiguredValue(value: unknown, configuredValues: Set<string>): boolean {
+function matchesConfiguredPropertyValue(normalized: string, configuredValues: ConfiguredPropertyValues): boolean {
+    return (
+        configuredValues.exact.has(normalized) ||
+        configuredValues.startsWith.some(prefix => normalized.startsWith(prefix)) ||
+        configuredValues.endsWith.some(suffix => normalized.endsWith(suffix))
+    );
+}
+
+function frontmatterValueMatchesConfiguredValue(value: unknown, configuredValues: ConfiguredPropertyValues): boolean {
     if (value === null || value === undefined) {
         return false;
     }
 
     if (typeof value === 'string') {
         const normalized = normalizePropertyTreeValuePath(value);
-        return normalized.length > 0 && configuredValues.has(normalized);
+        return normalized.length > 0 && matchesConfiguredPropertyValue(normalized, configuredValues);
     }
 
     if (typeof value === 'number') {
@@ -318,11 +342,11 @@ function frontmatterValueMatchesConfiguredValue(value: unknown, configuredValues
         }
 
         const normalized = normalizePropertyTreeValuePath(value.toString());
-        return normalized.length > 0 && configuredValues.has(normalized);
+        return normalized.length > 0 && matchesConfiguredPropertyValue(normalized, configuredValues);
     }
 
     if (typeof value === 'boolean') {
-        return configuredValues.has(value ? 'true' : 'false');
+        return matchesConfiguredPropertyValue(value ? 'true' : 'false', configuredValues);
     }
 
     if (Array.isArray(value)) {
@@ -355,6 +379,8 @@ function compareFrontmatterPropertyExclusionRules(left: FrontmatterPropertyExclu
  * Supported rule formats:
  * - key
  * - key=value
+ * - key: value
+ * - key=prefix* or key=*suffix
  */
 export function createFrontmatterPropertyExclusionMatcher(rules: string[]): FrontmatterPropertyExclusionMatcher {
     const cachedByRuleSet = frontmatterPropertyExclusionMatcherByRuleSetCache.get(rules);
@@ -387,7 +413,7 @@ export function createFrontmatterPropertyExclusionMatcher(rules: string[]): Fron
     }
 
     const keyOnlyRules = new Set<string>();
-    const keyValueRules = new Map<string, Set<string>>();
+    const keyValueRules = new Map<string, ConfiguredPropertyValues>();
 
     uniqueRules.forEach(rule => {
         if (rule.value === null) {
@@ -395,13 +421,19 @@ export function createFrontmatterPropertyExclusionMatcher(rules: string[]): Fron
             return;
         }
 
-        const values = keyValueRules.get(rule.key);
-        if (values) {
-            values.add(rule.value);
-            return;
+        let values = keyValueRules.get(rule.key);
+        if (!values) {
+            values = { exact: new Set<string>(), startsWith: [], endsWith: [] };
+            keyValueRules.set(rule.key, values);
         }
 
-        keyValueRules.set(rule.key, new Set<string>([rule.value]));
+        if (rule.value.startsWith('*')) {
+            values.endsWith.push(rule.value.slice(1));
+        } else if (rule.value.endsWith('*')) {
+            values.startsWith.push(rule.value.slice(0, -1));
+        } else {
+            values.exact.add(rule.value);
+        }
     });
 
     const matcher: FrontmatterPropertyExclusionMatcher = {

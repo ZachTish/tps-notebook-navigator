@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: **8.1.0** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.1.0.md) record the test-vault validation and BRAT handoff.
+Current release: **8.2.0** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.2.0.md) record the test-vault validation and BRAT handoff.
 
 ## Install with BRAT
 
@@ -325,3 +325,9 @@ The Properties tree now presents plain slash-delimited values as segments, like 
 Tree expansion, keyboard navigation, reveal, counts, ordering, property menus, shortcuts, and selected-list breadcrumbs now follow actual parent rows. The same hierarchy is available on mobile without a new settings control or persisted schema. Synthetic parents can be selected and used to create a note with that parent value; they do not themselves modify existing notes. Property-note name matching retains its existing full-value convention, so a nested value does not automatically link to a note named only after its final segment. Typed property searches retain their existing substring behavior; navigation-generated filters use the selected node's scope.
 
 The change adds no writer, watcher, migration, or additional vault scan. It is a backward-compatible minor release with the same Obsidian 1.11.0 minimum. Tests, Test-vault validation, and artifact hashes are recorded in [8.1.0 release notes](release-notes/8.1.0.md). A production update is separate from the Test-vault build.
+
+## 8.2.0 — Wildcards in hidden-note property rules
+
+**Display filters → Hide notes with property rules** accepts a single `*` at either edge of a property value. `kind=transaction*` (or `kind: transaction*`) hides notes whose `kind` starts with `transaction`, including values such as `transaction/financial/investment`. `kind=*example` hides values ending in `example`. `kind=transaction/*` matches descendants without matching bare `transaction` or `transactional`. Matching checks every scalar or list entry case-insensitively. A rule with no `*` remains exact, while a key-only rule still matches whenever that property exists.
+
+These rules hide matching notes throughout Navigator; they do not edit frontmatter or alter the property hierarchy. Only one leading or trailing wildcard is supported; a bare `*`, multiple wildcards, and mid-value wildcards are ignored. `transaction*` also matches a hypothetical `transactional` value, so use `transaction/*` when only descendants should match. The existing vault-profile setting, its responsive mobile control, and stored schema are unchanged. The matcher compiles configured rules once and uses Obsidian's metadata cache while indexing, with no note reads or writes. Focused and full validation, installed Test-vault verification, and artifact hashes are recorded in [8.2.0 release notes](release-notes/8.2.0.md). Minimum Obsidian remains 1.11.0.

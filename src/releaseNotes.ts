@@ -106,10 +106,25 @@ export interface ReleaseNote {
  */
 const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '8.2.0',
+        date: '2026-10-04',
+        new: [
+            'Hide notes by property-value prefix or suffix in Display filters. For example, kind=transaction* includes nested transaction kinds, and kind=*example matches values ending in example.'
+        ],
+        improved: ['Property rules also accept key: value syntax. Exact and key-only rules keep their existing behavior.']
+    },
+    {
+        version: '8.1.0',
+        date: '2026-10-04',
+        new: ['Plain slash-delimited property values appear as expandable rows, like nested tags.']
+    },
+    {
         version: '6.5.0',
         date: '2026-09-26',
         new: ['Configure each property’s Navigator visibility from TPS Global Context Menu 3.4.0 Custom properties.'],
-        changed: ['Properties configuration opens GCM, with separate navigation, note-list, and file-menu toggles for the active Navigator profile.'],
+        changed: [
+            'Properties configuration opens GCM, with separate navigation, note-list, and file-menu toggles for the active Navigator profile.'
+        ],
         fixed: ['Properties hidden from all three surfaces remain hidden after saving, reloading, and refreshing the GCM property catalog.']
     },
     {

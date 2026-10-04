@@ -1885,8 +1885,8 @@ export const STRINGS_EN = {
             },
             hideNotesWithPropertyRules: {
                 name: 'Hide notes with property rules (vault profile)',
-                desc: 'Comma-separated list of frontmatter rules. Use `key` or `key=value` entries (e.g., status=done, published=true, archived).',
-                placeholder: 'status=done, published=true, archived'
+                desc: 'Comma-separated frontmatter rules: `key`, `key=value`, or `key: value`. Values without `*` match exactly. `kind=transaction*` includes nested transaction kinds; `kind=*example` matches values ending in example.',
+                placeholder: 'kind=transaction*, kind=*example, status=done'
             },
             hideFiles: {
                 name: 'Hide files (vault profile)',
