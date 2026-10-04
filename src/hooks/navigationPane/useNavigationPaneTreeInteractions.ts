@@ -59,6 +59,7 @@ import {
 import { useStableHandlerFacade } from '../useStableHandlerFacade';
 import { isTpsNavigatorStructuralTypeId, type TpsNavigatorTypeId, type TpsNavigatorTypesSnapshot } from '../../types/navigatorTypes';
 import { navigateToType as navigateToTypeInternal } from '../../utils/typeNavigation';
+import { findPropertyValueNode, parsePropertyNodeId } from '../../utils/propertyTree';
 
 interface ExpansionStateLike {
     expandedFolders: Set<string>;
@@ -358,18 +359,21 @@ export function useNavigationPaneTreeInteractions({
     const handlePropertyToggle = useCallback(
         (nodeId: string) => {
             if (settings.collapseOtherBranchesOnExpand) {
-                const propertyNode =
+                const parsedNodeId = parsePropertyNodeId(nodeId);
+                const keyNode = parsedNodeId ? propertyTree.get(parsedNodeId.key) : null;
+                const targetNode =
                     propertyTreeService?.findNode(nodeId) ??
-                    Array.from(propertyTree.values()).find(node => node.id === nodeId || node.children.has(nodeId)) ??
-                    null;
-                const targetNode = propertyNode?.id === nodeId ? propertyNode : propertyNode?.children.get(nodeId);
+                    (keyNode && parsedNodeId?.valuePath ? findPropertyValueNode(keyNode, parsedNodeId.valuePath) : keyNode);
                 if (targetNode) {
                     toggleNavigationExpansionTarget(
                         {
                             type: 'property',
                             id: targetNode.id,
                             hasChildren: targetNode.children.size > 0,
-                            ancestorIds: getPropertyAncestorNodeIds(targetNode.id)
+                            ancestorIds: getPropertyAncestorNodeIds(
+                                targetNode.id,
+                                propertyTreeService?.getKeyNode(targetNode.key) ?? propertyTree.get(targetNode.key)
+                            )
                         },
                         expansionState,
                         expansionDispatch,

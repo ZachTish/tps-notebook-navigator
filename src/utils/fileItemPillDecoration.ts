@@ -284,23 +284,15 @@ export function buildFileItemPropertyRainbowColors(params: {
     const sortedKeyNodes = keyNodes.slice().sort(effectiveComparator);
 
     const rootLevel = showAllPropertiesFolder ? 1 : 0;
-    const childLevel = rootLevel + 1;
     const items: CombinedNavigationItem[] = [];
 
-    sortedKeyNodes.forEach(keyNode => {
-        items.push({
-            type: NavigationPaneItemType.PROPERTY_KEY,
-            data: keyNode,
-            level: rootLevel,
-            key: keyNode.id
-        });
-
-        const childNodes = Array.from(keyNode.children.values());
+    const appendValueNodes = (keyNode: PropertyTreeNode, parentNode: PropertyTreeNode, level: number): void => {
+        const childNodes = Array.from(parentNode.children.values());
         if (childNodes.length === 0) {
             return;
         }
 
-        const overrideOrder = propertyTreeSortOverrides?.[keyNode.id];
+        const overrideOrder = propertyTreeSortOverrides?.[parentNode.id];
         const childComparator = overrideOrder
             ? resolveAlphaSortComparator<PropertyTreeNode>(overrideOrder, node => node.valuePath ?? '')
             : createPropertyValueComparator({
@@ -312,10 +304,22 @@ export function buildFileItemPropertyRainbowColors(params: {
             items.push({
                 type: NavigationPaneItemType.PROPERTY_VALUE,
                 data: childNode,
-                level: childLevel,
+                level,
                 key: childNode.id
             });
+            appendValueNodes(keyNode, childNode, level + 1);
         });
+    };
+
+    sortedKeyNodes.forEach(keyNode => {
+        items.push({
+            type: NavigationPaneItemType.PROPERTY_KEY,
+            data: keyNode,
+            level: rootLevel,
+            key: keyNode.id
+        });
+
+        appendValueNodes(keyNode, keyNode, rootLevel + 1);
     });
 
     return buildPropertyRainbowColors({

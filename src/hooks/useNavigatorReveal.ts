@@ -48,11 +48,13 @@ import { strings } from '../i18n';
 import { showNotice } from '../utils/noticeUtils';
 import { registerActiveFileWorkspaceListeners } from '../utils/workspaceActiveFileEvents';
 import {
+    buildPropertyKeyNodeId,
     determinePropertyToReveal,
-    getPropertyKeyNodeIdFromNodeId,
-    isPropertyTreeNodeId,
+    getPropertyValueAncestorNodeIds,
+    parsePropertyNodeId,
     type PropertySelectionNodeId
 } from '../utils/propertyTree';
+import type { PropertyTreeNode } from '../types/storage';
 import { expandNavigationTreeItems, isFolderEffectivelyExpanded, isFolderExpansionLocked } from '../utils/navigationExpansion';
 
 interface UseNavigatorRevealOptions {
@@ -109,7 +111,7 @@ export interface RevealPropertyOptions {
 interface PropertyRevealExpansion {
     targetProperty: PropertySelectionNodeId;
     expandPropertiesRoot: boolean;
-    propertyKeyNodeIdToExpand: PropertySelectionNodeId | null;
+    propertyAncestorNodeIdsToExpand: PropertySelectionNodeId[];
 }
 
 /**
@@ -121,24 +123,29 @@ export function resolvePropertyRevealExpansion(
     resolvedProperty: PropertySelectionNodeId,
     includeDescendantNotes: boolean,
     propertiesRootCollapsed: boolean,
-    expandedProperties: ReadonlySet<string>
+    expandedProperties: ReadonlySet<string>,
+    propertyTree?: ReadonlyMap<string, PropertyTreeNode>
 ): PropertyRevealExpansion {
     if (includeDescendantNotes && propertiesRootCollapsed) {
         return {
             targetProperty: PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
             expandPropertiesRoot: false,
-            propertyKeyNodeIdToExpand: null
+            propertyAncestorNodeIdsToExpand: []
         };
     }
 
-    const rawKeyNodeId = resolvedProperty !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID ? getPropertyKeyNodeIdFromNodeId(resolvedProperty) : null;
-    const keyNodeId = rawKeyNodeId && isPropertyTreeNodeId(rawKeyNodeId) ? rawKeyNodeId : null;
-    const keyCollapsed = Boolean(keyNodeId && keyNodeId !== resolvedProperty && !expandedProperties.has(keyNodeId));
+    const parsed = resolvedProperty === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID ? null : parsePropertyNodeId(resolvedProperty);
+    const keyNode = parsed ? propertyTree?.get(parsed.key) : null;
+    const ancestorIds = parsed?.valuePath
+        ? keyNode
+            ? getPropertyValueAncestorNodeIds(keyNode, parsed.valuePath)
+            : [buildPropertyKeyNodeId(parsed.key)]
+        : [];
 
     return {
         targetProperty: resolvedProperty,
         expandPropertiesRoot: !includeDescendantNotes && propertiesRootCollapsed,
-        propertyKeyNodeIdToExpand: keyCollapsed ? keyNodeId : null
+        propertyAncestorNodeIdsToExpand: ancestorIds.some(id => !expandedProperties.has(id)) ? ancestorIds : []
     };
 }
 
@@ -637,7 +644,8 @@ export function useNavigatorReveal({ app, navigationPaneRef, focusNavigationPane
                         resolvedProperty,
                         includeDescendantNotes,
                         isPropertiesRootCollapsed,
-                        expansionState.expandedProperties
+                        expansionState.expandedProperties,
+                        getPropertyTree()
                     );
                     targetProperty = revealExpansion.targetProperty;
 
@@ -647,8 +655,8 @@ export function useNavigatorReveal({ app, navigationPaneRef, focusNavigationPane
                         expansionDispatch({ type: 'SET_EXPANDED_VIRTUAL_FOLDERS', folders: nextExpandedVirtualFolders });
                     }
 
-                    if (revealExpansion.propertyKeyNodeIdToExpand) {
-                        expandPropertyNodeIds([revealExpansion.propertyKeyNodeIdToExpand]);
+                    if (revealExpansion.propertyAncestorNodeIdsToExpand.length > 0) {
+                        expandPropertyNodeIds(revealExpansion.propertyAncestorNodeIdsToExpand);
                     }
                 }
             }
@@ -778,6 +786,7 @@ export function useNavigatorReveal({ app, navigationPaneRef, focusNavigationPane
             expandTagPaths,
             selectionDispatch,
             getDB,
+            getPropertyTree,
             getRevealTargetFolder,
             navigationPaneRef,
             handleHiddenFileReveal

@@ -54,6 +54,16 @@ describe('filterSearch property tokenization', () => {
         expect(tokens.propertyTokens).toEqual([{ key: 'status=phase', value: 'in=progress' }]);
         expect(tokens.nameTokens).toEqual([]);
     });
+
+    it('parses generated exact and subtree modes without changing typed substring filters', () => {
+        expect(parseFilterSearchTokens('.kind=entity').propertyTokens).toEqual([{ key: 'kind', value: 'entity' }]);
+        expect(parseFilterSearchTokens('.kind==entity').propertyTokens).toEqual([
+            { key: 'kind', value: 'entity', matchMode: 'exact' }
+        ]);
+        expect(parseFilterSearchTokens('.kind^=entity').propertyTokens).toEqual([
+            { key: 'kind', value: 'entity', matchMode: 'subtree' }
+        ]);
+    });
 });
 
 describe('filterSearch property parsing', () => {
@@ -139,6 +149,47 @@ describe('filterSearch property evaluation', () => {
                 propertyValuesByKey: new Map<string, string[]>([['status', ['done']]])
             })
         ).toBe(false);
+    });
+
+    it('matches generated exact values and slash-boundary descendants without accepting substring lookalikes', () => {
+        const exact = parseFilterSearchTokens('.kind==entity');
+        const subtree = parseFilterSearchTokens('.kind^=entity');
+        const substring = parseFilterSearchTokens('.kind=entity');
+        const matches = (value: string, tokens: ReturnType<typeof parseFilterSearchTokens>) =>
+            fileMatchesFilterTokens('note', [], tokens, {
+                hasUnfinishedTasks: false,
+                propertyValuesByKey: new Map([['kind', [value]]])
+            });
+
+        expect(matches('entity', exact)).toBe(true);
+        expect(matches('entity/physical', exact)).toBe(false);
+        expect(matches('other/entity', exact)).toBe(false);
+
+        expect(matches('entity', subtree)).toBe(true);
+        expect(matches('entity/physical', subtree)).toBe(true);
+        expect(matches('entity/physical/home', subtree)).toBe(true);
+        expect(matches('other/entity', subtree)).toBe(false);
+        expect(matches('superentity', subtree)).toBe(false);
+        expect(matches('entity-other', subtree)).toBe(false);
+
+        expect(matches('other/entity', substring)).toBe(true);
+        expect(matches('superentity', substring)).toBe(true);
+    });
+
+    it('applies exact and subtree modes to negated filters and OR expressions', () => {
+        const excluded = parseFilterSearchTokens('-.kind^=entity');
+        const expression = parseFilterSearchTokens('.kind==entity OR .kind^=task');
+        const matches = (value: string, tokens: ReturnType<typeof parseFilterSearchTokens>) =>
+            fileMatchesFilterTokens('note', [], tokens, {
+                hasUnfinishedTasks: false,
+                propertyValuesByKey: new Map([['kind', [value]]])
+            });
+
+        expect(matches('entity/physical', excluded)).toBe(false);
+        expect(matches('other/entity', excluded)).toBe(true);
+        expect(matches('entity', expression)).toBe(true);
+        expect(matches('task/todo', expression)).toBe(true);
+        expect(matches('entity/physical', expression)).toBe(false);
     });
 
     it('prefix-matches key-only filters while keeping value-filter keys exact', () => {
@@ -248,6 +299,21 @@ describe('filterSearch property evaluation', () => {
 });
 
 describe('updateFilterQueryWithProperty', () => {
+    it('round-trips generated exact and subtree filters independently of typed substring filters', () => {
+        const exact = updateFilterQueryWithProperty('', 'kind', 'entity', 'AND', 'exact');
+        expect(exact.query).toBe('.kind==entity');
+        expect(parseFilterSearchTokens(exact.query).propertyTokens).toEqual([
+            { key: 'kind', value: 'entity', matchMode: 'exact' }
+        ]);
+        const withSubtree = updateFilterQueryWithProperty(exact.query, 'kind', 'entity', 'AND', 'subtree');
+        expect(withSubtree.query).toBe('.kind==entity AND .kind^=entity');
+        expect(updateFilterQueryWithProperty(withSubtree.query, 'kind', 'entity', 'AND', 'exact').query).toBe(
+            '.kind^=entity'
+        );
+        expect(updateFilterQueryWithProperty('.kind=entity', 'kind', 'entity', 'AND', 'exact').query).toBe(
+            '.kind=entity AND .kind==entity'
+        );
+    });
     it('adds and removes key-only property tokens', () => {
         const added = updateFilterQueryWithProperty('', 'status', null, 'AND');
         expect(added.query).toBe('.status');

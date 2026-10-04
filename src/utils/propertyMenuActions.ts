@@ -125,7 +125,16 @@ export function collectFileMenuPropertyActions(
 
         const keyLabel = (keyNode.name.trim() || displayKey).trim();
         const hasBooleanTrueValue = keyNodeHasBooleanTrueValue(keyNode);
-        const valueNodes = Array.from(keyNode.children.values()).filter(node => node.kind === 'value' && node.name.trim().length > 0);
+        const valueNodes: PropertyTreeNode[] = [];
+        const collectAuthoredValues = (node: PropertyTreeNode): void => {
+            node.children.forEach(child => {
+                if (child.kind === 'value' && child.notesWithValue.size > 0 && child.displayPath.trim().length > 0) {
+                    valueNodes.push(child);
+                }
+                collectAuthoredValues(child);
+            });
+        };
+        collectAuthoredValues(keyNode);
 
         if (!hasBooleanTrueValue && valueNodes.length === 0) {
             return;
@@ -140,15 +149,15 @@ export function collectFileMenuPropertyActions(
         }
 
         valueNodes.sort((left, right) => {
-            const compare = naturalCompare(left.name, right.name);
+            const compare = naturalCompare(left.displayPath, right.displayPath);
             if (compare !== 0) {
                 return compare;
             }
-            return left.name.localeCompare(right.name);
+            return left.displayPath.localeCompare(right.displayPath);
         });
 
         valueNodes.forEach(node => {
-            const valueLabel = node.name.trim();
+            const valueLabel = node.displayPath.trim();
             actions.push({
                 nodeId: node.id,
                 keyNodeId: keyNode.id,

@@ -98,6 +98,7 @@ import {
 } from '../utils/manualSort';
 import { resolveIconForMenu, resolveUXIcon, resolveUXIconForMenu } from '../utils/uxIcons';
 import { buildPropertyKeyNodeId, parsePropertyNodeId } from '../utils/propertyTree';
+import type { IPropertyTreeProvider } from '../interfaces/IPropertyTreeProvider';
 import { getFilesForNavigationSelection, getVisibleVaultFiles } from '../utils/selectionUtils';
 import { findVaultProfileById } from '../utils/vaultProfiles';
 import { casefold, ensureRecord, sanitizeRecord } from '../utils/recordUtils';
@@ -403,13 +404,22 @@ function isTagDescendantSettingKey(selectedTagPath: string, candidatePath: strin
     return candidatePath.startsWith(`${selectedTagPath}/`);
 }
 
-function isPropertyDescendantSettingKey(selectedNodeId: string, candidateNodeId: string): boolean {
+export function isPropertyDescendantSettingKey(
+    selectedNodeId: string,
+    candidateNodeId: string,
+    propertyTreeService: IPropertyTreeProvider | null
+): boolean {
     if (candidateNodeId === selectedNodeId) {
         return false;
     }
 
     if (selectedNodeId === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID) {
         return candidateNodeId !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID;
+    }
+
+    // The indexed tree distinguishes hierarchy from literal slashes in links and URLs.
+    if (propertyTreeService?.findNode(selectedNodeId)) {
+        return propertyTreeService.collectDescendantNodeIds(selectedNodeId).has(candidateNodeId);
     }
 
     const selectedNode = parsePropertyNodeId(selectedNodeId);
@@ -860,12 +870,18 @@ export function useListActions({
             }
 
             if (selectionState.selectionType === ItemType.PROPERTY && selectionState.selectedProperty) {
-                return isPropertyDescendantSettingKey(selectionState.selectedProperty, candidateKey);
+                return isPropertyDescendantSettingKey(selectionState.selectedProperty, candidateKey, propertyTreeService);
             }
 
             return false;
         },
-        [selectionState.selectionType, selectionState.selectedFolder, selectionState.selectedTag, selectionState.selectedProperty]
+        [
+            selectionState.selectionType,
+            selectionState.selectedFolder,
+            selectionState.selectedTag,
+            selectionState.selectedProperty,
+            propertyTreeService
+        ]
     );
 
     const getSelectionDescendantLabel = useCallback((): string => {

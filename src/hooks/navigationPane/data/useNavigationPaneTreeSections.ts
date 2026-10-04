@@ -799,8 +799,6 @@ export function useNavigationPaneTreeSections({
         const collectionCount = propertySectionBase.collectionCount;
         const shouldShowRootFolder = settings.showAllPropertiesFolder;
         const rootLevel = shouldShowRootFolder ? 1 : 0;
-        const childLevel = rootLevel + 1;
-
         const items: CombinedNavigationItem[] = [];
 
         if (shouldShowRootFolder) {
@@ -825,25 +823,54 @@ export function useNavigationPaneTreeSections({
             }
         }
 
-        const sortChildren = (keyNode: PropertyTreeNode, children: Iterable<PropertyTreeNode>): PropertyTreeNode[] => {
-            const nodes = Array.from(children);
+        const descendantCountByNodeId = new Map<string, number>();
+        const getValueFrequency = (keyNode: PropertyTreeNode, node: PropertyTreeNode): number => {
+            if (!includeDescendantNotes || !node.valuePath) {
+                return node.notesWithValue.size;
+            }
+            const cached = descendantCountByNodeId.get(node.id);
+            if (cached !== undefined) {
+                return cached;
+            }
+            const count = getTotalPropertyNoteCount(keyNode, node.valuePath);
+            descendantCountByNodeId.set(node.id, count);
+            return count;
+        };
+
+        const sortChildren = (keyNode: PropertyTreeNode, parentNode: PropertyTreeNode): PropertyTreeNode[] => {
+            const nodes = Array.from(parentNode.children.values());
             if (nodes.length <= 1) {
                 return nodes;
             }
 
             const propertyTreeSortOverrides = settings.propertyTreeSortOverrides;
             const hasChildSortOverride = Boolean(
-                propertyTreeSortOverrides && Object.prototype.hasOwnProperty.call(propertyTreeSortOverrides, keyNode.id)
+                propertyTreeSortOverrides && Object.prototype.hasOwnProperty.call(propertyTreeSortOverrides, parentNode.id)
             );
-            const childSortOverride = hasChildSortOverride ? propertyTreeSortOverrides?.[keyNode.id] : undefined;
+            const childSortOverride = hasChildSortOverride ? propertyTreeSortOverrides?.[parentNode.id] : undefined;
             const comparator = createPropertyComparator({
                 order: childSortOverride ?? settings.propertySortOrder,
                 compareAlphabetically: comparePropertyValueNodesAlphabetically,
-                getFrequency: node =>
-                    includeDescendantNotes && node.valuePath ? getTotalPropertyNoteCount(keyNode, node.valuePath) : node.notesWithValue.size
+                getFrequency: node => getValueFrequency(keyNode, node)
             });
 
             return nodes.sort(comparator);
+        };
+
+        const appendExpandedValues = (keyNode: PropertyTreeNode, parentNode: PropertyTreeNode, level: number): void => {
+            if (!expansionState.expandedProperties.has(parentNode.id)) {
+                return;
+            }
+
+            sortChildren(keyNode, parentNode).forEach(child => {
+                items.push({
+                    type: NavigationPaneItemType.PROPERTY_VALUE,
+                    data: child,
+                    level,
+                    key: child.id
+                });
+                appendExpandedValues(keyNode, child, level + 1);
+            });
         };
 
         keyNodes.forEach(keyNode => {
@@ -854,16 +881,7 @@ export function useNavigationPaneTreeSections({
                 key: keyNode.id
             });
 
-            if (expansionState.expandedProperties.has(keyNode.id) && keyNode.children.size > 0) {
-                sortChildren(keyNode, keyNode.children.values()).forEach(child => {
-                    items.push({
-                        type: NavigationPaneItemType.PROPERTY_VALUE,
-                        data: child,
-                        level: childLevel,
-                        key: child.id
-                    });
-                });
-            }
+            appendExpandedValues(keyNode, keyNode, rootLevel + 1);
         });
 
         return { propertyItems: items, propertiesSectionActive: true };

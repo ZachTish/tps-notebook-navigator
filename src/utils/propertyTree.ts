@@ -23,7 +23,7 @@ import type { NotebookNavigatorSettings } from '../settings/types';
 import type { IPropertyTreeProvider } from '../interfaces/IPropertyTreeProvider';
 import { isPathInExcludedFolder } from './fileFilters';
 import { getCachedCommaSeparatedList } from './commaSeparatedListUtils';
-import { isPropertyLinkMarkupValue, normalizePropertyTreeValuePath, resolvePropertyDisplayText } from './propertyUtils';
+import { isPropertyLinkMarkupValue, normalizePropertyTreeValuePath, parsePropertyLinkTarget, resolvePropertyDisplayText } from './propertyUtils';
 import { casefold } from './recordUtils';
 import { naturalCompare } from './sortUtils';
 import { isRecord } from './typeGuards';
@@ -107,37 +107,106 @@ function getConfiguredPropertyKeyToken(configuredKeys: ReadonlySet<string>): str
     return token;
 }
 
-/**
- * Returns the number of notes for a property value.
- */
-export function getTotalPropertyNoteCount(keyNode: PropertyTreeNode, valuePath: string): number {
-    if (!valuePath) {
-        return 0;
+/** Finds a value by its stable full-path id, whether it is nested or an atomic link. */
+export function findPropertyValueNode(keyNode: PropertyTreeNode, valuePath: string): PropertyTreeNode | null {
+    const nodeId = buildPropertyValueNodeId(keyNode.key, valuePath);
+    const direct = keyNode.children.get(nodeId);
+    if (direct) {
+        return direct;
     }
 
+    const parts = valuePath.split('/');
+    let parent = keyNode;
+    let prefix = '';
+    for (const part of parts) {
+        if (!part) {
+            return null;
+        }
+        prefix = prefix ? `${prefix}/${part}` : part;
+        const child = parent.children.get(buildPropertyValueNodeId(keyNode.key, prefix));
+        if (!child) {
+            return null;
+        }
+        parent = child;
+    }
+    return parent === keyNode ? null : parent;
+}
+
+/** Returns the actual parent ids for a value, excluding the value itself. */
+export function getPropertyValueAncestorNodeIds(keyNode: PropertyTreeNode, valuePath: string): PropertyTreeNodeId[] {
+    const ancestors: PropertyTreeNodeId[] = [keyNode.id];
     const nodeId = buildPropertyValueNodeId(keyNode.key, valuePath);
-    const valueNode = keyNode.children.get(nodeId);
-    return valueNode?.notesWithValue.size ?? 0;
+    if (keyNode.children.has(nodeId)) {
+        return ancestors;
+    }
+
+    let parent = keyNode;
+    let prefix = '';
+    for (const segment of valuePath.split('/')) {
+        if (!segment) {
+            return [keyNode.id];
+        }
+        prefix = prefix ? `${prefix}/${segment}` : segment;
+        const child = parent.children.get(buildPropertyValueNodeId(keyNode.key, prefix));
+        if (!child) {
+            return [keyNode.id];
+        }
+        if (child.id === nodeId) {
+            return ancestors;
+        }
+        ancestors.push(child.id);
+        parent = child;
+    }
+    return [keyNode.id];
+}
+
+/** Returns the number of distinct notes on a value and all of its descendants. */
+export function getTotalPropertyNoteCount(keyNode: PropertyTreeNode, valuePath: string): number {
+    return collectPropertyValueFilePaths(keyNode, valuePath, true).size;
 }
 
 /**
  * Returns true when two normalized property value paths represent the same value.
  */
-export function matchesPropertyValuePath(candidateValuePath: string, selectedValuePath: string): boolean {
-    return candidateValuePath === selectedValuePath;
+export function matchesPropertyValuePath(
+    candidateValuePath: string,
+    selectedValuePath: string,
+    includeDescendants = false,
+    rawCandidateValue = candidateValuePath
+): boolean {
+    if (candidateValuePath === selectedValuePath) {
+        return true;
+    }
+    return (
+        includeDescendants &&
+        getPropertyValuePathParts(rawCandidateValue, candidateValuePath, normalizePropertyTreeDisplayValuePath(rawCandidateValue)).length > 1 &&
+        candidateValuePath.startsWith(`${selectedValuePath}/`)
+    );
 }
 
 /**
  * Collects note paths for the selected property value.
  */
-export function collectPropertyValueFilePaths(keyNode: PropertyTreeNode, valuePath: string): Set<string> {
-    const nodeId = buildPropertyValueNodeId(keyNode.key, valuePath);
-    const valueNode = keyNode.children.get(nodeId);
+export function collectPropertyValueFilePaths(keyNode: PropertyTreeNode, valuePath: string, includeDescendants = false): Set<string> {
+    const valueNode = findPropertyValueNode(keyNode, valuePath);
     if (!valueNode) {
         return new Set<string>();
     }
 
-    return new Set<string>(valueNode.notesWithValue);
+    const paths = new Set<string>();
+    const visited = new Set<PropertyTreeNode>();
+    const visit = (node: PropertyTreeNode): void => {
+        if (visited.has(node)) {
+            return;
+        }
+        visited.add(node);
+        node.notesWithValue.forEach(path => paths.add(path));
+        if (includeDescendants) {
+            node.children.forEach(visit);
+        }
+    };
+    visit(valueNode);
+    return paths;
 }
 
 /**
@@ -201,9 +270,11 @@ export function getDirectPropertyKeyFilePathSet(keyNode: PropertyTreeNode): Read
 
 function buildDirectPropertyKeyPaths(keyNode: PropertyTreeNode): Set<string> {
     const directPaths = new Set<string>(keyNode.notesWithValue);
-    keyNode.children.forEach(childNode => {
-        childNode.notesWithValue.forEach(path => directPaths.delete(path));
-    });
+    const removeValuePaths = (node: PropertyTreeNode): void => {
+        node.notesWithValue.forEach(path => directPaths.delete(path));
+        node.children.forEach(removeValuePaths);
+    };
+    keyNode.children.forEach(removeValuePaths);
     return directPaths;
 }
 
@@ -326,6 +397,20 @@ export function determinePropertyToReveal(
                     if (candidateForKey.valueNodeIdSet.has(selectionValueNodeId)) {
                         return selectionValueNodeId;
                     }
+                    if (
+                        includeDescendantNotes &&
+                        properties.some(entry =>
+                            casefold(entry.fieldKey) === parsed.key &&
+                            matchesPropertyValuePath(
+                                normalizePropertyTreeValuePath(entry.value),
+                                normalizedSelectionValuePath,
+                                true,
+                                entry.value
+                            )
+                        )
+                    ) {
+                        return selectionValueNodeId;
+                    }
                 }
             }
         }
@@ -355,6 +440,38 @@ function normalizeIncludedPropertyKeySet(includedPropertyKeys: ReadonlySet<strin
     return normalizedKeys;
 }
 
+interface PropertyValuePathPart {
+    valuePath: string;
+    displayPath: string;
+    name: string;
+}
+
+/** Split only ordinary slash-delimited values. Link destinations and URLs are one value. */
+function getPropertyValuePathParts(rawValue: string, normalizedValuePath: string, displayValuePath: string): PropertyValuePathPart[] {
+    const atomicValue = { valuePath: normalizedValuePath, displayPath: displayValuePath, name: displayValuePath };
+    if (!normalizedValuePath.includes('/') || parsePropertyLinkTarget(rawValue)) {
+        return [atomicValue];
+    }
+
+    const normalizedSegments = normalizedValuePath.split('/');
+    const displaySegments = displayValuePath.split('/');
+    if (
+        normalizedSegments.length !== displaySegments.length ||
+        normalizedSegments.some((segment, index) =>
+            !segment || segment !== segment.trim() || !displaySegments[index] || casefold(displaySegments[index]) !== segment
+        )
+    ) {
+        // Ambiguous separators remain literal values rather than creating empty or renamed nodes.
+        return [atomicValue];
+    }
+
+    return normalizedSegments.map((name, index) => ({
+        valuePath: normalizedSegments.slice(0, index + 1).join('/'),
+        displayPath: displaySegments.slice(0, index + 1).join('/'),
+        name: displaySegments[index]
+    }));
+}
+
 function compareCanonicalPropertySegments(left: string, right: string): number {
     const naturalResult = naturalCompare(left, right);
     if (naturalResult !== 0) {
@@ -365,14 +482,12 @@ function compareCanonicalPropertySegments(left: string, right: string): number {
 }
 
 function sortPropertyValueChildren(children: Map<string, PropertyTreeNode>): Map<string, PropertyTreeNode> {
-    if (children.size <= 1) {
-        return children;
-    }
-
     const sortedNodes = Array.from(children.values()).sort((leftNode, rightNode) => {
-        const leftPath = leftNode.valuePath ?? '';
-        const rightPath = rightNode.valuePath ?? '';
-        const pathCompare = compareCanonicalPropertySegments(leftPath, rightPath);
+        const nameCompare = compareCanonicalPropertySegments(leftNode.name, rightNode.name);
+        if (nameCompare !== 0) {
+            return nameCompare;
+        }
+        const pathCompare = compareCanonicalPropertySegments(leftNode.valuePath ?? '', rightNode.valuePath ?? '');
         if (pathCompare !== 0) {
             return pathCompare;
         }
@@ -381,6 +496,7 @@ function sortPropertyValueChildren(children: Map<string, PropertyTreeNode>): Map
 
     const sortedChildren = new Map<string, PropertyTreeNode>();
     sortedNodes.forEach(node => {
+        node.children = sortPropertyValueChildren(node.children);
         sortedChildren.set(node.id, node);
     });
     return sortedChildren;
@@ -476,7 +592,10 @@ function buildConfiguredPropertyNodeIdSet(
                 return;
             }
 
-            nodeIds.add(buildPropertyValueNodeId(normalizedKey, normalizedValuePath));
+            const displayValuePath = normalizePropertyTreeDisplayValuePath(entry.value);
+            getPropertyValuePathParts(entry.value, normalizedValuePath, displayValuePath).forEach(part => {
+                nodeIds.add(buildPropertyValueNodeId(normalizedKey, part.valuePath));
+            });
         });
     });
 
@@ -607,9 +726,14 @@ export function resolvePropertySelectionNodeId(
         return keyNode.id;
     }
 
-    const valueNodeId = buildPropertyValueNodeId(parsed.key, normalizedSelectionValuePath);
-    if (keyNode.children.has(valueNodeId)) {
-        return valueNodeId;
+    let valuePath = normalizedSelectionValuePath;
+    while (valuePath) {
+        const valueNode = findPropertyValueNode(keyNode, valuePath);
+        if (valueNode) {
+            return valueNode.id;
+        }
+        const lastSlash = valuePath.lastIndexOf('/');
+        valuePath = lastSlash < 0 ? '' : valuePath.slice(0, lastSlash);
     }
 
     return keyNode.id;
@@ -699,7 +823,7 @@ export function resolvePropertyTreeNode(params: {
         return { normalizedNodeId: keyNode.id, node: keyNode };
     }
 
-    const valueNode = keyNode.children.get(normalizedNodeId) ?? null;
+    const valueNode = findPropertyValueNode(keyNode, parsed.valuePath);
     if (!valueNode) {
         return null;
     }
@@ -899,26 +1023,47 @@ function registerPropertyTreeEntry(
         return;
     }
 
-    const nodeId = buildPropertyValueNodeId(normalizedKey, normalizedValuePath);
-    let valueNode = keyNode.children.get(nodeId);
-    if (!valueNode) {
-        valueNode = {
-            id: nodeId,
-            kind: 'value',
-            key: normalizedKey,
-            valuePath: normalizedValuePath,
-            name: displayValuePath,
-            displayPath: displayValuePath,
-            assignmentValue: propertyEntry.value,
-            children: new Map(),
-            notesWithValue: new Set()
-        };
-        keyNode.children.set(nodeId, valueNode);
-    } else if (shouldReplaceAssignmentValue(valueNode.assignmentValue, propertyEntry.value)) {
-        valueNode.assignmentValue = propertyEntry.value;
+    const existingValueNode = findPropertyValueNode(keyNode, normalizedValuePath);
+    if (existingValueNode) {
+        if (shouldReplaceAssignmentValue(existingValueNode.assignmentValue, propertyEntry.value)) {
+            existingValueNode.assignmentValue = propertyEntry.value;
+        }
+        existingValueNode.notesWithValue.add(path);
+        return;
     }
 
-    valueNode.notesWithValue.add(path);
+    const hierarchyParts = getPropertyValuePathParts(propertyEntry.value, normalizedValuePath, displayValuePath);
+    // A preexisting atomic link can own a prefix id at the key level. Keep the
+    // new value atomic too rather than placing the same id at two tree locations.
+    const parts = hierarchyParts.some((part, index) => index > 0 && keyNode.children.has(buildPropertyValueNodeId(normalizedKey, part.valuePath)))
+        ? [{ valuePath: normalizedValuePath, displayPath: displayValuePath, name: displayValuePath }]
+        : hierarchyParts;
+    let parent = keyNode;
+    parts.forEach((part, index) => {
+        const isAuthoredValue = index === parts.length - 1;
+        const nodeId = buildPropertyValueNodeId(normalizedKey, part.valuePath);
+        let node = parent.children.get(nodeId);
+        if (!node) {
+            node = {
+                id: nodeId,
+                kind: 'value',
+                key: normalizedKey,
+                valuePath: part.valuePath,
+                name: part.name,
+                displayPath: part.displayPath,
+                ...(isAuthoredValue ? { assignmentValue: propertyEntry.value } : {}),
+                children: new Map(),
+                notesWithValue: new Set()
+            };
+            parent.children.set(nodeId, node);
+        } else if (isAuthoredValue && shouldReplaceAssignmentValue(node.assignmentValue, propertyEntry.value)) {
+            node.assignmentValue = propertyEntry.value;
+        }
+        if (isAuthoredValue) {
+            node.notesWithValue.add(path);
+        }
+        parent = node;
+    });
 }
 
 /**
@@ -926,7 +1071,8 @@ function registerPropertyTreeEntry(
  *
  * Notes:
  * - Tree roots are property keys.
- * - Value nodes are stored as direct children of keys.
+ * - Slash-delimited plain values form nested prefix nodes beneath their keys.
+ * - Link and URL values remain atomic children of their keys.
  * - Node ids use normalized lowercase keys/value paths.
  */
 export function buildPropertyTreeFromDatabase(

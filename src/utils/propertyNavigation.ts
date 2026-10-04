@@ -21,8 +21,9 @@ import type { SelectionAction, SelectionRevealSource } from '../context/Selectio
 import type { ContentPane } from '../context/UIStateContext';
 import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID } from '../types';
 import {
-    getPropertyKeyNodeIdFromNodeId,
+    getPropertyValueAncestorNodeIds,
     normalizePropertyNodeId,
+    parsePropertyNodeId,
     resolvePropertySelectionNodeId,
     type PropertySelectionNodeId
 } from './propertyTree';
@@ -126,19 +127,14 @@ export function navigateToProperty(
         env.expansionDispatch({ type: 'SET_EXPANDED_VIRTUAL_FOLDERS', folders: nextExpanded });
     }
 
-    const keyNodeId =
-        resolvedNodeId !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID
-            ? getPropertyKeyNodeIdFromNodeId(resolvedNodeId)
-            : PROPERTIES_ROOT_VIRTUAL_FOLDER_ID;
-    const keyNeedsExpansion =
-        keyNodeId &&
-        keyNodeId !== PROPERTIES_ROOT_VIRTUAL_FOLDER_ID &&
-        keyNodeId !== resolvedNodeId &&
-        !env.expandedProperties.has(keyNodeId);
-    if (keyNeedsExpansion) {
+    const parsed = resolvedNodeId === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID ? null : parsePropertyNodeId(resolvedNodeId);
+    const keyNode = parsed ? env.propertyTree.get(parsed.key) : null;
+    const ancestorIds = keyNode && parsed?.valuePath ? getPropertyValueAncestorNodeIds(keyNode, parsed.valuePath) : [];
+    const missingAncestorIds = ancestorIds.filter(id => !env.expandedProperties.has(id));
+    if (missingAncestorIds.length > 0) {
         expandNavigationTreeItems({
             type: 'property',
-            ids: [keyNodeId],
+            ids: env.collapseOtherBranchesOnExpand ? ancestorIds : missingAncestorIds,
             collapseOtherBranches: Boolean(env.collapseOtherBranchesOnExpand),
             dispatch: env.expansionDispatch
         });

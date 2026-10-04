@@ -563,6 +563,24 @@ export function buildPropertyRainbowColors(params: {
             rootColorsByKey.set(item.data.key, color);
         }
     } else {
+        const propertyParentByNodeId = new Map<string, string>();
+        const nodeByLevel: { id: string; key: string; valuePath: string | null }[] = [];
+        for (const item of items) {
+            if (item.type !== NavigationPaneItemType.PROPERTY_KEY && item.type !== NavigationPaneItemType.PROPERTY_VALUE) {
+                continue;
+            }
+
+            if (item.type === NavigationPaneItemType.PROPERTY_VALUE) {
+                const parent = nodeByLevel[item.level - 1];
+                const isNestedUnderParent =
+                    parent?.key === item.data.key &&
+                    (parent.valuePath === null || item.data.valuePath?.startsWith(`${parent.valuePath}/`));
+                propertyParentByNodeId.set(item.data.id, isNestedUnderParent ? parent.id : `key:${item.data.key}`);
+            }
+            nodeByLevel[item.level] = { id: item.data.id, key: item.data.key, valuePath: item.data.valuePath };
+            nodeByLevel.length = item.level + 1;
+        }
+
         const childIdsByParent = collectSiblingKeysByParent({
             items,
             includeItem: item =>
@@ -572,13 +590,13 @@ export function buildPropertyRainbowColors(params: {
                 item.type === NavigationPaneItemType.PROPERTY_KEY || item.type === NavigationPaneItemType.PROPERTY_VALUE
                     ? item.data.id
                     : undefined,
-            getParentKey: (item, _nodeId) => {
+            getParentKey: (item, nodeId) => {
                 if (item.type === NavigationPaneItemType.PROPERTY_KEY) {
                     return '__root__';
                 }
 
                 if (item.type === NavigationPaneItemType.PROPERTY_VALUE) {
-                    return `key:${item.data.key}`;
+                    return propertyParentByNodeId.get(nodeId) ?? `key:${item.data.key}`;
                 }
 
                 return '__root__';

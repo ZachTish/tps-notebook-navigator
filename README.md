@@ -2,7 +2,7 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: **8.0.2** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.0.2.md) record the test-vault validation and BRAT handoff.
+Current release: **8.1.0** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.1.0.md) record the test-vault validation and BRAT handoff.
 
 ## Install with BRAT
 
@@ -317,3 +317,11 @@ The change adds no settings, schema migration, writer, timer, or vault scan. Min
 When New note is used on a property value, Navigator now checks GCM's configured property type before publishing the note. A list property writes its selected value as a one-element YAML list in the initial file content. This applies to the Properties tree, property shortcuts and a sole-property Filter Search such as `.kind=task/todo`. Previously these creation routes wrote a scalar even though dropping that same value onto an existing note already used GCM's list type. Key-only selection still creates an empty property; selector, checkbox and unconfigured fields retain their prior scalar/boolean behavior. No post-create repair, settings field, note migration or extra writer is added.
 
 This is a backward-compatible patch with the same minimum Obsidian 1.11.0. Focused tests cover configured lists under different key names, an empty list key, unchanged scalar creation, atomic initial payloads, and slash-valued property searches. Full validation and Test-vault verification are recorded in [8.0.2 release notes](release-notes/8.0.2.md). Production installation remains the user's BRAT pull.
+
+## 8.1.0 — Nested property values
+
+The Properties tree now presents plain slash-delimited values as segments, like nested tags. For example, `kind: entity/food/transaction` appears as **kind → entity → food → transaction**. Parent rows are virtual unless a note actually has that parent value; no frontmatter is rewritten. Each row keeps its full value path as its identity, so existing shortcuts, colors, icons, selection, drag/drop, and note creation still address the intended value. Clicking a parent follows the existing **Include descendant notes** preference; turning that preference off selects only notes authored with the exact parent value. Property values that are links or URLs stay one row instead of being split at their slashes.
+
+Tree expansion, keyboard navigation, reveal, counts, ordering, property menus, shortcuts, and selected-list breadcrumbs now follow actual parent rows. The same hierarchy is available on mobile without a new settings control or persisted schema. Synthetic parents can be selected and used to create a note with that parent value; they do not themselves modify existing notes. Property-note name matching retains its existing full-value convention, so a nested value does not automatically link to a note named only after its final segment. Typed property searches retain their existing substring behavior; navigation-generated filters use the selected node's scope.
+
+The change adds no writer, watcher, migration, or additional vault scan. It is a backward-compatible minor release with the same Obsidian 1.11.0 minimum. Tests, Test-vault validation, and artifact hashes are recorded in [8.1.0 release notes](release-notes/8.1.0.md). A production update is separate from the Test-vault build.

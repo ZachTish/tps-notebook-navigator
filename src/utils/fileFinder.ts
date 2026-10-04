@@ -759,7 +759,7 @@ export function getFilesForProperty(
                     continue;
                 }
 
-                if (matchesPropertyValuePath(normalizedEntryValue, normalizedValue)) {
+                if (matchesPropertyValuePath(normalizedEntryValue, normalizedValue, visibility.includeDescendantNotes, entry.value)) {
                     return true;
                 }
             }

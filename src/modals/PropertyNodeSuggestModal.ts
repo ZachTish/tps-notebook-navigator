@@ -44,15 +44,19 @@ export function buildPropertyNodeSuggestions(propertyTree: ReadonlyMap<string, P
             noteCount: getDirectPropertyKeyNoteCount(keyNode)
         });
 
-        const valueNodes = Array.from(keyNode.children.values()).sort((a, b) => naturalCompare(a.displayPath, b.displayPath));
-        valueNodes.forEach(valueNode => {
-            suggestions.push({
-                nodeId: valueNode.id,
-                label: `${keyNode.displayPath}: ${valueNode.displayPath}`,
-                searchText: `${keyNode.displayPath} ${valueNode.displayPath}`,
-                noteCount: valueNode.notesWithValue.size
+        const appendValueSuggestions = (parentNode: PropertyTreeNode): void => {
+            const valueNodes = Array.from(parentNode.children.values()).sort((a, b) => naturalCompare(a.displayPath, b.displayPath));
+            valueNodes.forEach(valueNode => {
+                suggestions.push({
+                    nodeId: valueNode.id,
+                    label: `${keyNode.displayPath}: ${valueNode.displayPath}`,
+                    searchText: `${keyNode.displayPath} ${valueNode.displayPath}`,
+                    noteCount: valueNode.notesWithValue.size
+                });
+                appendValueSuggestions(valueNode);
             });
-        });
+        };
+        appendValueSuggestions(keyNode);
     });
 
     return suggestions;

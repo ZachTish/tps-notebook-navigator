@@ -71,7 +71,7 @@ describe('PropertyTreeService', () => {
         const work = createValueNode('status', 'work', 'Work', ['b.md']);
         const done = createValueNode('status', 'work/done', 'Work/Done', ['c.md']);
         statusKey.children.set(work.id, work);
-        statusKey.children.set(done.id, done);
+        work.children.set(done.id, done);
 
         service.updatePropertyTree(new Map([[statusKey.key, statusKey]]));
 
@@ -89,14 +89,16 @@ describe('PropertyTreeService', () => {
         const work = createValueNode('status', 'work', 'Work', ['b.md']);
         const done = createValueNode('status', 'work/done', 'Work/Done', ['c.md']);
         statusKey.children.set(work.id, work);
-        statusKey.children.set(done.id, done);
+        work.children.set(done.id, done);
 
         service.updatePropertyTree(new Map([[statusKey.key, statusKey]]));
 
         expect(service.collectFilePaths(statusKey.id, false)).toEqual(new Set(['a.md']));
         expect(service.collectFilePaths(statusKey.id, true)).toEqual(new Set(['a.md', 'b.md', 'c.md']));
         expect(service.collectFilePaths(work.id, false)).toEqual(new Set(['b.md']));
-        expect(service.collectFilePaths(work.id, true)).toEqual(new Set(['b.md']));
+        expect(service.collectFilePaths(work.id, true)).toEqual(new Set(['b.md', 'c.md']));
+        expect(service.collectFilePaths(work.id, false)).toEqual(new Set(['b.md']));
+        expect(service.findNode(done.id)).toBe(done);
         expect(service.collectFilePaths('key:missing', true)).toEqual(new Set());
     });
 

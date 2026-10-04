@@ -20,16 +20,61 @@ import { describe, expect, it, vi } from 'vitest';
 import { TFolder } from 'obsidian';
 import type { ExpansionAction } from '../../src/context/ExpansionContext';
 import { NavigationPaneItemType, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
-import type { VirtualFolderItem } from '../../src/types/virtualization';
+import type { CombinedNavigationItem, VirtualFolderItem } from '../../src/types/virtualization';
+import type { PropertyTreeNode } from '../../src/types/storage';
+import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import {
     getFolderAncestorPaths,
     getNavigationExpansionTargetForItem,
+    getPropertyAncestorNodeIds,
     isFolderEffectivelyExpanded,
     isFolderExpansionLocked,
     toggleNavigationExpansionTarget
 } from '../../src/utils/navigationExpansion';
 
 describe('navigationExpansion', () => {
+    it('keeps the actual nested property branch without inventing parents for a slash-containing link', () => {
+        const keyId = buildPropertyKeyNodeId('kind');
+        const entityId = buildPropertyValueNodeId('kind', 'entity');
+        const foodId = buildPropertyValueNodeId('kind', 'entity/food');
+        const leafId = buildPropertyValueNodeId('kind', 'entity/food/transaction');
+        const makeNode = (id: PropertyTreeNode['id'], valuePath: string | null): PropertyTreeNode => ({
+            id,
+            kind: valuePath ? 'value' : 'key',
+            key: 'kind',
+            valuePath,
+            name: valuePath ?? 'kind',
+            displayPath: valuePath ?? 'kind',
+            children: new Map(),
+            notesWithValue: new Set()
+        });
+        const key = makeNode(keyId, null);
+        const entity = makeNode(entityId, 'entity');
+        const food = makeNode(foodId, 'entity/food');
+        const leaf = makeNode(leafId, 'entity/food/transaction');
+        food.children.set(leafId, leaf);
+        entity.children.set(foodId, food);
+        key.children.set(entityId, entity);
+
+        expect(getPropertyAncestorNodeIds(leafId, key)).toEqual([keyId, entityId, foodId]);
+        const leafItem: CombinedNavigationItem = {
+            type: NavigationPaneItemType.PROPERTY_VALUE,
+            data: leaf,
+            key: leafId,
+            level: 3
+        };
+        expect(getNavigationExpansionTargetForItem(leafItem, { showHiddenItems: false, showRootFolder: true, propertyKeyNode: key })).toEqual({
+            type: 'property',
+            id: leafId,
+            hasChildren: false,
+            ancestorIds: [keyId, entityId, foodId]
+        });
+
+        const linkId = buildPropertyValueNodeId('kind', 'docs/note');
+        key.children.set(linkId, makeNode(linkId, 'docs/note'));
+        expect(getPropertyAncestorNodeIds(linkId, key)).toEqual([keyId]);
+    });
+
     it('locks a hidden root open without relying on persisted expansion', () => {
         expect(isFolderExpansionLocked('/', false)).toBe(true);
         expect(isFolderEffectivelyExpanded('/', new Set(), false)).toBe(true);

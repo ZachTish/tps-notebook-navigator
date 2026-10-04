@@ -197,4 +197,62 @@ describe('fileItemPillDecoration', () => {
         expect(colors.colorsByNodeId.get('key:status=done')).toBe(palette[0]);
         expect(colors.colorsByNodeId.get('key:status=todo')).toBe(palette[palette.length - 1]);
     });
+
+    it('builds nested property colors from each level of the full tree', () => {
+        const palette = createPalette();
+        const transaction = createPropertyNode({
+            id: 'key:kind=entity/food/transaction',
+            kind: 'value',
+            key: 'kind',
+            valuePath: 'entity/food/transaction',
+            name: 'transaction'
+        });
+        const food = createPropertyNode({
+            id: 'key:kind=entity/food',
+            kind: 'value',
+            key: 'kind',
+            valuePath: 'entity/food',
+            name: 'food',
+            children: [transaction]
+        });
+        const physical = createPropertyNode({
+            id: 'key:kind=entity/physical',
+            kind: 'value',
+            key: 'kind',
+            valuePath: 'entity/physical',
+            name: 'physical'
+        });
+        const entity = createPropertyNode({
+            id: 'key:kind=entity',
+            kind: 'value',
+            key: 'kind',
+            valuePath: 'entity',
+            name: 'entity',
+            children: [physical, food]
+        });
+        const keyNode = createPropertyNode({
+            id: 'key:kind',
+            kind: 'key',
+            key: 'kind',
+            valuePath: null,
+            name: 'kind',
+            children: [entity]
+        });
+        const colors = buildFileItemPropertyRainbowColors({
+            propertyTree: new Map([['kind', keyNode]]),
+            visiblePropertyNavigationKeySet: new Set(['kind']),
+            rootPropertyOrderMap: new Map(),
+            propertyKeyComparator: (a, b) => a.key.localeCompare(b.key),
+            palette,
+            scope: 'child',
+            showAllPropertiesFolder: false,
+            propertySortOrder: 'alpha-asc',
+            includeDescendantNotes: false
+        });
+
+        expect(colors.colorsByNodeId.get(entity.id)).toBe(palette[0]);
+        expect(colors.colorsByNodeId.get(food.id)).toBe(palette[0]);
+        expect(colors.colorsByNodeId.get(physical.id)).toBe(palette[palette.length - 1]);
+        expect(colors.colorsByNodeId.get(transaction.id)).toBe(palette[0]);
+    });
 });

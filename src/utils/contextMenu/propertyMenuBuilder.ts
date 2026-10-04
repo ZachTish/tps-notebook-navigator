@@ -21,6 +21,7 @@ import { resolveFolderNoteDefaultOpenContext } from '../keyboardOpenContext';
 
 import { MenuItem, TFile } from 'obsidian';
 import type { PropertyMenuBuilderParams } from './menuTypes';
+import type { PropertyTreeNode } from '../../types/storage';
 import { strings } from '../../i18n';
 import { ItemType, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID } from '../../types';
 import { setAsyncOnClick, setSubmenuOnClick, tryCreateSubmenu } from './menuAsyncHelpers';
@@ -31,8 +32,13 @@ import { normalizePropertyNodeId, parsePropertyNodeId } from '../propertyTree';
 import { INTERNAL_NOTEBOOK_NAVIGATOR_API } from '../../api/NotebookNavigatorAPI';
 import { selectContextMenuTarget } from './contextMenuSelection';
 
-function resolvePropertyMenuLabel(params: { propertyNodeId: string; propertyNodeName?: string; keyNodeName?: string }): string {
-    const { propertyNodeId, propertyNodeName, keyNodeName } = params;
+export function resolvePropertyMenuLabel(params: {
+    propertyNodeId: string;
+    propertyNode?: PropertyTreeNode | null;
+    keyNode?: PropertyTreeNode | null;
+}): string {
+    const { propertyNodeId, propertyNode, keyNode } = params;
+    const propertyNodeName = propertyNode?.kind === 'value' ? propertyNode.displayPath : propertyNode?.name;
     const parsed = parsePropertyNodeId(propertyNodeId);
     if (!parsed) {
         return propertyNodeName ?? propertyNodeId;
@@ -42,7 +48,7 @@ function resolvePropertyMenuLabel(params: { propertyNodeId: string; propertyNode
         return propertyNodeName ?? parsed.key;
     }
 
-    const keyLabel = keyNodeName ?? parsed.key;
+    const keyLabel = keyNode?.name ?? parsed.key;
     const valueLabel = propertyNodeName ?? parsed.valuePath;
     return `${keyLabel} = ${valueLabel}`;
 }
@@ -147,8 +153,8 @@ export function buildPropertyMenu(params: PropertyMenuBuilderParams): void {
     const keyNode = propertyNode?.kind === 'key' ? propertyNode : propertyNode ? propertyTreeService?.getKeyNode(propertyNode.key) : null;
     const label = resolvePropertyMenuLabel({
         propertyNodeId: normalizedNodeId,
-        propertyNodeName: propertyNode?.name,
-        keyNodeName: keyNode?.name
+        propertyNode,
+        keyNode
     });
 
     if (isMobile) {

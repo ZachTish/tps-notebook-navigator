@@ -189,8 +189,11 @@ const parsePropertyFilterToken = (token: string): PropertySearchToken | null => 
         return normalizedKey ? { key: normalizedKey, value: null } : null;
     }
 
-    const rawKey = unescapePropertyFilterPart(tryUnquotePropertyFilterPart(content.slice(0, separatorIndex)));
-    const rawValue = unescapePropertyFilterPart(tryUnquotePropertyFilterPart(content.slice(separatorIndex + 1)));
+    const keyPart = content.slice(0, separatorIndex);
+    const valuePart = content.slice(separatorIndex + 1);
+    const matchMode = keyPart.endsWith('^') ? 'subtree' : valuePart.startsWith('=') ? 'exact' : undefined;
+    const rawKey = unescapePropertyFilterPart(tryUnquotePropertyFilterPart(matchMode === 'subtree' ? keyPart.slice(0, -1) : keyPart));
+    const rawValue = unescapePropertyFilterPart(tryUnquotePropertyFilterPart(matchMode === 'exact' ? valuePart.slice(1) : valuePart));
     const normalizedKey = normalizePropertyFilterKey(rawKey);
     if (!normalizedKey) {
         return null;
@@ -198,12 +201,13 @@ const parsePropertyFilterToken = (token: string): PropertySearchToken | null => 
 
     const normalizedValue = normalizePropertyFilterValue(rawValue);
     if (!normalizedValue) {
-        return { key: normalizedKey, value: '' };
+        return matchMode ? { key: normalizedKey, value: '', matchMode } : { key: normalizedKey, value: '' };
     }
 
     return {
         key: normalizedKey,
-        value: normalizedValue
+        value: normalizedValue,
+        ...(matchMode ? { matchMode } : {})
     };
 };
 
@@ -211,7 +215,8 @@ const foldPropertySearchToken = (token: PropertySearchToken): PropertySearchToke
     // Property tokens are folded once during parsing so matching can stay on pre-normalized values.
     return {
         key: foldSearchText(token.key),
-        value: token.value === null ? null : foldSearchText(token.value)
+        value: token.value === null ? null : foldSearchText(token.value),
+        ...(token.matchMode ? { matchMode: token.matchMode } : {})
     };
 };
 
@@ -1339,7 +1344,8 @@ const formatPropertyTokenForQuery = (propertyToken: PropertySearchToken, negated
     }
 
     const serializedValue = formatPropertyFilterPartForQuery(propertyToken.value);
-    return `${prefix}${serializedKey}=${serializedValue}`;
+    const operator = propertyToken.matchMode === 'subtree' ? '^=' : propertyToken.matchMode === 'exact' ? '==' : '=';
+    return `${prefix}${serializedKey}${operator}${serializedValue}`;
 };
 
 // Filter prefixes that must stay outside the quotes when a re-serialized payload needs quoting.
@@ -1534,7 +1540,8 @@ export function updateFilterQueryWithProperty(
     query: string,
     key: string,
     value: string | null,
-    operator: InclusionOperator
+    operator: InclusionOperator,
+    matchMode?: PropertySearchToken['matchMode']
 ): UpdateFilterQueryWithPropertyResult {
     const trimmed = query.trim();
     const normalizedKey = normalizePropertyFilterKey(key);
@@ -1552,7 +1559,11 @@ export function updateFilterQueryWithProperty(
         normalizedValue = normalizedCandidate;
     }
 
-    const propertyToken: PropertySearchToken = { key: normalizedKey, value: normalizedValue };
+    const propertyToken: PropertySearchToken = {
+        key: normalizedKey,
+        value: normalizedValue,
+        ...(normalizedValue !== null && matchMode ? { matchMode } : {})
+    };
     const formattedToken = formatPropertyTokenForQuery(propertyToken);
     const tokens = trimmed.length > 0 ? tokenizeFilterSearchQuery(trimmed) : [];
     const tagOnlyQuery = isTagOnlyMutationQuery(trimmed);
@@ -1571,7 +1582,7 @@ export function updateFilterQueryWithProperty(
         }
         const parsedKey = foldSearchText(parsed.key);
         const parsedValue = parsed.value === null ? null : foldSearchText(parsed.value);
-        return parsedKey === foldedTargetKey && parsedValue === foldedTargetValue;
+        return parsedKey === foldedTargetKey && parsedValue === foldedTargetValue && parsed.matchMode === propertyToken.matchMode;
     });
 
     if (removalIndex !== -1) {

@@ -144,7 +144,7 @@ describe('search-bar navigation source of truth', () => {
             selectedType: null
         });
 
-        expect(query).toBe('type:structural:task .status=todo');
+        expect(query).toBe('type:structural:task .status==todo');
         expect(
             includeNavigationSelectionInSearchQuery(query, {
                 selectionType: ItemType.PROPERTY,
@@ -280,7 +280,42 @@ describe('root-scoped navigation queries', () => {
                 { ...root, selectionType: ItemType.PROPERTY, selectedProperty: buildPropertyValueNodeId('status', 'in progress') },
                 true
             )
-        ).toBe('.status="in progress"');
+        ).toBe('.status=="in progress"');
+    });
+
+    it('uses a slash-boundary subtree query for an expanded property parent and an exact query for a leaf', () => {
+        const parentId = buildPropertyValueNodeId('kind', 'entity');
+        const childId = buildPropertyValueNodeId('kind', 'entity/physical');
+        const parent = { id: parentId, children: new Map([[childId, { id: childId }]]) } as PropertyTreeNode;
+        const child = { id: childId, children: new Map() } as PropertyTreeNode;
+        const propertyTreeProvider = {
+            findNode: (nodeId: string) => (nodeId === parentId ? parent : nodeId === childId ? child : null)
+        };
+
+        expect(
+            getNavigationSearchQuery(
+                { ...root, selectionType: ItemType.PROPERTY, selectedProperty: parentId },
+                true,
+                true,
+                propertyTreeProvider
+            )
+        ).toBe('.kind^=entity');
+        expect(
+            getNavigationSearchQuery(
+                { ...root, selectionType: ItemType.PROPERTY, selectedProperty: parentId },
+                false,
+                true,
+                propertyTreeProvider
+            )
+        ).toBe('.kind==entity');
+        expect(
+            getNavigationSearchQuery(
+                { ...root, selectionType: ItemType.PROPERTY, selectedProperty: childId },
+                true,
+                true,
+                propertyTreeProvider
+            )
+        ).toBe('.kind==entity/physical');
     });
 
     it('represents file and structural types using the existing filter grammar', () => {

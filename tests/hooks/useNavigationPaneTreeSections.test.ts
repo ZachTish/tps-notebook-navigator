@@ -23,7 +23,13 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import type { NotebookNavigatorSettings } from '../../src/settings/types';
 import type { PropertyItem } from '../../src/storage/IndexedDBStorage';
-import { ALL_TAGS_TAG_ID, ItemType, NavigationPaneItemType, TAGS_ROOT_VIRTUAL_FOLDER_ID } from '../../src/types';
+import {
+    ALL_TAGS_TAG_ID,
+    ItemType,
+    NavigationPaneItemType,
+    PROPERTIES_ROOT_VIRTUAL_FOLDER_ID,
+    TAGS_ROOT_VIRTUAL_FOLDER_ID
+} from '../../src/types';
 import type { TagTreeNode, PropertyTreeNode } from '../../src/types/storage';
 import { createHiddenTagVisibility } from '../../src/utils/tagPrefixMatcher';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
@@ -485,6 +491,95 @@ describe('useNavigationPaneTreeSections', () => {
         ]);
         expect(result.propertyItems.map(item => item.key)).toEqual([buildPropertyKeyNodeId('status'), statusValueNode.id]);
         expect(result.propertyCollectionCount).toEqual({ current: 1, descendants: 0, total: 1 });
+    });
+
+    it.each([false, true])('renders nested property values only when their parents are expanded (root folder: %s)', showRootFolder => {
+        dbFileDataByPath.clear();
+
+        const transaction = createPropertyValueNode('kind', 'entity/food/transaction', 'transaction', ['transaction.md']);
+        const food = createPropertyValueNode('kind', 'entity/food', 'food', []);
+        const physical = createPropertyValueNode('kind', 'entity/physical', 'physical', ['physical.md']);
+        const entity = createPropertyValueNode('kind', 'entity', 'entity', ['entity.md']);
+        food.children.set(transaction.id, transaction);
+        entity.children.set(physical.id, physical);
+        entity.children.set(food.id, food);
+        const keyNode = createPropertyKeyNode('kind', 'kind', ['entity.md', 'physical.md', 'transaction.md'], [entity]);
+        const app = new App();
+        const settings = createSettings({
+            showTags: false,
+            showProperties: true,
+            showAllPropertiesFolder: showRootFolder,
+            showNoteCount: false,
+            scopePropertiesToCurrentContext: false
+        });
+        const sourceState = createSourceState({
+            propertyTree: new Map([['kind', keyNode]]),
+            visiblePropertyNavigationKeySet: new Set(['kind'])
+        });
+        let expandedProperties = new Set<string>();
+        let captured: NavigationPaneTreeSectionsResult | undefined;
+
+        function Harness() {
+            captured = useNavigationPaneTreeSections({
+                app,
+                settings,
+                expansionState: {
+                    expandedFolders: new Set(),
+                    expandedTags: new Set(),
+                    expandedProperties,
+                    expandedVirtualFolders: showRootFolder ? new Set([PROPERTIES_ROOT_VIRTUAL_FOLDER_ID]) : new Set()
+                },
+                showHiddenItems: false,
+                includeDescendantNotes: true,
+                sourceState,
+                selectionScope: { selectionType: ItemType.FOLDER, selectedFolder: null },
+                tagTreeService: null,
+                propertyTreeService: null
+            });
+            return null;
+        }
+
+        const renderedRows = (expandedNodeIds: string[]) => {
+            expandedProperties = new Set(expandedNodeIds);
+            renderToStaticMarkup(React.createElement(Harness));
+            return captured!.propertyItems.map(item => {
+                if (!('level' in item)) {
+                    throw new Error('Expected a property navigation row');
+                }
+                return { type: item.type, key: item.key, level: item.level };
+            });
+        };
+        const offset = showRootFolder ? 1 : 0;
+        const rootRow = showRootFolder
+            ? [{ type: NavigationPaneItemType.VIRTUAL_FOLDER, key: PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, level: 0 }]
+            : [];
+        const keyRow = { type: NavigationPaneItemType.PROPERTY_KEY, key: keyNode.id, level: offset };
+        const entityRow = { type: NavigationPaneItemType.PROPERTY_VALUE, key: entity.id, level: offset + 1 };
+        const foodRow = { type: NavigationPaneItemType.PROPERTY_VALUE, key: food.id, level: offset + 2 };
+        const physicalRow = { type: NavigationPaneItemType.PROPERTY_VALUE, key: physical.id, level: offset + 2 };
+        const transactionRow = { type: NavigationPaneItemType.PROPERTY_VALUE, key: transaction.id, level: offset + 3 };
+
+        expect(renderedRows([])).toEqual([...rootRow, keyRow]);
+        expect(renderedRows([keyNode.id])).toEqual([...rootRow, keyRow, entityRow]);
+        expect(renderedRows([keyNode.id, entity.id])).toEqual([...rootRow, keyRow, entityRow, foodRow, physicalRow]);
+        expect(renderedRows([keyNode.id, entity.id, food.id])).toEqual([
+            ...rootRow,
+            keyRow,
+            entityRow,
+            foodRow,
+            transactionRow,
+            physicalRow
+        ]);
+
+        settings.propertyTreeSortOverrides = { [entity.id]: 'alpha-desc' };
+        expect(renderedRows([keyNode.id, entity.id, food.id])).toEqual([
+            ...rootRow,
+            keyRow,
+            entityRow,
+            physicalRow,
+            foodRow,
+            transactionRow
+        ]);
     });
 
     it('keeps scoped property rendering empty when no navigation property keys are enabled', () => {

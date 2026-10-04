@@ -76,7 +76,7 @@ import {
     isFolderEffectivelyExpanded,
     toggleNavigationExpansionTarget
 } from '../../utils/navigationExpansion';
-import type { TagTreeNode } from '../../types/storage';
+import type { PropertyTreeNode, TagTreeNode } from '../../types/storage';
 import { normalizeNavigationSectionOrderInput } from '../../utils/navigationSections';
 import { usesMobileChrome } from '../../utils/paneLayout';
 import { getActiveVaultProfile } from '../../utils/vaultProfiles';
@@ -644,11 +644,17 @@ export const NavigationPane = React.memo(
             }
 
             if (existingPropertyNodeIds) {
+                const visitedPropertyNodes = new Set<PropertyTreeNode>();
+                const collectPropertyNodeIds = (node: PropertyTreeNode): void => {
+                    if (visitedPropertyNodes.has(node)) {
+                        return;
+                    }
+                    visitedPropertyNodes.add(node);
+                    existingPropertyNodeIds.add(node.id);
+                    node.children.forEach(collectPropertyNodeIds);
+                };
                 fileData.propertyTree.forEach(keyNode => {
-                    existingPropertyNodeIds.add(keyNode.id);
-                    keyNode.children.forEach(valueNode => {
-                        existingPropertyNodeIds.add(valueNode.id);
-                    });
+                    collectPropertyNodeIds(keyNode);
                 });
             }
 
@@ -1053,7 +1059,15 @@ export const NavigationPane = React.memo(
                 return false;
             }
 
-            const target = getNavigationExpansionTargetForItem(item, { showHiddenItems, showRootFolder: settings.showRootFolder });
+            const propertyKeyNode =
+                item.type === NavigationPaneItemType.PROPERTY_KEY || item.type === NavigationPaneItemType.PROPERTY_VALUE
+                    ? propertyTreeService?.getKeyNode(item.data.key)
+                    : null;
+            const target = getNavigationExpansionTargetForItem(item, {
+                showHiddenItems,
+                showRootFolder: settings.showRootFolder,
+                propertyKeyNode
+            });
             return target
                 ? toggleNavigationExpansionTarget(target, expansionState, expansionDispatch, 'toggle', {
                       collapseOtherBranches: settings.collapseOtherBranchesOnExpand
@@ -1063,6 +1077,7 @@ export const NavigationPane = React.memo(
             expansionDispatch,
             expansionState,
             getSelectedRenderedItem,
+            propertyTreeService,
             settings.collapseOtherBranchesOnExpand,
             settings.showRootFolder,
             showHiddenItems

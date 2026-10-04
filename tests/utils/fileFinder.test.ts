@@ -28,7 +28,7 @@ import type { FileData, PropertyItem } from '../../src/storage/IndexedDBStorage'
 import { FILE_VISIBILITY } from '../../src/utils/fileTypeUtils';
 import { getFilesForFolder, getFilesForProperty, getFilesForTag } from '../../src/utils/fileFinder';
 import { markFrontmatterMetadataCacheCurrent } from '../../src/utils/frontmatterMetadataCache';
-import { buildPropertyKeyNodeId } from '../../src/utils/propertyTree';
+import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { setActivePropertyFields } from '../../src/utils/vaultProfiles';
 import { createTestTFile } from './createTestTFile';
 
@@ -438,6 +438,61 @@ describe('fileFinder getFilesForTag', () => {
 describe('fileFinder getFilesForProperty', () => {
     beforeEach(() => {
         fileDataByPath.clear();
+    });
+
+    it('matches a selected value exactly or with descendants in the fallback file scan', () => {
+        const parent = createTestTFile('notes/parent.md');
+        const child = createTestTFile('notes/child.md');
+        const sibling = createTestTFile('notes/sibling.md');
+        setFileProperties(parent, [{ fieldKey: 'kind', value: 'entity/food' }]);
+        setFileProperties(child, [{ fieldKey: 'kind', value: 'entity/food/transaction' }]);
+        setFileProperties(sibling, [{ fieldKey: 'kind', value: 'entity/account' }]);
+        const settings = createSettings();
+        setActivePropertyFields(settings, 'kind');
+        const app = createAppWithFiles([parent, child, sibling]);
+        const selection = buildPropertyValueNodeId('kind', 'entity/food');
+
+        expect(
+            getFilesForProperty(selection, settings, { includeDescendantNotes: false, showHiddenItems: false }, app, null, {
+                orderResults: false
+            }).map(file => file.path)
+        ).toEqual([parent.path]);
+        expect(
+            getFilesForProperty(selection, settings, { includeDescendantNotes: true, showHiddenItems: false }, app, null, {
+                orderResults: false
+            }).map(file => file.path)
+        ).toEqual([parent.path, child.path]);
+    });
+
+    it('keeps slash-containing URLs and wiki links atomic in the fallback file scan', () => {
+        const url = createTestTFile('notes/url.md');
+        const link = createTestTFile('notes/link.md');
+        setFileProperties(url, [{ fieldKey: 'source', value: 'https://example.com/a/b' }]);
+        setFileProperties(link, [{ fieldKey: 'source', value: '[[folder/note]]' }]);
+        const settings = createSettings();
+        setActivePropertyFields(settings, 'source');
+        const app = createAppWithFiles([url, link]);
+
+        expect(
+            getFilesForProperty(
+                buildPropertyValueNodeId('source', 'https://example.com/a'),
+                settings,
+                { includeDescendantNotes: true, showHiddenItems: false },
+                app,
+                null,
+                { orderResults: false }
+            )
+        ).toEqual([]);
+        expect(
+            getFilesForProperty(
+                buildPropertyValueNodeId('source', 'folder'),
+                settings,
+                { includeDescendantNotes: true, showHiddenItems: false },
+                app,
+                null,
+                { orderResults: false }
+            )
+        ).toEqual([]);
     });
 
     it('returns every note containing a property key regardless of its value', () => {

@@ -95,6 +95,12 @@ export const propertyTokenMatches = (propertiesByKey: Map<string, string[]>, tok
     if (propertyValue.length === 0) {
         return values.length === 0;
     }
+    if (token.matchMode === 'exact') {
+        return values.some(value => value === propertyValue);
+    }
+    if (token.matchMode === 'subtree') {
+        return values.some(value => value === propertyValue || value.startsWith(`${propertyValue}/`));
+    }
     return values.some(value => value.includes(propertyValue));
 };
 
@@ -225,7 +231,7 @@ const buildTagExpression = (classifiedTokens: readonly TagModeToken[]): TagExpre
             }
             // Presence (`.key`) and exact-empty (`.key=`) are distinct operands. Keep the
             // nullable value in the identity so neither form can deduplicate the other.
-            const propertyKey = JSON.stringify([token.value.key, token.value.value]);
+            const propertyKey = JSON.stringify([token.value.key, token.value.value, token.value.matchMode ?? 'contains']);
             if (!positiveProperties.has(propertyKey)) {
                 positiveProperties.set(propertyKey, token.value);
             }

@@ -60,6 +60,7 @@ import {
     updateFilterQueryWithType,
     updateFilterQueryWithTypeSelection,
     type InclusionOperator,
+    type PropertySearchToken,
     type ParseFilterSearchOptions
 } from '../utils/filterSearch';
 import { showNotice } from '../utils/noticeUtils';
@@ -83,6 +84,7 @@ interface ExecuteSearchShortcutParams {
 
 export interface SearchQueryUpdateOptions {
     focusSearch?: boolean;
+    propertyMatchMode?: PropertySearchToken['matchMode'];
 }
 
 type SearchTruthSelection = Pick<ReturnType<typeof useSelectionState>, 'selectionType' | 'selectedTag' | 'selectedType'> & {
@@ -93,7 +95,9 @@ type SearchTruthSelection = Pick<ReturnType<typeof useSelectionState>, 'selectio
 export function includeNavigationSelectionInSearchQuery(
     query: string,
     selection: SearchTruthSelection,
-    typesNavigationEnabled = true
+    typesNavigationEnabled = true,
+    includeDescendants = false,
+    propertyTreeProvider?: Pick<IPropertyTreeProvider, 'findNode'> | null
 ): string {
     const tokens = parseFilterSearchTokens(query, { typesNavigationEnabled });
     if (selection.selectionType === ItemType.TAG && selection.selectedTag) {
@@ -116,8 +120,12 @@ export function includeNavigationSelectionInSearchQuery(
         const property = selection.selectedProperty ? parsePropertyNodeId(selection.selectedProperty) : null;
         if (!property) return query.trim();
         const searchValue = property.valuePath;
-        const alreadyIncluded = tokens.propertyTokens.some(token => token.key === property.key && token.value === searchValue);
-        return alreadyIncluded ? query.trim() : updateFilterQueryWithProperty(query, property.key, searchValue, 'AND').query;
+        const selectedNode = selection.selectedProperty ? propertyTreeProvider?.findNode(selection.selectedProperty) : null;
+        const matchMode = searchValue === null ? undefined : includeDescendants && selectedNode?.children.size ? 'subtree' : 'exact';
+        const alreadyIncluded = tokens.propertyTokens.some(
+            token => token.key === property.key && token.value === searchValue && token.matchMode === matchMode
+        );
+        return alreadyIncluded ? query.trim() : updateFilterQueryWithProperty(query, property.key, searchValue, 'AND', matchMode).query;
     }
     if (typesNavigationEnabled && selection.selectionType === ItemType.TYPE && selection.selectedType) {
         return tokens.typeTokens.includes(selection.selectedType)
@@ -143,15 +151,22 @@ export function getTypeFacetQueryWithNavigationSelection(
 }
 
 /** Makes the query shown when Search opens fully describe the active navigation scope. */
-export function getSearchActivationQuery(query: string, selection: SearchTruthSelection, typesNavigationEnabled = true): string {
-    return includeNavigationSelectionInSearchQuery(query, selection, typesNavigationEnabled);
+export function getSearchActivationQuery(
+    query: string,
+    selection: SearchTruthSelection,
+    typesNavigationEnabled = true,
+    includeDescendants = false,
+    propertyTreeProvider?: Pick<IPropertyTreeProvider, 'findNode'> | null
+): string {
+    return includeNavigationSelectionInSearchQuery(query, selection, typesNavigationEnabled, includeDescendants, propertyTreeProvider);
 }
 
 /** null means the list is already rooted; an empty query means an aggregate tree root. */
 export function getNavigationSearchQuery(
     selection: SearchTruthSelection & { selectedFolder?: { path: string } | null },
     includeDescendants: boolean,
-    typesNavigationEnabled = true
+    typesNavigationEnabled = true,
+    propertyTreeProvider?: Pick<IPropertyTreeProvider, 'findNode'> | null
 ): string | null {
     if (selection.selectionType === ItemType.FOLDER) {
         const path = selection.selectedFolder?.path;
@@ -159,7 +174,7 @@ export function getNavigationSearchQuery(
         // Keep the prefix outside quotes so paths containing spaces remain folder filters.
         return `folder:${JSON.stringify(`/${path}${includeDescendants ? '/**' : ''}`)}`;
     }
-    return getSearchActivationQuery('', selection, typesNavigationEnabled);
+    return getSearchActivationQuery('', selection, typesNavigationEnabled, includeDescendants, propertyTreeProvider);
 }
 
 interface UseListPaneSearchParams {
@@ -356,7 +371,8 @@ export function useListPaneSearch({
     const navigationSearchQuery = getNavigationSearchQuery(
         selectionState,
         resolveSelectionIncludeDescendants(settings, selectionState, uxPreferences.includeDescendantNotes),
-        settings.tpsFileTypesNavigationEnabled
+        settings.tpsFileTypesNavigationEnabled,
+        propertyTreeService
     );
     useLayoutEffect(() => {
         if (navigationSearchQuery === null) return;
@@ -671,8 +687,16 @@ export function useListPaneSearch({
     );
 
     const openSearchWithNavigationSelection = useCallback(() => {
-        updateSearchQuery(query => getSearchActivationQuery(query, selectionState, settings.tpsFileTypesNavigationEnabled));
-    }, [selectionState, settings.tpsFileTypesNavigationEnabled, updateSearchQuery]);
+        updateSearchQuery(query =>
+            getSearchActivationQuery(
+                query,
+                selectionState,
+                settings.tpsFileTypesNavigationEnabled,
+                resolveSelectionIncludeDescendants(settings, selectionState, uxPreferences.includeDescendantNotes),
+                propertyTreeService
+            )
+        );
+    }, [propertyTreeService, selectionState, settings, updateSearchQuery, uxPreferences.includeDescendantNotes]);
 
     const handleSearchToggle = useCallback(() => {
         if (!isSearchActive) {
@@ -693,14 +717,20 @@ export function useListPaneSearch({
             updateSearchQuery(
                 query =>
                     updateFilterQueryWithTag(
-                        includeNavigationSelectionInSearchQuery(query, selectionState, settings.tpsFileTypesNavigationEnabled),
+                        includeNavigationSelectionInSearchQuery(
+                            query,
+                            selectionState,
+                            settings.tpsFileTypesNavigationEnabled,
+                            resolveSelectionIncludeDescendants(settings, selectionState, uxPreferences.includeDescendantNotes),
+                            propertyTreeService
+                        ),
                         normalizedTag,
                         operator
                     ).query,
                 options
             );
         },
-        [selectionState, settings.tpsFileTypesNavigationEnabled, updateSearchQuery]
+        [propertyTreeService, selectionState, settings, updateSearchQuery, uxPreferences.includeDescendantNotes]
     );
 
     const modifySearchWithProperty = useCallback(
@@ -713,15 +743,22 @@ export function useListPaneSearch({
             updateSearchQuery(
                 query =>
                     updateFilterQueryWithProperty(
-                        includeNavigationSelectionInSearchQuery(query, selectionState, settings.tpsFileTypesNavigationEnabled),
+                        includeNavigationSelectionInSearchQuery(
+                            query,
+                            selectionState,
+                            settings.tpsFileTypesNavigationEnabled,
+                            resolveSelectionIncludeDescendants(settings, selectionState, uxPreferences.includeDescendantNotes),
+                            propertyTreeService
+                        ),
                         normalizedKey,
                         value,
-                        operator
+                        operator,
+                        options?.propertyMatchMode
                     ).query,
                 options
             );
         },
-        [selectionState, settings.tpsFileTypesNavigationEnabled, updateSearchQuery]
+        [propertyTreeService, selectionState, settings, updateSearchQuery, uxPreferences.includeDescendantNotes]
     );
 
     const modifySearchWithType = useCallback(
@@ -760,13 +797,19 @@ export function useListPaneSearch({
             updateSearchQuery(
                 query =>
                     updateFilterQueryWithDateToken(
-                        includeNavigationSelectionInSearchQuery(query, selectionState, settings.tpsFileTypesNavigationEnabled),
+                        includeNavigationSelectionInSearchQuery(
+                            query,
+                            selectionState,
+                            settings.tpsFileTypesNavigationEnabled,
+                            resolveSelectionIncludeDescendants(settings, selectionState, uxPreferences.includeDescendantNotes),
+                            propertyTreeService
+                        ),
                         normalizedToken
                     ).query,
                 options
             );
         },
-        [plugin, searchProvider, selectionState, settings.tpsFileTypesNavigationEnabled, updateSearchQuery]
+        [plugin, propertyTreeService, searchProvider, selectionState, settings, updateSearchQuery, uxPreferences.includeDescendantNotes]
     );
 
     const waitForNextFrame = useCallback(() => {
@@ -863,7 +906,8 @@ export function useListPaneSearch({
                           },
                           uxPreferences.includeDescendantNotes
                       ),
-                      settings.tpsFileTypesNavigationEnabled
+                      settings.tpsFileTypesNavigationEnabled,
+                      propertyTreeService
                   )
                 : null;
             const visibleQuery = [startQuery, normalizedQuery].filter(Boolean).join(' ');

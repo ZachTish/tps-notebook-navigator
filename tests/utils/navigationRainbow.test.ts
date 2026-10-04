@@ -400,6 +400,27 @@ describe('navigationRainbow', () => {
         expect(propertyRainbow.colorsByNodeId.has('key:status=done')).toBe(true);
     });
 
+    it('colors nested property values within their own sibling groups', () => {
+        const palette = ['#111111', '#222222', '#333333'];
+        const items: CombinedNavigationItem[] = [
+            createPropertyKeyItem('key:kind', 'kind', 0),
+            createPropertyValueItem('key:kind=entity', 'kind', 'entity', 1),
+            createPropertyValueItem('key:kind=entity/food', 'kind', 'entity/food', 2),
+            createPropertyValueItem('key:kind=entity/food/transaction', 'kind', 'entity/food/transaction', 3),
+            createPropertyValueItem('key:kind=entity/physical', 'kind', 'entity/physical', 2),
+            createPropertyValueItem('key:kind=task', 'kind', 'task', 1)
+        ];
+
+        const colors = buildPropertyRainbowColors({ items, palette, scope: 'child', showAllPropertiesFolder: false });
+
+        expect(colors.colorsByNodeId.has('key:kind')).toBe(false);
+        expect(colors.colorsByNodeId.get('key:kind=entity')).toBe(palette[0]);
+        expect(colors.colorsByNodeId.get('key:kind=task')).toBe(palette[palette.length - 1]);
+        expect(colors.colorsByNodeId.get('key:kind=entity/food')).toBe(palette[0]);
+        expect(colors.colorsByNodeId.get('key:kind=entity/physical')).toBe(palette[palette.length - 1]);
+        expect(colors.colorsByNodeId.get('key:kind=entity/food/transaction')).toBe(palette[0]);
+    });
+
     it('reuses light rainbow colors in dark mode when separate theme colors are disabled', () => {
         const navRainbow = {
             mode: 'foreground' as const,

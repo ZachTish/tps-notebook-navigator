@@ -398,7 +398,7 @@ export function useNavigationPaneListSections({
                     level: itemLevel,
                     shortcut,
                     propertyNodeId: propertyNode.id,
-                    displayName: propertyNode.name
+                    displayName: propertyNode.kind === 'value' ? propertyNode.displayPath : propertyNode.name
                 });
             }
         });

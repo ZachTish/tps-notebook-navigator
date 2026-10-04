@@ -45,6 +45,8 @@ export interface PropertySearchToken {
     key: string;
     /** null matches key presence; an empty string matches an explicitly empty value. */
     value: string | null;
+    /** Navigation-generated modes; omitted for the user's substring search syntax. */
+    matchMode?: 'exact' | 'subtree';
 }
 
 import type { TpsNavigatorTypeId } from '../types/navigatorTypes';

@@ -53,7 +53,8 @@ import { runAsyncAction } from '../utils/async';
 import { getNavigationIndex } from '../utils/navigationIndex';
 import { getFolderNote, openFolderNoteFile, revealFolderNoteInNavigator } from '../utils/folderNotes';
 import { isEnterKey, resolveFolderNoteDefaultOpenContext, resolveKeyboardEnterAction } from '../utils/keyboardOpenContext';
-import { buildPropertyKeyNodeId } from '../utils/propertyTree';
+import { buildPropertyKeyNodeId, getPropertyValueAncestorNodeIds } from '../utils/propertyTree';
+import type { PropertyTreeNode } from '../types/storage';
 import { getTagNote } from '../utils/tagNotes';
 import { openTagNoteFile, revealTagNoteInNavigator } from '../utils/tagNoteNavigation';
 import {
@@ -84,6 +85,12 @@ export const isSelectableNavigationItem = (item: CombinedNavigationItem): boolea
                 isKeyboardOnlyTypeRoot(item)))
     );
 };
+
+/** Returns the nearest actual tree parent, including for values with literal slashes. */
+export function resolvePropertyValueKeyboardParentId(valueNode: PropertyTreeNode, keyNode: PropertyTreeNode | null | undefined): string {
+    const ancestors = keyNode && valueNode.valuePath ? getPropertyValueAncestorNodeIds(keyNode, valueNode.valuePath) : [];
+    return ancestors[ancestors.length - 1] ?? buildPropertyKeyNodeId(valueNode.key);
+}
 
 function isVirtualTagCollection(item: CombinedNavigationItem): item is VirtualTagCollectionItem {
     return (
@@ -144,7 +151,7 @@ export function useNavigationPaneKeyboard({
     onStartRename,
     onResetSearchForNavigation
 }: UseNavigationPaneKeyboardProps) {
-    const { app, commandQueue, plugin } = useServices();
+    const { app, commandQueue, plugin, propertyTreeService } = useServices();
     const fileSystemOps = useFileSystemOps();
     const settings = useSettingsState();
     const uxPreferences = useUXPreferences();
@@ -308,7 +315,8 @@ export function useNavigationPaneKeyboard({
                     if (!expansionState.expandedProperties.has(propertyNode.id)) {
                         const expansionTarget = getNavigationExpansionTargetForItem(item, {
                             showHiddenItems,
-                            showRootFolder: settings.showRootFolder
+                            showRootFolder: settings.showRootFolder,
+                            propertyKeyNode: propertyTreeService?.getKeyNode(propertyNode.key)
                         });
                         if (expansionTarget) {
                             toggleNavigationExpansionTarget(expansionTarget, expansionState, expansionDispatch, 'expand', {
@@ -333,7 +341,7 @@ export function useNavigationPaneKeyboard({
                 selectionDispatch({ type: 'SET_SELECTED_TYPE', typeId: item.typeCollectionId });
             }
         },
-        [selectionDispatch, settings, expansionState, expansionDispatch, showHiddenItems, onResetSearchForNavigation]
+        [selectionDispatch, settings, expansionState, expansionDispatch, showHiddenItems, onResetSearchForNavigation, propertyTreeService]
     );
 
     /**
@@ -550,7 +558,11 @@ export function useNavigationPaneKeyboard({
 
                     const expansionTarget = getNavigationExpansionTargetForItem(item, {
                         showHiddenItems,
-                        showRootFolder: settings.showRootFolder
+                        showRootFolder: settings.showRootFolder,
+                        propertyKeyNode:
+                            item.type === NavigationPaneItemType.PROPERTY_KEY || item.type === NavigationPaneItemType.PROPERTY_VALUE
+                                ? propertyTreeService?.getKeyNode(item.data.key)
+                                : null
                     });
                     const expandedInThisAction = expansionTarget
                         ? toggleNavigationExpansionTarget(expansionTarget, expansionState, expansionDispatch, 'expand', {
@@ -583,7 +595,11 @@ export function useNavigationPaneKeyboard({
 
                     const expansionTarget = getNavigationExpansionTargetForItem(item, {
                         showHiddenItems,
-                        showRootFolder: settings.showRootFolder
+                        showRootFolder: settings.showRootFolder,
+                        propertyKeyNode:
+                            item.type === NavigationPaneItemType.PROPERTY_KEY || item.type === NavigationPaneItemType.PROPERTY_VALUE
+                                ? propertyTreeService?.getKeyNode(item.data.key)
+                                : null
                     });
                     const collapseItem = () =>
                         expansionTarget
@@ -645,7 +661,10 @@ export function useNavigationPaneKeyboard({
 
                         if (!collapseItem()) {
                             if (propertyNode.kind === 'value') {
-                                const parentNodeId = buildPropertyKeyNodeId(propertyNode.key);
+                                const parentNodeId = resolvePropertyValueKeyboardParentId(
+                                    propertyNode,
+                                    propertyTreeService?.getKeyNode(propertyNode.key)
+                                );
                                 const parentIndex = resolveIndex(parentNodeId, ItemType.PROPERTY);
                                 if (parentIndex >= 0) {
                                     const parentItem = helpers.getItemAt(parentIndex);
@@ -735,6 +754,7 @@ export function useNavigationPaneKeyboard({
             app,
             commandQueue,
             plugin,
+            propertyTreeService,
             fileSystemOps,
             virtualizer,
             includeDescendantNotes,

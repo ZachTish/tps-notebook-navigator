@@ -76,7 +76,7 @@ import {
 import { confirmRemoveAllTagsFromFiles, openAddTagToFilesModal, removeTagFromFilesWithPrompt } from '../utils/tagModalHelpers';
 import { normalizeTagPath } from '../utils/tagUtils';
 import { getTemplaterCreateNewNoteFromTemplate } from '../utils/templaterIntegration';
-import { normalizePropertyNodeId } from '../utils/propertyTree';
+import { buildPropertyValueNodeId, normalizePropertyNodeId, normalizePropertyTreeValuePath } from '../utils/propertyTree';
 import { collectFileMenuPropertyActions } from '../utils/propertyMenuActions';
 import { openMergeNotesModal } from '../utils/mergeNotesModal';
 import { getMarkdownFilesInOrder } from '../utils/noteMerge';
@@ -406,9 +406,20 @@ export const NotebookNavigatorComponent = React.memo(
 
         const handleModifySearchWithProperty = useCallback(
             (key: string, value: string | null, operator: InclusionOperator) => {
-                listPaneRef.current?.modifySearchWithProperty(key, value, operator, getNavigationSearchUpdateOptions());
+                const options = getNavigationSearchUpdateOptions();
+                if (value !== null) {
+                    const nodeId = buildPropertyValueNodeId(key, normalizePropertyTreeValuePath(value));
+                    const node = propertyTreeService?.findNode(nodeId);
+                    const includeDescendants = resolveSelectionIncludeDescendants(
+                        settings,
+                        { ...selectionState, selectionType: ItemType.PROPERTY, selectedProperty: nodeId },
+                        uxPreferences.includeDescendantNotes
+                    );
+                    options.propertyMatchMode = includeDescendants && node?.children.size ? 'subtree' : 'exact';
+                }
+                listPaneRef.current?.modifySearchWithProperty(key, value, operator, options);
             },
-            [getNavigationSearchUpdateOptions]
+            [getNavigationSearchUpdateOptions, propertyTreeService, selectionState, settings, uxPreferences.includeDescendantNotes]
         );
 
         const handleModifySearchWithType = useCallback(

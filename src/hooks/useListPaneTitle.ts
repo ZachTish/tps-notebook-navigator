@@ -34,7 +34,13 @@ import { EXCALIDRAW_BASENAME_SUFFIX } from '../utils/fileNameUtils';
 import { getVirtualTagCollection, VIRTUAL_TAG_COLLECTION_IDS } from '../utils/virtualTagCollections';
 import { getActiveHiddenFolders } from '../utils/vaultProfiles';
 import { resolveUXIcon } from '../utils/uxIcons';
-import { buildPropertyKeyNodeId, parsePropertyNodeId, type PropertySelectionNodeId } from '../utils/propertyTree';
+import {
+    buildPropertyKeyNodeId,
+    findPropertyValueNode,
+    getPropertyValueAncestorNodeIds,
+    parsePropertyNodeId,
+    type PropertySelectionNodeId
+} from '../utils/propertyTree';
 import { resolveFolderDisplayName, resolveFolderDisplayPathSegments } from '../utils/folderDisplayName';
 import { resolveRootFolderNoteSourceNames } from '../utils/folderNoteLookup';
 import { TPS_NAVIGATOR_STRUCTURAL_TYPES, type TpsNavigatorTypeDescriptor, type TpsNavigatorTypeId } from '../types/navigatorTypes';
@@ -483,15 +489,27 @@ export function useListPaneTitle(): UseListPaneTitleResult {
             const propertyTree = getPropertyTree();
             const keyNode = propertyTree.get(parsed.key) ?? null;
             const displayKey = keyNode?.name ?? parsed.key;
-            const valueNode = parsed.valuePath ? (keyNode?.children.get(propertyNodeId) ?? null) : null;
+            const valueNode = parsed.valuePath && keyNode ? findPropertyValueNode(keyNode, parsed.valuePath) : null;
             const keyNodeId = buildPropertyKeyNodeId(parsed.key);
+            const ancestorIds = parsed.valuePath && keyNode ? getPropertyValueAncestorNodeIds(keyNode, parsed.valuePath) : [keyNodeId];
+            const valueBreadcrumbs: BreadcrumbSegment[] = ancestorIds.slice(1).map(nodeId => {
+                const ancestorValuePath = parsePropertyNodeId(nodeId)?.valuePath;
+                const ancestorNode = ancestorValuePath && keyNode ? findPropertyValueNode(keyNode, ancestorValuePath) : null;
+                return {
+                    label: ancestorNode?.name ?? ancestorValuePath ?? '',
+                    targetType: 'property',
+                    targetPath: nodeId,
+                    isLast: false
+                };
+            });
 
             return {
-                desktopTitle: parsed.valuePath ? (valueNode?.displayPath ?? parsed.valuePath) : displayKey,
+                desktopTitle: parsed.valuePath ? (valueNode?.name ?? parsed.valuePath) : displayKey,
                 breadcrumbSegments: parsed.valuePath
                     ? [
                           { label: displayKey, targetType: 'property', targetPath: keyNodeId, isLast: false },
-                          { label: valueNode?.displayPath ?? parsed.valuePath, targetType: 'none', isLast: true }
+                          ...valueBreadcrumbs,
+                          { label: valueNode?.name ?? parsed.valuePath, targetType: 'none', isLast: true }
                       ]
                     : [{ label: displayKey, targetType: 'none', isLast: true }]
             };

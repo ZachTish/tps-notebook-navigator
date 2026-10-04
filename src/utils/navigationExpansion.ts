@@ -20,8 +20,9 @@ import { TFolder } from 'obsidian';
 import type { ExpansionAction } from '../context/ExpansionContext';
 import { NavigationPaneItemType, TYPES_ROOT_VIRTUAL_FOLDER_ID } from '../types';
 import type { CombinedNavigationItem } from '../types/virtualization';
+import type { PropertyTreeNode } from '../types/storage';
 import { hasSubfolders } from './fileFilters';
-import { getPropertyKeyNodeIdFromNodeId } from './propertyTree';
+import { getPropertyKeyNodeIdFromNodeId, getPropertyValueAncestorNodeIds, parsePropertyNodeId } from './propertyTree';
 
 export interface NavigationExpansionSets {
     expandedFolders: ReadonlySet<string>;
@@ -207,14 +208,19 @@ export function getTagAncestorPaths(tagPath: string): string[] {
     return ancestorPaths;
 }
 
-export function getPropertyAncestorNodeIds(propertyNodeId: string): string[] {
+export function getPropertyAncestorNodeIds(propertyNodeId: string, keyNode?: PropertyTreeNode | null): string[] {
     const keyNodeId = getPropertyKeyNodeIdFromNodeId(propertyNodeId);
-    return keyNodeId && keyNodeId !== propertyNodeId ? [keyNodeId] : [];
+    if (!keyNodeId || keyNodeId === propertyNodeId) {
+        return [];
+    }
+
+    const valuePath = parsePropertyNodeId(propertyNodeId)?.valuePath;
+    return keyNode && valuePath ? getPropertyValueAncestorNodeIds(keyNode, valuePath) : [keyNodeId];
 }
 
 export function getNavigationExpansionTargetForItem(
     item: CombinedNavigationItem,
-    options: { showHiddenItems: boolean; showRootFolder: boolean }
+    options: { showHiddenItems: boolean; showRootFolder: boolean; propertyKeyNode?: PropertyTreeNode | null }
 ): NavigationExpansionTarget | null {
     switch (item.type) {
         case NavigationPaneItemType.FOLDER:
@@ -243,7 +249,7 @@ export function getNavigationExpansionTargetForItem(
                 type: 'property',
                 id: item.data.id,
                 hasChildren: item.data.children.size > 0,
-                ancestorIds: getPropertyAncestorNodeIds(item.data.id)
+                ancestorIds: getPropertyAncestorNodeIds(item.data.id, options.propertyKeyNode)
             };
         case NavigationPaneItemType.VIRTUAL_FOLDER:
             if (

@@ -103,9 +103,9 @@ export const PropertyTreeItem = React.memo(
         };
 
         const propertyTreeSortOverrides = settings.propertyTreeSortOverrides;
-        const hasChildSortOrderOverride =
-            propertyNode.kind === 'key' &&
-            Boolean(propertyTreeSortOverrides && Object.prototype.hasOwnProperty.call(propertyTreeSortOverrides, propertyNode.id));
+        const hasChildSortOrderOverride = Boolean(
+            propertyTreeSortOverrides && Object.prototype.hasOwnProperty.call(propertyTreeSortOverrides, propertyNode.id)
+        );
         const childSortOrderOverride = hasChildSortOrderOverride ? propertyTreeSortOverrides?.[propertyNode.id] : undefined;
         const sortOrderIndicator = childSortOrderOverride === 'alpha-desc' ? '↓' : childSortOrderOverride === 'alpha-asc' ? '↑' : undefined;
 

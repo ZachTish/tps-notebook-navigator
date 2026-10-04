@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { PropertyItem, FileData } from '../src/storage/IndexedDBStorage';
 import { PROPERTIES_ROOT_VIRTUAL_FOLDER_ID } from '../src/types';
 import { DEFAULT_SETTINGS } from '../src/settings/defaultSettings';
@@ -31,8 +31,12 @@ import {
     buildPropertyValueNodeId,
     collectPropertyKeyFilePaths,
     collectPropertyValueFilePaths,
+    createConfiguredPropertyNodeValidator,
+    findPropertyValueNode,
     getDirectPropertyKeyNoteCount,
     getPropertyKeyNodeIdFromNodeId,
+    getPropertyValueAncestorNodeIds,
+    matchesPropertyValuePath,
     resolvePropertySelectionNodeId,
     getTotalPropertyNoteCount,
     normalizePropertyTreeValuePath,
@@ -93,6 +97,29 @@ function createLookupDb(files: MockFile[]) {
 }
 
 describe('buildPropertyTreeFromDatabase', () => {
+    it('builds a large nested property branch with one metadata pass and no follow-up scans for navigation', () => {
+        const files = Array.from({ length: 1_000 }, (_, index) => ({
+            path: `notes/${index}.md`,
+            data: createFileData([{ fieldKey: 'kind', value: `transaction/financial/${index % 2 ? 'investment' : 'ordinary'}` }])
+        }));
+        const forEachFile = vi.fn((callback: (path: string, data: FileData) => void) => {
+            files.forEach(file => callback(file.path, file.data));
+        });
+        const tree = buildPropertyTreeFromDatabase({ forEachFile }, { includedPropertyKeys: new Set(['kind']) });
+        const keyNode = tree.get('kind');
+        expect(keyNode).toBeDefined();
+        if (!keyNode) return;
+
+        for (let index = 0; index < 20; index++) {
+            expect(getTotalPropertyNoteCount(keyNode, 'transaction')).toBe(1_000);
+            expect(collectPropertyValueFilePaths(keyNode, 'transaction/financial/investment').size).toBe(500);
+            expect(resolvePropertySelectionNodeId(tree, buildPropertyValueNodeId('kind', 'transaction/financial'))).toBe(
+                buildPropertyValueNodeId('kind', 'transaction/financial')
+            );
+        }
+        expect(forEachFile).toHaveBeenCalledTimes(1);
+    });
+
     it('includes configured values authored only on exact task lines', () => {
         const tree = buildPropertyTreeFromDatabase(
             createMockDb([{ path: 'Tasks.md', properties: [{ fieldKey: 'Project', value: 'App support' }] }]),
@@ -116,7 +143,7 @@ describe('buildPropertyTreeFromDatabase', () => {
         expect(statusNode?.children.get(buildPropertyValueNodeId('status', 'todo'))?.notesWithValue).toEqual(new Set(['Tasks.md']));
         expect(statusNode?.children.has(buildPropertyValueNodeId('status', 'blocked'))).toBe(false);
     });
-    it('builds flat key/value nodes and preserves first-seen display casing', () => {
+    it('builds nested value nodes with stable full-path ids and first-seen display casing', () => {
         const db = createMockDb([
             {
                 path: 'notes/a.md',
@@ -137,15 +164,23 @@ describe('buildPropertyTreeFromDatabase', () => {
         expect(keyNode?.name).toBe('Status');
         expect(keyNode?.notesWithValue).toEqual(new Set(['notes/a.md', 'notes/b.md']));
 
+        const workNodeId = buildPropertyValueNodeId('status', 'work');
+        const workNode = keyNode?.children.get(workNodeId);
+        expect(workNode?.name).toBe('Work');
+        expect(workNode?.notesWithValue.size).toBe(0);
+        expect(workNode?.assignmentValue).toBeUndefined();
+
         const finishedNodeId = buildPropertyValueNodeId('status', 'work/finished');
-        const finishedNode = keyNode?.children.get(finishedNodeId);
-        expect(finishedNode?.name).toBe('Work/Finished');
+        const finishedNode = workNode?.children.get(finishedNodeId);
+        expect(finishedNode?.name).toBe('Finished');
+        expect(finishedNode?.displayPath).toBe('Work/Finished');
         expect(finishedNode?.notesWithValue).toEqual(new Set(['notes/a.md']));
 
         const startedNodeId = buildPropertyValueNodeId('status', 'work/started');
-        const startedNode = keyNode?.children.get(startedNodeId);
-        expect(startedNode?.name).toBe('work/Started');
+        const startedNode = workNode?.children.get(startedNodeId);
+        expect(startedNode?.name).toBe('Started');
         expect(startedNode?.notesWithValue).toEqual(new Set(['notes/b.md']));
+        expect(getPropertyValueAncestorNodeIds(keyNode!, 'work/finished')).toEqual([keyNode!.id, workNodeId]);
     });
 
     it('uses wiki-link display text for value node labels', () => {
@@ -166,6 +201,97 @@ describe('buildPropertyTreeFromDatabase', () => {
         expect(valueNode?.name).toBe('Tech Insights 2026 Week 7');
         expect(valueNode?.displayPath).toBe('Tech Insights 2026 Week 7');
         expect(valueNode?.assignmentValue).toBe(rawValue);
+    });
+
+    it('keeps links and URLs with slashes atomic', () => {
+        const linkedValue = '[[Projects/Alpha|Projects/Alpha]]';
+        const urlValue = 'https://example.com/projects/alpha';
+        const markdownLinkValue = '[Project/Alpha](https://example.com/projects/alpha)';
+        const tree = buildPropertyTreeFromDatabase(
+            createMockDb([
+                { path: 'linked.md', properties: [{ fieldKey: 'Project', value: linkedValue }] },
+                { path: 'url.md', properties: [{ fieldKey: 'Project', value: urlValue }] },
+                { path: 'markdown.md', properties: [{ fieldKey: 'Project', value: markdownLinkValue }] }
+            ]),
+            { includedPropertyKeys: new Set(['project']) }
+        );
+        const keyNode = tree.get('project');
+        expect(keyNode).toBeDefined();
+        if (!keyNode) return;
+
+        const linkedPath = normalizePropertyTreeValuePath(linkedValue);
+        const urlPath = normalizePropertyTreeValuePath(urlValue);
+        const markdownPath = normalizePropertyTreeValuePath(markdownLinkValue);
+        expect(keyNode.children.get(buildPropertyValueNodeId('project', linkedPath))?.name).toBe('Projects/Alpha');
+        expect(keyNode.children.get(buildPropertyValueNodeId('project', urlPath))?.name).toBe(urlValue);
+        expect(keyNode.children.get(buildPropertyValueNodeId('project', markdownPath))?.name).toBe('Project/Alpha');
+        expect(keyNode.children.size).toBe(3);
+        expect(getPropertyValueAncestorNodeIds(keyNode, urlPath)).toEqual([keyNode.id]);
+        expect(matchesPropertyValuePath(linkedPath, 'projects', true, linkedValue)).toBe(false);
+        expect(matchesPropertyValuePath(urlPath, 'https:', true, urlValue)).toBe(false);
+    });
+
+    it.each([['plain', 'link'], ['link', 'plain']] as const)(
+        'keeps one canonical value and both note memberships when %s precedes %s',
+        (first, second) => {
+            const values = {
+                plain: 'Projects/Alpha',
+                link: '[[Projects/Alpha|Projects/Alpha]]'
+            };
+            const tree = buildPropertyTreeFromDatabase(
+                createMockDb([
+                    { path: `${first}.md`, properties: [{ fieldKey: 'Project', value: values[first] }] },
+                    { path: `${second}.md`, properties: [{ fieldKey: 'Project', value: values[second] }] }
+                ]),
+                { includedPropertyKeys: new Set(['project']) }
+            );
+            const keyNode = tree.get('project');
+            expect(keyNode).toBeDefined();
+            if (!keyNode) return;
+
+            const canonicalPath = normalizePropertyTreeValuePath(values.plain);
+            const canonicalId = buildPropertyValueNodeId('project', canonicalPath);
+            const nodes = Array.from(keyNode.children.values()).flatMap(node => [node, ...node.children.values()]);
+            expect(nodes.filter(node => node.id === canonicalId)).toHaveLength(1);
+            expect(collectPropertyValueFilePaths(keyNode, canonicalPath)).toEqual(new Set(['plain.md', 'link.md']));
+            expect(resolvePropertySelectionNodeId(tree, canonicalId)).toBe(canonicalId);
+        }
+    );
+
+    it('creates deep prefix nodes while preserving exact membership and metadata ids', () => {
+        const tree = buildPropertyTreeFromDatabase(
+            createMockDb([
+                { path: 'food.md', properties: [{ fieldKey: 'Kind', value: 'Transaction/Food/Log' }] },
+                { path: 'finance.md', properties: [{ fieldKey: 'Kind', value: 'transaction/Financial' }] }
+            ]),
+            { includedPropertyKeys: new Set(['kind']) }
+        );
+        const keyNode = tree.get('kind');
+        expect(keyNode).toBeDefined();
+        if (!keyNode) return;
+
+        const transactionId = buildPropertyValueNodeId('kind', 'transaction');
+        const foodId = buildPropertyValueNodeId('kind', 'transaction/food');
+        const logId = buildPropertyValueNodeId('kind', 'transaction/food/log');
+        const transaction = keyNode.children.get(transactionId);
+        expect(transaction?.name).toBe('Transaction');
+        expect(transaction?.notesWithValue.size).toBe(0);
+        expect(transaction?.children.get(foodId)?.name).toBe('Food');
+        expect(findPropertyValueNode(keyNode, 'transaction/food/log')?.name).toBe('Log');
+        expect(findPropertyValueNode(keyNode, 'transaction/food/log')?.notesWithValue).toEqual(new Set(['food.md']));
+        expect(getTotalPropertyNoteCount(keyNode, 'transaction')).toBe(2);
+        expect(collectPropertyValueFilePaths(keyNode, 'transaction/food')).toEqual(new Set());
+        expect(collectPropertyValueFilePaths(keyNode, 'transaction/food', true)).toEqual(new Set(['food.md']));
+        expect(getPropertyValueAncestorNodeIds(keyNode, 'transaction/food/log')).toEqual([keyNode.id, transactionId, foodId]);
+        expect(resolvePropertySelectionNodeId(tree, logId)).toBe(logId);
+
+        const validator = createConfiguredPropertyNodeValidator({
+            propertyFields: 'kind',
+            dbFiles: [{ data: createFileData([{ fieldKey: 'Kind', value: 'Transaction/Food/Log' }]) }]
+        });
+        expect(validator?.(transactionId)).toBe(true);
+        expect(validator?.(foodId)).toBe(true);
+        expect(validator?.(logId)).toBe(true);
     });
 
     it('uses markdown-link display text for external value node labels', () => {
@@ -368,7 +494,9 @@ describe('buildPropertyTreeFromDatabase', () => {
             return;
         }
 
-        expect(Array.from(statusNode.children.keys())).toEqual([
+        const workNode = statusNode.children.get(buildPropertyValueNodeId('status', 'work'));
+        expect(Array.from(statusNode.children.keys())).toEqual([buildPropertyValueNodeId('status', 'work')]);
+        expect(Array.from(workNode?.children.keys() ?? [])).toEqual([
             buildPropertyValueNodeId('status', normalizePropertyTreeValuePath('Work/Alpha')),
             buildPropertyValueNodeId('status', normalizePropertyTreeValuePath('Work/Zeta'))
         ]);
@@ -474,7 +602,7 @@ describe('buildPropertyTreeFromDatabase', () => {
 });
 
 describe('property value matching', () => {
-    it('counts exact value totals and collects matching file paths', () => {
+    it('counts unique descendant files separately from exact value files', () => {
         const db = createMockDb([
             {
                 path: 'notes/a.md',
@@ -486,7 +614,10 @@ describe('property value matching', () => {
             },
             {
                 path: 'notes/c.md',
-                properties: [{ fieldKey: 'Status', value: 'Work' }]
+                properties: [
+                    { fieldKey: 'Status', value: 'Work' },
+                    { fieldKey: 'Status', value: 'Work/Done' }
+                ]
             },
             {
                 path: 'notes/d.md',
@@ -514,15 +645,15 @@ describe('property value matching', () => {
             return;
         }
 
-        expect(getTotalPropertyNoteCount(keyNode, normalizePropertyTreeValuePath('Work'))).toBe(1);
-        expect(getTotalPropertyNoteCount(keyNode, normalizePropertyTreeValuePath('Work/Done'))).toBe(2);
+        expect(getTotalPropertyNoteCount(keyNode, normalizePropertyTreeValuePath('Work'))).toBe(4);
+        expect(getTotalPropertyNoteCount(keyNode, normalizePropertyTreeValuePath('Work/Done'))).toBe(3);
         expect(getTotalPropertyNoteCount(keyNode, normalizePropertyTreeValuePath('true'))).toBe(1);
 
         const directPaths = collectPropertyValueFilePaths(keyNode, normalizePropertyTreeValuePath('Work'));
         expect(directPaths).toEqual(new Set(['notes/c.md']));
 
-        const withDescendants = collectPropertyValueFilePaths(keyNode, normalizePropertyTreeValuePath('Work'));
-        expect(withDescendants).toEqual(new Set(['notes/c.md']));
+        const withDescendants = collectPropertyValueFilePaths(keyNode, normalizePropertyTreeValuePath('Work'), true);
+        expect(withDescendants).toEqual(new Set(['notes/a.md', 'notes/b.md', 'notes/c.md', 'notes/f.md']));
 
         const directKeyPaths = collectPropertyKeyFilePaths(keyNode, false);
         expect(directKeyPaths).toEqual(new Set(['notes/e.md']));
@@ -532,7 +663,7 @@ describe('property value matching', () => {
         expect(allKeyPaths).toEqual(new Set(['notes/a.md', 'notes/b.md', 'notes/c.md', 'notes/d.md', 'notes/e.md', 'notes/f.md']));
     });
 
-    it('keeps value totals exact after value-node mutations', () => {
+    it('recomputes descendant totals after value-node mutations', () => {
         const db = createMockDb([
             {
                 path: 'notes/a.md',
@@ -554,21 +685,30 @@ describe('property value matching', () => {
         }
 
         const workPath = normalizePropertyTreeValuePath('Work');
-        expect(getTotalPropertyNoteCount(keyNode, workPath)).toBe(0);
+        expect(getTotalPropertyNoteCount(keyNode, workPath)).toBe(2);
 
         const startedNodeId = buildPropertyValueNodeId('status', normalizePropertyTreeValuePath('Work/Started'));
-        keyNode.children.set(startedNodeId, {
+        const workNode = findPropertyValueNode(keyNode, workPath);
+        expect(workNode).toBeDefined();
+        workNode?.children.set(startedNodeId, {
             id: startedNodeId,
             kind: 'value',
             key: 'status',
             valuePath: normalizePropertyTreeValuePath('Work/Started'),
-            name: 'Work/Started',
+            name: 'Started',
             displayPath: 'Work/Started',
             children: new Map(),
             notesWithValue: new Set(['notes/c.md'])
         });
 
-        expect(getTotalPropertyNoteCount(keyNode, workPath)).toBe(0);
+        expect(getTotalPropertyNoteCount(keyNode, workPath)).toBe(3);
+    });
+
+    it('matches only exact values unless descendants are requested', () => {
+        expect(matchesPropertyValuePath('entity/physical', 'entity')).toBe(false);
+        expect(matchesPropertyValuePath('entity/physical', 'entity', true)).toBe(true);
+        expect(matchesPropertyValuePath('entityplus/physical', 'entity', true)).toBe(false);
+        expect(matchesPropertyValuePath('entity//physical', 'entity', true)).toBe(false);
     });
 });
 
@@ -753,5 +893,17 @@ describe('property reveal selection', () => {
         );
 
         expect(resolved).toBe(buildPropertyKeyNodeId('status'));
+    });
+
+    it('keeps a selected value prefix for a descendant only when descendant notes are included', () => {
+        const settings = { ...DEFAULT_SETTINGS, showProperties: true };
+        setActivePropertyFields(settings, 'kind');
+        const parentId = buildPropertyValueNodeId('kind', 'transaction');
+        const properties: PropertyItem[] = [{ fieldKey: 'kind', value: 'transaction/financial/investment' }];
+
+        expect(determinePropertyToReveal(properties, parentId, settings, true)).toBe(parentId);
+        expect(determinePropertyToReveal(properties, parentId, settings, false)).toBe(
+            buildPropertyValueNodeId('kind', 'transaction/financial/investment')
+        );
     });
 });
