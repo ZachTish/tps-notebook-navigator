@@ -2,7 +2,48 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: **8.2.2** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.2.2.md) record validation status and the BRAT handoff boundary.
+Current release: **8.2.3** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.2.3.md) record validation status and the BRAT handoff boundary.
+
+## 8.2.3 — Skip unused navigation Tags counts
+
+The Tags collection count no longer enumerates the vault while navigation is
+hidden in single-pane mode, Tags are disabled, or note counts are disabled. Its
+consumer now uses the same visibility/enabling guard as the existing rendered
+counts. Hidden navigation retains the existing last count map; opening navigation
+or enabling Tags/counts reads current files and visibility rules. This is pane
+visibility, not window focus or document visibility.
+
+Visible counts keep the existing file finder, including tagged and untagged
+notes, hidden folders, file tags and frontmatter-property exclusions. Folder,
+property and descendant count behavior is unchanged. No cache, timer, listener,
+writer, API, settings key/default, migration or persistent state is added.
+
+Eleven actual-hook regressions use synthetic inventory and metadata with retained
+React memo/ref/effect semantics; DOM and paint are outside this harness. Across
+twenty version bursts with 1,000 notes, each unconsumed mode previously enumerated
+the inventory twenty times. It now performs zero inventory or metadata reads.
+Hidden-to-visible catch-up, enable/disable transitions, create/delete changes,
+folder/frontmatter/tag visibility rules and visible aggregate counts are covered.
+The focused run passes 27 checks including adjacent existing tests. All 3,307
+tests in 283 files pass under Node 24.19.0. Full ESLint has zero errors and 26
+existing warnings; style lint, TypeScript, locale, namespace, artifact and
+operational-identity checks pass. The separate production-mode build deployed
+only byte-changed runtime artifacts to the Test vault; the targeted reload
+confirmed 8.2.3. With navigation already hidden and Tags/counts enabled, creation
+and the first body edit each performed one aggregate Tags inventory query in
+8.2.2 and zero in 8.2.3. Later body edits and idle controls were already zero.
+Other Navigator refreshes remain unchanged. The installed daily-note flow
+passed thirteen phases with six tab switches and two remounts, retaining Health
+Live Preview widgets without mutation attempts or observed errors/long tasks.
+Settings, saved data and navigation state were preserved; fixtures were
+byte-checked and archived. This was a hidden, unfocused warm desktop API flow,
+not cold startup or physical input/paint. Full evidence boundaries and shipped
+artifact hashes are in [8.2.3 release notes](release-notes/8.2.3.md).
+
+This backward-compatible patch retains Obsidian 1.11.0 and saved settings. These
+operation counts do not prove physical iPhone, Windows or production input
+latency; broader responsiveness remains a separate investigation. Production
+installation remains the user's BRAT pull.
 
 ## 8.2.2 — Skip image lookups when row estimates cannot change
 

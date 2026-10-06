@@ -95,13 +95,26 @@ export function useNavigationNoteCounts(params: UseNavigationNoteCountsParams): 
     const folderCountCacheRef = useRef<{ key: object; counts: Map<string, NoteCountInfo> } | null>(null);
     const hiddenFileTagDataVersion = !showHiddenItems && hiddenFileTags.length > 0 ? tagDataVersion : 0;
     const hiddenFilePropertyVersion = effectiveFrontmatterExclusions.length > 0 ? metadataVisibilityVersion : 0;
-    const allTagsCollectionCount = useMemo(
-        () =>
-            getFilesForTag(ALL_TAGS_TAG_ID, settings, { includeDescendantNotes: false, showHiddenItems }, app, null, {
-                orderResults: false
-            }).length,
-        [app, folderChangeVersion, metadataVisibilityVersion, settings, showHiddenItems, tagDataVersion, vaultChangeVersion]
-    );
+    const hasVisibleTagCountConsumer = isVisible && settings.showTags && settings.showNoteCount;
+    const allTagsCollectionCount = useMemo(() => {
+        // Hidden navigation retains lastTagCountsRef below. Collect the vault only when its
+        // visible Tags count consumes this result; visibility/enabling reads current files.
+        if (!hasVisibleTagCountConsumer) {
+            return 0;
+        }
+        return getFilesForTag(ALL_TAGS_TAG_ID, settings, { includeDescendantNotes: false, showHiddenItems }, app, null, {
+            orderResults: false
+        }).length;
+    }, [
+        app,
+        folderChangeVersion,
+        hasVisibleTagCountConsumer,
+        metadataVisibilityVersion,
+        settings,
+        showHiddenItems,
+        tagDataVersion,
+        vaultChangeVersion
+    ]);
 
     const computedTagCounts = useMemo((): Map<string, NoteCountInfo> | null => {
         if (!isVisible || !settings.showTags || !settings.showNoteCount) {
