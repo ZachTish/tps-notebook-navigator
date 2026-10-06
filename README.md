@@ -2,7 +2,39 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: **8.2.0** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.2.0.md) record the test-vault validation and BRAT handoff.
+Current release: **8.2.1** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.2.1.md) record the test-vault validation and BRAT handoff.
+
+## 8.2.1 — Keep ordinary edits out of folder-header resolution
+
+The selected-folder header, desktop title and nearest-folder-note consumer no
+longer invalidate their folder-note lookup after every body-only metadata event.
+The existing subscription compares the changed note's valid authored title with
+its prior contribution. Real title additions/removals, ambiguous matches,
+creates, deletes, renames, moves and cold metadata still refresh their existing
+owners. Folder-note settings retain their normal memo dependencies; no note,
+settings schema, notification rule or public API changes.
+
+The subscription holds only weak file/title observations for watched folders and
+releases them on cleanup. It seeds current sibling titles during the same render
+as the folder-note lookup, adding one cold
+metadata-only pass in exchange for removing repeated sibling scans. It is not a
+persistent index, background watcher, delayed repair or note writer. Unchanged
+body events still read that one file's title; actual list sorting and other
+consumers retain their own refresh behavior.
+
+The rendered snapshot also preserves title changes received by the listener
+after a delayed initial effect attaches; a newer effect-time baseline cannot
+silently hide that change.
+
+Focused actual-component regressions (DOM and unrelated contexts mocked) compare
+1,000 siblings and twenty separately rendered body changes: 20,000 sibling reads
+become twenty changed-file reads. One synchronous twenty-event burst previously
+coalesced to one 1,000-read scan, not twenty scans. Initial owner mounting changes
+from 1,000 to 2,000 metadata reads; unchanged rerenders do none. Full suite,
+installed Test-vault verification, limitations and hashes are recorded in
+[8.2.1 release notes](release-notes/8.2.1.md). This backward-compatible patch keeps
+Obsidian 1.11.0 and all saved settings. Production installation and physical
+iPhone responsiveness remain separate from the BRAT release.
 
 ## Install with BRAT
 

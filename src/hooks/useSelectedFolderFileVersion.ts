@@ -16,8 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { TAbstractFile, TFile, TFolder, Vault, type MetadataCache } from 'obsidian';
+import { getFolderNoteTitle } from '../utils/folderNoteLookup';
+import { casefold } from '../utils/recordUtils';
 
 interface UseSelectedFolderFileVersionOptions {
     includeAncestors?: boolean;
@@ -65,6 +67,11 @@ function getWatchPathsFromSignature(signature: string): Set<string> {
     return new Set(signature.split(WATCH_PATH_SEPARATOR));
 }
 
+function getFolderNoteTitleContribution(file: TFile, metadataCache?: MetadataCache): string | null {
+    const title = getFolderNoteTitle(file, metadataCache);
+    return title === null ? null : casefold(title);
+}
+
 export function isWatchedFolderFileChange(file: TAbstractFile, watchedFolderPaths: ReadonlySet<string>, oldPath?: string): boolean {
     if (file instanceof TFolder) {
         if (typeof oldPath !== 'string') {
@@ -102,12 +109,44 @@ export function useSelectedFolderFileVersion(
     const includeAncestors = options?.includeAncestors === true;
     const watchedFolderPathSignature = getSelectedFolderFileWatchPathSignature(selectedFolder, includeAncestors);
 
-    useEffect(() => {
+    const observations = useMemo(() => {
         if (!enabled || !watchedFolderPathSignature) {
-            return;
+            return null;
         }
 
         const watchedFolderPaths = getWatchPathsFromSignature(watchedFolderPathSignature);
+        // Only authored title changes can change folder-note identity without a
+        // create/delete/rename. Retain each watched file's title contribution for
+        // this subscription, including ambiguous candidates and cold metadata.
+        // Seed before the consumer resolves its folder note, not in the passive
+        // effect, which could observe newer titles than the displayed render.
+        // One initial sibling pass avoids repeating the complete folder-note
+        // resolution after every unchanged body/Sync metadata event.
+        const observedTitles = new WeakMap<TFile, string | null>();
+        if (metadataCache) {
+            watchedFolderPaths.forEach(path => {
+                const folder = vault.getFolderByPath(path);
+                folder?.children.forEach(file => {
+                    if (file instanceof TFile && vault.getFileByPath(file.path) === file) {
+                        observedTitles.set(file, getFolderNoteTitleContribution(file, metadataCache));
+                    }
+                });
+            });
+        }
+        return { watchedFolderPaths, observedTitles };
+    }, [enabled, vault, metadataCache, watchedFolderPathSignature]);
+
+    useEffect(() => {
+        if (!observations) return;
+        const { watchedFolderPaths, observedTitles } = observations;
+        const observeCurrentFile = (file: TFile) => {
+            if (!metadataCache) return;
+            if (watchedFolderPaths.has(getParentPath(file.path)) && vault.getFileByPath(file.path) === file) {
+                observedTitles.set(file, getFolderNoteTitleContribution(file, metadataCache));
+            } else {
+                observedTitles.delete(file);
+            }
+        };
 
         // Increments when direct child files are created, deleted, or renamed
         // inside watched folders, or when a watched folder is renamed.
@@ -116,6 +155,7 @@ export function useSelectedFolderFileVersion(
                 return;
             }
 
+            if (file instanceof TFile) observeCurrentFile(file);
             setVersion(current => current + 1);
         };
 
@@ -129,7 +169,17 @@ export function useSelectedFolderFileVersion(
             handleFileChange(file, oldPath);
         });
 
-        const metadataRef = metadataCache?.on('changed', file => handleFileChange(file));
+        const metadataRef = metadataCache?.on('changed', file => {
+            if (!isWatchedFolderFileChange(file, watchedFolderPaths) || vault.getFileByPath(file.path) !== file) {
+                return;
+            }
+            const nextTitle = getFolderNoteTitleContribution(file, metadataCache);
+            const wasObserved = observedTitles.has(file);
+            const previousTitle = observedTitles.get(file);
+            observedTitles.set(file, nextTitle);
+            if (wasObserved && previousTitle === nextTitle) return;
+            setVersion(current => current + 1);
+        });
 
         return () => {
             if (metadataRef) metadataCache?.offref(metadataRef);
@@ -137,7 +187,7 @@ export function useSelectedFolderFileVersion(
             vault.offref(deleteRef);
             vault.offref(renameRef);
         };
-    }, [enabled, vault, metadataCache, watchedFolderPathSignature]);
+    }, [vault, metadataCache, observations]);
 
     return version;
 }
