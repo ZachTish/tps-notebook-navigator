@@ -1692,6 +1692,7 @@ export const NotebookNavigatorComponent = React.memo(
         const navigationTreeSections = useNavigationPaneTreeSections({
             app,
             settings,
+            isVisible: uiState.dualPane || uiState.currentSinglePaneView === 'navigation',
             expansionState,
             showHiddenItems: uxPreferences.showHiddenItems,
             includeDescendantNotes: uxPreferences.includeDescendantNotes,

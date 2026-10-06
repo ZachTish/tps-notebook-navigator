@@ -66,6 +66,7 @@ interface NavigationPaneTreeExpansionState {
 export interface UseNavigationPaneTreeSectionsParams {
     app: App;
     settings: NotebookNavigatorSettings;
+    isVisible: boolean;
     expansionState: NavigationPaneTreeExpansionState;
     showHiddenItems: boolean;
     includeDescendantNotes: boolean;
@@ -210,6 +211,7 @@ function resolveRootPropertyOrdering(params: {
 export function useNavigationPaneTreeSections({
     app,
     settings,
+    isVisible,
     expansionState,
     showHiddenItems,
     includeDescendantNotes,
@@ -748,7 +750,10 @@ export function useNavigationPaneTreeSections({
 
         let collectionCount: NoteCountInfo | undefined;
         const shouldShowRootFolder = settings.showAllPropertiesFolder;
-        const shouldComputeCollectionCount = settings.showNoteCount && (shouldShowRootFolder || sourceState.hasRootPropertyShortcut);
+        // File-list pills still consume the trees while navigation is hidden, but
+        // only visible navigation consumes this aggregate count.
+        const shouldComputeCollectionCount =
+            isVisible && settings.showNoteCount && (shouldShowRootFolder || sourceState.hasRootPropertyShortcut);
 
         if (shouldComputeCollectionCount) {
             const total = getFilesForNavigationSelection(
@@ -771,6 +776,7 @@ export function useNavigationPaneTreeSections({
     }, [
         app,
         settings,
+        isVisible,
         showHiddenItems,
         tagTreeService,
         propertyTreeService,

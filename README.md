@@ -2,7 +2,61 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: **8.2.3** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.2.3.md) record validation status and the BRAT handoff boundary.
+Current release: **8.2.4** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.2.4.md) record validation status and the BRAT handoff boundary.
+
+## 8.2.4 — Skip unused navigation Properties counts
+
+The shared tree hook now receives the existing navigation-pane visibility
+predicate. Only its aggregate Properties count is deferred when navigation is
+hidden; the trees, root ordering, nested rows and file-list pill colors still
+calculate on their existing paths. The existing downstream count hook retains
+the last visible count map. Revealing navigation or enabling Properties/counts
+queries current files and visibility rules, including additions, deletions,
+hidden folders, frontmatter and tags. A Properties-root shortcut is also a count
+consumer while the pane is visible. This is pane visibility, not window focus or
+document visibility. No cache, state, listener, timer, writer, public API,
+setting/default or migration is added.
+
+Fourteen actual-hook regressions execute the shared tree/count/file-pill hooks
+and file finder with synthetic inventories and metadata plus retained React
+memo/ref/effect semantics. Eight fail on the unchanged 8.2.3 baseline. With
+1,000 notes and a frontmatter visibility rule, twenty hidden source-state
+updates previously made twenty inventories and 40,000 metadata lookups; the
+candidate makes zero of either. Tests retain current visible totals, show-hidden
+behavior, enable/reveal transitions, root and shortcut-only consumers, nested
+property ordering and file-pill data identity. Ordinary unchanged rerenders
+already make no inventories, and legitimate coalesced storage tag-tree rebuilds
+remain unchanged. The source-attributed installed trace motivating this change
+captured one such tag rebuild followed by the unused aggregate Properties scan;
+it did not show a scan on every ordinary tab switch.
+
+The installed 8.2.3 baseline, with navigation already hidden, separately
+reproduced two aggregate Properties scans on note creation and two on the first
+body edit. Two later edits and idle controls were already zero. Pass-through
+inventory call stacks matched the unique compiled aggregate memo range, while
+all saved settings/data, loaded plugin identities, navigation and leaf state
+remained unchanged. The UUID fixture was byte-checked and archived. This is an
+event-owned unused count, not a claim that every note navigation scans the vault.
+The same six-phase 8.2.4 check made zero aggregate Properties scans in every
+phase: four unused scans were removed. Necessary refreshes remained: one
+all-files inventory on creation and one Markdown inventory on the first edit.
+The thirteen-phase Live Preview smoke check passed six tab switches and two
+remounts with 24 food rows and 39 activity rows, zero errors, observed long tasks
+or navigation mutation attempts. It made no all-files inventories and one
+Markdown inventory on the first activity mount. Saved data/settings, active
+workout and view state were preserved; fixtures were byte-checked and archived.
+
+All 3,321 tests in 284 files pass under Node 24.19.0. Full ESLint has zero errors
+and 26 existing warnings; style lint, TypeScript, locale, namespace, artifact,
+operational-identity and scoped source/test formatting checks pass. Build-only
+validation preceded the ordinary Test-vault build and targeted plugin reload.
+The separate post-documentation build preserves the tested artifact bytes and
+all eight plugins' saved data/settings. No additional reload is needed when the
+artifacts are identical. Validation details and shipped SHA-256 hashes are in
+[8.2.4 release notes](release-notes/8.2.4.md).
+These synthetic operation counts and the hidden, unfocused warm
+desktop traces do not prove physical iPhone, Windows, foreground paint or
+production latency. Production remains untouched.
 
 ## 8.2.3 — Skip unused navigation Tags counts
 

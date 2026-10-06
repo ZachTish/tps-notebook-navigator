@@ -262,6 +262,7 @@ describe('useNavigationPaneTreeSections', () => {
             function Harness() {
                 captured = useNavigationPaneTreeSections({
                     app,
+                    isVisible: true,
                     settings,
                     expansionState: {
                         expandedFolders: new Set(),
@@ -310,6 +311,7 @@ describe('useNavigationPaneTreeSections', () => {
         function Harness() {
             captured = useNavigationPaneTreeSections({
                 app: new App(),
+                isVisible: true,
                 settings: createSettings({
                     showAllTagsFolder: true,
                     showUntagged: true,
@@ -372,6 +374,7 @@ describe('useNavigationPaneTreeSections', () => {
             captured = useNavigationPaneTreeSections({
                 app,
                 settings: createSettings(),
+                isVisible: true,
                 expansionState: {
                     expandedFolders: new Set(),
                     expandedTags: new Set(),
@@ -447,6 +450,7 @@ describe('useNavigationPaneTreeSections', () => {
                     scopeTagsToCurrentContext: false,
                     scopePropertiesToCurrentContext: true
                 }),
+                isVisible: true,
                 expansionState: {
                     expandedFolders: new Set(),
                     expandedTags: new Set(),
@@ -523,6 +527,7 @@ describe('useNavigationPaneTreeSections', () => {
             captured = useNavigationPaneTreeSections({
                 app,
                 settings,
+                isVisible: true,
                 expansionState: {
                     expandedFolders: new Set(),
                     expandedTags: new Set(),
@@ -607,6 +612,7 @@ describe('useNavigationPaneTreeSections', () => {
                     scopeTagsToCurrentContext: false,
                     scopePropertiesToCurrentContext: true
                 }),
+                isVisible: true,
                 expansionState: {
                     expandedFolders: new Set(),
                     expandedTags: new Set(),
