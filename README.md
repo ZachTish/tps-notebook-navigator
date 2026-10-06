@@ -2,7 +2,47 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: **8.2.1** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.2.1.md) record the test-vault validation and BRAT handoff.
+Current release: **8.2.2** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.2.2.md) record validation status and the BRAT handoff boundary.
+
+## 8.2.2 — Skip image lookups when row estimates cannot change
+
+Standard, unpinned file rows can now estimate their height without reading the
+record index or drawing metadata when image state cannot change the answer.
+The existing geometry calculator compares the no-image, image and missing-image
+layouts. The shortcut requires images enabled, previews/tags/property rows/task
+progress disabled, and an existing date or parent-folder line. It applies only
+when all three computed heights are identical; no layout arithmetic or fixed
+pixel threshold is duplicated.
+
+Actual title measurement remains on the live metadata path. Short measured
+titles, pinned or compact rows, previews, pills, task progress, missing metadata
+lines and image-sensitive heights retain their existing behavior. Same-mtime
+Excalidraw/Tldraw changes and companion images remain current. This does not stop
+the virtualizer's unmeasured-tail rebuilds; it removes unnecessary per-row work
+inside eligible estimates. No cache, index, timer, listener, setting, migration
+or note writer is added.
+
+The 117 focused checks include 27 new actual-hook/TanStack regressions, with
+React effects, DOM and unrelated service contexts mocked. Across 1,000 rows and
+six measured-tail changes, the unchanged resolver performs 6,554 metadata and
+6,554 record lookups; the shortcut performs zero of either. All row keys,
+positions and sizes agree across seven geometry snapshots. Desktop/mobile and
+custom metrics, image states, guard exclusions and measured-title freshness are
+covered. All 3,296 tests in 282 files pass under Node 24.19.0; full ESLint has
+zero errors and 26 existing warnings. TypeScript, locale, namespace, artifact
+and operational-identity gates pass. The final build deployed only to the Test
+vault, followed by a scoped reload confirming 8.2.2. In the installed 15,000-row
+list, observed unmeasured-tail rebuilds used 14,350 metadata lookups before and
+seven after. These are per-rebuild observations, not equivalent frame-time
+trials: rebuilds occurred in different tab phases in a hidden, unfocused window.
+Live Preview Health widgets remained connected; navigation attempted no note
+mutations, settings were unchanged, and synthetic fixtures were archived.
+Full evidence boundaries and hashes are in
+[8.2.2 release notes](release-notes/8.2.2.md).
+
+This is a backward-compatible patch with Obsidian 1.11.0 and saved settings
+unchanged. Synthetic operation counts are not physical scrolling or input
+latency; iPhone, Windows and production responsiveness remain unverified.
 
 ## 8.2.1 — Keep ordinary edits out of folder-header resolution
 

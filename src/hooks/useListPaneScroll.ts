@@ -611,6 +611,49 @@ function shouldReadFileRecordForRowEstimate(item: ListPaneItem, config: ListFile
     return config.tagsBaseEnabled && Boolean(item.hasTags) && config.selectedTagToHide !== null;
 }
 
+function estimateImageInvariantFileRowHeight(item: ListPaneItem, file: TFile, config: ListFileRowSizingConfig): number | null {
+    if (
+        !config.showImage ||
+        config.isCompactMode ||
+        item.isPinned ||
+        config.showPreview ||
+        config.tagsBaseEnabled ||
+        config.propertyRowsPossible ||
+        config.showTaskProgress
+    ) {
+        return null;
+    }
+
+    const inputs: FileRowHeightInputs = {
+        isPinned: false,
+        hasPreviewContent: false,
+        showFeatureImageArea: false,
+        showExtensionBadgeThumbnail: false,
+        showParentFolderLine: shouldShowFileItemParentFolderLine({
+            showParentFolder: config.showParentFolder,
+            isPinned: false,
+            selectionType: config.selectionType,
+            includeDescendantNotes: config.includeDescendantNotes,
+            parentFolder: item.parentFolder,
+            fileParentPath: file.parent?.path ?? null
+        }),
+        showTaskProgressLine: false,
+        visiblePillRowCount: 0
+    };
+    if (!config.showDate && !inputs.showParentFolderLine) {
+        return null;
+    }
+
+    // Only unmeasured estimates use this path. With a metadata line and no other
+    // rows, image state cannot matter once text fills the image floor. Ask the
+    // owning geometry calculator for all three layouts instead of duplicating
+    // its arithmetic or trusting buffered drawing metadata.
+    const withoutImage = estimateFileRowHeight(inputs, config);
+    const withImage = estimateFileRowHeight({ ...inputs, showFeatureImageArea: true }, config);
+    const withMissingImage = estimateFileRowHeight({ ...inputs, showFeatureImageArea: true, showExtensionBadgeThumbnail: true }, config);
+    return Number.isFinite(withoutImage) && withoutImage === withImage && withoutImage === withMissingImage ? withoutImage : null;
+}
+
 export function resolveListFileRowHeightInputs({
     app,
     db,
@@ -974,6 +1017,10 @@ export function useListPaneScroll({
             }
 
             if (item.type === ListPaneItemType.FILE && item.data instanceof TFile) {
+                const invariantHeight = estimateImageInvariantFileRowHeight(item, item.data, rowSizingConfig);
+                if (invariantHeight !== null) {
+                    return invariantHeight;
+                }
                 return estimateFileRowHeight(
                     resolveListFileRowHeightInputs({
                         app,
