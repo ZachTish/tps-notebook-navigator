@@ -209,15 +209,11 @@ export default function registerWorkspaceEvents(plugin: NotebookNavigatorPlugin)
     // Handle new files
     plugin.registerEvent(
         plugin.app.vault.on('create', file => {
-            runAsyncAction(async () => {
-                if (plugin.isShuttingDown()) {
-                    return;
-                }
+            if (plugin.isShuttingDown() || !(file instanceof TFile) || !isVaultIconFile(file)) {
+                return;
+            }
 
-                if (!(file instanceof TFile) || !isVaultIconFile(file)) {
-                    return;
-                }
-
+            runAsyncAction(() => {
                 updateVaultIconListCacheForCreate(file);
                 invalidateVaultIconSvgCache(file.path);
                 iconService.invalidateIconValidationCache();
@@ -229,15 +225,11 @@ export default function registerWorkspaceEvents(plugin: NotebookNavigatorPlugin)
     // Handle icon file content changes
     plugin.registerEvent(
         plugin.app.vault.on('modify', file => {
-            runAsyncAction(async () => {
-                if (plugin.isShuttingDown()) {
-                    return;
-                }
+            if (plugin.isShuttingDown() || !(file instanceof TFile) || !isVaultIconFile(file)) {
+                return;
+            }
 
-                if (!(file instanceof TFile) || !isVaultIconFile(file)) {
-                    return;
-                }
-
+            runAsyncAction(() => {
                 invalidateVaultIconSvgCache(file.path);
                 scheduleIconAssetsChanged();
             });

@@ -2,7 +2,19 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
-Current release: **8.2.4** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.2.4.md) record validation status and the BRAT handoff boundary.
+## 8.2.5 — Skip Markdown icon-event work
+
+The existing vault `create` and `modify` listeners reject shutdown, non-file and non-SVG events before entering `runAsyncAction`. Eligible SVG cache updates remain synchronous inside that existing error-handling owner. The same icon-list/SVG caches, validation invalidation and single 50 ms asset notification timer are retained; ordinary Markdown events create no action promise or icon notification. Rename/delete ownership, note indexing, boot metadata events, settings, commands and namespaces are unchanged. No listener, cache, state, poller, writer or migration is added.
+
+Nine regressions execute the actual registered event handlers and async wrapper, with a synthetic vault, stubbed icon-service notifications and fake browser timers. The unchanged 8.2.4 baseline fails six checks and passes three controls. A burst of 4,049 Markdown creates previously entered the wrapper 4,049 times; the same modify burst did the same. Both now make zero wrapper calls, promises, timers, inventories, reads or writes. Two hundred eligible SVG create/modify pairs retain the actual icon-list updates and one batched notification, with zero callback promises. Folder/asset/type guards, shutdown, disposal and error reporting remain covered. These are source-owner operation counts, not a startup latency or physical-mobile measurement.
+
+The final versioned full suite passes all **3,330 tests in 285 files** under Node 24.19.0. Full ESLint reports zero errors and the same 26 existing warnings; namespace, artifact, operational-identity, scoped source/test formatting and TypeScript/string checks pass. Build-only checks reported `target=none reason=TPS_NO_DEPLOY`; a separate ordinary build then deployed only to **Obsidian Plugin Test Vault**, and the TEST renderer reload verified **8.2.5** with all eight active TPS consumers enabled.
+
+Five 30-second foreground warm-start captures of the combined TPS candidates measured median initial-body milestones **10.868 → 8.514 seconds**, GCM readiness **14.886 → 9.187**, and Health readiness **15.123 → 9.471**. Aggregate startup reads increased: raw **36 → 44**, cached **34 → 73–74**; recorded repeated inventories remained **three**. One baseline CPU sample and one quiet candidate sample recorded Navigator self CPU **1,494 → 780 ms**, Controller **406 → 26 ms**, and its named debounce callback **367 → 0 ms**. The baseline resumed a test process during capture, so these CPU samples support attribution but are not controlled timing evidence. Neither warm run showed Navigator bootstrap additions/updates/removals or preview/image regeneration; this patch does not remove a demonstrated cache rebuild. These are combined warm TEST results, not an isolated Navigator, full cold-start, production, physical-mobile or first-input speed claim.
+
+Health/GCM/Finance/Calendar/Linter data remained byte-identical. Controller persisted only its previously missing existing attachmentSync default; sync-request runtime state may change normally. Navigator's only data change was its existing `lastShownVersion` acknowledgement; restoring that field to baseline **8.2.4** reproduced the original data hash. The combined synthetic nutrition check restored temporary mappings and instrumentation, preserved the original leaf and archived its two fixtures byte-identically. [8.2.5 release notes](release-notes/8.2.5.md) record artifact hashes and validation boundaries. The numeric release is ready for the user’s BRAT pull; no production installation is claimed.
+
+Current release: **8.2.5** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.2.5.md) record validation status and the BRAT handoff boundary.
 
 ## 8.2.4 — Skip unused navigation Properties counts
 
@@ -82,7 +94,7 @@ The focused run passes 27 checks including adjacent existing tests. All 3,307
 tests in 283 files pass under Node 24.19.0. Full ESLint has zero errors and 26
 existing warnings; style lint, TypeScript, locale, namespace, artifact and
 operational-identity checks pass. The separate production-mode build deployed
-only byte-changed runtime artifacts to the Test vault; the targeted reload
+only byte-changed runtime artifacts to the Test vault; the TEST renderer reload
 confirmed 8.2.3. With navigation already hidden and Tags/counts enabled, creation
 and the first body edit each performed one aggregate Tags inventory query in
 8.2.2 and zero in 8.2.3. Later body edits and idle controls were already zero.
@@ -498,3 +510,9 @@ The change adds no writer, watcher, migration, or additional vault scan. It is a
 **Display filters → Hide notes with property rules** accepts a single `*` at either edge of a property value. `kind=transaction*` (or `kind: transaction*`) hides notes whose `kind` starts with `transaction`, including values such as `transaction/financial/investment`. `kind=*example` hides values ending in `example`. `kind=transaction/*` matches descendants without matching bare `transaction` or `transactional`. Matching checks every scalar or list entry case-insensitively. A rule with no `*` remains exact, while a key-only rule still matches whenever that property exists.
 
 These rules hide matching notes throughout Navigator; they do not edit frontmatter or alter the property hierarchy. Only one leading or trailing wildcard is supported; a bare `*`, multiple wildcards, and mid-value wildcards are ignored. `transaction*` also matches a hypothetical `transactional` value, so use `transaction/*` when only descendants should match. The existing vault-profile setting, its responsive mobile control, and stored schema are unchanged. The matcher compiles configured rules once and uses Obsidian's metadata cache while indexing, with no note reads or writes. Focused and full validation, installed Test-vault verification, and artifact hashes are recorded in [8.2.0 release notes](release-notes/8.2.0.md). Minimum Obsidian remains 1.11.0.
+
+<!-- Startup implementation verification: 2026-10-08 -->
+
+Installed foreground interaction QA also clicked Navigator New note in a unique Inbox scope, opened the created item through normal Navigator selection, typed with the native keyboard and saved. Exactly one note was created; the visible body and saved source contained the typed marker. The trace counted 16 raw reads, 31 cached reads, one inventory, two process attempts and one modify across setup/creation/navigation/input inspection. The original leaf/query were restored and the owned fixture was archived byte-identically. This is a correctness check, not first-input latency or a controlled navigation benchmark.
+
+Final post-documentation verification: the separate ordinary production build passed, reported `target=test` with unchanged runtime bytes, and retained the already-loaded and QA-verified numeric version. Public release artifacts must match the SHA-256 receipt above. Production installation, full quit/reopen and vault-close/reopen comparisons, single-versus-two-window production profiling, first-use input latency and physical mobile acceptance remain rollout verification gates.
