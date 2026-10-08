@@ -1295,13 +1295,37 @@ export class FileSystemOperations {
         return this.renameFolderToName(folder, value, settings);
     }
 
+    /** Whether the ordinary Rename action edits the filename rather than a separate display property. */
+    usesNativeFileRename(file: TFile): boolean {
+        if (file.extension !== 'md') return false;
+        const target = this.resolveFrontmatterDisplayNameTarget(file, this.getFileRenameDefaultValue(file));
+        return !target || target.field.toLowerCase() === 'title';
+    }
+
     /**
-     * Renames a file with user-provided name
-     * Uses display-name editing when requested by an ordinary note action.
-     * Filename-only operations (including folder-note detachment) retain extensions.
-     * @param file - The file to rename
+     * Ordinary Markdown Rename uses Obsidian's exact-target file prompt.
+     * Separate display properties and explicit filename-only operations retain their existing editors.
      */
     async renameFile(file: TFile, displayName = false): Promise<void> {
+        if (displayName && this.usesNativeFileRename(file)) {
+            // This core API is not public in Obsidian's typings. Never substitute
+            // an active-file command or a custom editor if it is unavailable.
+            const prompt: unknown = Reflect.get(this.app.fileManager, 'promptForFileRename');
+            if (typeof prompt !== 'function') {
+                this.notifyError(
+                    strings.fileSystem.errors.renameFile,
+                    new Error('The native Rename dialog is unavailable in this Obsidian version.')
+                );
+                return;
+            }
+            try {
+                await prompt.call(this.app.fileManager, file);
+            } catch (error) {
+                this.notifyError(strings.fileSystem.errors.renameFile, error);
+            }
+            return;
+        }
+
         const { initialValue: defaultValue, ...nameInputOptions } = displayName
             ? this.getFileDisplayNameRenameInput(file)
             : { initialValue: this.getFileRenameDefaultValue(file), ...this.getNameInputModalOptions() };

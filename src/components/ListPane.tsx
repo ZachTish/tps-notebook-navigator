@@ -1339,6 +1339,10 @@ export const ListPane = React.memo(
 
         const handleStartFileInlineRenameForFile = React.useCallback(
             (file: TFile): boolean => {
+                if (fileSystemOps.usesNativeFileRename(file)) {
+                    runAsyncAction(() => fileSystemOps.renameFile(file, true));
+                    return true;
+                }
                 const index = filePathToIndex.get(file.path);
                 if (index === undefined) {
                     return false;
@@ -1348,7 +1352,7 @@ export const ListPane = React.memo(
                 scrollToIndexSafely(index, 'auto');
                 return true;
             },
-            [filePathToIndex, scrollToIndexSafely]
+            [filePathToIndex, fileSystemOps, scrollToIndexSafely]
         );
 
         const prevCalendarOverlayVisibleRef = useRef<boolean>(shouldRenderCalendarOverlay);

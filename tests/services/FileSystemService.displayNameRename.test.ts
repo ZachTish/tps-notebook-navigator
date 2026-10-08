@@ -298,12 +298,13 @@ describe('Navigator explicit rename with GCM', () => {
         expect(h.operations.getFileDisplayNameRenameInput(h.file).initialValue).toBe('Current title');
     });
 
-    it('routes the ordinary rename dialog through the same title operation', async () => {
+    it('routes the ordinary rename dialog through the native file prompt without a title mutation', async () => {
         const h = setup();
+        const prompt = vi.fn().mockResolvedValue(undefined);
+        Object.assign(h.app.fileManager, { promptForFileRename: prompt });
         await h.operations.renameFile(h.file, true);
-        expect(renameModal.initialValue).toBe('Untitled');
-        await renameModal.submit?.('New note');
-        expect(h.updateFrontmatter).toHaveBeenCalledWith([h.file], { title: 'New note' });
+        expect(prompt).toHaveBeenCalledExactlyOnceWith(h.file);
+        expect(h.updateFrontmatter).not.toHaveBeenCalled();
         expect(h.renameFile).not.toHaveBeenCalled();
     });
 
