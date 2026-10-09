@@ -31,7 +31,6 @@ import {
     createHiddenFileNameMatcherForVisibility,
     type HiddenFileNameMatcher
 } from '../../../utils/fileFilters';
-import { getDirectPropertyKeyNoteCount } from '../../../utils/propertyTree';
 import { createHiddenTagVisibility } from '../../../utils/tagPrefixMatcher';
 import { excludeFromTagTree } from '../../../utils/tagTree';
 import { getPropertyKeySet } from '../../../utils/vaultProfiles';
@@ -211,7 +210,7 @@ export function useNavigationPaneSourceState({
         return createPropertyComparator({
             order: settings.propertySortOrder,
             compareAlphabetically: comparePropertyKeyNodesAlphabetically,
-            getFrequency: node => getDirectPropertyKeyNoteCount(node)
+            getFrequency: node => node.notesWithValue.size
         });
     }, [settings.propertySortOrder]);
 

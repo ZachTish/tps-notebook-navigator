@@ -2,6 +2,16 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
+## 8.3.1 — Match property frequency to displayed counts
+
+Properties frequency sorting now uses the same unique-note count shown beside each property label. Previously it counted only notes without an indexed child value, so numeric properties could sort above properties such as `kind` and `status` despite their smaller displayed totals. Both frequency directions reuse `node.notesWithValue.size` from the existing scoped property tree. Alphabetical/manual ordering, child-value overrides, visibility rules, settings, defaults and persistence ownership remain unchanged. No reads, scans, writers, caches or background work are added.
+
+Eleven new regressions cover numeric/string/list values, duplicate memberships, empty/zero counts, both frequency directions, alphabetical/manual modes, scoped selection, disabled count consumers, changed memberships and unchanged/event bursts. Three baseline failures reproduce the mismatch. Final validation passes **62/62 focused checks** and **3,414/3,414 tests in 289 files** under Node 24.19.0; full ESLint has zero errors and the existing 26 warnings. Source-hook bursts perform zero raw/cached reads, writes or inventories; a three-note scoped case makes three indexed lookups. Effects and host presentation are mocked, so these are owner-level counts rather than installed-pipeline measurements.
+
+The ordinary stable build deploys only to Obsidian Plugin Test Vault, and a targeted reload verifies 8.3.1 with all eight active TPS consumers enabled. Installed foreground macOS/Obsidian 1.14.4 QA verifies both actual frequency menus: descending shows `kind` 4,134, `quantity` 3,633, `status` 324, then `scheduled` 318; ascending starts with zero-count labels, then one-count labels. Test preferences and presentation are restored through their existing owners. Recorded TPS runtime data matches baseline; Navigator matches after normalizing only its existing `lastShownVersion` acknowledgement. No notes are created or changed. Physical iPhone presentation, minimum-version acceptance, end-to-end operation counts and latency are not measured. [8.3.1 release notes](release-notes/8.3.1.md) record validation and artifact hashes. This is a backward-compatible **patch**, with minimum Obsidian **1.11.0** unchanged; production installation remains the user's BRAT pull.
+
+Shortcuts retain their existing ownership: each Navigator vault profile saves its list in plugin `data.json`, and incoming settings refresh the list. This release does not change shortcut syncing. Devices must receive the same plugin configuration and select the intended Navigator profile; the phone's received configuration and the reported sync cause remain unverified.
+
 ## 8.3.0 — Sort navigation labels from section menus
 
 Right-click **File types** or **Properties** in the navigation pane and choose **Change sort order**. Both menus offer A to Z, Z to A, and frequency in either direction. File types also offers its existing catalog/default order. **Reorder navigation** opens the existing drag-order editor, including mobile touch handles; File types also has labeled up/down controls. This orders navigation labels rather than the note list.
@@ -48,7 +58,7 @@ Five 30-second foreground warm-start captures of the combined TPS candidates mea
 
 Health/GCM/Finance/Calendar/Linter data remained byte-identical. Controller persisted only its previously missing existing attachmentSync default; sync-request runtime state may change normally. Navigator's only data change was its existing `lastShownVersion` acknowledgement; restoring that field to baseline **8.2.4** reproduced the original data hash. The combined synthetic nutrition check restored temporary mappings and instrumentation, preserved the original leaf and archived its two fixtures byte-identically. [8.2.5 release notes](release-notes/8.2.5.md) record artifact hashes and validation boundaries. The numeric release is ready for the user’s BRAT pull; no production installation is claimed.
 
-Current release: **8.3.0** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.3.0.md) record validation status and the BRAT handoff boundary.
+Current release: **8.3.1** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.3.1.md) record validation status and the BRAT handoff boundary.
 
 ## 8.2.4 — Skip unused navigation Properties counts
 
