@@ -1150,6 +1150,7 @@ export const NavigationPane = React.memo(
                     isShortcutsPinned: uiState.pinShortcuts,
                     onToggleShortcutsPin: currentShortcuts.handleShortcutSplitToggle,
                     onConfigurePropertyKeys: handleConfigurePropertyKeysFromSectionMenu,
+                    onReorderNavigation: handleToggleRootReorder,
                     shortcutActions: {
                         shortcutsCount: currentShortcuts.shortcutsCount,
                         tagShortcutKeysByPath: currentShortcuts.tagShortcutKeysByPath,
@@ -1161,7 +1162,15 @@ export const NavigationPane = React.memo(
                     }
                 });
             },
-            [app, handleConfigurePropertyKeysFromSectionMenu, metadataService, plugin, settings, uiState.pinShortcuts]
+            [
+                app,
+                handleConfigurePropertyKeysFromSectionMenu,
+                handleToggleRootReorder,
+                metadataService,
+                plugin,
+                settings,
+                uiState.pinShortcuts
+            ]
         );
 
         const handleTypeContextMenu = useCallback(

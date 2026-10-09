@@ -37,6 +37,7 @@ import { addStyleMenu } from './styleMenuBuilder';
 import { strings } from '../../i18n';
 import { normalizeCanonicalIconId, serializeIconForFrontmatter } from '../../utils/iconizeFormat';
 import { runAsyncAction } from '../../utils/async';
+import { addNavigationLabelSortMenu } from './navigationLabelSortMenu';
 
 interface NavigationSectionShortcutActions {
     shortcutsCount: number;
@@ -60,6 +61,7 @@ interface ShowNavigationSectionContextMenuParams {
     isShortcutsPinned: boolean;
     onToggleShortcutsPin: () => void;
     onConfigurePropertyKeys: () => void;
+    onReorderNavigation: () => void;
     shortcutActions: NavigationSectionShortcutActions;
 }
 
@@ -134,6 +136,7 @@ export function showNavigationSectionContextMenu({
     isShortcutsPinned,
     onToggleShortcutsPin,
     onConfigurePropertyKeys,
+    onReorderNavigation,
     shortcutActions
 }: ShowNavigationSectionContextMenuParams): void {
     const isShortcutsSection = sectionId === NavigationSectionId.SHORTCUTS;
@@ -143,6 +146,11 @@ export function showNavigationSectionContextMenu({
     const hasSeparator = allowSeparator ? metadataService.hasNavigationSeparator(target) : false;
     const menu = new Menu();
     let hasActions = false;
+
+    if (addNavigationLabelSortMenu({ menu, sectionId, plugin, onReorderNavigation })) {
+        hasActions = true;
+        menu.addSeparator();
+    }
 
     const tagRootShortcutKey = isTagSection ? shortcutActions.tagShortcutKeysByPath.get(ALL_TAGS_TAG_ID) : undefined;
     const propertyRootShortcutKey = isPropertySection

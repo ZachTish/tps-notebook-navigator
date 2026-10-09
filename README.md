@@ -2,6 +2,18 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
+## 8.3.0 — Sort navigation labels from section menus
+
+Right-click **File types** or **Properties** in the navigation pane and choose **Change sort order**. Both menus offer A to Z, Z to A, and frequency in either direction. File types also offers its existing catalog/default order. **Reorder navigation** opens the existing drag-order editor, including mobile touch handles; File types also has labeled up/down controls. This orders navigation labels rather than the note list.
+
+The controls reuse `typeNavigationSortOrder`, `rootTypeOrder`, `propertySortOrder`, and `rootPropertyOrder`. An explicit automatic Properties choice clears its manual root order so that the selected sort is actually used; the existing property preference writer retains local/synced behavior. File types keeps its saved manual order while automatic modes are active. Properties uses its existing global navigation sort, including default value ordering; per-property child-sort overrides remain authoritative. No defaults, schema, migration, note mutation, indexing layer, polling or background work are added. Settings navigation and layout remain unchanged; the new menus have one native submenu and close before acting on mobile. General remains the settings default route.
+
+Validation and shipped hashes are recorded in [8.3.0 release notes](release-notes/8.3.0.md). Minimum Obsidian remains **1.11.0**. This additive **minor** release is a test-vault/BRAT handoff; production installation and physical iPhone verification remain separate.
+
+Final versioned validation passes **35/35 new menu regressions**, **21/21 adjacent ordering/preference checks**, and **3,403/3,403 tests in 288 files** under Node 24.19.0. A 50-menu source-test burst performs zero vault reads, writes or inventories. Tests cover every mode/checkmark, live settings after replacement, no-op selections, manual handoff, and local/synced persistence ownership. Full ESLint has zero errors and the existing 26 warnings; style lint, namespace/artifact/operational identity, scoped formatting, TypeScript and string/locale gates pass. The ordinary stable build deploys only to Obsidian Plugin Test Vault, and a targeted reload verifies 8.3.0 with all eight active TPS consumers enabled.
+
+Installed foreground macOS/Obsidian 1.14.4 QA uses both actual section menus: Properties Z to A changes the visible labels, frequency updates its existing preference, and Reorder navigation opens the existing editor; File types Z to A displays Video through Audio in reverse alphabetical order. Real saved preferences are verified and then restored, along with expansion/search presentation. Other recorded TPS data remains byte-identical; Navigator's only remaining data change is its existing lastShownVersion acknowledgement. No notes, provider settings or production files are changed. Native mobile submenu dismissal is regression-covered, but physical iPhone presentation and latency are not measured.
+
 ## 8.2.7 — Wait for the Daily Note provider at startup
 
 An enabled GCM that is still starting has not answered Daily Note identity. Navigator's Daily Note homepage now retains its existing pending request instead of treating the unavailable lookup as a missing note and displaying **Unable to create daily note**. The already registered `tps:gcm-api-changed` event resumes the request once. Later announcements do not reopen the note or repeat creation; an explicit homepage command consumes an older deferred request. The existing generic creation safety and GCM's sole creation authority are unchanged.
@@ -36,7 +48,7 @@ Five 30-second foreground warm-start captures of the combined TPS candidates mea
 
 Health/GCM/Finance/Calendar/Linter data remained byte-identical. Controller persisted only its previously missing existing attachmentSync default; sync-request runtime state may change normally. Navigator's only data change was its existing `lastShownVersion` acknowledgement; restoring that field to baseline **8.2.4** reproduced the original data hash. The combined synthetic nutrition check restored temporary mappings and instrumentation, preserved the original leaf and archived its two fixtures byte-identically. [8.2.5 release notes](release-notes/8.2.5.md) record artifact hashes and validation boundaries. The numeric release is ready for the user’s BRAT pull; no production installation is claimed.
 
-Current release: **8.2.6** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.2.6.md) record validation status and the BRAT handoff boundary.
+Current release: **8.3.0** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.3.0.md) record validation status and the BRAT handoff boundary.
 
 ## 8.2.4 — Skip unused navigation Properties counts
 
