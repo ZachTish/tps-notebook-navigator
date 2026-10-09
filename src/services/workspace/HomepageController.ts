@@ -36,6 +36,7 @@ import { getCurrentLanguage } from '../../i18n';
 import { getMomentApi, resolveCalendarLocales, resolveCalendarPeriodicNotesLocale, resolveDailyNoteLocale } from '../../utils/moment';
 import { getActiveVaultProfile } from '../../utils/vaultProfiles';
 import type { HomepageSource } from '../../settings/types';
+import { resolveGcmDailyNotesApi } from '../../integrations/gcm/gcmDailyNotesApi';
 
 // Indicates what triggered the homepage opening
 type HomepageTrigger = 'startup' | 'command';
@@ -115,8 +116,6 @@ export default class HomepageController {
      * Marks the workspace as ready and processes the pending homepage trigger.
      */
     async handleWorkspaceReady(options: WorkspaceReadyOptions): Promise<void> {
-        this.isWorkspaceReady = true;
-
         if (this.plugin.isShuttingDown()) {
             return;
         }
@@ -126,10 +125,25 @@ export default class HomepageController {
             await this.workspace.activateNavigatorView();
         }
 
+        if (this.plugin.isShuttingDown()) {
+            return;
+        }
+        this.isWorkspaceReady = true;
+
         // Execute any deferred homepage trigger or default to startup
         const trigger = this.pendingTrigger ?? 'startup';
         this.pendingTrigger = null;
         await this.open(trigger);
+    }
+
+    /** Starts a deferred request once; completed opens are never replayed by provider announcements. */
+    async handleDailyNotesProviderReady(): Promise<boolean> {
+        if (!this.isWorkspaceReady || this.plugin.isShuttingDown() || this.pendingTrigger === null) {
+            return false;
+        }
+        const trigger = this.pendingTrigger;
+        this.pendingTrigger = null;
+        return this.open(trigger);
     }
 
     /**
@@ -146,8 +160,22 @@ export default class HomepageController {
             return false;
         }
 
+        if (
+            this.plugin.settings.homepage.source === 'daily-note' &&
+            this.plugin.settings.calendarIntegrationMode === 'daily-notes' &&
+            resolveGcmDailyNotesApi(this.plugin.app).status === 'blocked'
+        ) {
+            // A starting provider has not answered identity yet. Keep the
+            // original request instead of treating unavailable as missing.
+            if (this.pendingTrigger !== 'command') {
+                this.pendingTrigger = trigger;
+            }
+            return false;
+        }
+
+        this.pendingTrigger = null;
         const homepageFile = await this.resolveHomepageFileForOpen();
-        if (!homepageFile) {
+        if (this.plugin.isShuttingDown() || !homepageFile) {
             return false;
         }
 

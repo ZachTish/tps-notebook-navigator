@@ -854,7 +854,12 @@ export default class NotebookNavigatorPlugin extends Plugin implements ISettings
             if (changed) await this.saveSettingsAndUpdate();
         };
         const catalogEvents = this.app.workspace as unknown as { on(name: string, callback: () => void): EventRef };
-        this.registerEvent(catalogEvents.on('tps:gcm-api-changed', () => runAsyncAction(importGcmProperties)));
+        this.registerEvent(
+            catalogEvents.on('tps:gcm-api-changed', () => {
+                runAsyncAction(() => this.homepageController?.handleDailyNotesProviderReady());
+                runAsyncAction(importGcmProperties);
+            })
+        );
         this.app.workspace.onLayoutReady(() => runAsyncAction(importGcmProperties));
 
         // Post-layout initialization
