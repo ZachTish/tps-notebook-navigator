@@ -12,6 +12,7 @@ import type { ListPaneItem } from '../../../src/types/virtualization';
 import { buildListGroupCollapseKey } from '../../../src/utils/listGroupCollapse';
 import { ItemType } from '../../../src/types';
 import { createTestTFile } from '../../utils/createTestTFile';
+import { getNavigatorRowSelectionKey } from '../../../src/services/rows/rowSelection';
 
 interface FixtureFile {
     file: TFile;
@@ -97,6 +98,67 @@ function present({
 }
 
 describe('standalone structural Type presentation', () => {
+    it('keeps exact path bucket and provider membership metadata in collapsed structural groups', () => {
+        const source = file('Daily.md', 1, 1);
+        const bucketKey = 'transaction/financial/investment';
+        const input = [
+            { ...row('one', 'One', source.file.path, 1), properties: { kind: [bucketKey] } },
+            { ...row('two', 'Two', source.file.path, 2), properties: { kind: [bucketKey] } }
+        ];
+        const groupBy = 'line-property-path:kind' as ListNoteGroupingOption;
+        const collapseKey = buildListGroupCollapseKey({
+            selectionType: ItemType.TYPE,
+            selectedFolderPath: null,
+            selectedTag: null,
+            selectedProperty: null,
+            selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
+            groupingMode: groupBy,
+            groupId: `line-property-path:${bucketKey}`
+        });
+        const items = present({ rows: input, files: [source], groupBy, collapsedListGroups: new Set([collapseKey]) });
+        expect(headersFrom(items)).toHaveLength(1);
+        expect(headersFrom(items)[0]).toMatchObject({
+            data: bucketKey,
+            groupBucketKey: bucketKey,
+            groupFilePaths: [source.file.path, source.file.path],
+            groupRowKeys: input.map(item => getNavigatorRowSelectionKey({ providerId: item.providerId, rowId: item.id })),
+            isCollapsed: true
+        });
+        expect(rowsFrom(items)).toEqual([]);
+    });
+
+    it('retains combined exact buckets and distinct provider identities without extra source lookups', () => {
+        const source = file('Daily.md', 1, 1);
+        const input = [
+            { ...row('one', 'One', source.file.path, 1), properties: { kind: ['entity/physical', 'entity/general'] } },
+            { ...row('two', 'Two', source.file.path, 2), properties: { kind: ['entity/physical', 'entity/general'] } }
+        ];
+        const resolveFile = vi.fn(() => source.file);
+        const getFrontmatter = vi.fn(() => source.frontmatter);
+        const getFileTimestamps = vi.fn(() => ({ created: 1, modified: 1 }));
+        const items = buildStandaloneStructuralTypePresentation({
+            rows: input,
+            selectedType: TPS_NAVIGATOR_TYPE_IDS.CHECKBOXES,
+            sort: { option: 'title-asc', propertyKey: '', propertySortSecondary: 'title' },
+            groupBy: 'line-property-path:kind',
+            dayKey: '2026-08-02',
+            noValueLabel: 'None',
+            multiValueGrouping: 'combine',
+            resolveFile,
+            getFrontmatter,
+            getFileTimestamps
+        });
+        expect(headersFrom(items)[0]).toMatchObject({
+            data: 'entity/physical, entity/general',
+            groupBucketKey: 'entity/physical\u0000entity/general',
+            groupRowKeys: input.map(item => getNavigatorRowSelectionKey({ providerId: item.providerId, rowId: item.id }))
+        });
+        expect(rowsFrom(items).map(item => item.id)).toEqual(['one', 'two']);
+        expect(resolveFile).toHaveBeenCalledTimes(1);
+        expect(getFrontmatter).toHaveBeenCalledTimes(1);
+        expect(getFileTimestamps).toHaveBeenCalledTimes(1);
+    });
+
     it('keeps a mixed-search line source latent when a Navigator-owned range Type returns to standalone mode', () => {
         expect(getEffectiveStandaloneStructuralTypeGrouping(TPS_NAVIGATOR_TYPE_IDS.CODE_BLOCKS, 'line-property-day:scheduled', true)).toBe(
             'line-property-day:scheduled'

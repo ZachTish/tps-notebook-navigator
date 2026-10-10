@@ -323,12 +323,18 @@ export type NavigatorListGrouping =
     | `property:${string}`
     | `property-desc:${string}`
     | `property-follow:${string}`
+    | `property-path:${string}`
+    | `property-path-desc:${string}`
+    | `property-path-follow:${string}`
     | `property-day:${string}`
     | `property-day-desc:${string}`
     | `property-day-follow:${string}`
     | `line-property:${string}`
     | `line-property-desc:${string}`
     | `line-property-follow:${string}`
+    | `line-property-path:${string}`
+    | `line-property-path-desc:${string}`
+    | `line-property-path-follow:${string}`
     | `line-property-day:${string}`
     | `line-property-day-desc:${string}`
     | `line-property-day-follow:${string}`;

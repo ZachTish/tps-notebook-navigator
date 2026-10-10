@@ -2110,6 +2110,7 @@ export function useListActions({
             // Switching the grouping property keeps the current group order, matching Obsidian Bases.
             const effectiveGroupPropertyKey = getPropertyGroupingKey(effectiveMenuGroup);
             const effectiveGroupOrder = getPropertyGroupingOrder(effectiveMenuGroup) ?? 'follow';
+            const propertyValueGranularity = getPropertyGroupingGranularity(effectiveMenuGroup) === 'path' ? 'path' : 'value';
             const defaultNewPropertySource = canChooseLinePropertySource ? 'line' : 'note';
             const selectedPropertyKey =
                 hasPropertySelection && selectionState.selectedProperty
@@ -2121,7 +2122,7 @@ export function useListActions({
             }
             propertyGroupKeys.forEach(propertyKey => {
                 addGroupOptionItem(
-                    createPropertyGroupingOption(propertyKey, effectiveGroupOrder, 'value', defaultNewPropertySource),
+                    createPropertyGroupingOption(propertyKey, effectiveGroupOrder, propertyValueGranularity, defaultNewPropertySource),
                     getSortFieldLabel('property', propertyKey),
                     getSortFieldMenuIcon('property', propertyKey),
                     isManualSortActive && !preserveAggregateGrouping
@@ -2150,6 +2151,32 @@ export function useListActions({
             if (effectiveGroupPropertyKey !== null) {
                 const effectiveGroupGranularity = getPropertyGroupingGranularity(effectiveMenuGroup) ?? 'value';
                 const effectiveGroupSource = getPropertyGroupingSource(effectiveMenuGroup) ?? defaultNewPropertySource;
+                if (effectiveGroupGranularity !== 'day' && !hasLineBackedTypeSelection) {
+                    menu.addSeparator();
+                    menu.addItem(item => item.setTitle('Property values').setIcon('lucide-list-tree').setDisabled(true));
+                    (
+                        [
+                            ['value', 'Flat values'],
+                            ['path', 'Nested values']
+                        ] as const
+                    ).forEach(([granularity, label]) => {
+                        menu.addItem(item => {
+                            item.setTitle(`    ${label}`)
+                                .setChecked(effectiveGroupGranularity === granularity)
+                                .onClick(() => {
+                                    if (effectiveGroupGranularity === granularity) return;
+                                    applyGrouping(
+                                        createPropertyGroupingOption(
+                                            effectiveGroupPropertyKey,
+                                            effectiveGroupOrder,
+                                            granularity,
+                                            effectiveGroupSource
+                                        )
+                                    );
+                                });
+                        });
+                    });
+                }
                 menu.addSeparator();
                 // The default marker follows the default grouping's order independent of its
                 // property key, matching how the sort menu marks its default direction.

@@ -76,6 +76,8 @@ interface FolderGroupHeaderSegment {
 }
 
 export interface HeaderRenderModel {
+    groupDepth?: number;
+    groupPath?: string;
     index: number;
     label: string;
     baseLabel: string;
@@ -132,6 +134,7 @@ interface HeaderRenderModels {
 type VirtualRowStyle = React.CSSProperties & Record<'--item-height', string>;
 
 interface ListPaneGroupHeaderProps {
+    isSticky?: boolean;
     header: HeaderRenderModel;
     collapseChevronIcons: {
         collapsed: string;
@@ -296,6 +299,7 @@ function shouldHideManualSortGoalHeaderSeparator(header: HeaderRenderModel | nul
 
 export const ListPaneGroupHeader = React.memo(function ListPaneGroupHeader({
     header,
+    isSticky = false,
     collapseChevronIcons,
     pinnedSectionIcon,
     onPinnedGroupHeaderToggle,
@@ -397,7 +401,7 @@ export const ListPaneGroupHeader = React.memo(function ListPaneGroupHeader({
                 }
                 onMouseDown={folderGroupHeaderTarget ? event => onFolderGroupHeaderMouseDown(event, folderGroupHeaderTarget) : undefined}
             >
-                {header.label}
+                {isSticky && header.groupPath ? header.groupPath : header.label}
             </span>
         );
     };
@@ -405,6 +409,13 @@ export const ListPaneGroupHeader = React.memo(function ListPaneGroupHeader({
     const headerRow = (
         <div
             className={headerClasses.join(' ')}
+            title={header.groupPath}
+            data-group-depth={header.groupDepth}
+            style={
+                header.groupDepth
+                    ? { paddingInlineStart: `calc(var(--nn-file-item-padding-horizontal) + ${Math.min(header.groupDepth, 4)} * 12px)` }
+                    : undefined
+            }
             onClick={header.isCollapsible ? handleCollapseToggle : undefined}
             onContextMenu={hasManualSortGoal ? undefined : handleContextMenu}
         >
@@ -445,7 +456,13 @@ export const ListPaneGroupHeader = React.memo(function ListPaneGroupHeader({
                 <button
                     type="button"
                     className="nn-list-group-header-collapse-button"
-                    aria-label={header.isCollapsed ? strings.listPane.expandGroup : strings.listPane.collapseGroup}
+                    aria-label={
+                        header.groupPath
+                            ? `${header.isCollapsed ? strings.listPane.expandGroup : strings.listPane.collapseGroup}: ${header.groupPath}`
+                            : header.isCollapsed
+                              ? strings.listPane.expandGroup
+                              : strings.listPane.collapseGroup
+                    }
                     aria-expanded={!header.isCollapsed}
                     onClick={handleCollapseToggle}
                 >
@@ -938,6 +955,8 @@ export function ListPaneVirtualContent({
             }
             const model: HeaderRenderModel = {
                 index,
+                groupDepth: item.groupDepth,
+                groupPath: item.groupPath,
                 label: item.data,
                 baseLabel,
                 isFirstHeader: models.length === 0 && !hasSeenFile,
@@ -1248,6 +1267,7 @@ export function ListPaneVirtualContent({
                 <div className="nn-list-sticky-header">
                     <ListPaneGroupHeader
                         header={visibleStickyHeader}
+                        isSticky
                         collapseChevronIcons={collapseChevronIcons}
                         pinnedSectionIcon={pinnedSectionIcon}
                         onPinnedGroupHeaderToggle={onPinnedGroupHeaderToggle}

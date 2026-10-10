@@ -2,6 +2,20 @@
 
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
+## 8.4.0 — Nested property groups in the file list
+
+In **Change sort and group**, group by a property, then choose **Nested values**. Values such as `transaction/financial/investment` appear under `transaction` → `financial` → `investment`. **Settings → TPS Notebook Navigator → List pane → Default grouping** also offers `Property ‘key’ · Nested` for each configured grouping key. Add the key under **Grouping properties** if it is missing. Flat values and calendar-day grouping retain their existing defaults. The implicit grouping of a top-level Properties key remains flat unless a per-scope override is selected.
+
+Parent counts use unique descendant notes and provider-row identities; a note with several values appears in each exact-value group, while its shared parent counts it once. Parent collapse hides the subtree, child collapse survives reopening its parent, and the existing reveal/expand-all owners remain in use. Final visible file indices follow the deduplicated list order for range selection. No-value placement, pinning and existing per-group file sorting are preserved. Links, URLs, malformed slash paths and combined-value tuples remain atomic, using the same splitter as the navigation Properties tree.
+
+Group labels show the local segment, with full paths in their tooltips, collapse-button accessible names and sticky headers. Logical depth is retained, but visual indentation stops increasing after four levels to protect narrow/mobile layouts. File rows keep their existing width and measurement. No new settings route or disclosure is added: List pane owns the global default, and the native sort/group menu owns the view override. Native buttons retain expanded state and keyboard focus behavior. Mixed provider groups omit unfiltered search denominators when their source does not supply a trustworthy total.
+
+This is an additive **minor** release. Nested presentation is serialized in the existing `groupBy` field as `property-path:<key>`, `property-path-desc:<key>` or `property-path-follow:<key>`. The public list snapshot reports these in configured/effective grouping; source-preserving `line-property-path` encodings remain accepted without adding line UI. There is no migration or new persisted field, cache, listener, writer, timer or scan. The pure hierarchy pass follows the existing native/provider composition and uses already collected metadata/memberships. Unfiltered descendant memberships are collected only in nested mode by the existing count pass. Minimum Obsidian stays **1.11.0**.
+
+Final versioned validation passes **3,454/3,454 tests in 292 files**, including 40 new regressions, under Node 24.19.0. Full ESLint has zero errors and the existing 26 warnings; style lint, namespace, artifact/operational identity, scoped formatting, TypeScript and string/locale gates pass. The ordinary stable build deploys only to Obsidian Plugin Test Vault, and a targeted reload verifies 8.4.0 with all eight active TPS consumers enabled. Actual menu/default-setting, hierarchy counts, parent/child collapse, search totals and descending ordering pass foreground macOS/Obsidian 1.14.4 QA. Twenty installed collapse/expand actions make zero raw/cached reads, write attempts or vault inventories. Six synthetic notes are archived unchanged; saved preferences and presentation are restored through the retained settings owner. Recorded TPS data matches baseline, with only Navigator's existing version acknowledgement differing. No production files are touched.
+
+Detailed operation counts, timing limits and shipped hashes are recorded in [8.4.0 release notes](release-notes/8.4.0.md). Physical iPhone presentation and production installation are separate from test-vault acceptance; the public numeric release is the user's BRAT handoff.
+
 ## 8.3.1 — Match property frequency to displayed counts
 
 Properties frequency sorting now uses the same unique-note count shown beside each property label. Previously it counted only notes without an indexed child value, so numeric properties could sort above properties such as `kind` and `status` despite their smaller displayed totals. Both frequency directions reuse `node.notesWithValue.size` from the existing scoped property tree. Alphabetical/manual ordering, child-value overrides, visibility rules, settings, defaults and persistence ownership remain unchanged. No reads, scans, writers, caches or background work are added.
@@ -58,7 +72,7 @@ Five 30-second foreground warm-start captures of the combined TPS candidates mea
 
 Health/GCM/Finance/Calendar/Linter data remained byte-identical. Controller persisted only its previously missing existing attachmentSync default; sync-request runtime state may change normally. Navigator's only data change was its existing `lastShownVersion` acknowledgement; restoring that field to baseline **8.2.4** reproduced the original data hash. The combined synthetic nutrition check restored temporary mappings and instrumentation, preserved the original leaf and archived its two fixtures byte-identically. [8.2.5 release notes](release-notes/8.2.5.md) record artifact hashes and validation boundaries. The numeric release is ready for the user’s BRAT pull; no production installation is claimed.
 
-Current release: **8.3.1** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.3.1.md) record validation status and the BRAT handoff boundary.
+Current release: **8.4.0** · Obsidian 1.11.0+ · Desktop and mobile. [Release notes](release-notes/8.4.0.md) record validation status and the BRAT handoff boundary.
 
 ## 8.2.4 — Skip unused navigation Properties counts
 

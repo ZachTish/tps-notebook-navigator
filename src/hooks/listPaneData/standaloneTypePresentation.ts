@@ -27,6 +27,7 @@ import {
     type EffectiveListSort
 } from '../../utils/sortUtils';
 import { resolvePropertyGroupingDirection } from '../../utils/listGrouping';
+import { getNavigatorRowSelectionKey } from '../../services/rows/rowSelection';
 
 export interface StructuralTypeRowPresentationArgs {
     /** Built-in rows for one selected structural Type. External Type collections are not part of this contract. */
@@ -59,6 +60,7 @@ interface StructuralTypeRowGroup {
     label: string;
     kind: 'date' | 'property';
     rows: DecoratedStructuralTypeRow[];
+    bucketKey?: string;
 }
 
 /**
@@ -288,7 +290,7 @@ function orderPropertyGroups(
     const direction = descending ? -1 : 1;
     const groupIdPrefix = source === 'line' ? `line-property-${granularity}` : `property-${granularity}`;
     const groups: StructuralTypeRowGroup[] = Array.from(grouped.entries())
-        .map(([id, group]) => ({ id: `${groupIdPrefix}:${id}`, kind: 'property' as const, ...group }))
+        .map(([id, group]) => ({ id: `${groupIdPrefix}:${id}`, bucketKey: id, kind: 'property' as const, ...group }))
         .sort((left, right) => {
             if (left.daySortValue !== null && right.daySortValue !== null && left.daySortValue !== right.daySortValue) {
                 return direction * (left.daySortValue < right.daySortValue ? -1 : 1);
@@ -305,10 +307,16 @@ function orderPropertyGroups(
             }
             return direction * (left.id < right.id ? -1 : 1);
         })
-        .map(({ id, label, kind, rows }) => ({ id, label, kind, rows }));
+        .map(({ id, label, kind, rows, bucketKey }) => ({ id, label, kind, rows, bucketKey }));
 
     if (missing.length > 0) {
-        const noValueGroup = { id: 'property-none', label: noValueLabel, kind: 'property' as const, rows: missing };
+        const noValueGroup = {
+            id: 'property-none',
+            bucketKey: '\u0000no-value',
+            label: noValueLabel,
+            kind: 'property' as const,
+            rows: missing
+        };
         if (noValueGroupPosition === 'top') groups.unshift(noValueGroup);
         else groups.push(noValueGroup);
     }
@@ -367,6 +375,7 @@ function buildGroupedItems(
     args: Pick<StructuralTypeRowPresentationArgs, 'selectedType' | 'groupBy' | 'collapsedListGroups'>
 ): ListPaneItem[] {
     const items: ListPaneItem[] = [{ type: ListPaneItemType.TOP_SPACER, data: '', key: 'top-spacer' }];
+    const includePathMembership = getPropertyGroupingGranularity(args.groupBy) === 'path';
 
     groups.forEach(group => {
         const collapseKey = buildListGroupCollapseKey({
@@ -391,7 +400,20 @@ function buildGroupedItems(
             collapseKey,
             isCollapsed,
             // Repeated paths intentionally count structural rows, while existing group file actions de-duplicate paths.
-            groupFilePaths: group.rows.map(entry => entry.row.sourcePath)
+            groupFilePaths: group.rows.map(entry => entry.row.sourcePath),
+            ...(group.kind === 'property' && includePathMembership
+                ? {
+                      groupBucketKey: group.bucketKey,
+                      groupNativeFilePaths: [],
+                      groupRowKeys: Array.from(
+                          new Set(
+                              group.rows.map(entry =>
+                                  getNavigatorRowSelectionKey({ providerId: entry.row.providerId, rowId: entry.row.id })
+                              )
+                          )
+                      )
+                  }
+                : {})
         });
         if (!isCollapsed) {
             items.push(...group.rows.map(entry => rowItem(entry, args.selectedType, `:group:${group.id}`)));

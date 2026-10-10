@@ -61,6 +61,17 @@ export interface ListPaneItem {
     groupBucketKey?: string;
     groupNumericSortValue?: number | null;
     groupDaySortValue?: number | null;
+    /** Cached identities used to count nested provider membership without reading sources. */
+    groupRowKeys?: readonly string[];
+    /** Native file membership separated from provider source paths used by group actions. */
+    groupNativeFilePaths?: readonly string[];
+    /** Unfiltered native membership, present only for nested search-count presentation. */
+    groupTotalFilePaths?: readonly string[];
+    /** Shared unfiltered bucket memberships, including ancestors absent from the search results. */
+    groupTotalFilePathsByBucket?: ReadonlyMap<string, readonly string[]>;
+    /** Slash-value group depth and full path; ordinary list groups leave these unset. */
+    groupDepth?: number;
+    groupPath?: string;
     // Item count for the same group before list search filtering.
     // Present only while a non-empty search is active and group header counts are shown.
     groupTotalItemCount?: number;

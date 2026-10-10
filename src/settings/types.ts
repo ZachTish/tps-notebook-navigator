@@ -449,8 +449,8 @@ export type ListNoteGroupingBaseOption = 'none' | 'custom' | 'date' | 'folder' |
 /** Resolved direction applied when arranging property groups */
 export type PropertyGroupingDirection = 'asc' | 'desc';
 
-/** Whether property grouping preserves the complete value or buckets date/time values by local calendar day. */
-export type PropertyGroupingGranularity = 'value' | 'day';
+/** Whether property grouping preserves complete values, nests slash paths, or buckets calendar days. */
+export type PropertyGroupingGranularity = 'value' | 'path' | 'day';
 
 /** Metadata source used by property grouping in source-backed Type views. */
 export type PropertyGroupingSource = 'note' | 'line';
@@ -465,7 +465,7 @@ export type PropertyGroupingOrder = PropertyGroupingDirection | 'follow';
  * Grouping options for list pane notes.
  * Property grouping is stored as `property:<frontmatter key>` (ascending group order),
  * `property-desc:<frontmatter key>` (descending group order), or `property-follow:<frontmatter key>`
- * (group order follows the sort direction). Calendar-day and source-backed Type variants retain
+ * (group order follows the sort direction). Nested-path, calendar-day and source-backed Type variants retain
  * the same order in their own prefixes, so persisted TPS Type appearances stay explicit and
  * co-installable while inherited navigation surfaces receive upstream's follow-sort behavior.
  */
@@ -474,12 +474,18 @@ export type ListNoteGroupingOption =
     | `property:${string}`
     | `property-desc:${string}`
     | `property-follow:${string}`
+    | `property-path:${string}`
+    | `property-path-desc:${string}`
+    | `property-path-follow:${string}`
     | `property-day:${string}`
     | `property-day-desc:${string}`
     | `property-day-follow:${string}`
     | `line-property:${string}`
     | `line-property-desc:${string}`
     | `line-property-follow:${string}`
+    | `line-property-path:${string}`
+    | `line-property-path-desc:${string}`
+    | `line-property-path-follow:${string}`
     | `line-property-day:${string}`
     | `line-property-day-desc:${string}`
     | `line-property-day-follow:${string}`;
@@ -521,12 +527,18 @@ export type NoValueGroupPosition = 'top' | 'bottom';
 const PROPERTY_GROUPING_PREFIX = 'property:';
 const PROPERTY_GROUPING_DESC_PREFIX = 'property-desc:';
 const PROPERTY_GROUPING_FOLLOW_PREFIX = 'property-follow:';
+const PROPERTY_PATH_GROUPING_PREFIX = 'property-path:';
+const PROPERTY_PATH_GROUPING_DESC_PREFIX = 'property-path-desc:';
+const PROPERTY_PATH_GROUPING_FOLLOW_PREFIX = 'property-path-follow:';
 const PROPERTY_DAY_GROUPING_PREFIX = 'property-day:';
 const PROPERTY_DAY_GROUPING_DESC_PREFIX = 'property-day-desc:';
 const PROPERTY_DAY_GROUPING_FOLLOW_PREFIX = 'property-day-follow:';
 const LINE_PROPERTY_GROUPING_PREFIX = 'line-property:';
 const LINE_PROPERTY_GROUPING_DESC_PREFIX = 'line-property-desc:';
 const LINE_PROPERTY_GROUPING_FOLLOW_PREFIX = 'line-property-follow:';
+const LINE_PROPERTY_PATH_GROUPING_PREFIX = 'line-property-path:';
+const LINE_PROPERTY_PATH_GROUPING_DESC_PREFIX = 'line-property-path-desc:';
+const LINE_PROPERTY_PATH_GROUPING_FOLLOW_PREFIX = 'line-property-path-follow:';
 const LINE_PROPERTY_DAY_GROUPING_PREFIX = 'line-property-day:';
 const LINE_PROPERTY_DAY_GROUPING_DESC_PREFIX = 'line-property-day-desc:';
 const LINE_PROPERTY_DAY_GROUPING_FOLLOW_PREFIX = 'line-property-day-follow:';
@@ -548,12 +560,18 @@ function parsePropertyGroupingOption(value: unknown): {
     // Test the most specific prefixes first so every stored scalar has one unambiguous interpretation.
     const matched = (
         [
+            [LINE_PROPERTY_PATH_GROUPING_FOLLOW_PREFIX, 'follow', 'path', 'line'],
+            [LINE_PROPERTY_PATH_GROUPING_DESC_PREFIX, 'desc', 'path', 'line'],
+            [LINE_PROPERTY_PATH_GROUPING_PREFIX, 'asc', 'path', 'line'],
             [LINE_PROPERTY_DAY_GROUPING_FOLLOW_PREFIX, 'follow', 'day', 'line'],
             [LINE_PROPERTY_DAY_GROUPING_DESC_PREFIX, 'desc', 'day', 'line'],
             [LINE_PROPERTY_DAY_GROUPING_PREFIX, 'asc', 'day', 'line'],
             [LINE_PROPERTY_GROUPING_FOLLOW_PREFIX, 'follow', 'value', 'line'],
             [LINE_PROPERTY_GROUPING_DESC_PREFIX, 'desc', 'value', 'line'],
             [LINE_PROPERTY_GROUPING_PREFIX, 'asc', 'value', 'line'],
+            [PROPERTY_PATH_GROUPING_FOLLOW_PREFIX, 'follow', 'path', 'note'],
+            [PROPERTY_PATH_GROUPING_DESC_PREFIX, 'desc', 'path', 'note'],
+            [PROPERTY_PATH_GROUPING_PREFIX, 'asc', 'path', 'note'],
             [PROPERTY_DAY_GROUPING_FOLLOW_PREFIX, 'follow', 'day', 'note'],
             [PROPERTY_DAY_GROUPING_DESC_PREFIX, 'desc', 'day', 'note'],
             [PROPERTY_DAY_GROUPING_PREFIX, 'asc', 'day', 'note'],
@@ -603,34 +621,13 @@ export function createPropertyGroupingOption(
     granularity: PropertyGroupingGranularity = 'value',
     source: PropertyGroupingSource = 'note'
 ): ListNoteGroupingOption {
-    const prefix =
-        source === 'line'
-            ? granularity === 'day'
-                ? order === 'follow'
-                    ? LINE_PROPERTY_DAY_GROUPING_FOLLOW_PREFIX
-                    : order === 'desc'
-                      ? LINE_PROPERTY_DAY_GROUPING_DESC_PREFIX
-                      : LINE_PROPERTY_DAY_GROUPING_PREFIX
-                : order === 'follow'
-                  ? LINE_PROPERTY_GROUPING_FOLLOW_PREFIX
-                  : order === 'desc'
-                    ? LINE_PROPERTY_GROUPING_DESC_PREFIX
-                    : LINE_PROPERTY_GROUPING_PREFIX
-            : granularity === 'day'
-              ? order === 'follow'
-                  ? PROPERTY_DAY_GROUPING_FOLLOW_PREFIX
-                  : order === 'desc'
-                    ? PROPERTY_DAY_GROUPING_DESC_PREFIX
-                    : PROPERTY_DAY_GROUPING_PREFIX
-              : order === 'follow'
-                ? PROPERTY_GROUPING_FOLLOW_PREFIX
-                : order === 'desc'
-                  ? PROPERTY_GROUPING_DESC_PREFIX
-                  : PROPERTY_GROUPING_PREFIX;
-    return `${prefix}${propertyKey.trim()}`;
+    const prefix = source === 'line' ? 'line-property' : 'property';
+    const shape = granularity === 'day' ? '-day' : granularity === 'path' ? '-path' : '';
+    const orderSuffix = order === 'follow' ? '-follow' : order === 'desc' ? '-desc' : '';
+    return `${prefix}${shape}${orderSuffix}:${propertyKey.trim()}`;
 }
 
-/** Switches only the metadata source while preserving key, direction, and exact/day granularity. */
+/** Switches only the metadata source while preserving key, direction, and value granularity. */
 export function replacePropertyGroupingSource(value: unknown, source: PropertyGroupingSource): ListNoteGroupingOption | null {
     const parsed = parsePropertyGroupingOption(value);
     return parsed ? createPropertyGroupingOption(parsed.propertyKey, parsed.order, parsed.granularity, source) : null;

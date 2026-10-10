@@ -23,8 +23,10 @@ import { DEFAULT_SETTINGS } from '../defaultSettings';
 import { createDropdownDefinition, createGroupDefinition, createRenderDefinition, createToggleDefinition } from '../nativeSettingControls';
 import {
     createPropertyGroupingOption,
+    getPropertyGroupingGranularity,
     getPropertyGroupingKey,
     getPropertyGroupingOrder,
+    getPropertyGroupingSource,
     MANUAL_SORT_NEW_NOTE_PLACEMENT_OPTIONS,
     normalizeListNoteGroupingOption,
     PROPERTY_SORT_SECONDARY_OPTIONS,
@@ -460,9 +462,8 @@ export function renderDefaultFolderSortSetting(setting: Setting, context: Settin
 }
 
 /**
- * Renders the default grouping row: a mode dropdown with the base grouping modes plus one entry
- * per configured grouping property, and a group order dropdown beside it that only shows for
- * property groupings. Property entries carry no group order in the mode dropdown; the current
+ * Renders the default grouping row: base modes plus flat/nested entries per configured property,
+ * and a group order dropdown that only shows for property groupings. Property entries carry no group order in the mode dropdown; the current
  * default's order is preserved (or starts at follow-sort). Property entries store the same
  * encodings used by per-view grouping overrides. Entries rebuild on every settings update so
  * edits to the configured property list are reflected while the tab stays open.
@@ -497,7 +498,13 @@ export function renderNoteGroupingSetting(setting: Setting, context: SettingsTab
                 );
                 // Reconciliation resets unavailable property groupings, so a missing entry only occurs
                 // transiently; display the stock default rather than an empty selection.
-                return matchedKey ? createPropertyGroupingOption(matchedKey, 'follow') : DEFAULT_SETTINGS.noteGrouping;
+                return matchedKey
+                    ? createPropertyGroupingOption(
+                          matchedKey,
+                          'follow',
+                          getPropertyGroupingGranularity(grouping) === 'path' ? 'path' : 'value'
+                      )
+                    : DEFAULT_SETTINGS.noteGrouping;
             };
 
             const rebuildOptions = (): void => {
@@ -521,6 +528,10 @@ export function renderNoteGroupingSetting(setting: Setting, context: SettingsTab
                         value: createPropertyGroupingOption(propertyKey, 'follow'),
                         text: getPropertyDropdownOptionLabel(propertyKey)
                     });
+                    groupsGroupEl.createEl('option', {
+                        value: createPropertyGroupingOption(propertyKey, 'follow', 'path'),
+                        text: `${getPropertyDropdownOptionLabel(propertyKey)} · Nested`
+                    });
                 });
                 dropdown.setValue(getSelectedValue());
             };
@@ -536,7 +547,11 @@ export function renderNoteGroupingSetting(setting: Setting, context: SettingsTab
                 const next =
                     propertyKey === null
                         ? normalized
-                        : createPropertyGroupingOption(propertyKey, getPropertyGroupingOrder(plugin.settings.noteGrouping) ?? 'follow');
+                        : createPropertyGroupingOption(
+                              propertyKey,
+                              getPropertyGroupingOrder(plugin.settings.noteGrouping) ?? 'follow',
+                              getPropertyGroupingGranularity(normalized) ?? 'value'
+                          );
                 if (plugin.settings.noteGrouping === next) {
                     return;
                 }
@@ -580,7 +595,12 @@ export function renderNoteGroupingSetting(setting: Setting, context: SettingsTab
                 if (propertyKey === null) {
                     return;
                 }
-                const next = createPropertyGroupingOption(propertyKey, value);
+                const next = createPropertyGroupingOption(
+                    propertyKey,
+                    value,
+                    getPropertyGroupingGranularity(plugin.settings.noteGrouping) ?? 'value',
+                    getPropertyGroupingSource(plugin.settings.noteGrouping) ?? 'note'
+                );
                 if (plugin.settings.noteGrouping === next) {
                     return;
                 }

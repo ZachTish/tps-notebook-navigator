@@ -447,7 +447,7 @@ interface PropertyValuePathPart {
 }
 
 /** Split only ordinary slash-delimited values. Link destinations and URLs are one value. */
-function getPropertyValuePathParts(rawValue: string, normalizedValuePath: string, displayValuePath: string): PropertyValuePathPart[] {
+export function getPropertyValuePathParts(rawValue: string, normalizedValuePath: string, displayValuePath: string): PropertyValuePathPart[] {
     const atomicValue = { valuePath: normalizedValuePath, displayPath: displayValuePath, name: displayValuePath };
     if (!normalizedValuePath.includes('/') || parsePropertyLinkTarget(rawValue)) {
         return [atomicValue];

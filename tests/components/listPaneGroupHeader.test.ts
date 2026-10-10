@@ -20,6 +20,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { TFile, TFolder } from 'obsidian';
 import { describe, expect, it, vi } from 'vitest';
+import { strings } from '../../src/i18n';
 import {
     activateFolderGroupHeaderNavigation,
     ListPaneGroupHeader,
@@ -56,10 +57,16 @@ function createHeader(itemCount: number | null, totalItemCount: number | null = 
     };
 }
 
-function renderHeader(itemCount: number | null, totalItemCount: number | null = null): string {
+function renderHeader(
+    itemCount: number | null,
+    totalItemCount: number | null = null,
+    overrides: Partial<HeaderRenderModel> = {},
+    isSticky = false
+): string {
     return renderToStaticMarkup(
         React.createElement(ListPaneGroupHeader, {
-            header: createHeader(itemCount, totalItemCount),
+            header: { ...createHeader(itemCount, totalItemCount), ...overrides },
+            isSticky,
             collapseChevronIcons: { collapsed: 'chevron-right', expanded: 'chevron-down' },
             pinnedSectionIcon: '',
             onPinnedGroupHeaderToggle: () => {},
@@ -87,6 +94,57 @@ describe('ListPaneGroupHeader item count', () => {
 
     it('omits the item count when the setting is disabled', () => {
         expect(renderHeader(null)).not.toContain('tps-nn-list-group-header-item-count');
+    });
+});
+
+describe('ListPaneGroupHeader nested property presentation', () => {
+    const path = 'transaction/financial/investment';
+    const nested: Partial<HeaderRenderModel> = {
+        label: 'investment',
+        baseLabel: 'investment',
+        groupDepth: 2,
+        groupPath: path
+    };
+
+    it.each([1, 2, 4, 9])('caps visual indentation while retaining logical depth %i', depth => {
+        const markup = renderHeader(3, null, { ...nested, groupDepth: depth });
+        expect(markup).toContain(`data-group-depth="${depth}"`);
+        expect(markup).toContain(`padding-inline-start:calc(var(--tps-nn-file-item-padding-horizontal) + ${Math.min(depth, 4)} * 12px)`);
+        expect(markup).toContain(`title="${path}"`);
+    });
+
+    it('shows the segment normally and the complete path in its collapse button label', () => {
+        const markup = renderHeader(3, null, nested);
+        expect(markup).toContain('>investment</span>');
+        expect(markup).not.toContain(`>${path}</span>`);
+        expect(markup).toContain(`aria-label="${strings.listPane.collapseGroup}: ${path}"`);
+        expect(markup).toContain('aria-expanded="true"');
+    });
+
+    it('uses the full path for the sticky label and preserves collapsed-state accessibility', () => {
+        const markup = renderHeader(3, null, { ...nested, isCollapsed: true }, true);
+        expect(markup).toContain(`>${path}</span>`);
+        expect(markup).not.toContain('>investment</span>');
+        expect(markup).toContain(`aria-label="${strings.listPane.expandGroup}: ${path}"`);
+        expect(markup).toContain('aria-expanded="false"');
+        expect(markup).toContain(`title="${path}"`);
+    });
+
+    it('leaves the top-level node unindented while preserving its path metadata', () => {
+        const markup = renderHeader(3, null, { ...nested, label: 'transaction', groupPath: 'transaction', groupDepth: 0 });
+        expect(markup).toContain('data-group-depth="0"');
+        expect(markup).not.toContain('padding-inline-start');
+        expect(markup).toContain('title="transaction"');
+    });
+
+    it('keeps flat headers free of hierarchy metadata and unchanged when sticky', () => {
+        const markup = renderHeader(3);
+        expect(markup).toContain('>Today</span>');
+        expect(markup).toContain(`aria-label="${strings.listPane.collapseGroup}"`);
+        expect(markup).not.toContain('data-group-depth');
+        expect(markup).not.toContain('padding-inline-start');
+        expect(markup).not.toContain('title=');
+        expect(renderHeader(3, null, {}, true)).toBe(markup);
     });
 });
 

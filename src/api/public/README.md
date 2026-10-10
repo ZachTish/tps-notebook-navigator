@@ -63,7 +63,9 @@ Complete TypeScript type definitions for the Notebook Navigator API.
     setting a different grouping stores a per-scope override.
     `nn.tagCollections.taggedId` remains a tagged-only compatibility scope for existing shortcuts and does not represent a
     separate visible tree row.
-    Their `property-follow...` forms follow the active sort direction, including exact/day and line-property variants.
+    Their `property-follow...` forms follow the active sort direction, including exact/day/path and line-property variants.
+    Opt-in nested property values use `property-path:<key>`, `property-path-desc:<key>` or
+    `property-path-follow:<key>` in both configured/effective grouping snapshots; existing flat/day defaults are unchanged.
     Historical `property...` grouping forms read owning-note frontmatter; the additive `line-property...` exact/day
     forms read only inline row fields and never fall back to the note. Line-only grouping is accepted on folders, tags,
     properties, file-backed Types, and GCM line Types so it can drive mixed structural searches. Standalone

@@ -36,6 +36,7 @@ import { useServices } from '../context/ServicesContext';
 import { useFileCache } from '../context/StorageContext';
 import { useLocalDayKey } from './useLocalDayKey';
 import { DateUtils } from '../utils/dateUtils';
+import { nestPropertyListItems } from '../utils/nestedPropertyGroups';
 import { ItemType, ListPaneItemType } from '../types';
 import type { VisibilityPreferences } from '../types';
 import type { ListPaneItem } from '../types/virtualization';
@@ -1033,7 +1034,7 @@ export function useListPaneData({
         if (parsedSearchTokens?.invalidReason) {
             return [];
         }
-        return composeTypeListItems({
+        const assembled = composeTypeListItems({
             mode: typeListMode,
             coreListItems,
             typeRows,
@@ -1092,6 +1093,9 @@ export function useListPaneData({
                     : undefined;
             })()
         });
+        return getPropertyGroupingGranularity(groupBy) === 'path'
+            ? nestPropertyListItems(assembled, collapsedListGroups, resolvePropertyGroupingDirection(groupBy, sortSpec.option))
+            : assembled;
     }, [
         collapsedListGroups,
         coreListItems,

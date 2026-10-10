@@ -52,11 +52,11 @@ import { DateUtils } from '../../utils/dateUtils';
 import { buildListGroupCollapseKey } from '../../utils/listGroupCollapse';
 import type { AliasSearchMatch, PropertySearchMatch, SearchResultMeta } from '../../types/search';
 import type { IndexedDBStorage } from '../../storage/IndexedDBStorage';
-import type { PropertySelectionNodeId } from '../../utils/propertyTree';
+import { getPropertyValuePathParts, type PropertySelectionNodeId } from '../../utils/propertyTree';
 import type { ListPaneFolderPathSegment } from '../../types/virtualization';
 import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { getNavigatorPinContext } from '../../utils/selectionUtils';
-import { getMatchingRecordValue } from '../../utils/recordUtils';
+import { casefold, getMatchingRecordValue } from '../../utils/recordUtils';
 import { getGcmNotebookNavigatorPresentationValue } from '../../integrations/gcm/gcmNotebookNavigatorPresentation';
 
 export interface ListPaneConfig {
@@ -121,6 +121,7 @@ export interface ListGroupExpansionToggleState {
  */
 interface ListGroupItemCountData {
     groupItemCountByKey: ReadonlyMap<string, number>;
+    groupFilePathsByBucket: ReadonlyMap<string, readonly string[]>;
     manualSortGroupHeaderFileByMemberPath: ReadonlyMap<string, TFile>;
 }
 
@@ -129,6 +130,7 @@ interface BuildListItemsResult extends ListGroupItemCountData {
 }
 
 const EMPTY_GROUP_ITEM_COUNT_BY_KEY = new Map<string, number>();
+const EMPTY_GROUP_FILE_PATHS_BY_BUCKET = new Map<string, readonly string[]>();
 const EMPTY_MANUAL_SORT_GROUP_HEADER_FILE_BY_MEMBER_PATH = new Map<string, TFile>();
 
 function splitFolderPath(path: string): string[] {
@@ -163,8 +165,12 @@ export function buildListItems(args: BuildListItemsArgs): ListPaneItem[] {
  * The caller can retain this data across search query changes because it depends on the unfiltered file set.
  */
 export function buildListGroupItemCountData(args: BuildListItemsArgs): ListGroupItemCountData {
-    const { groupItemCountByKey, manualSortGroupHeaderFileByMemberPath } = buildListItemsInternal(args, false, true);
-    return { groupItemCountByKey, manualSortGroupHeaderFileByMemberPath };
+    const { groupItemCountByKey, groupFilePathsByBucket, manualSortGroupHeaderFileByMemberPath } = buildListItemsInternal(
+        args,
+        false,
+        true
+    );
+    return { groupItemCountByKey, groupFilePathsByBucket, manualSortGroupHeaderFileByMemberPath };
 }
 
 function buildListItemsInternal(
@@ -207,6 +213,8 @@ function buildListItemsInternal(
         }
     ];
     const groupItemCountByKey = collectGroupItemCounts ? new Map<string, number>() : null;
+    const isPathGrouping = getPropertyGroupingGranularity(listConfig.groupBy) === 'path';
+    const groupFilePathSetsByBucket = collectGroupItemCounts && isPathGrouping ? new Map<string, Set<string>>() : null;
     const manualSortGroupHeaderFileByMemberPath = collectGroupItemCounts ? new Map<string, TFile>() : null;
 
     const contextFilter =
@@ -396,18 +404,22 @@ function buildListItemsInternal(
             });
         }
 
+        const groupFilePaths = collectGroupItemCounts ? undefined : groupFiles ? groupFiles.map(file => file.path) : [];
         const headerItem: ListPaneItem = {
             type: ListPaneItemType.HEADER,
             data,
             headerFolderPath,
             headerFolderSegments,
             manualSortHeaderFilePath,
-            groupFilePaths: collectGroupItemCounts ? undefined : groupFiles ? groupFiles.map(file => file.path) : [],
+            groupFilePaths,
             groupItemCount: groupFiles?.length ?? 0,
+            groupNativeFilePaths: isPathGrouping ? groupFilePaths : undefined,
             groupBucketKey,
             groupNumericSortValue,
             groupDaySortValue,
             groupTotalItemCount: groupItemCountData?.groupItemCountByKey.get(key),
+            groupTotalFilePaths: groupBucketKey ? groupItemCountData?.groupFilePathsByBucket.get(groupBucketKey) : undefined,
+            groupTotalFilePathsByBucket: groupItemCountData?.groupFilePathsByBucket,
             manualSortHeaderShowsWordCount: manualSortHeader ? shouldShowManualSortGroupHeaderWordCount(manualSortHeader) : undefined,
             manualSortHeader,
             manualSortHeaderWordCount: manualSortHeader ? 0 : undefined,
@@ -418,6 +430,16 @@ function buildListItemsInternal(
             key
         };
         items.push(headerItem);
+        if (groupFilePathSetsByBucket && groupFiles && groupBucketKey !== undefined && typeof data === 'string') {
+            const buckets = groupBucketKey.includes('\u0000')
+                ? [groupBucketKey]
+                : getPropertyValuePathParts(data, casefold(data), data).map(part => part.displayPath);
+            buckets.forEach(bucket => {
+                const paths = groupFilePathSetsByBucket.get(bucket) ?? new Set<string>();
+                groupFiles.forEach(file => paths.add(file.path));
+                groupFilePathSetsByBucket.set(bucket, paths);
+            });
+        }
         activeGroupHeaderItem = groupFiles || collectGroupItemCounts ? null : headerItem;
         if (groupItemCountByKey) {
             groupItemCountByKey.set(key, groupFiles?.length ?? 0);
@@ -933,6 +955,9 @@ function buildListItemsInternal(
     return {
         items,
         groupItemCountByKey: groupItemCountByKey ?? EMPTY_GROUP_ITEM_COUNT_BY_KEY,
+        groupFilePathsByBucket: groupFilePathSetsByBucket
+            ? new Map(Array.from(groupFilePathSetsByBucket, ([bucket, paths]) => [bucket, Array.from(paths)]))
+            : EMPTY_GROUP_FILE_PATHS_BY_BUCKET,
         manualSortGroupHeaderFileByMemberPath: manualSortGroupHeaderFileByMemberPath ?? EMPTY_MANUAL_SORT_GROUP_HEADER_FILE_BY_MEMBER_PATH
     };
 }

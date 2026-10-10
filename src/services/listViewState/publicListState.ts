@@ -135,12 +135,18 @@ export function validateListPresentationUpdate(value: unknown): PublicListInputR
                 (/^property:[^\s].*$/.test(groupBy) ||
                     /^property-desc:[^\s].*$/.test(groupBy) ||
                     /^property-follow:[^\s].*$/.test(groupBy) ||
+                    /^property-path:[^\s].*$/.test(groupBy) ||
+                    /^property-path-desc:[^\s].*$/.test(groupBy) ||
+                    /^property-path-follow:[^\s].*$/.test(groupBy) ||
                     /^property-day:[^\s].*$/.test(groupBy) ||
                     /^property-day-desc:[^\s].*$/.test(groupBy) ||
                     /^property-day-follow:[^\s].*$/.test(groupBy) ||
                     /^line-property:[^\s].*$/.test(groupBy) ||
                     /^line-property-desc:[^\s].*$/.test(groupBy) ||
                     /^line-property-follow:[^\s].*$/.test(groupBy) ||
+                    /^line-property-path:[^\s].*$/.test(groupBy) ||
+                    /^line-property-path-desc:[^\s].*$/.test(groupBy) ||
+                    /^line-property-path-follow:[^\s].*$/.test(groupBy) ||
                     /^line-property-day:[^\s].*$/.test(groupBy) ||
                     /^line-property-day-desc:[^\s].*$/.test(groupBy) ||
                     /^line-property-day-follow:[^\s].*$/.test(groupBy))

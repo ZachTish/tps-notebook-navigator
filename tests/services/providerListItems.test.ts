@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createTestTFile } from '../utils/createTestTFile';
 import { ListPaneItemType } from '../../src/types';
 import type { ListPaneItem } from '../../src/types/virtualization';
 import { mergeProviderRowsIntoList } from '../../src/services/rows/providerListItems';
 import { buildFilePathToIndexMap, buildOrderedFiles } from '../../src/hooks/listPaneData/listItems';
+import type { ProviderPropertyGrouping } from '../../src/services/rows/providerListItems';
+import { getNavigatorRowSelectionKey } from '../../src/services/rows/rowSelection';
 
 function getProviderGroupLabels(items: readonly ListPaneItem[]): Map<string, string> {
     const groupByRow = new Map<string, string>();
@@ -82,6 +84,197 @@ describe('mergeProviderRowsIntoList', () => {
     it('returns the original list identity when there are no provider rows', () => {
         const listItems: ListPaneItem[] = [{ type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom' }];
         expect(mergeProviderRowsIntoList(listItems, [])).toBe(listItems);
+    });
+
+    it('does no grouping work for repeated empty provider results in path mode', () => {
+        const listItems: ListPaneItem[] = [{ type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom' }];
+        const readPropertyKey = vi.fn(() => 'kind');
+        const grouping: ProviderPropertyGrouping = {
+            get propertyKey() {
+                return readPropertyKey();
+            },
+            noValueLabel: 'None',
+            noValuePosition: 'bottom',
+            valueGroupIdPrefix: 'property-path:',
+            noValueGroupId: 'property-none',
+            granularity: 'path'
+        };
+        for (let call = 0; call < 500; call += 1) {
+            expect(mergeProviderRowsIntoList(listItems, [], grouping)).toBe(listItems);
+        }
+        expect(readPropertyKey).not.toHaveBeenCalled();
+    });
+
+    it('does not inspect flat header membership for source-attached providers', () => {
+        const inspectMembers = vi.fn(() => ['Daily.md']);
+        const header: ListPaneItem = {
+            type: ListPaneItemType.HEADER,
+            data: 'flat',
+            key: 'header-property-value:flat',
+            headerKind: 'property',
+            isCollapsed: true,
+            get groupFilePaths() {
+                return inspectMembers();
+            }
+        };
+        const rows = [{ providerId: 'tps/example', id: 'one', kind: 'example', label: 'One', sourcePath: 'Daily.md' }];
+        for (let index = 0; index < 500; index += 1) {
+            const result = mergeProviderRowsIntoList([header], rows, {
+                propertyKey: 'kind',
+                noValueLabel: 'None',
+                noValuePosition: 'bottom',
+                valueGroupIdPrefix: 'property-value:',
+                noValueGroupId: 'property-none',
+                granularity: 'value'
+            });
+            expect(result[0]).toBe(header);
+            expect(result[0].groupRowKeys).toBeUndefined();
+        }
+        expect(inspectMembers).not.toHaveBeenCalled();
+    });
+
+    it.each(['value', 'day'] as const)('does not add path membership metadata to %s provider groups', granularity => {
+        const result = mergeProviderRowsIntoList(
+            [{ type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom' }],
+            [
+                {
+                    providerId: 'tps/example',
+                    id: 'one',
+                    kind: 'example',
+                    label: 'One',
+                    sourcePath: 'Daily.md',
+                    properties: { kind: '2026-10-10' }
+                }
+            ],
+            {
+                propertyKey: 'kind',
+                noValueLabel: 'None',
+                noValuePosition: 'bottom',
+                valueGroupIdPrefix: `property-${granularity}:`,
+                noValueGroupId: 'property-none',
+                granularity
+            }
+        );
+        const propertyHeader = result.find(item => item.type === ListPaneItemType.HEADER)!;
+        expect(propertyHeader.groupNativeFilePaths).toBeUndefined();
+        expect(propertyHeader.groupRowKeys).toBeUndefined();
+        expect(propertyHeader.groupBucketKey).toBe('2026-10-10');
+    });
+
+    it.each([false, true])('retains provider membership in native path headers when collapsed=%s', isCollapsed => {
+        const source = createTestTFile('Daily.md');
+        const bucketKey = 'transaction/financial';
+        const nativeHeader: ListPaneItem = {
+            type: ListPaneItemType.HEADER,
+            data: bucketKey,
+            key: `header-property-path:${bucketKey}`,
+            headerKind: 'property',
+            isCollapsed,
+            groupFilePaths: [source.path],
+            groupItemCount: 1
+        };
+        const listItems: ListPaneItem[] = [
+            { type: ListPaneItemType.TOP_SPACER, data: '', key: 'top' },
+            nativeHeader,
+            ...(isCollapsed ? [] : [{ type: ListPaneItemType.FILE, data: source, key: 'daily-file' }]),
+            { type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom' }
+        ];
+        const providerRows = [
+            { providerId: 'tps/example', id: 'attached', kind: 'example', label: 'Attached', sourcePath: source.path },
+            {
+                providerId: 'tps/example',
+                id: 'valued',
+                kind: 'example',
+                label: 'Valued',
+                sourcePath: source.path,
+                properties: { kind: bucketKey }
+            }
+        ];
+        const merged = mergeProviderRowsIntoList(listItems, providerRows, {
+            propertyKey: 'kind',
+            noValueLabel: 'None',
+            noValuePosition: 'bottom',
+            valueGroupIdPrefix: 'property-path:',
+            noValueGroupId: 'property-none',
+            granularity: 'path'
+        });
+        const header = merged.find(item => item.type === ListPaneItemType.HEADER)!;
+        expect(header.groupBucketKey).toBe(bucketKey);
+        expect(header.groupFilePaths).toEqual([source.path]);
+        expect(header.groupRowKeys).toEqual(
+            providerRows.map(row => getNavigatorRowSelectionKey({ providerId: row.providerId, rowId: row.id }))
+        );
+        expect(merged.filter(item => item.type === ListPaneItemType.PROVIDER_ROW)).toHaveLength(isCollapsed ? 0 : 2);
+        expect(nativeHeader.groupBucketKey).toBeUndefined();
+        expect(nativeHeader.groupRowKeys).toBeUndefined();
+    });
+
+    it('preserves provider-only path bucket metadata and identities while collapsed', () => {
+        const bucketKey = 'transaction/financial/investment';
+        const merged = mergeProviderRowsIntoList(
+            [{ type: ListPaneItemType.BOTTOM_SPACER, data: '', key: 'bottom' }],
+            [
+                {
+                    providerId: 'tps/example',
+                    id: 'one',
+                    kind: 'example',
+                    label: 'One',
+                    sourcePath: 'Daily.md',
+                    properties: { kind: bucketKey }
+                }
+            ],
+            {
+                propertyKey: 'kind',
+                noValueLabel: 'None',
+                noValuePosition: 'bottom',
+                valueGroupIdPrefix: 'property-path:',
+                noValueGroupId: 'property-none',
+                granularity: 'path',
+                getCollapseKey: id => `collapse:${id}`,
+                isCollapsed: () => true
+            }
+        );
+        const header = merged.find(item => item.type === ListPaneItemType.HEADER)!;
+        expect(header).toMatchObject({
+            data: bucketKey,
+            groupBucketKey: bucketKey,
+            groupFilePaths: [],
+            groupItemCount: 1,
+            isCollapsed: true
+        });
+        expect(header.groupRowKeys).toEqual([getNavigatorRowSelectionKey({ providerId: 'tps/example', rowId: 'one' })]);
+        expect(merged.some(item => item.type === ListPaneItemType.PROVIDER_ROW)).toBe(false);
+    });
+
+    it('retains attached-row membership before returning without property-bearing providers', () => {
+        const header: ListPaneItem = {
+            type: ListPaneItemType.HEADER,
+            data: 'transaction/financial',
+            key: 'header-property-path:transaction/financial',
+            headerKind: 'property',
+            groupFilePaths: ['Daily.md'],
+            groupItemCount: 1,
+            isCollapsed: true
+        };
+        const merged = mergeProviderRowsIntoList(
+            [header],
+            [{ providerId: 'tps/example', id: 'one', kind: 'example', label: 'One', sourcePath: 'Daily.md' }],
+            {
+                propertyKey: 'kind',
+                noValueLabel: 'None',
+                noValuePosition: 'bottom',
+                valueGroupIdPrefix: 'property-path:',
+                noValueGroupId: 'property-none',
+                granularity: 'path'
+            }
+        );
+        expect(merged).toHaveLength(1);
+        expect(merged[0]).toMatchObject({
+            groupBucketKey: 'transaction/financial',
+            groupItemCount: 1,
+            groupRowKeys: [getNavigatorRowSelectionKey({ providerId: 'tps/example', rowId: 'one' })]
+        });
+        expect(header.groupRowKeys).toBeUndefined();
     });
 
     it('groups property-bearing task rows by their own tags instead of their source note group', () => {

@@ -14,6 +14,7 @@ import {
     getPropertyGroupingValues
 } from '../../utils/sortUtils';
 import { getMatchingRecordValue } from '../../utils/recordUtils';
+import { getNavigatorRowSelectionKey } from './rowSelection';
 
 export interface ProviderPropertyGrouping {
     propertyKey: string;
@@ -21,7 +22,7 @@ export interface ProviderPropertyGrouping {
     noValuePosition: 'top' | 'bottom';
     valueGroupIdPrefix: string;
     noValueGroupId: string;
-    granularity?: 'value' | 'day';
+    granularity?: 'value' | 'day' | 'path';
     multiValueGrouping?: 'separate' | 'combine';
     formatLabel?: (label: string) => string;
     isLabelVisible?: (label: string) => boolean;
@@ -92,6 +93,7 @@ export function mergeProviderRowsIntoList(
         return listItems;
     }
 
+    const isPathGrouping = propertyGrouping?.granularity === 'path';
     const propertyRows = propertyGrouping ? providerRows.filter(row => row.properties !== undefined) : [];
     const attachedRows = propertyRows.length === 0 ? providerRows : providerRows.filter(row => row.properties === undefined);
     const rowsBySourcePath = new Map<string, NavigatorProvidedRow[]>();
@@ -100,11 +102,39 @@ export function mergeProviderRowsIntoList(
         rows.push(row);
         rowsBySourcePath.set(row.sourcePath, rows);
     }
+    const noValueKey = '\u0000no-value';
+    const getHeaderGroupKey = (item: ListPaneItem): string | null => {
+        if (!propertyGrouping) return null;
+        if (item.key === `header-${propertyGrouping.noValueGroupId}`) {
+            return noValueKey;
+        }
+        const prefix = `header-${propertyGrouping.valueGroupIdPrefix}`;
+        return item.key.startsWith(prefix) ? item.key.slice(prefix.length) : null;
+    };
+    const getRowKey = (row: NavigatorProvidedRow): string => getNavigatorRowSelectionKey({ providerId: row.providerId, rowId: row.id });
     const consumedPaths = new Set<string>();
     const merged: ListPaneItem[] = [];
 
     for (const item of listItems) {
-        merged.push(item);
+        if (isPathGrouping && item.type === ListPaneItemType.HEADER) {
+            // Header membership must survive collapse, where source file rows are absent.
+            const attachedGroupRows =
+                rowsBySourcePath.size > 0 ? (item.groupFilePaths?.flatMap(path => rowsBySourcePath.get(path) ?? []) ?? []) : [];
+            const groupKey = item.headerKind === 'property' ? getHeaderGroupKey(item) : null;
+            merged.push(
+                attachedGroupRows.length > 0 || (groupKey !== null && item.groupBucketKey === undefined)
+                    ? {
+                          ...item,
+                          ...(groupKey === null ? {} : { groupBucketKey: item.groupBucketKey ?? groupKey }),
+                          ...(attachedGroupRows.length === 0
+                              ? {}
+                              : { groupRowKeys: Array.from(new Set([...(item.groupRowKeys ?? []), ...attachedGroupRows.map(getRowKey)])) })
+                      }
+                    : item
+            );
+        } else {
+            merged.push(item);
+        }
         if (item.type !== ListPaneItemType.FILE || !(item.data instanceof TFile) || consumedPaths.has(item.data.path)) {
             continue;
         }
@@ -122,7 +152,6 @@ export function mergeProviderRowsIntoList(
 
     if (!propertyGrouping || propertyRows.length === 0) return merged;
 
-    const noValueKey = '\u0000no-value';
     type ProviderGroup = {
         key: string;
         label: string;
@@ -187,13 +216,6 @@ export function mergeProviderRowsIntoList(
         });
     });
 
-    const getHeaderGroupKey = (item: ListPaneItem): string | null => {
-        if (item.key === `header-${propertyGrouping.noValueGroupId}`) {
-            return noValueKey;
-        }
-        const prefix = `header-${propertyGrouping.valueGroupIdPrefix}`;
-        return item.key.startsWith(prefix) ? item.key.slice(prefix.length) : null;
-    };
     const result: ListPaneItem[] = [];
     let currentPropertyKey: string | null = null;
     const renderedKeys = new Set<string>();
@@ -225,6 +247,14 @@ export function mergeProviderRowsIntoList(
                 renderedKeys.add(groupKey);
                 outputItem = {
                     ...item,
+                    ...(isPathGrouping
+                        ? {
+                              groupBucketKey: item.groupBucketKey ?? groupKey,
+                              groupRowKeys: Array.from(
+                                  new Set([...(item.groupRowKeys ?? []), ...(rowsByGroup.get(groupKey)?.rows ?? []).map(getRowKey)])
+                              )
+                          }
+                        : {}),
                     groupItemCount:
                         (item.groupItemCount ?? item.groupFilePaths?.length ?? 0) + (rowsByGroup.get(groupKey)?.rows.length ?? 0),
                     // Provider rows are queried from the visible/search scope, so an unfiltered
@@ -286,6 +316,7 @@ export function mergeProviderRowsIntoList(
                 collapseKey,
                 isCollapsed,
                 groupFilePaths: [],
+                ...(isPathGrouping ? { groupNativeFilePaths: [], groupRowKeys: Array.from(new Set(group.rows.map(getRowKey))) } : {}),
                 groupItemCount: group.rows.length,
                 groupBucketKey: group.key,
                 groupNumericSortValue: group.numericValue,
