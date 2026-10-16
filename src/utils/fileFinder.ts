@@ -47,8 +47,7 @@ import {
     getActiveHiddenFileTags,
     getActiveHiddenFileProperties,
     getActiveHiddenFolders,
-    getActiveHiddenTags,
-    getActivePropertyKeySet
+    getActiveHiddenTags
 } from './vaultProfiles';
 import { getCachedFileTags } from './tagUtils';
 import { casefold, normalizePinnedNoteContext } from './recordUtils';
@@ -639,8 +638,7 @@ export function getFilesForProperty(
     options?: NavigationFileQueryOptions
 ): TFile[] {
     const includesAnyProperty = propertyNodeId === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID;
-    // Child filters use configured keys; the Properties root includes all visible notes.
-    const configuredPropertyKeys = getActivePropertyKeySet(settings, 'any');
+    // Every indexed key can be selected; configuration controls presentation rather than membership.
 
     const selectionNode = includesAnyProperty ? null : parsePropertyNodeId(propertyNodeId);
     if (!includesAnyProperty && !selectionNode) {
@@ -648,7 +646,7 @@ export function getFilesForProperty(
     }
     const normalizedKey = includesAnyProperty ? null : (selectionNode?.key ?? null);
 
-    if (!includesAnyProperty && (!normalizedKey || !configuredPropertyKeys.has(normalizedKey))) {
+    if (!includesAnyProperty && !normalizedKey) {
         return [];
     }
 

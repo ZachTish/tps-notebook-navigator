@@ -386,6 +386,7 @@ export const STRINGS_ZH_TW = {
             hideTag: '隱藏標籤'
         },
         property: {
+            renameValue: 'Rename value…',
             addKey: '設定屬性鍵',
             renameKey: '重新命名屬性',
             deleteKey: '刪除屬性'
@@ -640,6 +641,15 @@ export const STRINGS_ZH_TW = {
             }
         },
         propertyOperation: {
+            valueRenameTitle: 'Rename value in {property}',
+            valueRenameWarning:
+                'Replace this value across the vault in {count} {files}. Other values and note bodies are preserved. Templates, queries and plugin settings are not changed.',
+            newValuePrompt: 'New value',
+            includeNestedValues: 'Include nested values (keep child paths)',
+            invalidValue: 'Enter a nonempty value. Numbers must remain numbers; checkboxes must use true or false.',
+            valueRenameResult: 'Renamed value in {count} {files}. Failed: {failed}. No longer matching: {skipped}.',
+            metadataNotReady: 'Property metadata is still loading. Wait for indexing to finish before renaming values.',
+
             renameTitle: '重新命名屬性 {property}',
             deleteTitle: '刪除屬性 {property}',
             newKeyPrompt: '新屬性名稱',

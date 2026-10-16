@@ -386,6 +386,7 @@ export const STRINGS_TH = {
             hideTag: 'ซ่อนแท็ก'
         },
         property: {
+            renameValue: 'Rename value…',
             addKey: 'กำหนดค่าคีย์คุณสมบัติ',
             renameKey: 'เปลี่ยนชื่อคุณสมบัติ',
             deleteKey: 'ลบคุณสมบัติ'
@@ -640,6 +641,15 @@ export const STRINGS_TH = {
             }
         },
         propertyOperation: {
+            valueRenameTitle: 'Rename value in {property}',
+            valueRenameWarning:
+                'Replace this value across the vault in {count} {files}. Other values and note bodies are preserved. Templates, queries and plugin settings are not changed.',
+            newValuePrompt: 'New value',
+            includeNestedValues: 'Include nested values (keep child paths)',
+            invalidValue: 'Enter a nonempty value. Numbers must remain numbers; checkboxes must use true or false.',
+            valueRenameResult: 'Renamed value in {count} {files}. Failed: {failed}. No longer matching: {skipped}.',
+            metadataNotReady: 'Property metadata is still loading. Wait for indexing to finish before renaming values.',
+
             renameTitle: 'เปลี่ยนชื่อคุณสมบัติ {property}',
             deleteTitle: 'ลบคุณสมบัติ {property}',
             newKeyPrompt: 'ชื่อคุณสมบัติใหม่',

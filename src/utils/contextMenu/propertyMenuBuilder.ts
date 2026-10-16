@@ -423,6 +423,15 @@ export function buildPropertyMenu(params: PropertyMenuBuilderParams): void {
         });
     }
 
+    if (propertyNode?.kind === 'value') {
+        menu.addSeparator();
+        menu.addItem(item => {
+            setAsyncOnClick(item.setTitle(strings.contextMenu.property.renameValue).setIcon('lucide-pencil'), async () => {
+                await propertyOperations.promptRenamePropertyValue(normalizedNodeId);
+            });
+        });
+    }
+
     const canManagePropertyKey = propertyNode?.kind === 'key' && propertyNode.notesWithValue.size > 0;
     const addedMenuExtensions =
         services.plugin.api?.[INTERNAL_NOTEBOOK_NAVIGATOR_API].menus.applyPropertyMenuExtensions({ menu, nodeId: normalizedNodeId }) ?? 0;

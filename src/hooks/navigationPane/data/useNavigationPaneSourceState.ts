@@ -33,7 +33,7 @@ import {
 } from '../../../utils/fileFilters';
 import { createHiddenTagVisibility } from '../../../utils/tagPrefixMatcher';
 import { excludeFromTagTree } from '../../../utils/tagTree';
-import { getPropertyKeySet } from '../../../utils/vaultProfiles';
+import { getNavigationPropertyKeySet } from '../../../utils/vaultProfiles';
 import type { FolderNavigationSourceState } from '../../useFolderNavigationSourceState';
 import { useRootPropertyOrder } from '../../useRootPropertyOrder';
 import { useRootTagOrder } from '../../useRootTagOrder';
@@ -221,8 +221,8 @@ export function useNavigationPaneSourceState({
     });
 
     const visiblePropertyNavigationKeySet = useMemo(
-        () => getPropertyKeySet(activeProfile.propertyKeys, 'navigation'),
-        [activeProfile.propertyKeys]
+        () => getNavigationPropertyKeySet(activeProfile.propertyKeys, propertyTree.keys()),
+        [activeProfile.propertyKeys, propertyTree]
     );
 
     const recentNotesHiddenFileMatcher = useMemo(() => {

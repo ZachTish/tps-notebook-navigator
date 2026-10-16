@@ -34,7 +34,7 @@ import {
 } from '../../utils/propertyTree';
 import { casefold } from '../../utils/recordUtils';
 import type { PropertyTreeNode } from '../../types/storage';
-import { clonePropertyKeys, getActivePropertyFields, getActivePropertyKeySet, getActiveVaultProfile } from '../../utils/vaultProfiles';
+import { clonePropertyKeys, getActivePropertyFields, getActiveVaultProfile } from '../../utils/vaultProfiles';
 import type { TpsNavigatorTypesSnapshot } from '../../types/navigatorTypes';
 
 type SchedulePropertyTreeRebuildOptions = {
@@ -171,8 +171,7 @@ export function usePropertyTreeSync(params: {
         (getVisibleFiles?: () => TFile[]) => {
             const liveSettings = latestSettingsRef.current;
             const configuredDisplayByKey = buildConfiguredPropertyDisplayByKey(liveSettings);
-            const includedPropertyKeys = new Set(configuredDisplayByKey.keys());
-            const shouldBuildTree = liveSettings.showProperties && configuredDisplayByKey.size > 0;
+            const shouldBuildTree = liveSettings.showProperties;
             if (!shouldBuildTree) {
                 return clearPropertyTree();
             }
@@ -195,14 +194,12 @@ export function usePropertyTreeSync(params: {
                     }
                 },
                 {
-                    excludedFolderPatterns,
-                    includedPropertyKeys
+                    excludedFolderPatterns
                 }
             );
             const lineRecords = collectTypeLinePropertyRecords(typesSnapshotRef.current, liveSettings.tpsTypesNavigationEnabled === true);
             mergeLinePropertiesIntoPropertyTree(propertyTree, lineRecords, {
-                includedPaths: visibleMarkdownPathSet,
-                includedPropertyKeys
+                includedPaths: visibleMarkdownPathSet
             });
             includeConfiguredPropertyKeys(propertyTree, configuredDisplayByKey);
 
@@ -304,12 +301,8 @@ export function usePropertyTreeSync(params: {
             let shouldFlush = false;
             let activeFilePath: string | null = null;
             let activeFileResolved = false;
-            const configuredPropertyKeys = getActivePropertyKeySet(latestSettingsRef.current, 'any');
             for (const change of changes) {
-                const changedPropertyKeys = change.changedPropertyKeys;
-                const hasPropertyChange =
-                    change.changes.properties !== undefined &&
-                    (changedPropertyKeys === undefined || changedPropertyKeys.some(key => configuredPropertyKeys.has(key)));
+                const hasPropertyChange = change.changes.properties !== undefined;
                 const hasTagVisibilityChange = shouldRebuildOnTagVisibilityChanges && change.changes.tags !== undefined;
                 const hasFrontmatterVisibilityChange = shouldRebuildOnFrontmatterVisibilityChanges && change.metadataHiddenChanged === true;
                 if (!hasPropertyChange && !hasTagVisibilityChange && !hasFrontmatterVisibilityChange) {

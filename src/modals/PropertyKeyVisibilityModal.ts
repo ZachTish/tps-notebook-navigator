@@ -217,7 +217,7 @@ export class PropertyKeyVisibilityModal extends Modal {
                 normalizedKey,
                 displayKey,
                 noteCount: suggestion.noteCount,
-                showInNavigation: false,
+                showInNavigation: true,
                 showInList: false,
                 showInFileMenu: false
             });
@@ -293,9 +293,6 @@ export class PropertyKeyVisibilityModal extends Modal {
         });
 
         const appended = this.rows.filter(row => {
-            if (!row.showInNavigation && !row.showInList && !row.showInFileMenu) {
-                return false;
-            }
             return !inInitialOrder.has(row.normalizedKey);
         });
 

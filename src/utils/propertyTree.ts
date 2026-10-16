@@ -23,11 +23,16 @@ import type { NotebookNavigatorSettings } from '../settings/types';
 import type { IPropertyTreeProvider } from '../interfaces/IPropertyTreeProvider';
 import { isPathInExcludedFolder } from './fileFilters';
 import { getCachedCommaSeparatedList } from './commaSeparatedListUtils';
-import { isPropertyLinkMarkupValue, normalizePropertyTreeValuePath, parsePropertyLinkTarget, resolvePropertyDisplayText } from './propertyUtils';
+import {
+    isPropertyLinkMarkupValue,
+    normalizePropertyTreeValuePath,
+    parsePropertyLinkTarget,
+    resolvePropertyDisplayText
+} from './propertyUtils';
 import { casefold } from './recordUtils';
 import { naturalCompare } from './sortUtils';
 import { isRecord } from './typeGuards';
-import { getActivePropertyFields, getActivePropertyKeySet } from './vaultProfiles';
+import { getActiveVaultProfile, getNavigationPropertyKeySet } from './vaultProfiles';
 
 export { normalizePropertyTreeValuePath };
 
@@ -179,7 +184,8 @@ export function matchesPropertyValuePath(
     }
     return (
         includeDescendants &&
-        getPropertyValuePathParts(rawCandidateValue, candidateValuePath, normalizePropertyTreeDisplayValuePath(rawCandidateValue)).length > 1 &&
+        getPropertyValuePathParts(rawCandidateValue, candidateValuePath, normalizePropertyTreeDisplayValuePath(rawCandidateValue)).length >
+            1 &&
         candidateValuePath.startsWith(`${selectedValuePath}/`)
     );
 }
@@ -291,11 +297,7 @@ function getOrBuildDirectPropertyKeyPaths(keyNode: PropertyTreeNode): Set<string
 }
 
 export function isPropertyFeatureEnabled(settings: NotebookNavigatorSettings): boolean {
-    if (!settings.showProperties) {
-        return false;
-    }
-
-    return getActivePropertyKeySet(settings, 'any').size > 0;
+    return settings.showProperties;
 }
 
 export function determinePropertyToReveal(
@@ -313,7 +315,10 @@ export function determinePropertyToReveal(
         return null;
     }
 
-    const configuredKeys = getActivePropertyKeySet(settings, 'navigation');
+    const configuredKeys = getNavigationPropertyKeySet(
+        getActiveVaultProfile(settings).propertyKeys,
+        properties.map(entry => entry.fieldKey)
+    );
     if (configuredKeys.size === 0) {
         return null;
     }
@@ -399,14 +404,15 @@ export function determinePropertyToReveal(
                     }
                     if (
                         includeDescendantNotes &&
-                        properties.some(entry =>
-                            casefold(entry.fieldKey) === parsed.key &&
-                            matchesPropertyValuePath(
-                                normalizePropertyTreeValuePath(entry.value),
-                                normalizedSelectionValuePath,
-                                true,
-                                entry.value
-                            )
+                        properties.some(
+                            entry =>
+                                casefold(entry.fieldKey) === parsed.key &&
+                                matchesPropertyValuePath(
+                                    normalizePropertyTreeValuePath(entry.value),
+                                    normalizedSelectionValuePath,
+                                    true,
+                                    entry.value
+                                )
                         )
                     ) {
                         return selectionValueNodeId;
@@ -447,7 +453,11 @@ interface PropertyValuePathPart {
 }
 
 /** Split only ordinary slash-delimited values. Link destinations and URLs are one value. */
-export function getPropertyValuePathParts(rawValue: string, normalizedValuePath: string, displayValuePath: string): PropertyValuePathPart[] {
+export function getPropertyValuePathParts(
+    rawValue: string,
+    normalizedValuePath: string,
+    displayValuePath: string
+): PropertyValuePathPart[] {
     const atomicValue = { valuePath: normalizedValuePath, displayPath: displayValuePath, name: displayValuePath };
     if (!normalizedValuePath.includes('/') || parsePropertyLinkTarget(rawValue)) {
         return [atomicValue];
@@ -457,8 +467,9 @@ export function getPropertyValuePathParts(rawValue: string, normalizedValuePath:
     const displaySegments = displayValuePath.split('/');
     if (
         normalizedSegments.length !== displaySegments.length ||
-        normalizedSegments.some((segment, index) =>
-            !segment || segment !== segment.trim() || !displaySegments[index] || casefold(displaySegments[index]) !== segment
+        normalizedSegments.some(
+            (segment, index) =>
+                !segment || segment !== segment.trim() || !displaySegments[index] || casefold(displaySegments[index]) !== segment
         )
     ) {
         // Ambiguous separators remain literal values rather than creating empty or renamed nodes.
@@ -618,12 +629,11 @@ export function createConfiguredPropertyNodeValidator(params: {
     propertyTreeProvider?: Pick<IPropertyTreeProvider, 'findNode' | 'hasNodes'> | null;
 }): ((nodeId: string) => boolean) | null {
     const { propertyFields, dbFiles, propertyTreeProvider } = params;
-    const configuredKeys = getConfiguredPropertyKeySet(propertyFields);
-    if (configuredKeys.size === 0) {
-        return () => false;
-    }
-
+    const configuredKeys = new Set(getConfiguredPropertyKeySet(propertyFields));
     if (dbFiles) {
+        for (const file of dbFiles) {
+            for (const entry of file.data.properties ?? []) configuredKeys.add(casefold(entry.fieldKey));
+        }
         const nodeIds = buildConfiguredPropertyNodeIdSet(dbFiles, configuredKeys);
         return nodeId => nodeIds.has(nodeId);
     }
@@ -636,7 +646,7 @@ export function createConfiguredPropertyNodeValidator(params: {
 }
 
 export function isPropertySelectionNodeIdConfigured(
-    settings: NotebookNavigatorSettings,
+    _settings: NotebookNavigatorSettings,
     selectionNodeId: PropertySelectionNodeId
 ): boolean {
     if (selectionNodeId === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID) {
@@ -653,7 +663,7 @@ export function isPropertySelectionNodeIdConfigured(
         return false;
     }
 
-    return getConfiguredPropertyKeySet(getActivePropertyFields(settings)).has(parsed.key);
+    return true;
 }
 
 export function isPropertySelectionNodeIdVisibleInNavigation(
@@ -674,7 +684,7 @@ export function isPropertySelectionNodeIdVisibleInNavigation(
         return false;
     }
 
-    return getActivePropertyKeySet(settings, 'navigation').has(parsed.key);
+    return getNavigationPropertyKeySet(getActiveVaultProfile(settings).propertyKeys, [parsed.key]).has(parsed.key);
 }
 
 export function canRestorePropertySelectionNodeId(settings: NotebookNavigatorSettings, selectionNodeId: PropertySelectionNodeId): boolean {
@@ -1035,7 +1045,9 @@ function registerPropertyTreeEntry(
     const hierarchyParts = getPropertyValuePathParts(propertyEntry.value, normalizedValuePath, displayValuePath);
     // A preexisting atomic link can own a prefix id at the key level. Keep the
     // new value atomic too rather than placing the same id at two tree locations.
-    const parts = hierarchyParts.some((part, index) => index > 0 && keyNode.children.has(buildPropertyValueNodeId(normalizedKey, part.valuePath)))
+    const parts = hierarchyParts.some(
+        (part, index) => index > 0 && keyNode.children.has(buildPropertyValueNodeId(normalizedKey, part.valuePath))
+    )
         ? [{ valuePath: normalizedValuePath, displayPath: displayValuePath, name: displayValuePath }]
         : hierarchyParts;
     let parent = keyNode;

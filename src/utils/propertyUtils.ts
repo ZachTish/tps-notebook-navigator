@@ -104,6 +104,21 @@ export function extractFrontmatterPropertyValues(value: unknown): ExtractedFront
     return [];
 }
 
+export function isSyntheticFrontmatterPosition(fieldKey: string, value: unknown): boolean {
+    if (fieldKey !== 'position' || typeof value !== 'object' || value === null || Array.isArray(value)) {
+        return false;
+    }
+    const position = value as Record<string, unknown>;
+    return ['start', 'end'].every(boundary => {
+        const location = position[boundary];
+        if (typeof location !== 'object' || location === null || Array.isArray(location)) {
+            return false;
+        }
+        const record = location as Record<string, unknown>;
+        return ['line', 'col', 'offset'].every(key => typeof record[key] === 'number' && Number.isFinite(record[key]));
+    });
+}
+
 export function collectVaultPropertyKeys(app: App): PropertyKeySuggestion[] {
     const keyMap = new Map<string, PropertyKeyAggregate>();
 
@@ -135,6 +150,7 @@ export function collectVaultPropertyKeys(app: App): PropertyKeySuggestion[] {
         }
 
         Object.keys(frontmatter).forEach(propertyKey => {
+            if (isSyntheticFrontmatterPosition(propertyKey, frontmatter[propertyKey])) return;
             registerPropertyKey(propertyKey, true);
         });
     });

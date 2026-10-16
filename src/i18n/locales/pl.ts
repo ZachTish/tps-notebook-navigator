@@ -387,6 +387,7 @@ export const STRINGS_PL = {
             hideTag: 'Ukryj tag'
         },
         property: {
+            renameValue: 'Rename value…',
             addKey: 'Konfiguruj klucze atrybutów',
             renameKey: 'Zmień nazwę atrybutu',
             deleteKey: 'Usuń atrybut'
@@ -648,6 +649,15 @@ export const STRINGS_PL = {
             }
         },
         propertyOperation: {
+            valueRenameTitle: 'Rename value in {property}',
+            valueRenameWarning:
+                'Replace this value across the vault in {count} {files}. Other values and note bodies are preserved. Templates, queries and plugin settings are not changed.',
+            newValuePrompt: 'New value',
+            includeNestedValues: 'Include nested values (keep child paths)',
+            invalidValue: 'Enter a nonempty value. Numbers must remain numbers; checkboxes must use true or false.',
+            valueRenameResult: 'Renamed value in {count} {files}. Failed: {failed}. No longer matching: {skipped}.',
+            metadataNotReady: 'Property metadata is still loading. Wait for indexing to finish before renaming values.',
+
             renameTitle: 'Zmień nazwę atrybutu {property}',
             deleteTitle: 'Usuń atrybut {property}',
             newKeyPrompt: 'Nowa nazwa atrybutu',

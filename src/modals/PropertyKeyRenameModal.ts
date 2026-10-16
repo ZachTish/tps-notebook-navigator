@@ -19,14 +19,18 @@
 import { App, Modal } from 'obsidian';
 import { strings } from '../i18n';
 import { runAsyncAction } from '../utils/async';
-import { renderAffectedFilesPreview } from '../services/operations/OperationBatchUtils';
+import { renderAffectedFilesPreview, type OperationUsageSummary } from '../services/operations/OperationBatchUtils';
 
 interface PropertyKeyRenameModalOptions {
     propertyKey: string;
     affectedCount: number;
     sampleFiles: string[];
     initialValue?: string;
-    onSubmit: (newKey: string) => Promise<boolean> | boolean;
+    onSubmit: (newKey: string, includeDescendants: boolean) => Promise<boolean> | boolean;
+    valueRename?: {
+        includeDescendants: boolean;
+        getUsage: (includeDescendants: boolean) => OperationUsageSummary;
+    };
 }
 
 /**
@@ -37,7 +41,10 @@ export class PropertyKeyRenameModal extends Modal {
     private readonly affectedCount: number;
     private readonly sampleFiles: string[];
     private readonly initialValue: string;
-    private readonly onSubmit: (newKey: string) => Promise<boolean> | boolean;
+    private readonly onSubmit: PropertyKeyRenameModalOptions['onSubmit'];
+    private readonly valueRename: PropertyKeyRenameModalOptions['valueRename'];
+    private includeDescendants = false;
+    private submitting = false;
 
     private inputEl!: HTMLInputElement;
     private submitBtn!: HTMLButtonElement;
@@ -49,30 +56,41 @@ export class PropertyKeyRenameModal extends Modal {
         this.sampleFiles = options.sampleFiles;
         this.initialValue = options.initialValue ?? options.propertyKey;
         this.onSubmit = options.onSubmit;
+        this.valueRename = options.valueRename;
+        this.includeDescendants = options.valueRename?.includeDescendants ?? false;
     }
 
     onOpen(): void {
         const countLabel = this.affectedCount === 1 ? strings.modals.tagOperation.file : strings.modals.tagOperation.files;
 
-        this.titleEl.setText(strings.modals.propertyOperation.renameTitle.replace('{property}', this.propertyKey));
+        this.titleEl.setText(
+            (this.valueRename ? strings.modals.propertyOperation.valueRenameTitle : strings.modals.propertyOperation.renameTitle).replace(
+                '{property}',
+                this.propertyKey
+            )
+        );
 
         const description = this.contentEl.createDiv('nn-tag-rename-description');
         description.setText(
-            strings.modals.propertyOperation.renameWarning
+            (this.valueRename ? strings.modals.propertyOperation.valueRenameWarning : strings.modals.propertyOperation.renameWarning)
                 .replace('{property}', this.propertyKey)
                 .replace('{count}', this.affectedCount.toString())
                 .replace('{files}', countLabel)
         );
 
         const inputContainer = this.contentEl.createDiv('nn-tag-rename-input-container');
-        const label = inputContainer.createEl('label', { text: strings.modals.propertyOperation.newKeyPrompt });
+        const label = inputContainer.createEl('label', {
+            text: this.valueRename ? strings.modals.propertyOperation.newValuePrompt : strings.modals.propertyOperation.newKeyPrompt
+        });
         label.htmlFor = 'nn-property-rename-input';
 
         this.inputEl = inputContainer.createEl('input', {
             type: 'text',
             attr: { id: 'nn-property-rename-input' },
             value: this.initialValue,
-            placeholder: strings.modals.propertyOperation.newKeyPlaceholder
+            placeholder: this.valueRename
+                ? strings.modals.propertyOperation.newValuePrompt
+                : strings.modals.propertyOperation.newKeyPlaceholder
         });
         this.inputEl.addClass('nn-input');
         this.inputEl.addEventListener('input', () => this.updateSubmitState());
@@ -80,13 +98,39 @@ export class PropertyKeyRenameModal extends Modal {
         const warning = this.contentEl.createEl('p', { text: strings.modals.tagOperation.modificationWarning });
         warning.addClass('nn-tag-rename-warning');
 
-        renderAffectedFilesPreview(this.contentEl, { total: this.affectedCount, sample: this.sampleFiles });
+        const preview = this.contentEl.createDiv();
+        const updateUsage = () => {
+            const usage = this.valueRename?.getUsage(this.includeDescendants) ?? { total: this.affectedCount, sample: this.sampleFiles };
+            if (this.valueRename) {
+                description.setText(
+                    strings.modals.propertyOperation.valueRenameWarning
+                        .replace('{count}', String(usage.total))
+                        .replace('{files}', usage.total === 1 ? strings.modals.tagOperation.file : strings.modals.tagOperation.files)
+                );
+            }
+            preview.empty();
+            renderAffectedFilesPreview(preview, usage);
+        };
+        if (this.valueRename) {
+            const scopeLabel = this.contentEl.createEl('label', { cls: 'nn-tag-rename-description' });
+            const checkbox = scopeLabel.createEl('input', { type: 'checkbox' });
+            checkbox.checked = this.includeDescendants;
+            scopeLabel.appendText(strings.modals.propertyOperation.includeNestedValues);
+            checkbox.addEventListener('change', () => {
+                this.includeDescendants = checkbox.checked;
+                updateUsage();
+            });
+        }
+        updateUsage();
 
         const buttonContainer = this.contentEl.createDiv('nn-button-container');
         const cancelBtn = buttonContainer.createEl('button', { text: strings.common.cancel });
         cancelBtn.addEventListener('click', () => this.close());
 
-        this.submitBtn = buttonContainer.createEl('button', { text: strings.modals.propertyOperation.confirmRename, cls: 'mod-cta' });
+        this.submitBtn = buttonContainer.createEl('button', {
+            text: this.valueRename ? strings.contextMenu.property.renameValue : strings.modals.propertyOperation.confirmRename,
+            cls: 'mod-cta'
+        });
         this.submitBtn.addEventListener('click', () => {
             runAsyncAction(() => this.handleSubmit());
         });
@@ -113,20 +157,24 @@ export class PropertyKeyRenameModal extends Modal {
         }
 
         const newValue = this.inputEl.value.trim();
-        const disabled = newValue.length === 0;
+        const disabled = this.submitting || newValue.length === 0;
         this.submitBtn.toggleClass('mod-disabled', disabled);
         this.submitBtn.disabled = disabled;
     }
 
     private async handleSubmit(): Promise<void> {
         const newKey = this.inputEl.value.trim();
-        if (newKey.length === 0) {
+        if (this.submitting || newKey.length === 0) {
             return;
         }
 
-        const shouldClose = await this.onSubmit(newKey);
-        if (shouldClose) {
-            this.close();
+        this.submitting = true;
+        this.updateSubmitState();
+        try {
+            if (await this.onSubmit(newKey, this.includeDescendants)) this.close();
+        } finally {
+            this.submitting = false;
+            this.updateSubmitState();
         }
     }
 }

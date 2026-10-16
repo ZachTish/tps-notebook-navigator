@@ -144,7 +144,7 @@ describe('PropertyMetadataService cleanupWithValidators', () => {
         });
     });
 
-    it('clears property metadata when no property fields are configured', async () => {
+    it('preserves metadata for discovered properties without configured fields', async () => {
         const keyNodeId = buildPropertyKeyNodeId('status');
         const valueNodeId = buildPropertyValueNodeId('status', 'todo');
 
@@ -169,11 +169,11 @@ describe('PropertyMetadataService cleanupWithValidators', () => {
 
         const changes = await service.cleanupWithValidators(validators, settings);
 
-        expect(changes).toEqual({ settingsChanged: true, localChanged: false });
-        expect(settings.propertyColors).toEqual({});
-        expect(settings.propertyBackgroundColors).toEqual({});
-        expect(settings.propertyIcons).toEqual({});
-        expect(settings.propertyTreeSortOverrides).toEqual({});
+        expect(changes).toEqual({ settingsChanged: false, localChanged: false });
+        expect(settings.propertyColors).toEqual({ [keyNodeId]: '#111111' });
+        expect(settings.propertyBackgroundColors).toEqual({ [valueNodeId]: '#333333' });
+        expect(settings.propertyIcons).toEqual({ [valueNodeId]: 'lucide-check' });
+        expect(settings.propertyTreeSortOverrides).toEqual({ [keyNodeId]: 'alpha-asc' });
     });
 
     it('removes configured property keys that no longer exist in cached note data', async () => {

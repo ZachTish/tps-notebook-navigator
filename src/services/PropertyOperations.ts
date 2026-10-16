@@ -28,7 +28,7 @@ import { showNotice } from '../utils/noticeUtils';
 import { runAsyncAction } from '../utils/async';
 import { removePropertyField, renamePropertyField } from '../utils/propertyUtils';
 import { isRecord } from '../utils/typeGuards';
-import { buildPropertyKeyNodeId } from '../utils/propertyTree';
+import { normalizePropertyTreeValuePath, matchesPropertyValuePath, buildPropertyKeyNodeId } from '../utils/propertyTree';
 import {
     reconcileDefaultFolderSort,
     replacePropertySortKey,
@@ -46,6 +46,8 @@ import { PropertyFileMutations } from './propertyOperations/PropertyFileMutation
 import type { PropertyKeyDeleteEventPayload, PropertyKeyRenameEventPayload } from './propertyOperations/types';
 import { getActivePropertyFields, setActivePropertyFields } from '../utils/vaultProfiles';
 import { ItemType, type CollapsedPinnedContexts } from '../types';
+import { collectPropertyValueReplacements, type PropertyValueRename } from './propertyOperations/propertyValueRename';
+import { extractFrontmatterPropertyValues } from '../utils/propertyUtils';
 
 export type { PropertyKeyRenameEventPayload, PropertyKeyDeleteEventPayload } from './propertyOperations/types';
 
@@ -222,6 +224,104 @@ export class PropertyOperations {
         return () => {
             this.propertyKeyDeleteListeners.delete(listener);
         };
+    }
+
+    async promptRenamePropertyValue(nodeId: string): Promise<void> {
+        const node = this.getPropertyTreeService()?.findNode(nodeId);
+        if (node?.kind !== 'value' || !node.valuePath) return;
+        const valuePath = node.valuePath;
+        // One explicit metadata inventory, including notes hidden from navigation. No body scan.
+        const candidates: { file: TFile; frontmatter: Record<string, unknown> }[] = [];
+        for (const file of this.app.vault.getMarkdownFiles()) {
+            const cache = this.app.metadataCache.getFileCache(file);
+            if (!cache) {
+                showNotice(strings.modals.propertyOperation.metadataNotReady, { variant: 'warning' });
+                return;
+            }
+            if (cache.frontmatter) candidates.push({ file, frontmatter: cache.frontmatter });
+        }
+        const oldValue = node.assignmentValue ?? node.displayPath;
+        const matchingPaths = (includeDescendants: boolean) =>
+            new Set(
+                candidates
+                    .filter(({ frontmatter }) =>
+                        Object.entries(frontmatter).some(
+                            ([key, value]) =>
+                                casefold(key) === node.key &&
+                                extractFrontmatterPropertyValues(value).some(entry =>
+                                    matchesPropertyValuePath(
+                                        normalizePropertyTreeValuePath(entry.value),
+                                        valuePath,
+                                        includeDescendants,
+                                        entry.value
+                                    )
+                                )
+                        )
+                    )
+                    .map(({ file }) => file.path)
+            );
+        const includeDescendants = node.children.size > 0;
+        const usage = buildUsageSummaryFromPaths(this.app, matchingPaths(includeDescendants));
+        new PropertyKeyRenameModal(this.app, {
+            propertyKey: this.getPropertyTreeService()?.getKeyNode(node.key)?.name ?? node.key,
+            affectedCount: usage.total,
+            sampleFiles: usage.sample,
+            initialValue: oldValue,
+            valueRename: {
+                includeDescendants,
+                getUsage: include => buildUsageSummaryFromPaths(this.app, matchingPaths(include))
+            },
+            onSubmit: (newValue, include) => this.renamePropertyValue({ key: node.key, oldValue, newValue, includeDescendants: include })
+        }).open();
+    }
+
+    async renamePropertyValue(rename: PropertyValueRename): Promise<boolean> {
+        if (!rename.key.trim() || !rename.newValue.trim() || /[\r\n]/.test(rename.newValue)) {
+            showNotice(strings.modals.propertyOperation.invalidValue, { variant: 'warning' });
+            return false;
+        }
+        if (rename.oldValue === rename.newValue.trim()) return true;
+        const files: TFile[] = [];
+        // Validate every cached candidate before the first mutation, preserving numeric/boolean types.
+        try {
+            for (const file of this.app.vault.getMarkdownFiles()) {
+                const cache = this.app.metadataCache.getFileCache(file);
+                if (!cache) {
+                    showNotice(strings.modals.propertyOperation.metadataNotReady, { variant: 'warning' });
+                    return false;
+                }
+                if (cache.frontmatter && collectPropertyValueReplacements(cache.frontmatter, rename).size > 0) files.push(file);
+            }
+        } catch {
+            showNotice(strings.modals.propertyOperation.invalidValue, { variant: 'warning' });
+            return false;
+        }
+        let changed = 0;
+        let failed = 0;
+        let skipped = 0;
+        for (const [index, file] of files.entries()) {
+            if (this.app.vault.getAbstractFileByPath(file.path) !== file) {
+                skipped++;
+                continue;
+            }
+            try {
+                if (await this.fileMutations.renamePropertyValueInFile(file, rename)) changed++;
+                else skipped++;
+            } catch (error) {
+                failed++;
+                console.error('[TPS Notebook Navigator] Property value rename failed', { path: file.path, error });
+            }
+            if ((index + 1) % MUTATION_BATCH_SIZE === 0) await yieldToEventLoop();
+        }
+        showNotice(
+            strings.modals.propertyOperation.valueRenameResult
+                .replace('{count}', String(changed))
+                .replace('{files}', changed === 1 ? strings.modals.tagOperation.file : strings.modals.tagOperation.files)
+                .replace('{failed}', String(failed))
+                .replace('{skipped}', String(skipped)),
+            { variant: failed > 0 ? 'warning' : 'success' }
+        );
+        return true;
     }
 
     async promptRenamePropertyKey(normalizedKey: string): Promise<void> {

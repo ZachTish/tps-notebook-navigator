@@ -577,6 +577,32 @@ describe('Markdown pipeline appearance relevance', () => {
         expect(hasMarkdownWordCountConsumer(settings, app)).toBe(true);
     });
 
+    it.each([false, true])('keeps property-list headers independent of navigation visibility (explicit hide: %s)', hidden => {
+        const { app, cachedMetadataByPath, markdownFiles } = createApp();
+        const headerFile = createFile('Notes/Header.md');
+        markdownFiles.push(headerFile);
+        cachedMetadataByPath.set(headerFile.path, {
+            frontmatter: {
+                group_header: { title: 'Workflow', show_word_count: true },
+                workflow: 'draft'
+            }
+        });
+        const id = buildPropertyKeyNodeId('workflow');
+        const settings = createSettings({
+            textCountDisplay: 'none',
+            noteGrouping: 'date',
+            defaultFolderSort: 'modified-desc',
+            propertyAppearances: { [id]: { groupBy: 'custom' } },
+            propertySortOverrides: { [id]: 'title-asc' },
+            manualSortGroupHeaderProperty: 'group_header',
+            showProperties: true
+        });
+        settings.vaultProfiles[0].propertyKeys = hidden
+            ? [{ key: 'workflow', showInNavigation: false, showInList: true, showInFileMenu: false }]
+            : [];
+        expect(hasMarkdownWordCountConsumer(settings, app)).toBe(true);
+    });
+
     it('recognizes a consuming header in the properties root list', () => {
         const { app, cachedMetadataByPath, markdownFiles } = createApp();
         const headerFile = createFile('Notes/Header.md');

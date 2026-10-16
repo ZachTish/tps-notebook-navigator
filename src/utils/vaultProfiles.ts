@@ -503,6 +503,21 @@ export function getActivePropertyKeySet(settings: NotebookNavigatorSettings, mod
     return getPropertyKeySet(getActiveVaultProfile(settings).propertyKeys, mode);
 }
 
+/** Discovered properties are visible by default; explicit per-key visibility remains authoritative. */
+export function getNavigationPropertyKeySet(
+    propertyKeys: readonly VaultProfilePropertyKey[],
+    discoveredKeys: Iterable<string>
+): ReadonlySet<string> {
+    const keys = new Set(Array.from(discoveredKeys, key => casefold(key)).filter(Boolean));
+    for (const entry of propertyKeys) {
+        const key = casefold(entry.key.trim());
+        if (!key) continue;
+        if (entry.showInNavigation) keys.add(key);
+        else keys.delete(key);
+    }
+    return keys;
+}
+
 export function createPropertyKeysFromPropertyFields(
     propertyFields: string,
     existingPropertyKeys?: VaultProfilePropertyKey[]

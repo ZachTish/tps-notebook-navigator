@@ -18,12 +18,27 @@
 
 import type { App, TFile } from 'obsidian';
 import { casefold } from '../../utils/recordUtils';
+import { collectPropertyValueReplacements, type PropertyValueRename } from './propertyValueRename';
 
 export class PropertyFileMutations {
     constructor(private readonly app: App) {}
 
     isMarkdownFile(file: TFile): boolean {
         return file.extension === 'md';
+    }
+
+    async renamePropertyValueInFile(file: TFile, rename: PropertyValueRename): Promise<boolean> {
+        if (!this.isMarkdownFile(file)) return false;
+        let changed = false;
+        await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+            // Recompute against current source at Obsidian's atomic mutation boundary.
+            const replacements = collectPropertyValueReplacements(frontmatter, rename);
+            for (const [key, value] of replacements) {
+                frontmatter[key] = value;
+                changed = true;
+            }
+        });
+        return changed;
     }
 
     /**

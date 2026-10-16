@@ -23,7 +23,7 @@ import type { NotebookNavigatorSettings } from '../../settings/types';
 import { type PropertyItem, FileData } from '../../storage/IndexedDBStorage';
 import { getDBInstance } from '../../storage/fileOperations';
 import { areStringArraysEqual } from '../../utils/arrayUtils';
-import { arePropertyItemsEqual, extractFrontmatterPropertyValues } from '../../utils/propertyUtils';
+import { arePropertyItemsEqual, extractFrontmatterPropertyValues, isSyntheticFrontmatterPosition } from '../../utils/propertyUtils';
 import {
     type FenceMarkerChar,
     isFenceClose,
@@ -331,21 +331,6 @@ function countMarkdownTasks(content: string, bodyStartIndex: number): { taskTota
     }
 
     return { taskTotal, taskUnfinished };
-}
-
-function isSyntheticFrontmatterPosition(fieldKey: string, value: unknown): boolean {
-    if (fieldKey !== 'position' || typeof value !== 'object' || value === null || Array.isArray(value)) {
-        return false;
-    }
-    const position = value as Record<string, unknown>;
-    return ['start', 'end'].every(boundary => {
-        const location = position[boundary];
-        if (typeof location !== 'object' || location === null || Array.isArray(location)) {
-            return false;
-        }
-        const record = location as Record<string, unknown>;
-        return ['line', 'col', 'offset'].every(key => typeof record[key] === 'number' && Number.isFinite(record[key]));
-    });
 }
 
 // Builds the indexed property list from every supported frontmatter value. Visibility is applied later by

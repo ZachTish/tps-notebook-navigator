@@ -37,11 +37,15 @@ import {
 } from './manualSort';
 import { getParentFolderPath } from './pathUtils';
 import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from './propertyTree';
-import { extractFrontmatterPropertyValues, hasWordCountTargetPropertyConsumer, normalizePropertyTreeValuePath } from './propertyUtils';
+import {
+    extractFrontmatterPropertyValues,
+    isSyntheticFrontmatterPosition,
+    hasWordCountTargetPropertyConsumer,
+    normalizePropertyTreeValuePath
+} from './propertyUtils';
 import { casefold } from './recordUtils';
 import { normalizeTagPathValue } from './tagPrefixMatcher';
 import { extractFileTagsFromRawTags } from './tagUtils';
-import { getActivePropertyKeySet } from './vaultProfiles';
 
 interface AppearanceTextCountConsumers {
     words: boolean;
@@ -163,13 +167,12 @@ function getTagSelectionPaths(metadata: FrontMatterCache | null, includeDescenda
 }
 
 function getPropertySelectionPaths(frontmatter: FrontMatterCache, settings: NotebookNavigatorSettings): string[] {
-    const activePropertyKeys = getActivePropertyKeySet(settings);
     const paths = new Set<string>();
     let hasIndexedProperty = false;
 
     Object.entries(frontmatter).forEach(([key, value]) => {
         const normalizedKey = casefold(key);
-        if (!activePropertyKeys.has(normalizedKey)) {
+        if (!normalizedKey || isSyntheticFrontmatterPosition(key, value)) {
             return;
         }
 

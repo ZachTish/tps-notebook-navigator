@@ -26,6 +26,13 @@ describe('shared property visibility settings', () => {
         expect(api.get('status').showInList).toBe(true);
         expect(saveSettingsAndUpdate).not.toHaveBeenCalled();
     });
+    it('defaults unconfigured navigation to visible and preserves an explicit all-off choice', async () => {
+        const { api, first, settings } = setup();
+        expect(api.get('newKey')).toMatchObject({ showInNavigation: true, showInList: false, showInFileMenu: false });
+        await api.set('newKey', 'showInNavigation', false, first.id);
+        ensureVaultProfiles(settings);
+        expect(api.get('newKey')).toMatchObject({ showInNavigation: false, showInList: false, showInFileMenu: false });
+    });
     it('changes only the requested surface in the active profile, preserving casing and order', async () => {
         const { api, first, second, saveSettingsAndUpdate } = setup();
         await api.set('STATUS', 'showInNavigation', true, first.id);
@@ -35,10 +42,10 @@ describe('shared property visibility settings', () => {
         await api.set('status', 'showInNavigation', true, first.id);
         expect(saveSettingsAndUpdate).toHaveBeenCalledOnce();
     });
-    it('adds a previously unconfigured key without enabling unrelated surfaces', async () => {
+    it('preserves automatic navigation visibility when enabling another surface', async () => {
         const { api, first } = setup();
         await api.set('scheduled', 'showInList', true, first.id);
-        expect(first.propertyKeys[1]).toEqual({ key: 'scheduled', showInNavigation: false, showInList: true, showInFileMenu: false });
+        expect(first.propertyKeys[1]).toEqual({ key: 'scheduled', showInNavigation: true, showInList: true, showInFileMenu: false });
     });
     it('rejects edits from a stale profile without changing either profile', async () => {
         const { api, settings, first, second, saveSettingsAndUpdate } = setup();

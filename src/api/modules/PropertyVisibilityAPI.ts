@@ -12,7 +12,7 @@ export function createPropertyVisibilityAPI(plugin: Pick<NotebookNavigatorPlugin
         return {
             profileId: profile.id,
             profileName: profile.name,
-            showInNavigation: entry?.showInNavigation ?? false,
+            showInNavigation: entry?.showInNavigation ?? true,
             showInList: entry?.showInList ?? false,
             showInFileMenu: entry?.showInFileMenu ?? false
         };
@@ -32,7 +32,7 @@ export function createPropertyVisibilityAPI(plugin: Pick<NotebookNavigatorPlugin
             if (previous?.[surface] === visible) return get(trimmed);
             const next = {
                 key: trimmed,
-                showInNavigation: false,
+                showInNavigation: true,
                 showInList: false,
                 showInFileMenu: false,
                 ...previous,

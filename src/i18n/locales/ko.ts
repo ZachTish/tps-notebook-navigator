@@ -385,6 +385,7 @@ export const STRINGS_KO = {
             hideTag: '태그 숨기기'
         },
         property: {
+            renameValue: 'Rename value…',
             addKey: '속성 키 구성',
             renameKey: '속성 이름 변경',
             deleteKey: '속성 삭제'
@@ -643,6 +644,15 @@ export const STRINGS_KO = {
             }
         },
         propertyOperation: {
+            valueRenameTitle: 'Rename value in {property}',
+            valueRenameWarning:
+                'Replace this value across the vault in {count} {files}. Other values and note bodies are preserved. Templates, queries and plugin settings are not changed.',
+            newValuePrompt: 'New value',
+            includeNestedValues: 'Include nested values (keep child paths)',
+            invalidValue: 'Enter a nonempty value. Numbers must remain numbers; checkboxes must use true or false.',
+            valueRenameResult: 'Renamed value in {count} {files}. Failed: {failed}. No longer matching: {skipped}.',
+            metadataNotReady: 'Property metadata is still loading. Wait for indexing to finish before renaming values.',
+
             renameTitle: '속성 {property} 이름 변경',
             deleteTitle: '속성 {property} 삭제',
             newKeyPrompt: '새 속성 이름',
