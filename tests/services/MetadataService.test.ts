@@ -27,7 +27,6 @@ import type { CollapsedPinnedContexts } from '../../src/types';
 import type { FileData } from '../../src/storage/IndexedDBStorage';
 import { createDefaultFileData } from '../../src/storage/indexeddb/fileData';
 import { TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID } from '../../src/constants/tpsIdentity';
-import { subscribeGcmNotebookNavigatorPresentation } from '../../src/integrations/gcm/gcmNotebookNavigatorPresentation';
 
 const dbState = vi.hoisted(() => ({
     files: [] as { path: string; data: FileData }[]
@@ -141,11 +140,11 @@ function createFilteredTagProvider(): ITagTreeProvider {
     };
 }
 
-function installPresentationApi(app: App, values: Readonly<Record<string, string>>): void {
+function installPresentationApi(app: App, values: Readonly<Record<string, string>>) {
     const api = {
         version: 1,
         ensure: vi.fn().mockResolvedValue(undefined),
-        get: (file: TFile | string) => ({ filePath: typeof file === 'string' ? file : file.path, values }),
+        get: vi.fn((file: TFile | string) => ({ filePath: typeof file === 'string' ? file : file.path, values })),
         getRevision: () => 0,
         onChanged: () => () => undefined
     };
@@ -155,6 +154,7 @@ function installPresentationApi(app: App, values: Readonly<Record<string, string
         getPlugin: () => plugin,
         plugins: { [TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]: plugin }
     };
+    return api;
 }
 
 describe('MetadataService cleanup', () => {
@@ -242,8 +242,8 @@ describe('MetadataService GCM presentation fallbacks', () => {
         const provider = new TestSettingsProvider(settings);
         const service = new MetadataService(app, provider, () => createFilteredTagProvider());
 
-        expect(service.getFileIcon(path)).toBe('phosphor:apple-logo');
-        expect(service.getFileColor(path)).toBe('#123456');
+        expect(service.getFileIcon(path)).toBeUndefined();
+        expect(service.getFileColor(path)).toBeUndefined();
 
         settings.fileIcons[path] = 'sun';
         settings.fileColors[path] = '#abcdef';
@@ -256,7 +256,7 @@ describe('MetadataService GCM presentation fallbacks', () => {
         expect(data.properties).toBeNull();
     });
 
-    it('keeps virtual GCM presentation live when authored frontmatter metadata is disabled', () => {
+    it('ignores generated presentation when authored frontmatter metadata is disabled', () => {
         const path = 'Notes/Task.md';
         const app = new App();
         installPresentationApi(app, { icon: 'ph-apple-logo', color: '#123456' });
@@ -265,8 +265,8 @@ describe('MetadataService GCM presentation fallbacks', () => {
         const provider = new TestSettingsProvider(settings);
         const service = new MetadataService(app, provider, () => createFilteredTagProvider());
 
-        expect(service.getFileIcon(path)).toBe('phosphor:apple-logo');
-        expect(service.getFileColor(path)).toBe('#123456');
+        expect(service.getFileIcon(path)).toBeUndefined();
+        expect(service.getFileColor(path)).toBeUndefined();
 
         settings.fileIcons[path] = 'sun';
         settings.fileColors[path] = '#abcdef';
@@ -274,56 +274,16 @@ describe('MetadataService GCM presentation fallbacks', () => {
         expect(service.getFileColor(path)).toBe('#abcdef');
     });
 
-    it('refreshes a previously unprepared virtual icon and color after the GCM revision arrives', async () => {
-        const path = 'Notes/Task.md';
+    it('repeated appearance lookups never call the retired projection API', async () => {
         const app = new App();
-        Reflect.set(app, 'workspace', {
-            on: vi.fn(() => ({ event: 'gcm-api-changed' })),
-            offref: vi.fn(),
-            trigger: vi.fn()
-        });
-        let revision = 0;
-        let values: Readonly<Record<string, string>> | undefined;
-        const listeners = new Set<(nextRevision: number) => void>();
-        const ensure = vi.fn(async () => {
-            values = { icon: 'ph-apple-logo', color: '#123456' };
-            revision += 1;
-            listeners.forEach(listener => listener(revision));
-        });
-        const api = {
-            version: 1,
-            ensure,
-            get: (file: TFile | string) => (values ? { filePath: typeof file === 'string' ? file : file.path, values } : undefined),
-            getRevision: () => revision,
-            onChanged: (listener: (nextRevision: number) => void) => {
-                listeners.add(listener);
-                return () => listeners.delete(listener);
-            }
-        };
-        const plugin = { api: { notebookNavigatorPresentation: api } };
-        (app as App & { plugins: unknown }).plugins = {
-            enabledPlugins: new Set([TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]),
-            getPlugin: () => plugin,
-            plugins: { [TPS_GLOBAL_CONTEXT_MENU_PLUGIN_ID]: plugin }
-        };
-        const settings = createSettings();
-        settings.useFrontmatterMetadata = false;
-        const provider = new TestSettingsProvider(settings);
-        const service = new MetadataService(app, provider, () => createFilteredTagProvider());
-        const onChange = vi.fn();
-        const unsubscribe = subscribeGcmNotebookNavigatorPresentation(app, onChange);
-
-        expect(service.getFileIcon(path)).toBeUndefined();
-        expect(service.getFileColor(path)).toBeUndefined();
-        await vi.waitFor(() => expect(onChange.mock.calls.length).toBeGreaterThan(1));
-        expect(ensure).toHaveBeenCalledOnce();
-        expect(service.getFileIcon(path)).toBe('phosphor:apple-logo');
-        expect(service.getFileColor(path)).toBe('#123456');
-
-        settings.fileIcons[path] = 'sun';
-        settings.fileColors[path] = '#abcdef';
-        expect(service.getFileIcon(path)).toBe('sun');
-        expect(service.getFileColor(path)).toBe('#abcdef');
-        unsubscribe();
+        const api = installPresentationApi(app, { icon: 'apple', color: '#123456' });
+        const service = new MetadataService(app, new TestSettingsProvider(createSettings()), () => createFilteredTagProvider());
+        for (let i = 0; i < 1000; i++) {
+            expect(service.getFileIcon(`Notes/${i % 20}.md`)).toBeUndefined();
+            expect(service.getFileColor(`Notes/${i % 20}.md`)).toBeUndefined();
+        }
+        await Promise.resolve();
+        expect(api.ensure).not.toHaveBeenCalled();
+        expect(api.get).not.toHaveBeenCalled();
     });
 });

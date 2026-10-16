@@ -41,8 +41,6 @@ import type { NavigationSeparatorTarget } from '../utils/navigationSeparators';
 import { buildPropertyKeyNodeId } from '../utils/propertyTree';
 import { casefold, getCollapsedPinnedContextTarget } from '../utils/recordUtils';
 import { buildTagTreeFromDatabase } from '../utils/tagTree';
-import { getGcmNotebookNavigatorAppearanceValue } from '../integrations/gcm/gcmNotebookNavigatorPresentation';
-import { deserializeIconFromFrontmatterCompat } from '../utils/iconizeFormat';
 
 /**
  * Validators object containing all data needed for cleanup operations
@@ -455,20 +453,7 @@ export class MetadataService {
                 return frontmatterIcon;
             }
         }
-        // An explicit Navigator appearance remains authoritative over generated presentation.
-        const configuredIcon = this.fileService.getFileIcon(filePath);
-        if (configuredIcon) {
-            return configuredIcon;
-        }
-
-        // GCM presentation is transient and does not depend on Navigator reading
-        // authored frontmatter. Keep this fallback live when that storage toggle is off.
-        const iconField = settings.frontmatterIconField.trim();
-        if (!iconField) {
-            return undefined;
-        }
-        const generatedIcon = getGcmNotebookNavigatorAppearanceValue(this.app, filePath, iconField)?.trim();
-        return generatedIcon ? (deserializeIconFromFrontmatterCompat(generatedIcon) ?? undefined) : undefined;
+        return this.fileService.getFileIcon(filePath);
     }
 
     async setFileColor(filePath: string, color: string): Promise<void> {
@@ -503,19 +488,7 @@ export class MetadataService {
                 return frontmatterColor;
             }
         }
-        // An explicit Navigator appearance remains authoritative over generated presentation.
-        const configuredColor = this.fileService.getFileColor(filePath);
-        if (configuredColor) {
-            return configuredColor;
-        }
-
-        // Generated presentation stays independent from authored frontmatter storage.
-        const colorField = settings.frontmatterColorField.trim();
-        if (!colorField) {
-            return undefined;
-        }
-        const generatedColor = getGcmNotebookNavigatorAppearanceValue(this.app, filePath, colorField)?.trim();
-        return generatedColor || undefined;
+        return this.fileService.getFileColor(filePath);
     }
 
     /**

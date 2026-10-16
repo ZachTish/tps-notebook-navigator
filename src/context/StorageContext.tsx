@@ -65,7 +65,6 @@ import {
     getFileDisplayNameWithGcmNativeFallback,
     subscribeGcmNativeRecordApiLifecycle
 } from '../integrations/gcm/gcmNativeRecordDisplayName';
-import { subscribeGcmNotebookNavigatorPresentation } from '../integrations/gcm/gcmNotebookNavigatorPresentation';
 import { findTagNode, collectAllTagPaths } from '../utils/tagTree';
 import { useServices } from './ServicesContext';
 import { useSettingsState, useActiveProfile } from './SettingsContext';
@@ -86,8 +85,6 @@ import { runAsyncAction } from '../utils/async';
  */
 interface StorageContextValue {
     fileData: StorageFileData;
-    /** Generated icon/color/property revision; independent from authored display names. */
-    gcmPresentationRevision: number;
     // Methods to get file metadata with frontmatter extraction
     getFileDisplayName: (file: TFile, metadata?: CachedMetadata) => string;
     getFileCreatedTime: (file: TFile) => number;
@@ -186,7 +183,6 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
         hiddenRootTags: new Map()
     });
     const [gcmNativeRecordApiRevision, setGcmNativeRecordApiRevision] = useState(0);
-    const [gcmPresentationRevision, setGcmPresentationRevision] = useState(0);
 
     useEffect(() => {
         if (settings.tpsDataArchitectureMode !== 'native-records') {
@@ -197,12 +193,6 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
             setGcmNativeRecordApiRevision(revision => revision + 1);
         });
     }, [app, settings.tpsDataArchitectureMode]);
-
-    useEffect(() => {
-        return subscribeGcmNotebookNavigatorPresentation(app, () => {
-            setGcmPresentationRevision(revision => revision + 1);
-        });
-    }, [app]);
 
     // Registry managing content providers for generated file content
     const contentRegistry = useRef<ContentProviderRegistry | null>(null);
@@ -554,7 +544,6 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
 
         return {
             fileData,
-            gcmPresentationRevision,
             getFileDisplayName,
             getFileCreatedTime,
             getFileModifiedTime,
@@ -575,7 +564,6 @@ export function StorageProvider({ app, api, children }: StorageProviderProps) {
         };
     }, [
         fileData,
-        gcmPresentationRevision,
         getFileDisplayName,
         getFileCreatedTime,
         getFileModifiedTime,

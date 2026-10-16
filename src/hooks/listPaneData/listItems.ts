@@ -31,7 +31,6 @@ import {
     getPropertyGroupingValue,
     getPropertyGroupingValues,
     isDateSortOption,
-    isManualSortPropertyKey,
     isPropertySortOption
 } from '../../utils/sortUtils';
 import { getPropertyGroupingGranularity, getPropertyGroupingKey } from '../../settings/types';
@@ -57,7 +56,6 @@ import type { ListPaneFolderPathSegment } from '../../types/virtualization';
 import type { TpsNavigatorTypeId } from '../../types/navigatorTypes';
 import { getNavigatorPinContext } from '../../utils/selectionUtils';
 import { casefold, getMatchingRecordValue } from '../../utils/recordUtils';
-import { getGcmNotebookNavigatorPresentationValue } from '../../integrations/gcm/gcmNotebookNavigatorPresentation';
 
 export interface ListPaneConfig {
     filterPinnedByFolder: boolean;
@@ -197,7 +195,6 @@ function buildListItemsInternal(
         sortOption,
         propertySortKey = '',
         isManualSortActive = false,
-        manualSortPropertyKey = '',
         manualSortGroupHeaderPropertyKey = null,
         wordCountTargetProperty = '',
         groupItemCountData
@@ -653,7 +650,6 @@ function buildListItemsInternal(
             { label: string; numericValue: number | null; daySortValue: number | null; files: TFile[] }
         >();
         const ungroupedFiles: TFile[] = [];
-        const allowGeneratedFallback = !isManualSortPropertyKey({ manualSortPropertyKey }, propertyGroupingKey);
         const getGroupingValues = (rawValue: unknown) => {
             if (listConfig.multiValueGrouping !== 'combine') {
                 return propertyGroupingGranularity === 'day' ? getPropertyDayGroupingValues(rawValue) : getPropertyGroupingValues(rawValue);
@@ -668,10 +664,7 @@ function buildListItemsInternal(
                 file.extension === 'md'
                     ? getMatchingRecordValue(app.metadataCache.getFileCache(file)?.frontmatter, propertyGroupingKey)
                     : undefined;
-            let groupingValues = getGroupingValues(rawValue);
-            if (groupingValues.length === 0 && file.extension === 'md' && allowGeneratedFallback) {
-                groupingValues = getGroupingValues(getGcmNotebookNavigatorPresentationValue(app, file, propertyGroupingKey));
-            }
+            const groupingValues = getGroupingValues(rawValue);
             if (groupingValues.length === 0) {
                 ungroupedFiles.push(file);
                 return;

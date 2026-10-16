@@ -1,5 +1,13 @@
 # TPS Notebook Navigator
 
+## 9.0.0 — Stored properties and simpler Types
+
+The GCM generated-property overlay is removed from file icons/colors, sorting, grouping and list invalidation. Its transient cache, pending preparation queue, API subscription, revision state and row rerender dependency are deleted. Navigator retains its existing stored-frontmatter metadata, explicit appearance settings, ordinary property sorting/grouping and metadata indexing. No note, setting or database migration is performed; generated-only values no longer appear. GCM native record APIs and their independent lifecycle remain.
+
+Focused tests cover 1,000 repeated appearance lookups with zero old projection calls, 100 obsolete projection changes without list rebuilds, stored appearance precedence, and retained title/metadata updates. The current full suite passes 3,397 tests in 288 files under Node 24 after removing the unused inline Types implementation. The old overlay-specific tests are retired with the feature; stored-property and native-record suites remain. These are harness operation counts, not foreground application timings.
+
+This major release removes generated-only property presentation and retired inline collection contracts. Minimum Obsidian remains 1.11.0. The final source build deploys only to the test vault. Earlier integrated foreground comparisons pass the no-regression gate; physical iPhone acceptance remains unverified. See [release validation](release-notes/9.0.0.md) for artifacts, measurements and rollback limitations. Production remains a user-owned BRAT pull.
+
 A separately namespaced TPS fork of Notebook Navigator, with shared GCM properties, entity integration, and stable list presentation.
 
 ## 8.4.0 — Nested property groups in the file list
@@ -574,3 +582,9 @@ These rules hide matching notes throughout Navigator; they do not edit frontmatt
 Installed foreground interaction QA also clicked Navigator New note in a unique Inbox scope, opened the created item through normal Navigator selection, typed with the native keyboard and saved. Exactly one note was created; the visible body and saved source contained the typed marker. The trace counted 16 raw reads, 31 cached reads, one inventory, two process attempts and one modify across setup/creation/navigation/input inspection. The original leaf/query were restored and the owned fixture was archived byte-identically. This is a correctness check, not first-input latency or a controlled navigation benchmark.
 
 Final post-documentation verification: the separate ordinary production build passed, reported `target=test` with unchanged runtime bytes, and retained the already-loaded and QA-verified numeric version. Public release artifacts must match the SHA-256 receipt above. Production installation, full quit/reopen and vault-close/reopen comparisons, single-versus-two-window production profiling, first-use input latency and physical mobile acceptance remain rollout verification gates.
+
+### Remove the orphaned inline Types implementation
+
+The old GCM entity Types adapter, React store, task hydration/cache/batch readers and their exclusive Markdown-body index had no production imports. They and their transport-only task contracts are deleted. The active file Types API and its existing file catalog remain separate and read-only; property trees and normal metadata indexing are unchanged. Retired feature tests are removed with that implementation; a retirement contract and 100 catalog passes verify retained file buckets with zero body reads or writer entries. This deletes dormant machinery; it is not a claim of faster active navigation.
+
+Final cleanup validation: 3,397 tests in 288 files pass; lint has zero errors and 26 existing warnings; the TPS namespace check and separate TypeScript/production build pass. Runtime source totals 11 additions and 3,013 deletions, net -3,002. No note/settings/database migration occurs. Removing the unused inline store changes no active timer/listener count: it already had no production owner. Its three task list callers, task cache and body index are now absent from source.

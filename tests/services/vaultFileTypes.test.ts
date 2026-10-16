@@ -154,3 +154,18 @@ it('retains base-sensitive locale ordering and path ties without per-comparison 
         localeCompare.mockRestore();
     }
 });
+
+
+it('100 repeated file catalogs perform no body reads or writer entries', () => {
+    const context = createApp([createTestTFile('Inbox/One.md'), createTestTFile('Inbox/Two.base')]);
+    const write = vi.fn(() => { throw new Error('File catalog must not write'); });
+    Object.assign(context.app.vault, { create: write, modify: write, process: write });
+    for (let i = 0; i < 100; i++) {
+        const snapshot = buildVaultFileTypesSnapshot(context.app);
+        expect(snapshot.recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.NOTES)?.map(record => record.sourcePath)).toEqual(['Inbox/One.md']);
+        expect(snapshot.recordsByType.get(TPS_NAVIGATOR_TYPE_IDS.BASES)?.map(record => record.sourcePath)).toEqual(['Inbox/Two.base']);
+    }
+    expect(context.getFiles).toHaveBeenCalledTimes(100);
+    expectNoFileReads(context);
+    expect(write).not.toHaveBeenCalled();
+});

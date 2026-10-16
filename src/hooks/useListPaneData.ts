@@ -64,7 +64,6 @@ import { sortNavigationFiles } from '../utils/fileFinder';
 import {
     getListSortOverrideForSelection,
     isManualSortPropertyKey,
-    isPropertySortOption,
     resolveListSort,
     resolveSourceBackedTypeListSort
 } from '../utils/sortUtils';
@@ -233,7 +232,7 @@ export function useListPaneData({
     rowProviderSelection = NO_ROW_PROVIDERS
 }: UseListPaneDataParams): UseListPaneDataResult {
     const { app, plugin, tagTreeService, propertyTreeService, commandQueue, omnisearchService } = useServices();
-    const { getFileTimestamps, getDB, getFileDisplayName, gcmPresentationRevision } = useFileCache();
+    const { getFileTimestamps, getDB, getFileDisplayName } = useFileCache();
     const { includeDescendantNotes, showHiddenItems } = visibility;
     const dayKey = useLocalDayKey();
 
@@ -410,20 +409,9 @@ export function useListPaneData({
         [isLineBackedTypeSelection, settings, selectedSortOverride]
     );
     const sortOption = sortSpec.option;
-    // Generated presentation only participates in non-manual property ordering
-    // and grouping. Icon/color preparation must not rescan the selection, rebuild
-    // text-search names, or invalidate every virtual row's measurement.
-    const propertySortPresentationRevision =
-        isPropertySortOption(sortOption) && sortSpec.propertyKey.trim() && !isManualSortPropertyKey(settings, sortSpec.propertyKey)
-            ? gcmPresentationRevision
-            : 0;
-    const propertyGroupingKey = getPropertyGroupingKey(groupBy);
-    const propertyGroupPresentationRevision =
-        propertyGroupingKey !== null && !isManualSortPropertyKey(settings, propertyGroupingKey) ? gcmPresentationRevision : 0;
     const activePropertyFields = useMemo(() => getPropertyFieldsFromPropertyKeys(activeProfile.propertyKeys), [activeProfile.propertyKeys]);
 
     const selectionBaseFiles = useMemo(() => {
-        void propertySortPresentationRevision;
         if (isTypeSelection) {
             return visibleTypeFiles;
         }
@@ -479,7 +467,6 @@ export function useListPaneData({
         // The callback identity changes when GCM's optional native-record API is replaced.
         // Re-run the file finder so title sorting follows the same live names as visible rows.
         getFileDisplayName,
-        propertySortPresentationRevision,
         propertyTreeService,
         includeDescendantNotes,
         showHiddenItems,
@@ -489,7 +476,6 @@ export function useListPaneData({
     ]);
 
     const baseFiles = useMemo(() => {
-        void propertySortPresentationRevision;
         if (isFileBackedTypeSelection && selectedType && !useGlobalTypeSearch) {
             const files = collectFileBackedTypeFiles(app, visibleTypeFiles, selectedType);
             sortNavigationFiles(files, settings, app, sortSpec, getFileDisplayName);
@@ -505,7 +491,6 @@ export function useListPaneData({
     }, [
         app,
         getFileDisplayName,
-        propertySortPresentationRevision,
         hasSearchQuery,
         isFileBackedTypeSelection,
         isTypeSelection,
@@ -699,7 +684,6 @@ export function useListPaneData({
     const manualSortGroupHeaderPropertyKey = getManualSortGroupHeaderPropertyKey(settings);
     const shouldRefreshOnCustomGroupHeaderMetadataChange = groupBy === 'custom' && manualSortGroupHeaderPropertyKey !== null;
     const groupItemCountData = useMemo(() => {
-        void propertyGroupPresentationRevision;
         if (!groupCountFiles) {
             return undefined;
         }
@@ -736,7 +720,6 @@ export function useListPaneData({
         getDB,
         getFileTimestamps,
         groupCountFiles,
-        propertyGroupPresentationRevision,
         hiddenTags,
         isManualSortActive,
         listConfig,
@@ -766,7 +749,6 @@ export function useListPaneData({
     }, [groupItemCountData]);
 
     const coreListItems = useMemo(() => {
-        void propertyGroupPresentationRevision;
         return buildListItems({
             app,
             dayKey,
@@ -800,7 +782,6 @@ export function useListPaneData({
         dayKey,
         fileVisibility,
         files,
-        propertyGroupPresentationRevision,
         getDB,
         getFileTimestamps,
         hiddenFileState,

@@ -142,13 +142,6 @@ vi.mock('../../../src/integrations/gcm/gcmNativeRecordDisplayName', () => ({
         return () => harness.lifecycleListeners.delete(fn);
     }
 }));
-vi.mock('../../../src/integrations/gcm/gcmNotebookNavigatorPresentation', async original => ({
-    ...(await original<typeof import('../../../src/integrations/gcm/gcmNotebookNavigatorPresentation')>()),
-    subscribeGcmNotebookNavigatorPresentation: (_app: unknown, fn: () => void) => {
-        harness.projectionListeners.add(fn);
-        return () => harness.projectionListeners.delete(fn);
-    }
-}));
 vi.mock('../../../src/utils/selectionUtils', async original => ({
     ...(await original<typeof import('../../../src/utils/selectionUtils')>()),
     getFilesForNavigationSelection: (...args: unknown[]): unknown => harness.candidates(...args)
@@ -172,7 +165,6 @@ import { createTestTFile } from '../../utils/createTestTFile';
 import { getActiveVaultProfile } from '../../../src/utils/vaultProfiles';
 import { sortNavigationFiles } from '../../../src/utils/fileFinder';
 import { resolveListSort } from '../../../src/utils/sortUtils';
-import { getGcmNotebookNavigatorAppearanceValue } from '../../../src/integrations/gcm/gcmNotebookNavigatorPresentation';
 import { clearFrontmatterMetadataCacheSignature, markFrontmatterMetadataCacheCurrent } from '../../../src/utils/frontmatterMetadataCache';
 
 function createRun(): HookRun {
@@ -371,45 +363,27 @@ describe('GCM appearance invalidation does not rebuild unrelated list data', () 
         expect(harness.candidates).toHaveBeenCalledTimes(4);
     });
 
-    it('publishes appearance revisions while retaining names and date-grouped list identity', () => {
+    it('does not subscribe to generated appearance or rebuild lists for old projection updates', () => {
         const f = fixture('', 2);
-        f.projections.set(f.files[0].path, { icon: 'file', color: '#123456' });
-        const initial = f.run(),
-            revision = f.context().gcmPresentationRevision;
-        expect(getGcmNotebookNavigatorAppearanceValue(f.app, f.files[0], 'icon')).toBe('file');
-        f.projections.set(f.files[0].path, { icon: 'check', color: '#abcdef' });
-        expect(f.publish().listItems).toBe(initial.listItems);
-        expect(f.context().gcmPresentationRevision).toBe(revision + 1);
-        expect(getGcmNotebookNavigatorAppearanceValue(f.app, f.files[0], 'icon')).toBe('check');
-        expect(getGcmNotebookNavigatorAppearanceValue(f.app, f.files[0], 'color')).toBe('#abcdef');
+        const initial = f.run();
+        expect(harness.projectionListeners.size).toBe(0);
+        for (let i = 0; i < 100; i++) {
+            f.projections.set(f.files[0].path, { icon: 'check', color: '#abcdef', priority: String(i) });
+            expect(f.publish().listItems).toBe(initial.listItems);
+        }
+        expect(harness.candidates).toHaveBeenCalledTimes(1);
     });
 
-    it('refreshes generated property sorting when values change', () => {
+    it('generated properties never supply sorting or grouping values', () => {
         const f = fixture('', 2);
         f.setSettings({ propertySortKey: 'priority', defaultFolderSort: 'property-asc', defaultFolderSortPropertyKey: 'priority' });
-        f.projections.set(f.files[0].path, { priority: 'b' });
-        f.projections.set(f.files[1].path, { priority: 'a' });
-        expect(f.run().files).toEqual([f.files[1], f.files[0]]);
-        f.projections.set(f.files[0].path, { priority: '0' });
-        expect(f.publish().files).toEqual([f.files[0], f.files[1]]);
-        expect(harness.candidates).toHaveBeenCalledTimes(2);
-    });
-
-    it('refreshes generated property groups and search group counts without rebuilding text names', () => {
-        const f = fixture('Title', 2);
         f.params.groupBy = 'property:status';
-        f.setSettings({ showGroupHeaderItemCounts: true });
-        f.projections.set(f.files[0].path, { status: 'Open' });
-        f.projections.set(f.files[1].path, { status: 'Closed' });
-        const headers = (items: ListPaneItem[]) => items.filter(item => item.type === ListPaneItemType.HEADER).map(item => item.data);
-        expect(headers(f.run().listItems)).toEqual(['Closed', 'Open']);
-        const inspections = harness.inspect.mock.calls.length;
-        f.projections.set(f.files[0].path, { status: 'Closed' });
-        const updated = f.publish();
-        expect(headers(updated.listItems)).toEqual(['Closed']);
-        expect(updated.listItems.find(item => item.type === ListPaneItemType.HEADER)?.groupTotalItemCount).toBe(2);
+        const initial = f.run();
+        f.projections.set(f.files[0].path, { priority: 'z', status: 'Open' });
+        f.projections.set(f.files[1].path, { priority: 'a', status: 'Closed' });
+        expect(f.publish().listItems).toBe(initial.listItems);
+        expect(f.run().files).toEqual(initial.files);
         expect(harness.candidates).toHaveBeenCalledTimes(1);
-        expect(harness.inspect).toHaveBeenCalledTimes(inspections);
     });
 
     it('does not rescan for generated values when manual property sorting/grouping rejects them', () => {
