@@ -837,69 +837,30 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         expect(saveData).not.toHaveBeenCalled();
     });
 
-    it('persists valid TPS integration settings and rejects malformed values', () => {
-        const { controller } = createController();
-        const providerTypeId = 'provider:example%2Frelations:projects';
-
-        controller.applySettingsRecord(
-            {
-                tpsTypesPauseMigrationVersion: 1,
-                tpsDataArchitectureMode: 'legacy',
-                tpsTypesNavigationEnabled: false,
-                typeNavigationSortOrder: 'count-desc',
-                rootTypeOrder: [TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId, TPS_NAVIGATOR_TYPE_IDS.TABLES, 'kind:project', 'invalid'],
-                tpsResourceCreationTarget: 'specific-note',
-                tpsResourceCreationSpecificFile: ' /Inbox/Capture.md ',
-                tpsGcmTaskRowsEnabled: true,
-                tpsGcmTaskRowsIncludeCompleted: true,
-                tpsGcmTaskRowsPerNote: 12
-            },
-            { isFirstLaunch: false }
-        );
-
-        expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
-        expect(controller.settings.tpsDataArchitectureMode).toBe('native-records');
-        expect(controller.settings.typeNavigationSortOrder).toBe('count-desc');
-        expect(controller.settings.rootTypeOrder).toEqual([TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId]);
-        expect(controller.settings.tpsResourceCreationTarget).toBe('specific-note');
-        expect(controller.settings.tpsResourceCreationSpecificFile).toBe('Inbox/Capture.md');
-        expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(false);
-        expect(controller.settings.tpsGcmTaskRowsIncludeCompleted).toBe(true);
-        expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(12);
-        expect(controller.getPersistableSettings()).toMatchObject({
-            tpsTypesNavigationEnabled: false,
-            tpsDataArchitectureMode: 'native-records',
-            typeNavigationSortOrder: 'count-desc',
-            rootTypeOrder: [TPS_NAVIGATOR_TYPE_IDS.TABLES, providerTypeId],
+    it('omits retired resource and task-row preferences without saving or losing current configuration', () => {
+        const { controller, saveData, loadDataMock } = createController();
+        const retired = {
             tpsResourceCreationTarget: 'specific-note',
             tpsResourceCreationSpecificFile: 'Inbox/Capture.md',
-            tpsGcmTaskRowsEnabled: false,
+            tpsGcmTaskRowsEnabled: true,
             tpsGcmTaskRowsIncludeCompleted: true,
             tpsGcmTaskRowsPerNote: 12
-        });
-
-        controller.applySettingsRecord(
-            {
-                tpsTypesNavigationEnabled: 'no',
-                typeNavigationSortOrder: 'frequency-desc',
-                rootTypeOrder: 'not-an-array',
-                tpsResourceCreationTarget: 'somewhere',
-                tpsResourceCreationSpecificFile: '/',
-                tpsGcmTaskRowsEnabled: 'yes',
-                tpsGcmTaskRowsIncludeCompleted: 1,
-                tpsGcmTaskRowsPerNote: 500
-            },
-            { isFirstLaunch: false }
-        );
-
-        expect(controller.settings.tpsTypesNavigationEnabled).toBe(DEFAULT_SETTINGS.tpsTypesNavigationEnabled);
-        expect(controller.settings.typeNavigationSortOrder).toBe(DEFAULT_SETTINGS.typeNavigationSortOrder);
-        expect(controller.settings.rootTypeOrder).toEqual(DEFAULT_SETTINGS.rootTypeOrder);
-        expect(controller.settings.tpsResourceCreationTarget).toBe(DEFAULT_SETTINGS.tpsResourceCreationTarget);
-        expect(controller.settings.tpsResourceCreationSpecificFile).toBeNull();
-        expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled);
-        expect(controller.settings.tpsGcmTaskRowsIncludeCompleted).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsIncludeCompleted);
-        expect(controller.settings.tpsGcmTaskRowsPerNote).toBe(DEFAULT_SETTINGS.tpsGcmTaskRowsPerNote);
+        };
+        const stored = { ...retired, typeNavigationSortOrder: 'count-desc', extensionState: { keep: true } };
+        const original = structuredClone(stored);
+        controller.applySettingsRecord(stored, { isFirstLaunch: false });
+        expect(controller.settings.typeNavigationSortOrder).toBe('count-desc');
+        expect(controller.settings.tpsDataArchitectureMode).toBe('native-records');
+        expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
+        for (const payload of [DEFAULT_SETTINGS, controller.settings, controller.getPersistableSettings(), controller.getPersistableDefaultSettings()]) {
+            for (const key of Object.keys(retired)) expect(Object.prototype.hasOwnProperty.call(payload, key), key).toBe(false);
+        }
+        expect(controller.getPersistableSettings()).toMatchObject({ extensionState: { keep: true } });
+        Object.assign(controller.settings, retired);
+        for (const key of Object.keys(retired)) expect(Object.prototype.hasOwnProperty.call(controller.getPersistableSettings(), key), key).toBe(false);
+        expect(stored).toEqual(original);
+        expect(saveData).not.toHaveBeenCalled();
+        expect(loadDataMock).not.toHaveBeenCalled();
     });
 
     it('keeps retired Types and attached task rows off after legacy settings are reimported', () => {
@@ -916,7 +877,7 @@ describe('PluginSettingsController.applySettingsRecord', () => {
 
         expect(migrated).toBe(true);
         expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
-        expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(controller.settings, 'tpsGcmTaskRowsEnabled')).toBe(false);
         expect(controller.settings.tpsDataArchitectureMode).toBe('native-records');
         expect(controller.settings.tpsTypesPauseMigrationVersion).toBe(1);
 
@@ -927,7 +888,7 @@ describe('PluginSettingsController.applySettingsRecord', () => {
 
         expect(afterExplicitOptIn).toBe(false);
         expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
-        expect(controller.settings.tpsGcmTaskRowsEnabled).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(controller.settings, 'tpsGcmTaskRowsEnabled')).toBe(false);
         expect(controller.settings.tpsDataArchitectureMode).toBe('native-records');
         expect(controller.settings.tpsTypesPauseMigrationVersion).toBe(1);
     });

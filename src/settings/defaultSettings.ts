@@ -27,7 +27,6 @@ import {
     SYNC_MODE_SETTING_IDS,
     type NavRainbowSettings,
     type NotebookNavigatorSettings,
-    TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT,
     type SettingSyncMode
 } from './types';
 import { sanitizeRecord } from '../utils/recordUtils';
@@ -152,11 +151,6 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     tpsTypesNavigationEnabled: false,
     tpsFileTypesNavigationEnabled: true,
     typeNavigationSortOrder: 'catalog',
-    tpsResourceCreationTarget: 'daily-note',
-    tpsResourceCreationSpecificFile: null,
-    tpsGcmTaskRowsEnabled: false,
-    tpsGcmTaskRowsIncludeCompleted: false,
-    tpsGcmTaskRowsPerNote: TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT,
 
     // General tab - Behavior
     createNewNotesInNewTab: false,

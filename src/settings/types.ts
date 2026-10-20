@@ -239,12 +239,6 @@ export function isTypeNavigationSortOrder(value: unknown): value is TypeNavigati
     );
 }
 
-/** Destination used when the Types create action inserts a Markdown resource. */
-export type TpsResourceCreationTarget = 'daily-note' | 'active-note' | 'specific-note';
-
-export function isTpsResourceCreationTarget(value: unknown): value is TpsResourceCreationTarget {
-    return value === 'daily-note' || value === 'active-note' || value === 'specific-note';
-}
 
 /** Scope of items that button actions affect */
 export type ItemScope = 'all' | 'folders-only' | 'tags-only' | 'properties-only';
@@ -752,9 +746,6 @@ export interface VaultProfile {
 }
 
 /** Limits for the optional GCM task rows rendered beneath each note. */
-export const TPS_GCM_TASK_ROWS_PER_NOTE_MIN = 1;
-export const TPS_GCM_TASK_ROWS_PER_NOTE_MAX = 50;
-export const TPS_GCM_TASK_ROWS_PER_NOTE_DEFAULT = 5;
 
 export type TpsDataArchitectureMode = 'legacy' | 'native-records';
 
@@ -777,11 +768,6 @@ export interface NotebookNavigatorSettings {
     tpsTypesNavigationEnabled: boolean;
     tpsFileTypesNavigationEnabled: boolean;
     typeNavigationSortOrder: TypeNavigationSortOrder;
-    tpsResourceCreationTarget: TpsResourceCreationTarget;
-    tpsResourceCreationSpecificFile: string | null;
-    tpsGcmTaskRowsEnabled: boolean;
-    tpsGcmTaskRowsIncludeCompleted: boolean;
-    tpsGcmTaskRowsPerNote: number;
 
     // General tab - Behavior
     createNewNotesInNewTab: boolean;

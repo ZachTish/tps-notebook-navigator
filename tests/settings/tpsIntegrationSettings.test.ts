@@ -34,10 +34,10 @@ describe('TPS integration settings', () => {
         expect((definitions[0].items as Array<Record<string, unknown>>)[0].desc).toContain('whole-file categories');
     });
 
-    it('defaults to native records with task rows disabled while keeping read-only note task progress', () => {
+    it('defaults to native records without task-row preferences while keeping read-only note task progress', () => {
         expect(DEFAULT_SETTINGS.tpsDataArchitectureMode).toBe('native-records');
         expect(DEFAULT_SETTINGS.tpsTypesNavigationEnabled).toBe(false);
-        expect(DEFAULT_SETTINGS.tpsGcmTaskRowsEnabled).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(DEFAULT_SETTINGS, 'tpsGcmTaskRowsEnabled')).toBe(false);
         expect(hasMarkdownTaskConsumer(DEFAULT_SETTINGS)).toBe(true);
         expect(getMarkdownPipelineContentTypes(DEFAULT_SETTINGS)).toContain('tasks');
     });

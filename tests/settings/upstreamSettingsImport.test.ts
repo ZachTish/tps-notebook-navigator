@@ -75,11 +75,6 @@ describe('prepareUpstreamSettingsImport', () => {
         current.typeAppearances = { 'entity:note': { mode: 'compact' } };
         current.typeSortOverrides = { 'file:base': 'title-desc' };
         current.rootTypeOrder = ['structural:table', 'entity:note'];
-        current.tpsResourceCreationTarget = 'specific-note';
-        current.tpsResourceCreationSpecificFile = 'Inbox/Capture.md';
-        current.tpsGcmTaskRowsEnabled = true;
-        current.tpsGcmTaskRowsIncludeCompleted = true;
-        current.tpsGcmTaskRowsPerNote = 17;
         current.lastShownVersion = '4.0.0';
         current.toolbarVisibility.list.search = true;
         current.toolbarVisibility.list.sort = false;
@@ -121,11 +116,11 @@ describe('prepareUpstreamSettingsImport', () => {
         expect(result.settingsRecord.typeAppearances).toEqual({ 'entity:note': { mode: 'compact' } });
         expect(result.settingsRecord.typeSortOverrides).toEqual({ 'file:base': 'title-desc' });
         expect(result.settingsRecord.rootTypeOrder).toEqual(['structural:table', 'entity:note']);
-        expect(result.settingsRecord.tpsResourceCreationTarget).toBe('specific-note');
-        expect(result.settingsRecord.tpsResourceCreationSpecificFile).toBe('Inbox/Capture.md');
-        expect(result.settingsRecord.tpsGcmTaskRowsEnabled).toBe(true);
-        expect(result.settingsRecord.tpsGcmTaskRowsIncludeCompleted).toBe(true);
-        expect(result.settingsRecord.tpsGcmTaskRowsPerNote).toBe(17);
+        expect(Object.prototype.hasOwnProperty.call(result.settingsRecord, 'tpsResourceCreationTarget')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(result.settingsRecord, 'tpsResourceCreationSpecificFile')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(result.settingsRecord, 'tpsGcmTaskRowsEnabled')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(result.settingsRecord, 'tpsGcmTaskRowsIncludeCompleted')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(result.settingsRecord, 'tpsGcmTaskRowsPerNote')).toBe(false);
         expect(result.settingsRecord.lastShownVersion).toBe('4.0.0');
         expect(result.settingsRecord.toolbarVisibility).toMatchObject({
             list: { search: false, sort: false }

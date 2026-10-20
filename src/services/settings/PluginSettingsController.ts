@@ -46,8 +46,6 @@ import {
     type SettingSyncMode,
     type SyncModeSettingId,
     type TagSortOrder,
-    TPS_GCM_TASK_ROWS_PER_NOTE_MAX,
-    TPS_GCM_TASK_ROWS_PER_NOTE_MIN,
     type VaultProfile,
     isAlphaSortOrder,
     isCalendarMonthHeadingFormat,
@@ -70,7 +68,6 @@ import {
     isSettingSyncMode,
     isSortOption,
     isTagSortOrder,
-    isTpsResourceCreationTarget,
     isTypeNavigationSortOrder,
     normalizeAppearanceGroupBy,
     normalizeListSortOverride,
@@ -556,7 +553,6 @@ export class PluginSettingsController {
             // Retain the historical migration marker while closing old line catalog and
             // attached-task-row preferences before their final whole-note normalization.
             this.currentSettings.tpsTypesNavigationEnabled = false;
-            this.currentSettings.tpsGcmTaskRowsEnabled = false;
             this.currentSettings.tpsTypesPauseMigrationVersion = 1;
         }
         let migratedLinePropertyInheritanceDefault = false;
@@ -584,6 +580,11 @@ export class PluginSettingsController {
         }
 
         const settingsRecord = this.currentSettings as unknown as Record<string, unknown>;
+        delete settingsRecord['tpsResourceCreationTarget'];
+        delete settingsRecord['tpsResourceCreationSpecificFile'];
+        delete settingsRecord['tpsGcmTaskRowsEnabled'];
+        delete settingsRecord['tpsGcmTaskRowsIncludeCompleted'];
+        delete settingsRecord['tpsGcmTaskRowsPerNote'];
         delete settingsRecord['showCalendar'];
         delete settingsRecord['calendarCustomPromptForTitle'];
         delete settingsRecord['saveMetadataToFrontmatter'];
@@ -690,22 +691,6 @@ export class PluginSettingsController {
         if (!isTypeNavigationSortOrder(this.currentSettings.typeNavigationSortOrder)) {
             this.currentSettings.typeNavigationSortOrder = DEFAULT_SETTINGS.typeNavigationSortOrder;
         }
-        if (!isTpsResourceCreationTarget(this.currentSettings.tpsResourceCreationTarget)) {
-            this.currentSettings.tpsResourceCreationTarget = DEFAULT_SETTINGS.tpsResourceCreationTarget;
-        }
-        this.currentSettings.tpsResourceCreationSpecificFile = normalizeOptionalVaultFilePath(
-            this.currentSettings.tpsResourceCreationSpecificFile
-        );
-        this.currentSettings.tpsGcmTaskRowsEnabled = false;
-        this.currentSettings.tpsGcmTaskRowsIncludeCompleted = this.sanitizeBooleanSetting(
-            this.currentSettings.tpsGcmTaskRowsIncludeCompleted,
-            DEFAULT_SETTINGS.tpsGcmTaskRowsIncludeCompleted
-        );
-        this.currentSettings.tpsGcmTaskRowsPerNote = this.sanitizeBoundedIntegerSetting(this.currentSettings.tpsGcmTaskRowsPerNote, {
-            min: TPS_GCM_TASK_ROWS_PER_NOTE_MIN,
-            max: TPS_GCM_TASK_ROWS_PER_NOTE_MAX,
-            fallback: DEFAULT_SETTINGS.tpsGcmTaskRowsPerNote
-        });
 
         if (!isPropertySortSecondaryOption(this.currentSettings.propertySortSecondary)) {
             this.currentSettings.propertySortSecondary = DEFAULT_SETTINGS.propertySortSecondary;
@@ -1066,6 +1051,11 @@ export class PluginSettingsController {
     }
 
     private removeNonPersistableSettings(rest: Record<string, unknown>): void {
+        delete rest.tpsResourceCreationTarget;
+        delete rest.tpsResourceCreationSpecificFile;
+        delete rest.tpsGcmTaskRowsEnabled;
+        delete rest.tpsGcmTaskRowsIncludeCompleted;
+        delete rest.tpsGcmTaskRowsPerNote;
         delete rest.hiddenTags;
         delete rest.fileVisibility;
         delete rest.recentColors;

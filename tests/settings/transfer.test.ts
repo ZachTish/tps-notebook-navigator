@@ -103,21 +103,21 @@ describe('createModifiedSettingsTransfer', () => {
         expect(restored.rootTypeOrder).toEqual(['structural:table', 'provider:example%2Frelations:projects']);
     });
 
-    it('round-trips the Type resource creation target and specific-note path', () => {
+    it('round-trips supported custom calendar template paths', () => {
         const settings = structuredClone(DEFAULT_SETTINGS);
-        settings.tpsResourceCreationTarget = 'specific-note';
-        settings.tpsResourceCreationSpecificFile = 'Inbox/Capture.md';
+        settings.calendarCustomFileTemplate = 'Templates/Day.md';
+        settings.calendarCustomWeekTemplate = 'Templates/Week.md';
 
         const transferData = createModifiedSettingsTransfer(settings, '5.3.1');
         expect(transferData.settings).toEqual({
-            tpsResourceCreationTarget: 'specific-note',
-            tpsResourceCreationSpecificFile: 'Inbox/Capture.md',
+            calendarCustomFileTemplate: 'Templates/Day.md',
+            calendarCustomWeekTemplate: 'Templates/Week.md',
             propertyGroupKey: ''
         });
 
         const restored = applyModifiedSettingsTransfer(structuredClone(DEFAULT_SETTINGS), transferData);
-        expect(restored.tpsResourceCreationTarget).toBe('specific-note');
-        expect(restored.tpsResourceCreationSpecificFile).toBe('Inbox/Capture.md');
+        expect(restored.calendarCustomFileTemplate).toBe('Templates/Day.md');
+        expect(restored.calendarCustomWeekTemplate).toBe('Templates/Week.md');
     });
 });
 
