@@ -1,5 +1,9 @@
 # TPS Notebook Navigator
 
+## Development workflow
+
+Run `npm test`, then `npm run build` for the separate final production-mode build. Both commands stay inside this checkout and never deploy or reload a vault. The build needs only this repository and its declared dependencies; no parent workspace helper is imported. Deployment is an explicit test-vault operation owned by the workspace release checklist. Runtime artifacts and private settings are never copied back into source. This tooling-only change does not alter the plugin version or runtime behavior.
+
 ## 10.0.0 — Remove retired inline-row preferences
 
 Five inactive preferences are removed from types, defaults, normalization and saved payloads: `tpsResourceCreationTarget`, `tpsResourceCreationSpecificFile`, `tpsGcmTaskRowsEnabled`, `tpsGcmTaskRowsIncludeCompleted` and `tpsGcmTaskRowsPerNote`. Their obsolete validator, type and row-limit constants are removed. Whole-file navigation, File types, ordinary note task-progress counts, property discovery/value renaming and supported calendar templates remain unchanged.
@@ -323,20 +327,6 @@ This fork builds on [johansan/notebook-navigator](https://github.com/johansan/no
 ## Development and repository policy
 
 `main` is the stable source line. Numeric tags identify immutable released artifacts. This fork has no maintained `optimization` lane. Imported upstream topic branches are not TPS release channels.
-
-The supported build lives inside `Obsidian Plugin Test Vault/Plugin Development`, with `TPS-Notebook-Navigator (Dev)` as the mapped stable source. These repositories depend on adjacent shared tooling including `deploy-runtime.mjs`; a standalone clone is not currently self-contained.
-
-From the contained workspace, prepare dependencies using the shared helper, then run tests and a separate final build:
-
-```sh
-# From Plugin Development:
-node ./prepare-dependencies.mjs "TPS-Notebook-Navigator (Dev)"
-cd "TPS-Notebook-Navigator (Dev)"
-npm test
-npm run build
-```
-
-Dependencies stay in the vault's `.plugin-dev-cache.nosync` through a relative `node_modules` symlink. Use a clean, current checkout; preserve unrelated changes and never build an old dirty worktree into the test runtime. Stable builds deploy only shipped artifacts to the test vault. Optimization builds are build-only. Runtime `data.json`, secrets, caches, and session state never belong in Git.
 
 Documentation-only maintenance does not create a new plugin version. Published release tags and assets are preserved. Do not rely on legacy version/release scripts without reviewing their current behavior. Production updates remain the user's BRAT handoff.
 
