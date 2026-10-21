@@ -231,32 +231,32 @@ describe('buildPropertyTreeFromDatabase', () => {
         expect(matchesPropertyValuePath(urlPath, 'https:', true, urlValue)).toBe(false);
     });
 
-    it.each([['plain', 'link'], ['link', 'plain']] as const)(
-        'keeps one canonical value and both note memberships when %s precedes %s',
-        (first, second) => {
-            const values = {
-                plain: 'Projects/Alpha',
-                link: '[[Projects/Alpha|Projects/Alpha]]'
-            };
-            const tree = buildPropertyTreeFromDatabase(
-                createMockDb([
-                    { path: `${first}.md`, properties: [{ fieldKey: 'Project', value: values[first] }] },
-                    { path: `${second}.md`, properties: [{ fieldKey: 'Project', value: values[second] }] }
-                ]),
-                { includedPropertyKeys: new Set(['project']) }
-            );
-            const keyNode = tree.get('project');
-            expect(keyNode).toBeDefined();
-            if (!keyNode) return;
+    it.each([
+        ['plain', 'link'],
+        ['link', 'plain']
+    ] as const)('keeps one canonical value and both note memberships when %s precedes %s', (first, second) => {
+        const values = {
+            plain: 'Projects/Alpha',
+            link: '[[Projects/Alpha|Projects/Alpha]]'
+        };
+        const tree = buildPropertyTreeFromDatabase(
+            createMockDb([
+                { path: `${first}.md`, properties: [{ fieldKey: 'Project', value: values[first] }] },
+                { path: `${second}.md`, properties: [{ fieldKey: 'Project', value: values[second] }] }
+            ]),
+            { includedPropertyKeys: new Set(['project']) }
+        );
+        const keyNode = tree.get('project');
+        expect(keyNode).toBeDefined();
+        if (!keyNode) return;
 
-            const canonicalPath = normalizePropertyTreeValuePath(values.plain);
-            const canonicalId = buildPropertyValueNodeId('project', canonicalPath);
-            const nodes = Array.from(keyNode.children.values()).flatMap(node => [node, ...node.children.values()]);
-            expect(nodes.filter(node => node.id === canonicalId)).toHaveLength(1);
-            expect(collectPropertyValueFilePaths(keyNode, canonicalPath)).toEqual(new Set(['plain.md', 'link.md']));
-            expect(resolvePropertySelectionNodeId(tree, canonicalId)).toBe(canonicalId);
-        }
-    );
+        const canonicalPath = normalizePropertyTreeValuePath(values.plain);
+        const canonicalId = buildPropertyValueNodeId('project', canonicalPath);
+        const nodes = Array.from(keyNode.children.values()).flatMap(node => [node, ...node.children.values()]);
+        expect(nodes.filter(node => node.id === canonicalId)).toHaveLength(1);
+        expect(collectPropertyValueFilePaths(keyNode, canonicalPath)).toEqual(new Set(['plain.md', 'link.md']));
+        expect(resolvePropertySelectionNodeId(tree, canonicalId)).toBe(canonicalId);
+    });
 
     it('creates deep prefix nodes while preserving exact membership and metadata ids', () => {
         const tree = buildPropertyTreeFromDatabase(

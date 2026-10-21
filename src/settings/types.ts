@@ -239,7 +239,6 @@ export function isTypeNavigationSortOrder(value: unknown): value is TypeNavigati
     );
 }
 
-
 /** Scope of items that button actions affect */
 export type ItemScope = 'all' | 'folders-only' | 'tags-only' | 'properties-only';
 

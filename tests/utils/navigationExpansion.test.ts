@@ -63,7 +63,9 @@ describe('navigationExpansion', () => {
             key: leafId,
             level: 3
         };
-        expect(getNavigationExpansionTargetForItem(leafItem, { showHiddenItems: false, showRootFolder: true, propertyKeyNode: key })).toEqual({
+        expect(
+            getNavigationExpansionTargetForItem(leafItem, { showHiddenItems: false, showRootFolder: true, propertyKeyNode: key })
+        ).toEqual({
             type: 'property',
             id: leafId,
             hasChildren: false,

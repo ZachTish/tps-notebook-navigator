@@ -852,12 +852,18 @@ describe('PluginSettingsController.applySettingsRecord', () => {
         expect(controller.settings.typeNavigationSortOrder).toBe('count-desc');
         expect(controller.settings.tpsDataArchitectureMode).toBe('native-records');
         expect(controller.settings.tpsTypesNavigationEnabled).toBe(false);
-        for (const payload of [DEFAULT_SETTINGS, controller.settings, controller.getPersistableSettings(), controller.getPersistableDefaultSettings()]) {
+        for (const payload of [
+            DEFAULT_SETTINGS,
+            controller.settings,
+            controller.getPersistableSettings(),
+            controller.getPersistableDefaultSettings()
+        ]) {
             for (const key of Object.keys(retired)) expect(Object.prototype.hasOwnProperty.call(payload, key), key).toBe(false);
         }
         expect(controller.getPersistableSettings()).toMatchObject({ extensionState: { keep: true } });
         Object.assign(controller.settings, retired);
-        for (const key of Object.keys(retired)) expect(Object.prototype.hasOwnProperty.call(controller.getPersistableSettings(), key), key).toBe(false);
+        for (const key of Object.keys(retired))
+            expect(Object.prototype.hasOwnProperty.call(controller.getPersistableSettings(), key), key).toBe(false);
         expect(stored).toEqual(original);
         expect(saveData).not.toHaveBeenCalled();
         expect(loadDataMock).not.toHaveBeenCalled();

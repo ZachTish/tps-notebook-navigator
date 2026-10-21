@@ -137,11 +137,16 @@ describe('vault file Types', () => {
 });
 
 it('retains base-sensitive locale ordering and path ties without per-comparison locale setup', () => {
-    const files = ['Z/Alpha.md', 'A/alpha.md', 'N/Éclair.md', 'N/eclair.md', 'N/Zulu.md', 'N/file-10.md', 'N/file-2.md'].map(createTestTFile);
-    const expected = [...files].sort((a, b) =>
-        a.basename.localeCompare(b.basename, undefined, { sensitivity: 'base' }) ||
-        a.path.localeCompare(b.path, undefined, { sensitivity: 'base' })
-    ).map(file => file.path);
+    const files = ['Z/Alpha.md', 'A/alpha.md', 'N/Éclair.md', 'N/eclair.md', 'N/Zulu.md', 'N/file-10.md', 'N/file-2.md'].map(
+        createTestTFile
+    );
+    const expected = [...files]
+        .sort(
+            (a, b) =>
+                a.basename.localeCompare(b.basename, undefined, { sensitivity: 'base' }) ||
+                a.path.localeCompare(b.path, undefined, { sensitivity: 'base' })
+        )
+        .map(file => file.path);
     const context = createApp(files);
     const localeCompare = vi.spyOn(String.prototype, 'localeCompare').mockImplementation(() => {
         throw new Error('Do not initialize locale comparison for every catalog comparison');
@@ -155,10 +160,11 @@ it('retains base-sensitive locale ordering and path ties without per-comparison 
     }
 });
 
-
 it('100 repeated file catalogs perform no body reads or writer entries', () => {
     const context = createApp([createTestTFile('Inbox/One.md'), createTestTFile('Inbox/Two.base')]);
-    const write = vi.fn(() => { throw new Error('File catalog must not write'); });
+    const write = vi.fn(() => {
+        throw new Error('File catalog must not write');
+    });
     Object.assign(context.app.vault, { create: write, modify: write, process: write });
     for (let i = 0; i < 100; i++) {
         const snapshot = buildVaultFileTypesSnapshot(context.app);

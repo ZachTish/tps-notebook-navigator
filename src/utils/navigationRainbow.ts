@@ -573,8 +573,7 @@ export function buildPropertyRainbowColors(params: {
             if (item.type === NavigationPaneItemType.PROPERTY_VALUE) {
                 const parent = nodeByLevel[item.level - 1];
                 const isNestedUnderParent =
-                    parent?.key === item.data.key &&
-                    (parent.valuePath === null || item.data.valuePath?.startsWith(`${parent.valuePath}/`));
+                    parent?.key === item.data.key && (parent.valuePath === null || item.data.valuePath?.startsWith(`${parent.valuePath}/`));
                 propertyParentByNodeId.set(item.data.id, isNestedUnderParent ? parent.id : `key:${item.data.key}`);
             }
             nodeByLevel[item.level] = { id: item.data.id, key: item.data.key, valuePath: item.data.valuePath };

@@ -57,12 +57,8 @@ describe('filterSearch property tokenization', () => {
 
     it('parses generated exact and subtree modes without changing typed substring filters', () => {
         expect(parseFilterSearchTokens('.kind=entity').propertyTokens).toEqual([{ key: 'kind', value: 'entity' }]);
-        expect(parseFilterSearchTokens('.kind==entity').propertyTokens).toEqual([
-            { key: 'kind', value: 'entity', matchMode: 'exact' }
-        ]);
-        expect(parseFilterSearchTokens('.kind^=entity').propertyTokens).toEqual([
-            { key: 'kind', value: 'entity', matchMode: 'subtree' }
-        ]);
+        expect(parseFilterSearchTokens('.kind==entity').propertyTokens).toEqual([{ key: 'kind', value: 'entity', matchMode: 'exact' }]);
+        expect(parseFilterSearchTokens('.kind^=entity').propertyTokens).toEqual([{ key: 'kind', value: 'entity', matchMode: 'subtree' }]);
     });
 });
 
@@ -302,14 +298,10 @@ describe('updateFilterQueryWithProperty', () => {
     it('round-trips generated exact and subtree filters independently of typed substring filters', () => {
         const exact = updateFilterQueryWithProperty('', 'kind', 'entity', 'AND', 'exact');
         expect(exact.query).toBe('.kind==entity');
-        expect(parseFilterSearchTokens(exact.query).propertyTokens).toEqual([
-            { key: 'kind', value: 'entity', matchMode: 'exact' }
-        ]);
+        expect(parseFilterSearchTokens(exact.query).propertyTokens).toEqual([{ key: 'kind', value: 'entity', matchMode: 'exact' }]);
         const withSubtree = updateFilterQueryWithProperty(exact.query, 'kind', 'entity', 'AND', 'subtree');
         expect(withSubtree.query).toBe('.kind==entity AND .kind^=entity');
-        expect(updateFilterQueryWithProperty(withSubtree.query, 'kind', 'entity', 'AND', 'exact').query).toBe(
-            '.kind^=entity'
-        );
+        expect(updateFilterQueryWithProperty(withSubtree.query, 'kind', 'entity', 'AND', 'exact').query).toBe('.kind^=entity');
         expect(updateFilterQueryWithProperty('.kind=entity', 'kind', 'entity', 'AND', 'exact').query).toBe(
             '.kind=entity AND .kind==entity'
         );
