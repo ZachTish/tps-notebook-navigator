@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App, type TFile } from 'obsidian';
 import { FileSystemOperations } from '../../src/services/FileSystemService';
 import type { ISettingsProvider } from '../../src/interfaces/ISettingsProvider';
@@ -32,6 +32,12 @@ import {
 } from '../../src/utils/propertyTree';
 import type { PropertyTreeDatabaseLike } from '../../src/utils/propertyTree';
 import { createTestTFile } from '../utils/createTestTFile';
+import { choosePropertyDropMode } from '../../src/modals/PropertyDropModal';
+
+vi.mock('../../src/modals/PropertyDropModal', () => ({ choosePropertyDropMode: vi.fn() }));
+beforeEach(() => {
+    vi.mocked(choosePropertyDropMode).mockReset().mockResolvedValue('add');
+});
 
 vi.mock('../../src/modals/ConfirmModal', () => ({
     ConfirmModal: class ConfirmModal {
@@ -110,6 +116,10 @@ function createOperations(
     propertyTreeService: PropertyTreeService,
     settings: NotebookNavigatorSettings = { ...DEFAULT_SETTINGS }
 ): FileSystemOperations {
+    app.metadataCache.getFileCache = vi.fn((file: TFile) => {
+        (app.vault as unknown as { registerFile: (file: TFile) => void }).registerFile(file);
+        return { frontmatter: (file as TFile & { frontmatter: Record<string, unknown> }).frontmatter };
+    });
     return new FileSystemOperations(
         app,
         () => null,
@@ -373,7 +383,7 @@ describe('FileSystemOperations property assignment', () => {
 
         await operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('priority', normalizePropertyTreeValuePath('high')), [target]);
         expect(target.frontmatter.Priority).toBe('high');
-        expect(processFrontMatter).toHaveBeenCalledTimes(5);
+        expect(processFrontMatter).toHaveBeenCalledTimes(4);
         expect(addListValues).not.toHaveBeenCalled();
         expect(setValues).not.toHaveBeenCalled();
     });
@@ -423,7 +433,7 @@ describe('FileSystemOperations property assignment', () => {
         await expect(
             operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('parents', normalizePropertyTreeValuePath('[[Alpha]]')), [target])
         ).resolves.toEqual({ updated: 0, skipped: 1 });
-        expect(processFrontMatter).toHaveBeenCalledOnce();
+        expect(processFrontMatter).not.toHaveBeenCalled();
     });
 
     it('does not write companion properties for non-Markdown file drops', async () => {
@@ -507,5 +517,137 @@ describe('FileSystemOperations property assignment', () => {
             operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('parents', normalizePropertyTreeValuePath('[[Beta]]')), [target])
         ).resolves.toEqual({ updated: 0, skipped: 0 });
         expect(assetAdd).not.toHaveBeenCalled();
+    });
+});
+
+describe('list property drop choices', () => {
+    function setup(values: unknown[], type: string | null = 'list') {
+        const app = new App();
+        const files = values.map((value, index) =>
+            createFile(`Note ${index}.md`, value === undefined ? { title: 'kept' } : { Kind: value, title: 'kept' })
+        );
+        const tree = new PropertyTreeService();
+        tree.updatePropertyTree(
+            buildPropertyTreeFromDatabase(
+                createMockDb([{ path: 'Source.md', properties: [{ fieldKey: 'Kind', value: 'note', valueKind: 'string' }] }])
+            )
+        );
+        const operations = createOperations(app, tree);
+        files.forEach(file => (app.vault as unknown as { registerFile: (file: TFile) => void }).registerFile(file));
+        const cache = vi.fn((file: TFile) => ({ frontmatter: (file as (typeof files)[number]).frontmatter }));
+        app.metadataCache.getFileCache = cache;
+        const write = vi.fn(async (file: TFile, callback: (fm: Record<string, unknown>) => void) => {
+            callback((file as (typeof files)[number]).frontmatter);
+        });
+        app.fileManager.processFrontMatter = write;
+        const scan = vi.spyOn(app.vault, 'getMarkdownFiles');
+        const read = vi.spyOn(app.vault, 'cachedRead');
+        if (type)
+            (app as App & { plugins: unknown }).plugins = {
+                enabledPlugins: new Set(['tps-global-context-menu']),
+                getPlugin: () => ({
+                    api: { itemProperties: { version: 2, listDefinitions: () => [], resolveDefinition: () => ({ type }) } }
+                })
+            };
+        const drop = (selection: TFile[] = files) =>
+            operations.applyPropertyNodeToFiles(buildPropertyValueNodeId('kind', normalizePropertyTreeValuePath('note')), selection);
+        return { app, files, cache, write, scan, read, drop };
+    }
+
+    it('counts 3 of 10 once and adds without removing task or unrelated fields', async () => {
+        const s = setup(['task', ['task'], ['task', 'entity'], ...Array.from({ length: 7 }, () => undefined)], 'kind');
+        expect(await s.drop()).toEqual({ updated: 10, skipped: 0 });
+        expect(choosePropertyDropMode).toHaveBeenCalledExactlyOnceWith(s.app, 'Kind', 'note', 3, 10);
+        expect(s.files[0].frontmatter.Kind).toEqual(['task', 'note']);
+        expect(s.files[2].frontmatter.Kind).toEqual(['task', 'entity', 'note']);
+        expect(s.files[9].frontmatter.kind ?? s.files[9].frontmatter.Kind).toEqual(['note']);
+        expect(s.files.every(f => f.frontmatter.title === 'kept')).toBe(true);
+        expect(s.cache).toHaveBeenCalledTimes(20);
+        expect(s.scan).not.toHaveBeenCalled();
+        expect(s.read).not.toHaveBeenCalled();
+    });
+    it('replaces all selected lists with only the dropped value', async () => {
+        vi.mocked(choosePropertyDropMode).mockResolvedValue('replace');
+        const s = setup([['task', 'note'], 'entity', undefined]);
+        expect(await s.drop()).toEqual({ updated: 3, skipped: 0 });
+        expect(s.files.map(f => f.frontmatter.Kind)).toEqual([['note'], ['note'], ['note']]);
+    });
+    it('cancel does not enter the writer or touch an empty note', async () => {
+        vi.mocked(choosePropertyDropMode).mockResolvedValue(null);
+        const s = setup([['task'], undefined]);
+        expect(await s.drop()).toEqual({ updated: 0, skipped: 0 });
+        expect(s.write).not.toHaveBeenCalled();
+        expect(s.files[1].frontmatter).toEqual({ title: 'kept' });
+    });
+    it('adds to current source, preserving values edited while choosing', async () => {
+        const s = setup([['task']]);
+        vi.mocked(choosePropertyDropMode).mockImplementation(async () => {
+            s.files[0].frontmatter.Kind = ['task', 'new'];
+            return 'add';
+        });
+        await s.drop();
+        expect(s.files[0].frontmatter.Kind).toEqual(['task', 'new', 'note']);
+    });
+    it('replace skips values changed while choosing, including previously empty notes', async () => {
+        const s = setup([['task'], undefined, ['entity']]);
+        vi.mocked(choosePropertyDropMode).mockImplementation(async () => {
+            s.files[0].frontmatter.Kind = ['new'];
+            s.files[1].frontmatter.Kind = ['new'];
+            return 'replace';
+        });
+        expect(await s.drop()).toEqual({ updated: 1, skipped: 2 });
+        expect(s.files.map(f => f.frontmatter.Kind)).toEqual([['new'], ['new'], ['note']]);
+        expect(s.write).toHaveBeenCalledTimes(1);
+    });
+    it('rechecks a late edit inside the existing atomic writer', async () => {
+        const s = setup([['task']]);
+        vi.mocked(choosePropertyDropMode).mockResolvedValue('replace');
+        s.write.mockImplementationOnce(async (file, cb) => {
+            s.files[0].frontmatter.Kind = ['late'];
+            cb(s.files[0].frontmatter);
+        });
+        expect(await s.drop()).toEqual({ updated: 0, skipped: 1 });
+        expect(s.files[0].frontmatter.Kind).toEqual(['late']);
+    });
+    it('recognizes existing arrays without GCM and counts distinct notes', async () => {
+        const s = setup([['task'], undefined], null);
+        await s.drop([s.files[0], s.files[0], s.files[1]]);
+        expect(choosePropertyDropMode).toHaveBeenCalledExactlyOnceWith(s.app, 'Kind', 'note', 1, 2);
+        expect(s.write).toHaveBeenCalledTimes(2);
+    });
+    it('empty and null lists need no prompt; scalar fields retain existing behavior', async () => {
+        const s = setup([[], null, '', undefined]);
+        await s.drop();
+        expect(choosePropertyDropMode).not.toHaveBeenCalled();
+        const scalar = setup(['task'], 'selector');
+        await scalar.drop();
+        expect(choosePropertyDropMode).not.toHaveBeenCalled();
+        expect(scalar.files[0].frontmatter.Kind).toBe('note');
+    });
+    it('missing metadata blocks a list batch before writing', async () => {
+        const s = setup([['task'], undefined]);
+        s.cache.mockReturnValueOnce(null as never);
+        expect(await s.drop()).toEqual({ updated: 0, skipped: 0 });
+        expect(s.write).not.toHaveBeenCalled();
+        expect(choosePropertyDropMode).not.toHaveBeenCalled();
+    });
+    it('moved and replaced files are skipped after the prompt', async () => {
+        const s = setup([['task'], ['task']]);
+        vi.mocked(choosePropertyDropMode).mockImplementation(async () => {
+            s.files[0].path = 'Moved.md';
+            (s.app.vault as unknown as { registerFile: (file: TFile) => void }).registerFile(
+                createFile(s.files[1].path, { Kind: ['new'] })
+            );
+            return 'replace';
+        });
+        expect(await s.drop()).toEqual({ updated: 0, skipped: 2 });
+        expect(s.files.every(f => JSON.stringify(f.frontmatter.Kind) === '["task"]')).toBe(true);
+    });
+    it('already-present add and replace values do not enter the writer', async () => {
+        const s = setup([['note']]);
+        await s.drop();
+        vi.mocked(choosePropertyDropMode).mockResolvedValue('replace');
+        await s.drop();
+        expect(s.write).not.toHaveBeenCalled();
     });
 });

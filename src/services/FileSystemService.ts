@@ -22,6 +22,7 @@ import type { SelectionDispatch } from '../context/SelectionContext';
 import { strings } from '../i18n';
 import { InputModal } from '../modals/InputModal';
 import { ConfirmModal } from '../modals/ConfirmModal';
+import { choosePropertyDropMode, type PropertyDropMode } from '../modals/PropertyDropModal';
 import type { NotebookNavigatorSettings } from '../settings/types';
 import { ALL_TAGS_TAG_ID, PROPERTIES_ROOT_VIRTUAL_FOLDER_ID, TAGGED_TAG_ID, UNTAGGED_TAG_ID } from '../types';
 import type { VisibilityPreferences } from '../types';
@@ -1013,7 +1014,7 @@ export class FileSystemOperations {
     /**
      * Applies a property key/value node to one or more markdown files.
      * Key nodes set `key: null`, which Obsidian serializes as an empty YAML value.
-     * Value nodes replace scalar values. Configured list properties add a value without removing existing entries.
+     * Value nodes replace scalar values. List drops offer Add or Replace when values already exist.
      */
     async applyPropertyNodeToFiles(propertyNodeId: string, files: readonly TFile[]): Promise<ApplyPropertyNodeResult> {
         if (files.length === 0) {
@@ -1025,24 +1026,92 @@ export class FileSystemOperations {
             return { updated: 0, skipped: 0 };
         }
 
-        const markdownFiles = files.filter(file => file.extension === 'md');
+        const markdownFiles = [...new Set(files.filter(file => file.extension === 'md'))];
         if (markdownFiles.length === 0) return { updated: 0, skipped: 0 };
-        if (markdownFiles.length !== files.length) {
+        if (files.some(file => file.extension !== 'md')) {
             showNotice(strings.fileSystem.notifications.propertiesRequireMarkdown, { variant: 'warning' });
             return { updated: 0, skipped: 0 };
         }
 
-        const isListProperty = this.isConfiguredListProperty(assignment);
         const normalizedPropertyKey = casefold(assignment.propertyKey);
+        const currentProperty = (frontmatter: Record<string, unknown>): unknown => {
+            const key = findMatchingRecordKey(frontmatter, assignment.propertyKey);
+            return key === null ? undefined : frontmatter[key];
+        };
+        const desiredString = assignment.desiredValue ?? '';
+        const normalizedDesiredString = assignment.normalizedDesiredValue ?? '';
+        const snapshots = new Map<TFile, { path: string; value: string | undefined }>();
+        const indexed = markdownFiles.map(file => ({ file, cache: this.app.metadataCache.getFileCache(file) }));
+        const definitionType = resolveGcmItemPropertiesApi(this.app)?.resolveDefinition(assignment.propertyKey)?.type;
+        const isListProperty =
+            assignment.nodeKind === 'value' &&
+            assignment.writeValueKind === 'string' &&
+            (definitionType === 'list' ||
+                definitionType === 'kind' ||
+                indexed.some(({ cache }) => Array.isArray(currentProperty(cache?.frontmatter ?? {}))));
+        let mode: PropertyDropMode = 'add';
+        if (isListProperty) {
+            if (indexed.some(({ cache }) => !cache)) {
+                showNotice('Note properties are not ready. Try the drop again after indexing finishes.', { variant: 'warning' });
+                return { updated: 0, skipped: 0 };
+            }
+            const hasValue = (value: unknown): boolean =>
+                Array.isArray(value)
+                    ? value.some(hasValue)
+                    : value !== undefined && value !== null && (typeof value !== 'string' || value.trim() !== '');
+            let populated = 0;
+            for (const { file, cache } of indexed) {
+                const value = currentProperty(cache?.frontmatter ?? {});
+                snapshots.set(file, { path: file.path, value: JSON.stringify(value) });
+                if (hasValue(value)) populated++;
+            }
+            if (populated > 0) {
+                const choice = await choosePropertyDropMode(
+                    this.app,
+                    assignment.propertyKey,
+                    desiredString,
+                    populated,
+                    markdownFiles.length
+                );
+                if (choice === null) return { updated: 0, skipped: 0 };
+                mode = choice;
+            }
+        }
 
         const isUnknownArray = (value: unknown): value is unknown[] => Array.isArray(value);
 
         let updated = 0;
         let skipped = 0;
+        let changedSincePrompt = 0;
 
         try {
             for (const file of markdownFiles) {
                 let didChange = false;
+                // Cached data may skip a no-op; only the atomic callback authorizes a write.
+                if (isListProperty) {
+                    const cachedValue = currentProperty(this.app.metadataCache.getFileCache(file)?.frontmatter ?? {});
+                    const snapshot = snapshots.get(file);
+                    if (
+                        snapshot &&
+                        (file.path !== snapshot.path ||
+                            this.app.vault.getFileByPath(snapshot.path) !== file ||
+                            (mode === 'replace' && JSON.stringify(cachedValue) !== snapshot.value))
+                    ) {
+                        changedSincePrompt++;
+                        skipped++;
+                        continue;
+                    }
+                    const values = Array.isArray(cachedValue) ? cachedValue : [cachedValue];
+                    const matches = (value: unknown) =>
+                        typeof value === 'string' && this.shouldKeepCurrentPropertyString(value, desiredString, normalizedDesiredString);
+                    if (
+                        (mode === 'add' && values.some(matches)) ||
+                        (mode === 'replace' && Array.isArray(cachedValue) && values.length === 1 && matches(values[0]))
+                    ) {
+                        skipped++;
+                        continue;
+                    }
+                }
 
                 await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
                     const resolveExistingFrontmatterKey = (): string | null => {
@@ -1056,6 +1125,16 @@ export class FileSystemOperations {
 
                     const targetPropertyKey = resolveExistingFrontmatterKey() ?? assignment.propertyKey;
                     const currentValue = frontmatter[targetPropertyKey];
+                    const snapshot = snapshots.get(file);
+                    if (
+                        snapshot &&
+                        (file.path !== snapshot.path ||
+                            this.app.vault.getFileByPath(snapshot.path) !== file ||
+                            (mode === 'replace' && JSON.stringify(currentValue) !== snapshot.value))
+                    ) {
+                        changedSincePrompt++;
+                        return;
+                    }
 
                     if (assignment.nodeKind === 'key') {
                         if (currentValue === null) {
@@ -1096,6 +1175,19 @@ export class FileSystemOperations {
                             : currentValue === undefined || currentValue === null || currentValue === ''
                               ? []
                               : [currentValue];
+                        if (mode === 'replace') {
+                            if (
+                                Array.isArray(currentValue) &&
+                                values.length === 1 &&
+                                typeof values[0] === 'string' &&
+                                this.shouldKeepCurrentPropertyString(values[0], desiredValue, normalizedDesiredValue)
+                            ) {
+                                return;
+                            }
+                            frontmatter[targetPropertyKey] = [desiredValue];
+                            didChange = true;
+                            return;
+                        }
                         if (
                             values.some(
                                 value =>
@@ -1157,11 +1249,20 @@ export class FileSystemOperations {
             showNotice(message, { variant: 'success' });
         }
 
-        if (skipped > 0) {
-            showNotice(strings.dragDrop.notifications.filesAlreadyHaveProperty.replace('{count}', skipped.toString()), {
-                timeout: TIMEOUTS.NOTICE_ERROR,
-                variant: 'warning'
-            });
+        if (changedSincePrompt > 0) {
+            showNotice(
+                `${changedSincePrompt} ${changedSincePrompt === 1 ? 'note changed' : 'notes changed'} while choosing. Their current values were preserved.`,
+                { variant: 'warning' }
+            );
+        }
+        if (skipped > changedSincePrompt) {
+            showNotice(
+                strings.dragDrop.notifications.filesAlreadyHaveProperty.replace('{count}', (skipped - changedSincePrompt).toString()),
+                {
+                    timeout: TIMEOUTS.NOTICE_ERROR,
+                    variant: 'warning'
+                }
+            );
         }
 
         return { updated, skipped };

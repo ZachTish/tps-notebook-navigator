@@ -6270,6 +6270,16 @@ body.tps-nn-resizing {
     margin-top: 16px;
 }
 
+.tps-nn-property-drop-modal .tps-nn-button-container {
+    flex-wrap: wrap;
+}
+
+.tps-nn-property-drop-modal button {
+    height: auto;
+    min-height: 36px;
+    white-space: normal;
+}
+
 /* YouTube play overlay shared by modal thumbnail links */
 .tps-nn-youtube-play {
     position: absolute;

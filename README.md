@@ -1,5 +1,13 @@
 # TPS Notebook Navigator
 
+## List property drops (10.1.0)
+
+Dragging notes from the list onto a property value asks **Add**, **Replace**, or **Cancel** when a list property already has values. The prompt counts distinct selected notes with nonempty values, including values already equal to the destination: for example, **3 of 10 notes already have values set for kind**. Add keeps current entries and adds the dropped value once; Replace leaves only that value in a list; Cancel or dismiss writes nothing. Notes with no existing values need no prompt. Scalar/key/boolean drops retain their existing behavior.
+
+List semantics come from the active GCM list/kind definition or existing array values in the selected notes, so stored lists also work without GCM. The preflight reads only the selected notes' indexed metadata, with no vault enumeration or body reads. Unknown metadata blocks a list batch. Opening/navigating never invokes this work. There is no saved preference, new setting, background listener or writer.
+
+The existing native frontmatter writer recomputes against current content. Add preserves intervening additions. Replace checks the property value shown in the prompt and skips notes whose value or file identity changed while choosing; unrelated properties and bodies are preserved. No-op assignments skip the writer. Skipped concurrent changes are reported without retry. The native buttons wrap on narrow layouts and the native host initially focuses Cancel; Escape/dismiss cancels. Installed test-vault evidence and physical-device limitations are recorded in the release notes.
+
 ## Development workflow
 
 Run `npm test`, then `npm run build` for the separate final production-mode build. Both commands stay inside this checkout and never deploy or reload a vault. The build needs only this repository and its declared dependencies; no parent workspace helper is imported. Deployment is an explicit test-vault operation owned by the workspace release checklist. Runtime artifacts and private settings are never copied back into source. This tooling-only change does not alter the plugin version or runtime behavior.

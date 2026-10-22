@@ -65,6 +65,16 @@
     margin-top: 16px;
 }
 
+.nn-property-drop-modal .nn-button-container {
+    flex-wrap: wrap;
+}
+
+.nn-property-drop-modal button {
+    height: auto;
+    min-height: 36px;
+    white-space: normal;
+}
+
 /* YouTube play overlay shared by modal thumbnail links */
 .nn-youtube-play {
     position: absolute;
