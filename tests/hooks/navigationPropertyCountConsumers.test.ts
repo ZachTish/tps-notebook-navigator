@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { App, TFile } from 'obsidian';
+import { App, TFile, TFolder } from 'obsidian';
 import type { CachedMetadata } from 'obsidian';
 import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import type { NotebookNavigatorSettings } from '../../src/settings/types';
@@ -10,6 +10,7 @@ import {
     useNavigationPaneTreeSections,
     type UseNavigationPaneTreeSectionsParams
 } from '../../src/hooks/navigationPane/data/useNavigationPaneTreeSections';
+import { useNavigationVisibleFileTypePaths } from '../../src/hooks/navigationPane/data/useNavigationVisibleFileTypePaths';
 import { useNavigationNoteCounts } from '../../src/hooks/navigationPane/data/useNavigationNoteCounts';
 import { useFileItemPillDecorationState } from '../../src/hooks/useFileItemPillDecorationState';
 import { createHiddenTagVisibility } from '../../src/utils/tagPrefixMatcher';
@@ -87,11 +88,19 @@ function createFixture(size = 1_000) {
     }
     const getFiles = vi.fn(() => [...inventory.values()]);
     const getFileCache = vi.fn((file: TFile) => metadata.get(file.path) ?? null);
-    Object.assign(app.vault, { getFiles });
+    const folder = Object.assign(new TFolder('Notes'), { name: 'Notes', children: [] as TFile[], vault: app.vault });
+    const root = Object.assign(new TFolder('/'), { name: '', children: [folder] });
+    const getRoot = vi.fn(() => {
+        folder.children = [...inventory.values()];
+        folder.children.forEach(file => Object.assign(file, { parent: folder }));
+        return root;
+    });
+    Object.assign(app.vault, { getFiles, getRoot, getAbstractFileByPath: (path: string) => inventory.get(path) ?? null });
     Object.assign(app.metadataCache, { getFileCache });
     const settings: NotebookNavigatorSettings = {
         ...DEFAULT_SETTINGS,
         showTags: false,
+        tpsFileTypesNavigationEnabled: false,
         showProperties: true,
         showAllPropertiesFolder: true,
         showNoteCount: true,
@@ -186,11 +195,13 @@ function createFixture(size = 1_000) {
     };
     const run: HookRun = { slots: [], cursor: 0, pending: [] };
     runs.push(run);
+    let typeRevision = 0;
     const render = () => {
         run.cursor = 0;
         hooks.active = run;
         hooks.settings = params.settings;
         const trees = useNavigationPaneTreeSections(params);
+        const typePaths = useNavigationVisibleFileTypePaths(app, params.settings, params.showHiddenItems, params.sourceState, typeRevision);
         const pills = useFileItemPillDecorationState({
             sourceState: params.sourceState,
             treeSections: trees,
@@ -223,16 +234,30 @@ function createFixture(size = 1_000) {
         });
         run.pending.splice(0).forEach(effect => effect());
         hooks.active = null;
-        return { trees, pills, counts };
+        return { trees, pills, counts, typePaths };
     };
     const clearCounts = () => {
         getFiles.mockClear();
+        getRoot.mockClear();
         getFileCache.mockClear();
     };
     const updateSource = () => {
         params.sourceState = { ...params.sourceState, fileChangeVersion: params.sourceState.fileChangeVersion + 1 };
     };
-    return { params, render, inventory, metadata, getFiles, getFileCache, clearCounts, updateSource };
+    return {
+        params,
+        render,
+        inventory,
+        metadata,
+        getFiles,
+        getRoot,
+        getFileCache,
+        clearCounts,
+        updateSource,
+        updateTypes: () => {
+            typeRevision += 1;
+        }
+    };
 }
 
 function propertyNode(key: string, name: string, valuePath: string | null = null, children: PropertyTreeNode[] = []): PropertyTreeNode {
@@ -250,6 +275,113 @@ function propertyNode(key: string, name: string, valuePath: string | null = null
 }
 
 describe('navigation property count consumers', () => {
+    it('does no inventory work across 100 property, tag, decoration and tree publications', () => {
+        const fixture = createFixture();
+        fixture.params.settings.tpsFileTypesNavigationEnabled = true;
+        const initial = fixture.render();
+        fixture.clearCounts();
+        for (let index = 0; index < 100; index += 1) {
+            const state = fixture.params.sourceState;
+            fixture.params.sourceState = {
+                ...state,
+                propertyDataVersion: state.propertyDataVersion + 1,
+                tagDataVersion: state.tagDataVersion + 1,
+                metadataDecorationVersion: state.metadataDecorationVersion + 1,
+                propertyTree: new Map(state.propertyTree),
+                tagTree: new Map(state.tagTree),
+                visiblePropertyNavigationKeySet: new Set(state.visiblePropertyNavigationKeySet)
+            };
+            fixture.updateTypes();
+            const next = fixture.render();
+            expect(next.typePaths).toBe(initial.typePaths);
+            expect(next.trees.propertyCollectionCount).toBe(initial.trees.propertyCollectionCount);
+        }
+        expect(fixture.getFiles).not.toHaveBeenCalled();
+        expect(fixture.getRoot).not.toHaveBeenCalled();
+        expect(fixture.getFileCache).not.toHaveBeenCalled();
+    });
+
+    it('refreshes both scopes for a batched arrival, deletion and move, without reading bodies or writing', () => {
+        const fixture = createFixture(3);
+        fixture.params.settings.tpsFileTypesNavigationEnabled = true;
+        fixture.render();
+        fixture.clearCounts();
+        fixture.inventory.delete('Notes/0.md');
+        fixture.inventory.delete('Notes/1.md');
+        fixture.inventory.set('Notes/moved.md', new TFile('Notes/moved.md'));
+        fixture.inventory.set('Notes/arrived.md', new TFile('Notes/arrived.md'));
+        fixture.inventory.set('Notes/image.png', new TFile('Notes/image.png'));
+        fixture.updateSource();
+        const updated = fixture.render();
+        expect(updated.trees.propertyCollectionCount?.total).toBe(3);
+        expect([...updated.typePaths].sort()).toEqual(['Notes/2.md', 'Notes/arrived.md', 'Notes/image.png', 'Notes/moved.md']);
+        expect(fixture.getFiles).toHaveBeenCalledTimes(1);
+        expect(fixture.getRoot).toHaveBeenCalledTimes(1);
+        expect(fixture.getFileCache).not.toHaveBeenCalled();
+    });
+
+    it('updates both scopes for hidden-property and hidden-tag changes, including show-hidden toggles', () => {
+        const fixture = createFixture(3);
+        fixture.params.settings = {
+            ...fixture.params.settings,
+            tpsFileTypesNavigationEnabled: true,
+            vaultProfiles: fixture.params.settings.vaultProfiles.map(profile => ({
+                ...profile,
+                hiddenFileProperties: ['archived=true'],
+                hiddenFileTags: ['private']
+            }))
+        };
+        fixture.params.sourceState.hiddenFileTags = ['private'];
+        expect(fixture.render().typePaths.size).toBe(3);
+        fixture.metadata.set('Notes/0.md', { frontmatter: { archived: true } });
+        fixture.params.sourceState = { ...fixture.params.sourceState, metadataVisibilityVersion: 1 };
+        let next = fixture.render();
+        expect(next.typePaths.size).toBe(2);
+        expect(next.trees.propertyCollectionCount?.total).toBe(2);
+        fixture.metadata.set('Notes/1.md', { frontmatter: { tags: ['private'] } });
+        fixture.params.sourceState = { ...fixture.params.sourceState, tagDataVersion: 1 };
+        next = fixture.render();
+        expect(next.typePaths.size).toBe(1);
+        expect(next.trees.propertyCollectionCount?.total).toBe(1);
+        fixture.params.showHiddenItems = true;
+        next = fixture.render();
+        expect(next.typePaths.size).toBe(3);
+        expect(next.trees.propertyCollectionCount?.total).toBe(3);
+    });
+
+    it('refreshes drawing-preview exclusions from the existing type index revision', () => {
+        const fixture = createFixture(1);
+        fixture.params.settings = { ...fixture.params.settings, tpsFileTypesNavigationEnabled: true, hideDrawingPreviewImages: true };
+        const preview = new TFile('Notes/0.png');
+        fixture.inventory.set(preview.path, preview);
+        expect(fixture.render().typePaths.has(preview.path)).toBe(true);
+        fixture.metadata.set('Notes/0.md', { frontmatter: { 'excalidraw-plugin': 'parsed' } });
+        fixture.updateTypes();
+        expect(fixture.render().typePaths.has(preview.path)).toBe(false);
+        fixture.params.showHiddenItems = true;
+        expect(fixture.render().typePaths.has(preview.path)).toBe(true);
+    });
+
+    it.each(['metadataDecorationVersion', 'propertyDataVersion'] as const)(
+        'still resolves authored folder-note titles when those notes are hidden (%s)',
+        version => {
+            const fixture = createFixture(3);
+            fixture.params.settings = {
+                ...fixture.params.settings,
+                tpsFileTypesNavigationEnabled: true,
+                enableFolderNotes: true,
+                hideFolderNoteInList: true
+            };
+            expect(fixture.render().typePaths.size).toBe(3);
+            fixture.metadata.set('Notes/0.md', { frontmatter: { title: 'Notes' } });
+            fixture.params.sourceState = { ...fixture.params.sourceState, [version]: 1 };
+            expect([...fixture.render().typePaths].sort()).toEqual(['Notes/1.md', 'Notes/2.md']);
+            fixture.metadata.set('Notes/0.md', { frontmatter: { title: 'Other' } });
+            fixture.params.sourceState = { ...fixture.params.sourceState, [version]: 2 };
+            expect(fixture.render().typePaths.size).toBe(3);
+        }
+    );
+
     it.each(['hidden', 'properties-disabled', 'counts-disabled', 'no-root-or-shortcut'] as const)(
         'does no aggregate inventory or metadata work when %s across 20 source updates',
         mode => {

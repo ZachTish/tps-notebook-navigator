@@ -1,5 +1,12 @@
 # TPS Notebook Navigator
 
+## Sync-burst refreshes (10.1.1)
+
+Navigation's Properties root count and file-type visibility refresh from the existing batched file lifecycle notifications and the exclusion inputs they actually use. Property-tree publications, unrelated tag values and row decorations do not rescan the vault for these aggregates. Hidden-tag/property filters, folder moves, authored folder-note titles and drawing-preview exclusions retain their update paths. Settings changes and showing the navigation pane still refresh current results.
+
+This compatible fix adds no background worker, watcher, timer, persistent cache, setting or note mutation. It reduces Navigator's extra work during bulk arrivals; Obsidian's own metadata/link indexing and other consumers still run. Installed test-vault measurements and device limitations are recorded in [the 10.1.1 release notes](release-notes/10.1.1.md).
+
+
 ## List property drops (10.1.0)
 
 Dragging notes from the list onto a property value asks **Add**, **Replace**, or **Cancel** when a list property already has values. The prompt counts distinct selected notes with nonempty values, including values already equal to the destination: for example, **3 of 10 notes already have values set for kind**. Add keeps current entries and adds the dropped value once; Replace leaves only that value in a list; Cancel or dismiss writes nothing. Notes with no existing values need no prompt. Scalar/key/boolean drops retain their existing behavior.

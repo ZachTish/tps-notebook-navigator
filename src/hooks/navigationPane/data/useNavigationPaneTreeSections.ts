@@ -731,48 +731,33 @@ export function useNavigationPaneTreeSections({
         [globalRootPropertyOrdering.resolvedRootPropertyKeys]
     );
 
-    const propertySectionBase = useMemo((): {
-        propertiesSectionActive: boolean;
-        keyNodes: PropertyTreeNode[];
-        collectionCount: NoteCountInfo | undefined;
-    } => {
-        if (!settings.showProperties) {
-            return {
-                propertiesSectionActive: false,
-                keyNodes: [],
-                collectionCount: undefined
-            };
+    const propertyCollectionTagVersion = !showHiddenItems && sourceState.hiddenFileTags.length > 0 ? sourceState.tagDataVersion : 0;
+    const propertyCollectionCount = useMemo((): NoteCountInfo | undefined => {
+        // The root counts visible files, independently of property values, tree
+        // ordering and row decorations. Lifecycle changes already arrive batched.
+        void sourceState.fileChangeVersion;
+        void sourceState.folderChangeVersion;
+        void sourceState.metadataVisibilityVersion;
+        void propertyCollectionTagVersion;
+        if (
+            !settings.showProperties ||
+            !isVisible ||
+            !settings.showNoteCount ||
+            !(settings.showAllPropertiesFolder || sourceState.hasRootPropertyShortcut)
+        ) {
+            return undefined;
         }
 
-        const keyNodes = renderRootPropertyOrdering.resolvedRootPropertyKeys
-            .map(key => renderRootPropertyOrdering.rootNodeMap.get(key) ?? null)
-            .filter((node): node is PropertyTreeNode => node !== null);
-
-        let collectionCount: NoteCountInfo | undefined;
-        const shouldShowRootFolder = settings.showAllPropertiesFolder;
-        // File-list pills still consume the trees while navigation is hidden, but
-        // only visible navigation consumes this aggregate count.
-        const shouldComputeCollectionCount =
-            isVisible && settings.showNoteCount && (shouldShowRootFolder || sourceState.hasRootPropertyShortcut);
-
-        if (shouldComputeCollectionCount) {
-            const total = getFilesForNavigationSelection(
-                { selectionType: ItemType.PROPERTY, selectedProperty: PROPERTIES_ROOT_VIRTUAL_FOLDER_ID },
-                settings,
-                { includeDescendantNotes: true, showHiddenItems },
-                app,
-                tagTreeService,
-                propertyTreeService,
-                { orderResults: false }
-            ).length;
-            collectionCount = { current: total, descendants: 0, total };
-        }
-
-        return {
-            propertiesSectionActive: true,
-            keyNodes,
-            collectionCount
-        };
+        const total = getFilesForNavigationSelection(
+            { selectionType: ItemType.PROPERTY, selectedProperty: PROPERTIES_ROOT_VIRTUAL_FOLDER_ID },
+            settings,
+            { includeDescendantNotes: true, showHiddenItems },
+            app,
+            tagTreeService,
+            propertyTreeService,
+            { orderResults: false }
+        ).length;
+        return { current: total, descendants: 0, total };
     }, [
         app,
         settings,
@@ -780,14 +765,28 @@ export function useNavigationPaneTreeSections({
         showHiddenItems,
         tagTreeService,
         propertyTreeService,
-        sourceState,
-        includeDescendantNotes,
-        renderRootPropertyOrdering,
+        sourceState.fileChangeVersion,
+        sourceState.folderChangeVersion,
+        sourceState.metadataVisibilityVersion,
+        propertyCollectionTagVersion,
         settings.showAllPropertiesFolder,
         settings.showNoteCount,
         settings.showProperties,
         sourceState.hasRootPropertyShortcut
     ]);
+
+    const propertySectionBase = useMemo(
+        () => ({
+            propertiesSectionActive: settings.showProperties,
+            keyNodes: settings.showProperties
+                ? renderRootPropertyOrdering.resolvedRootPropertyKeys
+                      .map(key => renderRootPropertyOrdering.rootNodeMap.get(key) ?? null)
+                      .filter((node): node is PropertyTreeNode => node !== null)
+                : [],
+            collectionCount: propertyCollectionCount
+        }),
+        [settings.showProperties, renderRootPropertyOrdering, propertyCollectionCount]
+    );
 
     const { propertyItems, propertiesSectionActive } = useMemo((): {
         propertyItems: CombinedNavigationItem[];

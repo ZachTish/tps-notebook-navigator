@@ -109,7 +109,7 @@ import {
     useNavigationPaneTypeSection
 } from '../../hooks/navigationPane/data/useNavigationPaneTypeSection';
 import { filterTpsNavigatorTypesSnapshot, type TpsNavigatorTypeId } from '../../types/navigatorTypes';
-import { getVisibleFileTypeFiles } from '../../utils/selectionUtils';
+import { useNavigationVisibleFileTypePaths } from '../../hooks/navigationPane/data/useNavigationVisibleFileTypePaths';
 import { createTypeSelectionFallbackAction, isTypeSelectionAuthoritativelyUnavailable } from '../../utils/navigationTypeHistory';
 import { orderTypeNavigationDescriptors } from '../../utils/typeNavigationOrder';
 import { useTagNoteIndex } from '../../hooks/useTagNoteIndex';
@@ -470,14 +470,13 @@ export const NavigationPane = React.memo(
 
         const isVisible = uiState.dualPane || uiState.currentSinglePaneView === 'navigation';
         const rawTypeSnapshot = useNavigatorTypes(plugin.api);
-        const visibleTypeSourcePaths = useMemo(() => {
-            // Source-state changes can alter the active visibility scope before the next index revision.
-            void props.navigationSourceState;
-            if (!settings.tpsFileTypesNavigationEnabled) {
-                return new Set<string>();
-            }
-            return new Set(getVisibleFileTypeFiles(settings, showHiddenItems, app).map(file => file.path));
-        }, [app, props.navigationSourceState, settings, showHiddenItems]);
+        const visibleTypeSourcePaths = useNavigationVisibleFileTypePaths(
+            app,
+            settings,
+            showHiddenItems,
+            props.navigationSourceState,
+            rawTypeSnapshot.revision
+        );
         const typeSnapshot = useMemo(
             () => filterTpsNavigatorTypesSnapshot(rawTypeSnapshot, visibleTypeSourcePaths),
             [rawTypeSnapshot, visibleTypeSourcePaths]
